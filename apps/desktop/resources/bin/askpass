@@ -1,0 +1,10 @@
+#!/bin/sh
+# SSH_ASKPASS helper (US-1.1.3, US-1.3.2, TECH_STACK §7). Notices such as a
+# security-key touch request (SSH_ASKPASS_PROMPT=none) are relayed on stderr
+# behind the connection's nonce. Every prompt for a secret is refused without
+# output, so the app never asks for a password, passphrase or PIN.
+if [ "${SSH_ASKPASS_PROMPT:-}" = none ]; then
+    printf '%s NOTICE %s\n' "${TRC_SSH_NONCE:-}" "$1" >&2
+    exit 0
+fi
+exit 1

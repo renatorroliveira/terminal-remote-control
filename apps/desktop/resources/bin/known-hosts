@@ -1,0 +1,8 @@
+#!/bin/sh
+# KnownHostsCommand helper (US-1.2, TECH_STACK §7). ssh runs it as
+# `known-hosts %I %H %t %K %f`. It reports the presented key on stderr behind
+# the connection's nonce and returns no keys, so BatchMode refuses an unknown
+# key and the app asks the user. The ORDER call carries no key and is ignored.
+[ "$1" = ORDER ] && exit 0
+printf '%s HOSTKEY %s %s %s %s\n' "${TRC_SSH_NONCE:-}" "$2" "$3" "$4" "$5" >&2
+exit 0
