@@ -8,3 +8,15 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+rustix.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+trc-protocol = { path = "../trc-protocol" }
+trc-vt = { path = "../trc-vt" }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread"] }

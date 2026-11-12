@@ -2,9 +2,9 @@
 
 | Field        | Value                                                                   |
 | ------------ | ----------------------------------------------------------------------- |
-| Status       | Decisions accepted (v1.2). S1–S5 done (§11); S6–S10 may revise details. |
+| Status       | Decisions accepted (v1.3). S1–S5 done (§11); S6–S10 may revise details. |
 | Owner        | Renato Oliveira                                                         |
-| Last updated | 2026-11-11                                                              |
+| Last updated | 2026-11-12                                                              |
 | Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.        |
 
 This document records the technology choices for P0 and why each one was made.
@@ -28,7 +28,7 @@ working names until the product is named (OQ-5).
 | UI                  | React 19 + React Aria Components, Zustand, react-intl, CSS Modules        | Strongest accessible primitives; best support from AI assistants     |
 | SSH                 | System OpenSSH client, one exec channel per host                          | Uses the user's config, agent and keys unchanged (US-1.1, SEC-03)    |
 | App↔daemon protocol | Length-prefixed frames: JSON control (types from Rust via ts-rs), raw I/O | Simplest contract that still meets NFR-03 and NFR-12                 |
-| Daemon              | Rust: tokio, portable-pty, libghostty-vt (fallback alacritty_terminal)    | Small static binary, low memory (NFR-09), memory safety              |
+| Daemon              | Rust: tokio, rustix PTYs, libghostty-vt (fallback alacritty_terminal)     | Small static binary, low memory (NFR-09), memory safety              |
 | Persistence         | Per-session append-only files; no database; no encryption                 | Meets NFR-08 and SEC-05 with the least machinery                     |
 | Build               | pnpm 12, electron-vite 6 (Vite 8), electron-builder 26, cargo-zigbuild    | Fast feedback, one tool per job                                      |
 | Lint and format     | Biome 2.6 (lint, a11y, cognitive complexity ≤ 10), Prettier 3.10          | Owner's baseline; no ESLint needed                                   |
@@ -401,18 +401,18 @@ either way.
 
 ### 5.2 Crates
 
-| Need                                              | Crate (version, license)                                         | Fallback (spike that decides)    |
-| ------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------- |
-| Async runtime, sockets, named pipes, processes    | tokio 1.54 (MIT); tokio-util 0.7 (MIT) for framing               | —                                |
-| PTY and ConPTY                                    | portable-pty 0.9 (MIT)                                           | pty-process 0.5 (S1, S9)         |
-| VT emulator, snapshots, persistence format        | libghostty-vt 1.0.1 (MIT) through our own thin FFI crate         | alacritty_terminal 0.26 (S1, S9) |
-| Unix calls (setsid, modes, flock, fdatasync)      | rustix 1.1 (Apache-2.0/MIT)                                      | —                                |
-| Windows calls (pipe client PID, SIDs, ACLs, jobs) | windows-sys 0.61 (MIT/Apache-2.0)                                | —                                |
-| Control messages and metadata                     | serde 1.0 + serde_json 1.0 (MIT/Apache-2.0)                      | —                                |
-| TypeScript types generated from Rust              | ts-rs 12 (MIT)                                                   | —                                |
-| Checksums                                         | sha2 0.11 (binaries), crc32fast 1.5 (log records)                | —                                |
-| Logging                                           | tracing 0.1, tracing-subscriber 0.3 (JSON), tracing-appender 0.2 | —                                |
-| Errors                                            | thiserror 2                                                      | —                                |
+| Need                                               | Crate (version, license)                                         | Fallback (spike that decides)    |
+| -------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------- |
+| Async runtime, sockets, named pipes, processes     | tokio 1.54 (MIT); tokio-util 0.7 (MIT) for framing               | —                                |
+| PTY                                                | our own spawn on rustix 1.1 (D-23); ConPTY on windows-sys (E6)   | —                                |
+| VT emulator, snapshots, persistence format         | libghostty-vt 1.0.1 (MIT) through our own thin FFI crate         | alacritty_terminal 0.26 (S1, S9) |
+| Unix calls (PTYs, setsid, modes, flock, fdatasync) | rustix 1.1 (Apache-2.0/MIT)                                      | —                                |
+| Windows calls (pipe client PID, SIDs, ACLs, jobs)  | windows-sys 0.61 (MIT/Apache-2.0)                                | —                                |
+| Control messages and metadata                      | serde 1.0 + serde_json 1.0 (MIT/Apache-2.0)                      | —                                |
+| TypeScript types generated from Rust               | ts-rs 12 (MIT)                                                   | —                                |
+| Checksums                                          | sha2 0.11 (binaries), crc32fast 1.5 (log records)                | —                                |
+| Logging                                            | tracing 0.1, tracing-subscriber 0.3 (JSON), tracing-appender 0.2 | —                                |
+| Errors                                             | thiserror 2                                                      | —                                |
 
 Not used:
 
@@ -478,6 +478,12 @@ emulator (including query replies) and the persistence writer.
 
 - It keeps reading output while the core is down (US-2.1, US-2.5).
 - It never blocks on a slow client.
+- It runs as `trcd holder --socket run/holders/<id>.sock`. The socket is
+  created with mode 0600 under a temporary umask, so the shell keeps the umask
+  the holder inherited. Only peers of the same uid are accepted (SEC-02), and
+  the socket is removed on shutdown.
+- It opens the PTY and spawns the shell itself (D-23): `openpt` with
+  close-on-exec, then only `setsid` and `TIOCSCTTY` between fork and exec.
 
 **`trcd bridge`.** Relays stdio to the core's socket, and starts the core if it
 is not running, like `wezterm cli proxy`.
@@ -853,8 +859,13 @@ probe for bash, zsh, fish and pwsh. The login shell starts as a login shell
 
 **Environment.**
 
-- The daemon sets `TERM=xterm-256color`, `COLORTERM=truecolor`, `TERM_PROGRAM`
-  and `TERM_PROGRAM_VERSION`.
+- The daemon sets `TERM=xterm-256color`, `COLORTERM=truecolor`,
+  `TERM_PROGRAM=trc` and `TERM_PROGRAM_VERSION`, plus `HOME`, `USER`,
+  `LOGNAME` and `SHELL` from the account.
+- Defaults that a login shell's startup files normally replace:
+  `PATH=/usr/local/bin:/usr/bin:/bin` and `LANG=C.UTF-8`.
+- Profile and then session overrides apply last; an override can also remove
+  a variable.
 - Sessions never inherit the daemon's environment. It carries stale `SSH_*`
   values from whichever connection started it.
 
@@ -1155,30 +1166,31 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 
 ## 12. Decision log
 
-| ID   | Decision                                                                                                                                                    | Why                                                                                          | PRD effect                 |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------- |
-| D-01 | Rust daemon                                                                                                                                                 | Footprint, static binaries, ConPTY, memory safety (§2)                                       | Resolves OQ-2              |
-| D-02 | libghostty-vt in the daemon; alacritty_terminal if it proves incompatible on a target OS                                                                    | Grapheme fidelity, VT formatter, small cells; confirmed for Linux and macOS by S1            | —                          |
-| D-03 | JSON control messages with ts-rs types; raw I/O frames                                                                                                      | Fewest tools; NFR-12 met through the handshake and fixtures                                  | —                          |
-| D-04 | Lagging clients skip to the latest screen; programs never block                                                                                             | NFR-03 and fair sharing (US-2.6); gaps are backfilled from the daemon                        | —                          |
-| D-05 | No encryption at rest; user-only permissions                                                                                                                | SEC-05 as written; remote hosts have no keychain the daemon can reach                        | Resolves OQ-1              |
-| D-06 | Manual signed downloads in E1–E2; Electron's built-in updater on macOS from E3                                                                              | Simplest start. electron-updater's macOS path opens a loopback listener (SEC-01)             | Resolves OQ-3; adds US-3.4 |
-| D-07 | Review mode is a paged, read-only text field with caret navigation                                                                                          | A single element holding the whole buffer froze NVDA; matches VS Code                        | Rewords A11Y-03.2          |
-| D-08 | OS-visible selection is capped; copy is always exact                                                                                                        | Chromium can't hold 100k selectable lines                                                    | Adds A11Y-04.7             |
-| D-09 | No telemetry and no crash reporting                                                                                                                         | SEC-08; nothing in the PRD needs them                                                        | Resolves OQ-4              |
-| D-10 | pnpm 12 workspaces; no task runner                                                                                                                          | Strict, fast, supply-chain settings                                                          | —                          |
-| D-11 | GitHub for code, Actions for CI, Releases for downloads and the update feed                                                                                 | Hosted runners for every target OS and architecture                                          | —                          |
-| D-12 | React 19 + React Aria Components                                                                                                                            | Accessible primitives; works with TypeScript 7; well supported by AI assistants              | —                          |
-| D-13 | Biome is the only linter; no ESLint                                                                                                                         | typescript-eslint caps TypeScript below 6.1; jsx-a11y doesn't support ESLint 10              | —                          |
-| D-14 | libghostty-vt source comes from its signed release tarballs, checked against a SHA-256 manifest and the minisign key; build.rs never touches the network    | Reproducible, offline builds; no unverified download (SEC-04)                                | —                          |
-| D-15 | Linux test hosts are sshd containers on a dedicated colima profile `trc`, ports on `127.0.0.1` only, keys generated per run                                 | Real OpenSSH on Ubuntu, Alpine and Rocky without touching other profiles or exposing ports   | —                          |
-| D-16 | In E1, CI workflows run only on manual dispatch; local `pnpm check`, integration and e2e suites are the gate                                                | The GitHub repository arrived after planning; the local gates already cover E1               | —                          |
-| D-17 | E1 builds are ad-hoc signed (`codesign -s -`) and not notarized                                                                                             | No Developer ID identity yet; Apple silicon and the fuse flip need a signature               | E1 exception to SEC-04.1   |
-| D-18 | Test builds read `TRC_TEST_SSH_CONFIG` and `TRC_TEST_KNOWN_HOSTS`; a build-time define removes the seam from release builds, and an artifact test checks it | OpenSSH reads `~/.ssh` from the passwd home, so tests need their own config                  | —                          |
-| D-19 | E1 flow control is backpressure: the holder pauses PTY reads when its single client runs out of credit. D-04 applies from E2                                | E1 has one client per session; no line is skipped, so A11Y-02.3 and A11Y-03 need no backfill | —                          |
-| D-20 | In E1, `trcd bridge` starts the core detached (double fork, `setsid`, under a lock) when its socket is absent                                               | Service-manager registration and kill-scope isolation arrive with E2 (US-2.4, US-2.5)        | —                          |
-| D-21 | ssh also gets a generated wrapper config (`-F`) that sets the security options first and includes the user's and the system config                          | `ProxyJump` connections receive none of the `-o` options (S4)                                | —                          |
-| D-22 | The ATS takes input as a `contenteditable` element that cancels every edit, not through EditContext                                                         | EditContext broke caret bounds for macOS Zoom (S2, A11Y-06.3)                                | —                          |
+| ID   | Decision                                                                                                                                                    | Why                                                                                                  | PRD effect                 |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------- |
+| D-01 | Rust daemon                                                                                                                                                 | Footprint, static binaries, ConPTY, memory safety (§2)                                               | Resolves OQ-2              |
+| D-02 | libghostty-vt in the daemon; alacritty_terminal if it proves incompatible on a target OS                                                                    | Grapheme fidelity, VT formatter, small cells; confirmed for Linux and macOS by S1                    | —                          |
+| D-03 | JSON control messages with ts-rs types; raw I/O frames                                                                                                      | Fewest tools; NFR-12 met through the handshake and fixtures                                          | —                          |
+| D-04 | Lagging clients skip to the latest screen; programs never block                                                                                             | NFR-03 and fair sharing (US-2.6); gaps are backfilled from the daemon                                | —                          |
+| D-05 | No encryption at rest; user-only permissions                                                                                                                | SEC-05 as written; remote hosts have no keychain the daemon can reach                                | Resolves OQ-1              |
+| D-06 | Manual signed downloads in E1–E2; Electron's built-in updater on macOS from E3                                                                              | Simplest start. electron-updater's macOS path opens a loopback listener (SEC-01)                     | Resolves OQ-3; adds US-3.4 |
+| D-07 | Review mode is a paged, read-only text field with caret navigation                                                                                          | A single element holding the whole buffer froze NVDA; matches VS Code                                | Rewords A11Y-03.2          |
+| D-08 | OS-visible selection is capped; copy is always exact                                                                                                        | Chromium can't hold 100k selectable lines                                                            | Adds A11Y-04.7             |
+| D-09 | No telemetry and no crash reporting                                                                                                                         | SEC-08; nothing in the PRD needs them                                                                | Resolves OQ-4              |
+| D-10 | pnpm 12 workspaces; no task runner                                                                                                                          | Strict, fast, supply-chain settings                                                                  | —                          |
+| D-11 | GitHub for code, Actions for CI, Releases for downloads and the update feed                                                                                 | Hosted runners for every target OS and architecture                                                  | —                          |
+| D-12 | React 19 + React Aria Components                                                                                                                            | Accessible primitives; works with TypeScript 7; well supported by AI assistants                      | —                          |
+| D-13 | Biome is the only linter; no ESLint                                                                                                                         | typescript-eslint caps TypeScript below 6.1; jsx-a11y doesn't support ESLint 10                      | —                          |
+| D-14 | libghostty-vt source comes from its signed release tarballs, checked against a SHA-256 manifest and the minisign key; build.rs never touches the network    | Reproducible, offline builds; no unverified download (SEC-04)                                        | —                          |
+| D-15 | Linux test hosts are sshd containers on a dedicated colima profile `trc`, ports on `127.0.0.1` only, keys generated per run                                 | Real OpenSSH on Ubuntu, Alpine and Rocky without touching other profiles or exposing ports           | —                          |
+| D-16 | In E1, CI workflows run only on manual dispatch; local `pnpm check`, integration and e2e suites are the gate                                                | The GitHub repository arrived after planning; the local gates already cover E1                       | —                          |
+| D-17 | E1 builds are ad-hoc signed (`codesign -s -`) and not notarized                                                                                             | No Developer ID identity yet; Apple silicon and the fuse flip need a signature                       | E1 exception to SEC-04.1   |
+| D-18 | Test builds read `TRC_TEST_SSH_CONFIG` and `TRC_TEST_KNOWN_HOSTS`; a build-time define removes the seam from release builds, and an artifact test checks it | OpenSSH reads `~/.ssh` from the passwd home, so tests need their own config                          | —                          |
+| D-19 | E1 flow control is backpressure: the holder pauses PTY reads when its single client runs out of credit. D-04 applies from E2                                | E1 has one client per session; no line is skipped, so A11Y-02.3 and A11Y-03 need no backfill         | —                          |
+| D-20 | In E1, `trcd bridge` starts the core detached (double fork, `setsid`, under a lock) when its socket is absent                                               | Service-manager registration and kill-scope isolation arrive with E2 (US-2.4, US-2.5)                | —                          |
+| D-21 | ssh also gets a generated wrapper config (`-F`) that sets the security options first and includes the user's and the system config                          | `ProxyJump` connections receive none of the `-o` options (S4)                                        | —                          |
+| D-22 | The ATS takes input as a `contenteditable` element that cancels every edit, not through EditContext                                                         | EditContext broke caret bounds for macOS Zoom (S2, A11Y-06.3)                                        | —                          |
+| D-23 | The holder opens PTYs and spawns shells itself on rustix, not through portable-pty                                                                          | portable-pty allocates between fork and exec, which crashed or hung concurrent spawns on musl (ST-5) | —                          |
 
 ## 13. Versions (verified 2026-11-11)
 
@@ -1217,9 +1229,9 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | alacritty_terminal (fallback) | 0.26.0  | tracing            | 0.1.44            |
 | tokio                         | 1.54.1  | tracing-subscriber | 0.3.23            |
 | tokio-util                    | 0.7.20  | tracing-appender   | 0.2.5             |
-| portable-pty                  | 0.9.0   | thiserror          | 2.0.21            |
-| rustix                        | 1.1.6   | bindgen (one-off)  | 0.73.2            |
-| windows-sys (E6)              | 0.61.2  | cargo-nextest      | 0.9.151           |
+| rustix                        | 1.1.6   | thiserror          | 2.0.21            |
+| windows-sys (E6)              | 0.61.2  | bindgen (one-off)  | 0.73.2            |
+|                               |         | cargo-nextest      | 0.9.151           |
 
 ## 14. Not used, and why
 

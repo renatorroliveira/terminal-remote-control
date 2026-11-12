@@ -280,7 +280,7 @@ message.
 
 **ST-5 `trcd holder`** (US-1.7, US-1.9.1–2, US-1.10.2–3, US-1.11.3, P-16)
 
-- PTY through portable-pty and shell spawn:
+- PTY on rustix (D-23) and shell spawn:
     - login shell detection: `$SHELL`, then `getent passwd`, then `/bin/sh`;
     - `arg0` `-zsh`;
     - cwd;
@@ -293,10 +293,15 @@ message.
 - Restart keeps the scrollback and adds a marker line.
 - The cwd comes from `/proc/<pid>/cwd` on Linux, falling back to OSC 7.
 - Tests: native unit tests on macOS, and integration in Linux containers.
+- Outcome: `trcd holder --socket <path>` serves one session on a private socket. portable-pty was replaced
+  (D-23) after concurrent spawns crashed on musl. On macOS, concurrent `/dev/ptmx` opens can fail with XNU's
+  internal `EREDRIVEOPEN` (-6), so the open is retried a bounded number of times.
 
 **ST-6 `trcd core` and `trcd bridge`** (US-1.5.1, US-1.9, US-1.10, SEC-01, SEC-02, SEC-04.4, SEC-08, NFR-09)
 
 - Core:
+    - Holders keep the umask the core inherited from the login session; the core sets explicit modes on what it
+      creates. A holder socket that refuses connections is stale and removed.
     - `~/.trc/run/core.sock` with mode 0600 in a 0700 directory. Paths too long for a socket fall back to
       `/tmp/trc-<uid>/`.
     - A `peer_cred` uid check.
@@ -626,7 +631,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-2  | Done        | —      |
 | ST-3  | Done        | —      |
 | ST-4  | Done        | —      |
-| ST-5  | Not started | —      |
+| ST-5  | Done        | —      |
 | ST-6  | Not started | —      |
 | ST-7  | Not started | —      |
 | ST-8  | Not started | —      |
