@@ -1,0 +1,5 @@
+{
+  "type": "incompatible",
+  "minProto": 2,
+  "maxProto": 3
+}

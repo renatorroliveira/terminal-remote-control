@@ -599,14 +599,18 @@ needs Rust. Every request carries a `requestId`.
 
 1. **Handshake.** `Hello { minProto, maxProto, appVersion, caps }`, answered by
    `Welcome { proto, daemonVersion, binarySha256, caps }` or
-   `Incompatible { range }`.
+   `Incompatible { minProto, maxProto }`.
 2. **Liveness.** `Ping` and `Pong`.
 3. **Catalog.** `ListSessions` and `ListProfiles`. The daemon pushes
    `SessionEvent` (created, updated, closed, state) to every client (US-2.6).
-4. **Lifecycle.** `Create`, `Rename`, `Reorder`, `Stop`, `Restart`.
+4. **Lifecycle.** `Create`, `Rename`, `Reorder`, `Stop`, `Restart`, `Close`.
+   Requests that return nothing else are answered by `Done`.
 5. **Attach.**
-    - `Attach { session, fromOffset, mode: full | events }`, answered by
-      `Attached { stream, offset, snapshot? }`.
+    - `Attach { session, mode: full | events }`, answered by
+      `Attached { stream, credit }`. The screen snapshot follows as ordinary
+      `OUTPUT` frames on that stream, before live output, so its size is never
+      bound by the control-frame limit (1 MiB).
+    - From E2: `fromOffset` on `Attach` and `offset` on `Attached`.
     - `Detach` and `Resize`.
     - `ReadRows { session, fromRow, count }`, which returns scrollback rows the
       client lacks.
@@ -643,8 +647,14 @@ needs Rust. Every request carries a `requestId`.
     - unknown fields are ignored;
     - enums have an `unspecified` default;
     - optional features are capability strings.
+- **TypeScript side.** ts-rs (features `serde-compat`, `no-serde-warnings`;
+  `TS_RS_LARGE_INT=number`) writes the types to
+  `packages/protocol/src/generated/`, which Biome and Prettier skip.
+  `pnpm check` fails when they differ from the committed files. Optional
+  fields use zod's `exactOptional()` to match `exactOptionalPropertyTypes`.
 - **Fixtures.** A shared corpus (`protocol/fixtures/v<N>/`) is checked by both
-  sides: insta snapshots in Rust, Vitest in TypeScript. N−1 fixtures stay until
+  sides: golden-file tests in Rust (`TRC_BLESS_FIXTURES=1` rewrites them) and
+  Vitest in TypeScript. N−1 fixtures stay until
   N+1 ships.
 
 **E1 (D-19).** E1 attaches one client per session, so it uses backpressure
@@ -1053,8 +1063,8 @@ max_line_length = 120
 | ------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | TypeScript unit           | Vitest 5 projects for main, connection host and shared code                                    | Reducers, framing, ssh arguments, parsers                                     |
 | Renderer components       | Vitest browser mode (`@vitest/browser-playwright`, Chromium) + vitest-browser-react + axe-core | Keyboard behavior, ARIA, WCAG rules for each component state                  |
-| Protocol contract         | Shared fixtures; insta (Rust) and Vitest (TypeScript)                                          | Compatibility of versions N and N−1 (NFR-12)                                  |
-| Rust unit and integration | cargo-nextest 0.9, insta 1.49                                                                  | Holder, core, persistence, bootstrap                                          |
+| Protocol contract         | Shared golden fixtures, checked by Rust tests and Vitest                                       | Compatibility of versions N and N−1 (NFR-12)                                  |
+| Rust unit and integration | cargo-nextest 0.9                                                                              | Holder, core, persistence, bootstrap                                          |
 | Daemon over real SSH      | Vitest integration project with `sshd` in a container on Linux CI                              | US-1.1–US-1.5 end to end; no listeners (SEC-01)                               |
 | App end to end            | Playwright 1.65 `_electron` + `@axe-core/playwright` 4.14 + ARIA snapshots                     | User-story flows; WCAG 2.2 AA rules on every view; tree snapshots (PRD §11.2) |
 | OS accessibility tree     | `tools/ax-probe`: a Swift CLI reading `AXUIElement` attributes                                 | A11Y-04 and A11Y-06 attributes: selected text, ranges, caret, focus           |
@@ -1185,20 +1195,20 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 
 **Daemon (crates.io and toolchains).**
 
-| Crate or tool                 | Version | Crate or tool         | Version           |
-| ----------------------------- | ------- | --------------------- | ----------------- |
-| Rust                          | 1.99.1  | serde / serde_json    | 1.0.229 / 1.0.154 |
-| Zig (build only)              | 0.17.1  | ts-rs                 | 12.0.1            |
-| minisign (dev only)           | 0.12    | colima (dev only)     | 0.10.3            |
-| docker CLI (dev only)         | 29.8.1  |                       |                   |
-| cargo-zigbuild                | 0.24.1  | sha2                  | 0.11.1            |
-| libghostty-vt                 | 1.0.1   | crc32fast             | 1.5.5             |
-| alacritty_terminal (fallback) | 0.26.0  | tracing               | 0.1.44            |
-| tokio                         | 1.54.1  | tracing-subscriber    | 0.3.23            |
-| tokio-util                    | 0.7.20  | tracing-appender      | 0.2.5             |
-| portable-pty                  | 0.9.0   | thiserror             | 2.0.21            |
-| rustix                        | 1.1.6   | bindgen (one-off)     | 0.73.2            |
-| windows-sys (E6)              | 0.61.2  | cargo-nextest / insta | 0.9.151 / 1.49.0  |
+| Crate or tool                 | Version | Crate or tool      | Version           |
+| ----------------------------- | ------- | ------------------ | ----------------- |
+| Rust                          | 1.99.1  | serde / serde_json | 1.0.229 / 1.0.154 |
+| Zig (build only)              | 0.17.1  | ts-rs              | 12.0.1            |
+| minisign (dev only)           | 0.12    | colima (dev only)  | 0.10.3            |
+| docker CLI (dev only)         | 29.8.1  |                    |                   |
+| cargo-zigbuild                | 0.24.1  | sha2               | 0.11.1            |
+| libghostty-vt                 | 1.0.1   | crc32fast          | 1.5.5             |
+| alacritty_terminal (fallback) | 0.26.0  | tracing            | 0.1.44            |
+| tokio                         | 1.54.1  | tracing-subscriber | 0.3.23            |
+| tokio-util                    | 0.7.20  | tracing-appender   | 0.2.5             |
+| portable-pty                  | 0.9.0   | thiserror          | 2.0.21            |
+| rustix                        | 1.1.6   | bindgen (one-off)  | 0.73.2            |
+| windows-sys (E6)              | 0.61.2  | cargo-nextest      | 0.9.151           |
 
 ## 14. Not used, and why
 

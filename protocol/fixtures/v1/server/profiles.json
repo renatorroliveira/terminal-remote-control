@@ -1,0 +1,17 @@
+{
+  "type": "profiles",
+  "requestId": 3,
+  "profiles": [
+    {
+      "id": "login",
+      "name": "bash",
+      "origin": "login",
+      "kind": "bash",
+      "path": "/bin/bash",
+      "args": [],
+      "login": true,
+      "env": {},
+      "integration": "auto"
+    }
+  ]
+}

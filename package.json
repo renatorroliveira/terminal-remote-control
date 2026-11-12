@@ -7,7 +7,7 @@
         "node": ">=24.22 <25"
     },
     "scripts": {
-        "check": "pnpm format:check && pnpm lint && pnpm docs:ids && pnpm typecheck && pnpm test && pnpm rust:check",
+        "check": "pnpm format:check && pnpm lint && pnpm docs:ids && pnpm typecheck && pnpm test && pnpm rust:check && pnpm gen:check",
         "format": "prettier --write .",
         "format:check": "prettier --check --log-level warn .",
         "lint": "biome check --reporter=concise .",
@@ -17,11 +17,12 @@
         "test:integration": "vitest run --project node-integration",
         "test:e2e": "pnpm --filter @trc/desktop test:e2e",
         "test:ax": "swift build -c release --package-path tools/ax-probe && vitest run --project ax",
-        "gen": "cargo test -p trc-protocol --quiet export_typescript",
+        "gen": "cargo test -p trc-protocol --quiet export_bindings",
         "rust:check": "cargo fmt --all --check && cargo clippy --workspace --all-targets --quiet -- -D warnings && cargo nextest run --workspace --cargo-quiet",
         "build": "pnpm --filter @trc/desktop build",
         "dist": "pnpm --filter @trc/desktop dist",
-        "prepare": "sh tools/git-hooks/install.sh"
+        "prepare": "sh tools/git-hooks/install.sh",
+        "gen:check": "pnpm gen && sh -c 'test -z \"$(git status --porcelain -- packages/protocol/src/generated protocol/fixtures)\" || { echo \"generated protocol files differ from the committed ones; commit them\" >&2; git status --short -- packages/protocol/src/generated protocol/fixtures >&2; exit 1; }'"
     },
     "devDependencies": {
         "@biomejs/biome": "2.6.7",

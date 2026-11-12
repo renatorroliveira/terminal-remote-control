@@ -255,7 +255,7 @@ message.
     - A streaming decoder that routes on the 9-byte header, and an encoder.
     - Zod schemas typed `z.ZodType<Generated>`.
     - Credit accounting helpers.
-- `protocol/fixtures/v1/`, checked by insta snapshots in Rust and by Vitest.
+- `protocol/fixtures/v1/`, checked by golden-file tests in Rust and by Vitest.
 - `pnpm gen` regenerates the types. `check` fails when the generated files differ from the committed ones.
 
 **ST-4 VT engine crates** (US-1.11.1–2, NFR-10, SEC-06.3)
@@ -624,7 +624,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-0  | Done        | —      |
 | ST-1  | Done        | —      |
 | ST-2  | Done        | —      |
-| ST-3  | Not started | —      |
+| ST-3  | Done        | —      |
 | ST-4  | Not started | —      |
 | ST-5  | Not started | —      |
 | ST-6  | Not started | —      |

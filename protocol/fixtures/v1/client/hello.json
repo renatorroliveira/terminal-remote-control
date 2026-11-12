@@ -1,0 +1,7 @@
+{
+  "type": "hello",
+  "minProto": 1,
+  "maxProto": 1,
+  "appVersion": "0.1.0",
+  "caps": []
+}

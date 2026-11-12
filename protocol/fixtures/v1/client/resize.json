@@ -1,0 +1,9 @@
+{
+  "type": "resize",
+  "requestId": 13,
+  "session": "s-1",
+  "size": {
+    "cols": 100,
+    "rows": 40
+  }
+}
