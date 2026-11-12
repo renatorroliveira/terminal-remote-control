@@ -1,0 +1,76 @@
+# Agent, editor and machine-specific setup: never committed
+.claude/
+.cursor/
+.kiro/
+.vscode/
+.idea/
+.fleet/
+.zed/
+*.code-workspace
+.envrc
+.direnv/
+.tool-versions
+*.local
+*.local.*
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Secrets and key material
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.p8
+*.mobileprovision
+id_rsa*
+id_ecdsa*
+id_ed25519*
+known_hosts*
+!**/fixtures/**/known_hosts*
+
+# Node and TypeScript
+node_modules/
+.pnpm-store/
+*.tsbuildinfo
+.vitest/
+.vite/
+coverage/
+npm-debug.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+out/
+build/
+release/
+*.dmg
+*.zip
+*.tgz
+
+# Electron app generated resources
+apps/desktop/resources/daemon/
+
+# Test outputs
+test-results/
+playwright-report/
+blob-report/
+tools/test-hosts/.run/
+
+# Rust
+target/
+**/*.rs.bk
+
+# Swift
+.build/
+.swiftpm/
+
+# Logs and caches
+*.log
+.cache/
