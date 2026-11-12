@@ -16,6 +16,8 @@ use trcd::holder::service::Holder;
 const WAIT: Duration = Duration::from_secs(10);
 
 struct Client {
+    socket: PathBuf,
+    hellos: Vec<(Option<Box<HolderSpec>>, Option<String>)>,
     reader: FrameReader<OwnedReadHalf>,
     sender: FrameSender,
     output: Vec<u8>,
@@ -29,6 +31,8 @@ impl Client {
         let (read, write) = stream.into_split();
         let (sender, _writer) = FrameSender::spawn(write);
         Self {
+            socket: socket.clone(),
+            hellos: Vec::new(),
             reader: FrameReader::new(read),
             sender,
             output: Vec::new(),
@@ -75,6 +79,7 @@ impl Client {
             FrameKind::Control => match serde_json::from_slice(&frame.payload).unwrap() {
                 HolderEvent::Status { status } => self.statuses.push(status),
                 HolderEvent::Exiting => self.exiting = true,
+                HolderEvent::Hello { spec, name } => self.hellos.push((spec, name)),
             },
             other => panic!("unexpected frame {other:?}"),
         }
@@ -228,6 +233,41 @@ async fn restarts_with_a_marker_and_keeps_the_scrollback() {
     client
         .until(|c| c.text().contains("before-restart") && c.text().contains("[Restarted at "))
         .await;
+}
+
+#[tokio::test]
+async fn restarts_in_the_last_known_working_directory() {
+    let mut client = started("/bin/sh").await;
+    client.input("cd /usr && printf '\\033]7;file://localhost/usr\\033\\\\'\r");
+    client.until(|c| c.last().cwd.as_deref() == Some("/usr")).await;
+    let first_pid = client.last().pid;
+    client.command(&HolderCommand::Restart);
+    client
+        .until(|c| c.last().state == SessionState::Running && c.last().pid != first_pid)
+        .await;
+    settle(&mut client).await;
+    client.output.clear();
+    client.input("pwd\r");
+    client.until(|c| c.text().contains("/usr\r\n")).await;
+}
+
+#[tokio::test]
+async fn introduces_its_session_and_name_to_every_new_core() {
+    let mut client = started("/bin/sh").await;
+    assert_eq!(client.hellos, vec![(None, None)]);
+    client.command(&HolderCommand::Name {
+        name: Some("build".into()),
+    });
+    client.command(&HolderCommand::Resize {
+        size: TerminalSize { cols: 90, rows: 20 },
+    });
+    client.until(|c| c.last().size.cols == 90).await;
+    let mut next = Client::connect(&client.socket).await;
+    next.until(|c| !c.hellos.is_empty() && !c.statuses.is_empty()).await;
+    let (spec, name) = next.hellos.remove(0);
+    assert_eq!(spec.map(|spec| spec.profile.path), Some("/bin/sh".to_owned()));
+    assert_eq!(name.as_deref(), Some("build"));
+    assert_eq!(next.last().state, SessionState::Running);
 }
 
 #[tokio::test]

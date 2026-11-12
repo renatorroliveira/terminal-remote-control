@@ -1,11 +1,15 @@
 //! `trcd holder --socket <path>` as the core starts it: a private socket that disappears on shutdown (SEC-02), and
 //! a shell that keeps the umask the holder was started with.
 
+mod support;
+
 use std::collections::BTreeMap;
-use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
-use std::path::{Path, PathBuf};
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+use support::{Installed, wait_child, wait_for};
 
 use tokio::net::UnixStream;
 use tokio::net::unix::OwnedReadHalf;
@@ -14,12 +18,13 @@ use trc_protocol::{Integration, ProfileOrigin, ShellKind, ShellProfile, Terminal
 use trcd::frame_io::{FrameReader, FrameSender};
 use trcd::holder::protocol::{HolderCommand, HolderEvent, HolderSpec};
 
-const WAIT: Duration = Duration::from_secs(10);
+const WAIT: Duration = support::WAIT;
 
 #[tokio::test]
 async fn serves_a_private_socket_and_removes_it_on_shutdown() {
-    let socket = private_dir().join("holder.sock");
-    let mut child = spawn_holder(&socket);
+    let installed = Installed::new();
+    let socket = installed.base.join("holder.sock");
+    let mut child = spawn_holder(&installed, &socket);
     wait_for(&socket);
     assert_eq!(std::fs::metadata(&socket).unwrap().permissions().mode() & 0o777, 0o600);
 
@@ -33,8 +38,9 @@ async fn serves_a_private_socket_and_removes_it_on_shutdown() {
 
 #[tokio::test]
 async fn the_shell_inherits_the_holders_umask() {
-    let socket = private_dir().join("umask.sock");
-    let mut child = spawn_holder(&socket);
+    let installed = Installed::new();
+    let socket = installed.base.join("umask.sock");
+    let mut child = spawn_holder(&installed, &socket);
     wait_for(&socket);
     let (sender, mut reader) = connect(&socket).await;
     command(
@@ -52,20 +58,18 @@ async fn the_shell_inherits_the_holders_umask() {
 
 #[test]
 fn refuses_a_socket_path_that_is_taken() {
-    let socket = private_dir().join("taken.sock");
+    let installed = Installed::new();
+    let socket = installed.base.join("taken.sock");
     std::fs::write(&socket, b"").unwrap();
-    let mut child = spawn_holder(&socket);
+    let mut child = spawn_holder(&installed, &socket);
     assert_eq!(wait_child(&mut child).code(), Some(71));
     assert!(socket.exists());
 }
 
-fn spawn_holder(socket: &Path) -> Child {
+fn spawn_holder(installed: &Installed, socket: &Path) -> Child {
     Command::new("/bin/sh")
-        .args([
-            "-c",
-            "umask 027; exec \"$0\" holder --socket \"$1\"",
-            env!("CARGO_BIN_EXE_trcd"),
-        ])
+        .args(["-c", "umask 027; exec \"$0\" holder --socket \"$1\""])
+        .arg(&installed.binary)
         .arg(socket)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -129,37 +133,5 @@ async fn saw_exiting(reader: &mut FrameReader<OwnedReadHalf>) -> bool {
         if matches!(serde_json::from_slice(&frame.payload), Ok(HolderEvent::Exiting)) {
             return true;
         }
-    }
-}
-
-fn private_dir() -> PathBuf {
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    let dir = std::env::temp_dir().join(format!("trcd-process-{}-{nanos}", std::process::id()));
-    std::fs::DirBuilder::new().mode(0o700).create(&dir).unwrap();
-    dir
-}
-
-fn wait_for(path: &Path) {
-    let deadline = Instant::now() + WAIT;
-    while !path.exists() {
-        assert!(Instant::now() < deadline, "{} never appeared", path.display());
-        std::thread::sleep(Duration::from_millis(10));
-    }
-}
-
-fn wait_child(child: &mut Child) -> std::process::ExitStatus {
-    let deadline = Instant::now() + WAIT;
-    loop {
-        if let Some(status) = child.try_wait().unwrap() {
-            return status;
-        }
-        if Instant::now() >= deadline {
-            let _ = child.kill();
-            panic!("holder did not exit");
-        }
-        std::thread::sleep(Duration::from_millis(10));
     }
 }

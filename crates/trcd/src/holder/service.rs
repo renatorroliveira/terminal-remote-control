@@ -33,6 +33,7 @@ const DEFAULT_COLORS: (Rgb, Rgb) = (Rgb(0xd4, 0xd4, 0xd4), Rgb(0x1e, 0x1e, 0x1e)
 /// One session's holder.
 pub struct Holder {
     spec: Option<HolderSpec>,
+    name: Option<String>,
     terminal: Option<GhosttyTerminal>,
     pty: Option<Pty>,
     output: Option<mpsc::Receiver<Vec<u8>>>,
@@ -72,6 +73,7 @@ impl Holder {
     pub fn new() -> Self {
         Self {
             spec: None,
+            name: None,
             terminal: None,
             pty: None,
             output: None,
@@ -140,6 +142,10 @@ impl Holder {
         self.reader = Some(FrameReader::new(read));
         self.sender = Some(sender);
         self.writer = Some(writer);
+        self.send_event(&HolderEvent::Hello {
+            spec: self.spec.clone().map(Box::new),
+            name: self.name.clone(),
+        });
         self.send_status();
     }
 
@@ -174,6 +180,7 @@ impl Holder {
             HolderCommand::Stop { grace_ms } => self.stop(grace_ms, AfterExit::Report),
             HolderCommand::Restart => self.restart(),
             HolderCommand::Shutdown => self.shutdown(),
+            HolderCommand::Name { name } => self.name = name,
         }
     }
 
@@ -334,6 +341,9 @@ impl Holder {
     fn respawn_with_marker(&mut self) {
         let marker = format!("\x1b[?1049l\x1b[0m\r\n[Restarted at {}]\r\n", format_utc(now_millis()));
         self.on_output(Some(marker.into_bytes()));
+        if let (Some(spec), Some(cwd)) = (&mut self.spec, &self.status.cwd) {
+            spec.cwd = Some(cwd.clone());
+        }
         self.spawn();
     }
 

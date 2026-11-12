@@ -8,6 +8,10 @@ tools/test-hosts/up.sh     # fresh keys, build, start, smoke-test every host
 tools/test-hosts/down.sh   # stop and remove containers and generated keys
 ```
 
+`rust-tests.sh` (`pnpm test:daemon`) builds the daemon's tests for Linux musl and runs every test binary as root in
+plain Ubuntu, Alpine and Rocky containers, which also runs the Linux-only checks (no network sockets, memory) and the
+other-user peer test. It needs only the colima profile, not the sshd hosts.
+
 `up.sh` writes everything it generates to `tools/test-hosts/.run/` (git-ignored), including `ssh_config`, which tests
 pass to ssh with `-F`. Ports are published on `127.0.0.1` only.
 

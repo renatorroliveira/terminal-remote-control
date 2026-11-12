@@ -10,6 +10,8 @@ pub const HEADER_LEN: usize = 9;
 pub const MAX_PAYLOAD: usize = 1024 * 1024;
 /// The largest payload an `OUTPUT` frame carries; larger output is split.
 pub const MAX_OUTPUT_CHUNK: usize = 32 * 1024;
+/// The output credit an attached stream starts with, and the most it may hold (D-19).
+pub const CREDIT_WINDOW: u32 = 256 * 1024;
 /// The stream that carries control messages.
 pub const CONTROL_STREAM: u32 = 0;
 

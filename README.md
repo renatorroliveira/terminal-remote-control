@@ -90,6 +90,7 @@ Desktop app (Electron)                        Host
 | `pnpm check`                     | The full local gate: Prettier, Biome, document IDs, `tsc`, Vitest, Rust fmt/clippy/nextest |
 | `pnpm test`                      | Vitest unit tests (Node) and component tests (Chromium, with axe)                          |
 | `pnpm test:integration`          | Tests against the Linux test hosts (start them with `tools/test-hosts/up.sh`)              |
+| `pnpm test:daemon`               | The daemon's musl tests in Ubuntu, Alpine and Rocky containers (part of the above)         |
 | `pnpm test:e2e`                  | Builds the app and runs the Playwright Electron tests                                      |
 | `pnpm test:ax`                   | Builds `tools/ax-probe` and runs the macOS accessibility-tree tests                        |
 | `pnpm --filter @trc/desktop dev` | Runs the app with hot reload                                                               |

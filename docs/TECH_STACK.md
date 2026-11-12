@@ -471,7 +471,18 @@ Windows. A switch can happen in a later epic.
 the session registry, holder supervision, install, upgrade and restore.
 
 - Its state can always be rebuilt: on start it re-adopts every live holder from
-  `run/holders/*.sock`.
+  `run/holders/*.sock`. Each holder introduces itself on every connection with
+  its spec and the user's name for the session, so a new core recovers both;
+  the order falls back to start time. Sockets nobody serves are removed.
+- One core per user: it holds an exclusive `flock` on `run/core.lock` (which
+  also records its PID) for its lifetime, so a stale `core.sock` is removed
+  safely. A second core exits with status 75.
+- It creates its files with umask 077 and gives holders, and so their shells,
+  the umask it inherited. Holders start in their own session, with an empty
+  environment and `/` as the working directory.
+- Session IDs are 16 hex digits from `/dev/urandom`, also used as holder
+  socket names. Scrollback defaults to 10,000 lines and is capped at 100,000
+  (NFR-10).
 
 **`trcd holder`.** One per session. It owns the PTY or ConPTY, the shell, the
 emulator (including query replies) and the persistence writer.
@@ -488,9 +499,18 @@ emulator (including query replies) and the persistence writer.
 **`trcd bridge`.** Relays stdio to the core's socket, and starts the core if it
 is not running, like `wezterm cli proxy`.
 
+- In E1 (D-20) it runs `trcd core --detach`, which calls `setsid` and starts
+  the real core, then exits. The core is then neither the bridge's child nor a
+  session leader. Bridges racing to start a core share the one that wins the
+  lock.
+- It checks that the run directory is private and that the socket's peer is
+  the same user before relaying.
+
 **Integrity at start (SEC-04.4).** Every subcommand refuses to start if its
-binary, its version directory or the install root is owned by another user or
-writable by group or others.
+binary, its version directory, `versions/` or the install root is owned by
+another user or writable by group or others; it exits with status 78. The
+binary must sit at `<root>/versions/<version>/trcd`. `trcd --version` prints the
+version and the binary's SHA-256 and runs anywhere.
 
 **Linux service mode (US-2.4).**
 
@@ -562,8 +582,10 @@ C build, and nothing is queried.
 
 **Socket.** `~/.trc/run/core.sock`, mode 0600 inside a 0700 directory.
 
-- If the path is too long for a Unix socket (104 bytes on macOS, 108 on
-  Linux), fall back to `/tmp/trc-<uid>/`.
+- If the longest holder socket path would be too long for a Unix socket (104
+  bytes on macOS, 108 on Linux), the whole run directory falls back to
+  `/tmp/trc-<uid>/`. Every run directory must be a real directory owned by the
+  user with mode 0700, so a directory someone else created there is refused.
 - Not `$XDG_RUNTIME_DIR`: systemd deletes it when the user's last session ends,
   which would remove a detached daemon's socket.
 
@@ -583,8 +605,9 @@ and on the signed app.
 
 ### 5.7 Logging (SEC-08)
 
-- `tracing` writes JSON through `tracing-appender`: daily rotation, a cap on
-  the number of files, mode 0600.
+- `tracing` writes JSON through `tracing-appender` to
+  `<root>/logs/core.<date>.log`: daily rotation, seven files kept, mode 0600 in
+  a 0700 directory.
 - PTY bytes, keystrokes, environment values and clipboard data are wrapped in a
   `Sensitive<T>` type that prints `[redacted]`.
 - Soak tests print canary strings and fail if any log contains one.
@@ -1080,16 +1103,16 @@ max_line_length = 120
 
 ### 9.6 Testing
 
-| Level                     | Tool                                                                                           | Covers                                                                        |
-| ------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| TypeScript unit           | Vitest 5 projects for main, connection host and shared code                                    | Reducers, framing, ssh arguments, parsers                                     |
-| Renderer components       | Vitest browser mode (`@vitest/browser-playwright`, Chromium) + vitest-browser-react + axe-core | Keyboard behavior, ARIA, WCAG rules for each component state                  |
-| Protocol contract         | Shared golden fixtures, checked by Rust tests and Vitest                                       | Compatibility of versions N and N−1 (NFR-12)                                  |
-| Rust unit and integration | cargo-nextest 0.9                                                                              | Holder, core, persistence, bootstrap                                          |
-| Daemon over real SSH      | Vitest integration project with `sshd` in a container on Linux CI                              | US-1.1–US-1.5 end to end; no listeners (SEC-01)                               |
-| App end to end            | Playwright 1.65 `_electron` + `@axe-core/playwright` 4.14 + ARIA snapshots                     | User-story flows; WCAG 2.2 AA rules on every view; tree snapshots (PRD §11.2) |
-| OS accessibility tree     | `tools/ax-probe`: a Swift CLI reading `AXUIElement` attributes                                 | A11Y-04 and A11Y-06 attributes: selected text, ranges, caret, focus           |
-| Screen readers            | Scripted manual passes per user story (PRD §11.3)                                              | Announcements, NFR-04 timing, everything automation cannot judge              |
+| Level                     | Tool                                                                                           | Covers                                                                         |
+| ------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| TypeScript unit           | Vitest 5 projects for main, connection host and shared code                                    | Reducers, framing, ssh arguments, parsers                                      |
+| Renderer components       | Vitest browser mode (`@vitest/browser-playwright`, Chromium) + vitest-browser-react + axe-core | Keyboard behavior, ARIA, WCAG rules for each component state                   |
+| Protocol contract         | Shared golden fixtures, checked by Rust tests and Vitest                                       | Compatibility of versions N and N−1 (NFR-12)                                   |
+| Rust unit and integration | cargo-nextest 0.9; on Linux, the musl test binaries as root in containers (`pnpm test:daemon`) | Holder, core, bridge, persistence, bootstrap; Linux-only and other-user checks |
+| Daemon over real SSH      | Vitest integration project with `sshd` in a container on Linux CI                              | US-1.1–US-1.5 end to end; no listeners (SEC-01)                                |
+| App end to end            | Playwright 1.65 `_electron` + `@axe-core/playwright` 4.14 + ARIA snapshots                     | User-story flows; WCAG 2.2 AA rules on every view; tree snapshots (PRD §11.2)  |
+| OS accessibility tree     | `tools/ax-probe`: a Swift CLI reading `AXUIElement` attributes                                 | A11Y-04 and A11Y-06 attributes: selected text, ranges, caret, focus            |
+| Screen readers            | Scripted manual passes per user story (PRD §11.3)                                              | Announcements, NFR-04 timing, everything automation cannot judge               |
 
 Notes:
 

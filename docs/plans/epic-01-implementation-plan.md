@@ -300,8 +300,8 @@ message.
 **ST-6 `trcd core` and `trcd bridge`** (US-1.5.1, US-1.9, US-1.10, SEC-01, SEC-02, SEC-04.4, SEC-08, NFR-09)
 
 - Core:
-    - Holders keep the umask the core inherited from the login session; the core sets explicit modes on what it
-      creates. A holder socket that refuses connections is stale and removed.
+    - The core creates its files with umask 077 and gives holders back the umask it inherited from the login
+      session. A holder socket that refuses connections is stale and removed.
     - `~/.trc/run/core.sock` with mode 0600 in a 0700 directory. Paths too long for a socket fall back to
       `/tmp/trc-<uid>/`.
     - A `peer_cred` uid check.
@@ -320,6 +320,10 @@ message.
     - A no-listener test: no TCP or UDP sockets on any `trcd` process (`/proc/net` plus `ss`).
     - A test that rejects a peer from another uid.
     - A PSS measurement against NFR-09.
+- Outcome: the core adopts live holders after a crash (each holder introduces its spec and name), and one core runs
+  per user under a `flock`. `trcd core --detach` gives the bridge its double fork. The Linux-only checks run as root
+  in the three distro containers through `pnpm test:daemon`. Copies of the binary in tests are made with `cp`,
+  because an in-process copy left a write descriptor that concurrent forks inherited (`ETXTBSY`).
 
 **ST-7 Bootstrap, install and the daemon bundle** (US-1.4.1–4, US-1.4.6, SEC-04.2–3, SEC-07, R10)
 
@@ -632,7 +636,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-3  | Done        | —      |
 | ST-4  | Done        | —      |
 | ST-5  | Done        | —      |
-| ST-6  | Not started | —      |
+| ST-6  | Done        | —      |
 | ST-7  | Not started | —      |
 | ST-8  | Not started | —      |
 | ST-9  | Not started | —      |

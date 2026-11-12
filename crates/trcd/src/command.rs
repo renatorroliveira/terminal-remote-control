@@ -6,7 +6,10 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     /// The restartable supervisor.
-    Core,
+    Core {
+        /// Start the core in a new session and return at once, instead of running it in the foreground.
+        detach: bool,
+    },
     /// One session's PTY owner, serving the socket at `socket`.
     Holder {
         /// Where the holder binds its socket.
@@ -22,12 +25,20 @@ impl Command {
     /// Parses the arguments after the program name.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         match args.first().map(String::as_str) {
-            Some("core") => Ok(Self::Core),
+            Some("core") => Self::parse_core(&args[1..]),
             Some("holder") => Self::parse_holder(&args[1..]),
             Some("bridge") => Ok(Self::Bridge),
             Some("--version") => Ok(Self::Version),
             Some(other) => Err(format!("unknown subcommand: {other}")),
             None => Err("missing subcommand: core, holder, bridge or --version".into()),
+        }
+    }
+
+    fn parse_core(args: &[String]) -> Result<Self, String> {
+        match args {
+            [] => Ok(Self::Core { detach: false }),
+            [flag] if flag == "--detach" => Ok(Self::Core { detach: true }),
+            _ => Err("core takes only --detach".into()),
         }
     }
 
@@ -49,7 +60,9 @@ mod tests {
 
     #[test]
     fn parses_each_subcommand() {
-        assert_eq!(parse(&["core"]), Ok(Command::Core));
+        assert_eq!(parse(&["core"]), Ok(Command::Core { detach: false }));
+        assert_eq!(parse(&["core", "--detach"]), Ok(Command::Core { detach: true }));
+        assert_eq!(parse(&["core", "--now"]), Err("core takes only --detach".to_owned()));
         assert_eq!(
             parse(&["holder", "--socket", "/run/h.sock"]),
             Ok(Command::Holder {

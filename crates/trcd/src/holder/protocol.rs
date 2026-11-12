@@ -62,6 +62,12 @@ pub enum HolderCommand {
     Restart,
     /// Stops the process if it runs, then exits the holder.
     Shutdown,
+    /// Remembers the user's name for the session, so a restarted core can recover it.
+    Name {
+        /// The name; absent clears it.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<String>,
+    },
 }
 
 /// What the holder reports about its session.
@@ -99,6 +105,15 @@ pub struct HolderStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum HolderEvent {
+    /// Sent first on every connection, so a core can adopt a session it did not start.
+    Hello {
+        /// What the session runs; absent until `start`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        spec: Option<Box<HolderSpec>>,
+        /// The user's name for the session.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<String>,
+    },
     /// The session changed.
     Status {
         /// The session after the change.

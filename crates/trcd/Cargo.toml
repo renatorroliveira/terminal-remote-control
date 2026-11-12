@@ -13,8 +13,12 @@ workspace = true
 rustix.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+tracing.workspace = true
+tracing-appender.workspace = true
+tracing-subscriber.workspace = true
 trc-protocol = { path = "../trc-protocol" }
 trc-vt = { path = "../trc-vt" }
 
