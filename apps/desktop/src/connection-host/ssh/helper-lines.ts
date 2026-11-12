@@ -1,14 +1,6 @@
-/** A host key ssh was presented, as the `known-hosts` helper reports it (`%H %t %K %f`). */
-export interface PresentedHostKey {
-    /** The host in known_hosts form, such as `[127.0.0.1]:2221` or `devbox-1`. */
-    readonly host: string;
-    /** The key type, such as `ssh-ed25519`. */
-    readonly type: string;
-    /** The public key, base64. */
-    readonly key: string;
-    /** ssh's SHA-256 fingerprint. */
-    readonly fingerprint: string;
-}
+import type { PresentedHostKey } from '../../shared/connection';
+
+export type { PresentedHostKey } from '../../shared/connection';
 
 /** A line from one of the app's ssh helpers. */
 export type HelperLine =

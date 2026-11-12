@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, protocol } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { contentTypeFor, resolveAppRequest } from './app-protocol';
+import { startConnectionHost } from './connection-host';
 import { CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
 
 const rendererRoot = join(import.meta.dirname, '../renderer');
@@ -39,6 +40,7 @@ function createWindow(): void {
         title: APP_IDENTITY.productName,
         webPreferences: secureWebPreferences(join(import.meta.dirname, '../preload/index.cjs')),
     });
+    startConnectionHost(window);
     const devServer = process.env['ELECTRON_RENDERER_URL'];
     void window.loadURL(devServer ?? `${APP_IDENTITY.appScheme}://${APP_IDENTITY.appHost}/index.html`);
 }

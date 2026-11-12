@@ -50,6 +50,7 @@ describe('runBootstrap', () => {
         await until(() => host.received().includes('SCRIPT\n'));
         host.output.write('noise from .bashrc\n');
         expect(host.received()).toBe('SCRIPT\n');
+        expect(steps).toEqual([]);
         say(host, 'HELLO os=Linux arch=arm64 checksum=sha256sum installed=-');
         await until(() => host.received().length >= 'SCRIPT\n'.length + 5);
         expect(host.received()).toBe(`SCRIPT\nUPLOAD 5 ${sha} 0.1.0\n\u0001\u0002\u0003\u0004\u0005`);
@@ -84,7 +85,7 @@ describe('runBootstrap failures', () => {
     it('stops with the plan when the host is unsupported or newer, and tells the script to exit', async () => {
         const host = fakeHost();
         const outcome = runBootstrap(host, options([]));
-        say(host, 'HELLO os=Linux arch=arm64 checksum=sha256sum installed=' + 'e'.repeat(64) + ':9.0.0');
+        say(host, `HELLO os=Linux arch=arm64 checksum=sha256sum installed=${'e'.repeat(64)}:9.0.0`);
         await expect(outcome).resolves.toEqual({
             kind: 'failed',
             failure: { kind: 'plan', plan: { kind: 'update-app', installedVersion: '9.0.0' } },

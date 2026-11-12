@@ -6,7 +6,9 @@ const LOOPBACK = '127.0.0.1';
 
 export default defineConfig({
     main: {
+        define: { __TRC_TEST_SEAM__: JSON.stringify(process.env['TRC_TEST_BUILD'] === '1') },
         build: {
+            externalizeDeps: { exclude: ['@trc/protocol'] },
             rollupOptions: {
                 input: { index: resolve(import.meta.dirname, 'src/main/index.ts') },
             },

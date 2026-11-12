@@ -1,13 +1,7 @@
+import type { AuthenticationCause, NetworkCause } from '../../shared/connection';
 import type { EffectiveConfig } from './client-checks';
 import type { PresentedHostKey } from './helper-lines';
 import { parseHelperLine, shownDetails } from './helper-lines';
-
-/** Why public-key authentication failed (US-1.3.1). */
-export type AuthenticationCause =
-    'no-agent' | 'agent-empty' | 'passphrase-not-loaded' | 'pin-required' | 'certificate-expired' | 'key-rejected';
-
-/** What a network failure was. */
-export type NetworkCause = 'dns' | 'unreachable' | 'timeout';
 
 /** Why ssh failed, with ssh's message minus the helper lines as copyable details (US-1.3). */
 export type SshFailure = SshFailureKind & { readonly details: string };

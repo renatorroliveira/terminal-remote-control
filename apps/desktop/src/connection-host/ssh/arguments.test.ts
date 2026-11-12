@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sshArguments, sshEnvironment, wrapperConfig } from './arguments';
+import { effectiveConfigArguments, sshArguments, sshEnvironment, wrapperConfig } from './arguments';
 
 const helpers = {
     askpass: '/Apps/Term Remote Control.app/bin/askpass',
@@ -135,5 +135,30 @@ describe('sshEnvironment', () => {
             SSH_ASKPASS_REQUIRE: 'force',
             TRC_SSH_NONCE: 'abcd',
         });
+    });
+});
+
+describe('effectiveConfigArguments', () => {
+    it('asks ssh -G for the effective settings through the same wrapper', () => {
+        expect(effectiveConfigArguments('/w', { destination: 'devbox-1' })).toEqual([
+            '-F',
+            '/w',
+            '-G',
+            '--',
+            'devbox-1',
+        ]);
+        expect(effectiveConfigArguments('/w', { destination: 'me@h', port: 2222 })).toEqual([
+            '-F',
+            '/w',
+            '-G',
+            '-p',
+            '2222',
+            '--',
+            'me@h',
+        ]);
+    });
+
+    it('refuses a destination that looks like an option', () => {
+        expect(() => effectiveConfigArguments('/w', { destination: '-oProxyCommand=x' })).toThrow(/destination/);
     });
 });

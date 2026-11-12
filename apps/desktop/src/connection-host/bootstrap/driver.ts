@@ -27,7 +27,7 @@ export interface BootstrapOptions {
     readonly manifest: DaemonManifest;
     /** Reads a bundled daemon binary. */
     readonly readBinary: (platform: DaemonPlatform) => Promise<Uint8Array>;
-    /** Called as each step starts. */
+    /** Called as each step starts: `checking` once the host has answered, so ssh itself has connected. */
     readonly onStep: (step: BootstrapStep) => void;
 }
 
@@ -65,7 +65,6 @@ export async function runBootstrap(channel: BootstrapChannel, options: Bootstrap
     const ignoreWriteErrors = (): void => undefined;
     channel.input.on('error', ignoreWriteErrors);
     try {
-        options.onStep('checking');
         await send(channel.input, options.script);
         const hello = await next(reader, options.nonce);
         if ('failure' in hello) {
@@ -74,6 +73,7 @@ export async function runBootstrap(channel: BootstrapChannel, options: Bootstrap
         if (hello.line.kind !== 'hello') {
             return failed(unexpected(hello.line));
         }
+        options.onStep('checking');
         const plan = planInstall(hello.line, options.manifest);
         return await follow({ channel, reader, options }, plan, hello.line.installed);
     } finally {

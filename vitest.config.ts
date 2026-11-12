@@ -14,6 +14,7 @@ export default defineConfig({
                         'packages/*/test/**/*.test.ts',
                         'apps/desktop/src/{main,preload,connection-host,shared}/**/*.test.ts',
                     ],
+                    exclude: ['**/node_modules/**', '**/*.integration.test.ts', '**/*.ax.test.ts'],
                 },
             },
             {

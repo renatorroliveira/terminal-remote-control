@@ -136,8 +136,18 @@ Electron app (macOS in E1)                                    Host (Linux in E1)
     - Main creates a `MessageChannelMain`. The preload forwards one port to the
       page with `window.postMessage`, Electron's pattern for context-isolated
       pages.
+    - Main sends a fresh port after every page load (`init` the first time,
+      then `port`), so a reload reaches the same connections.
+    - The contract is `src/shared/connection.ts`: `HostRequest` from the
+      renderer (connect, send, input, credit, accept or reject a host key,
+      disconnect) and `HostEvent` back (state, message, output, refused).
+      Requests are validated with zod; the renderer never sends `hello` and
+      uses request IDs below 2³¹, which the connection host keeps for pings.
+    - Input for a host that is not connected is refused, never queued
+      (US-1.14).
     - Output is batched for about 5 ms per session before posting, like VS
-      Code's `TerminalDataBufferer`.
+      Code's `TerminalDataBufferer`, and flushed before every state or control
+      message so ordering holds.
 - **zod at the two trust boundaries.**
     - IPC from the sandboxed renderer.
     - Control messages from daemons. A compromised host controls its daemon, so
@@ -769,8 +779,10 @@ ports, keys, certificates, `IdentityAgent`, `ProxyJump`, `ProxyCommand` and
   literal `NONE`.
 - BatchMode then refuses the unknown key, and the app shows its accessible
   dialog.
-- Accepting appends the key to `known_hosts` (hashed if `ssh -G` reports
-  `hashknownhosts yes`) and reconnects.
+- Accepting appends the key to the first `UserKnownHostsFile` from `ssh -G`
+  (hashed as `|1|salt|hmac` if it reports `hashknownhosts yes`) and
+  reconnects. Only the key this connection was presented can be accepted; the
+  renderer sends back its fingerprint, computed by the app from the key.
 - A changed key is refused, with no override.
 - `ssh-keyscan` is not used, because it ignores ProxyJump.
 
@@ -784,9 +796,16 @@ ports, keys, certificates, `IdentityAgent`, `ProxyJump`, `ProxyCommand` and
 
 **Diagnostics (US-1.3).**
 
-- `ssh-add -l` tells "no agent" apart from "agent has no identities".
-- Other failures are classified from stderr. Spike S4 builds that message
-  corpus.
+- Failures are classified from stderr (ssh ends some lines with `\r\n`),
+  tested on the S4 corpus: unknown and changed host keys, DNS, refused and
+  timed-out connections, and jump-host failures (a named host that is not the
+  target while `ssh -G` shows a `proxyjump`).
+- A refused public key is explained by local checks in this order: an expired
+  certificate (`ssh-keygen -L`, including `<IdentityFile>-cert.pub`); a
+  passphrase key whose public key the agent does not hold, reported as no
+  agent (`ssh-add -l` exit 2), an empty agent (exit 1) or a key not loaded; a
+  security key (`sk-` type) that needs a PIN; no usable key at all; otherwise
+  the host rejected the key.
 
 **Configuration.**
 
@@ -797,7 +816,18 @@ ports, keys, certificates, `IdentityAgent`, `ProxyJump`, `ProxyCommand` and
   spawned by absolute path.
 
 **Liveness (NFR-07).** ServerAlive at 10 s × 2, plus an application `Ping`
-every 5 s with a 15 s timeout, detect a dead connection within 30 s.
+every 5 s with a 15 s timeout, detect a dead connection within 30 s. The
+integration tests pause a host container and check it.
+
+**Lifecycle.** Each host connection is a discriminated-union reducer: idle,
+connecting (steps `connecting`, `checking` once the host answers, `uploading`,
+`verifying`, `starting`, `handshake`, with an optional security-key touch
+notice), host-key, connected, failed, disconnected and closed.
+
+**App log.** The connection host writes JSON lines to
+`<userData>/logs/connection-host.log` (0600 in a 0700 directory): states,
+steps and failure kinds only. Values wrapped in `Sensitive` serialize as
+`[redacted]` (SEC-08).
 
 **Startup-file noise.** Remote startup files can print to stdout. The bootstrap
 prints a random nonce marker, and the app discards everything before it.

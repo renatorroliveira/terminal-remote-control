@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import type { PresentedHostKey } from './helper-lines';
+import type { PresentedHostKey } from '../../shared/connection';
 
 /** How a known_hosts entry is written. */
 export interface KnownHostsFormat {

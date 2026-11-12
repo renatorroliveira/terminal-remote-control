@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import type { AttachMode } from './generated/AttachMode';
+import type { ClientMessage } from './generated/ClientMessage';
+import type { CreateSessionSpec } from './generated/CreateSessionSpec';
 import type { ErrorCode } from './generated/ErrorCode';
 import type { ExitStatus } from './generated/ExitStatus';
 import type { Integration } from './generated/Integration';
@@ -99,4 +101,41 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnio
     z.object({ type: z.literal('done'), requestId: u32 }),
     z.object({ type: z.literal('sessionEvent'), change: sessionChange }),
     z.object({ type: z.literal('error'), requestId: u32.exactOptional(), code: errorCode, message: z.string() }),
+]);
+
+const strictSize = z.strictObject({ cols: u16, rows: u16 });
+
+const createSessionSpec: z.ZodType<CreateSessionSpec> = z.strictObject({
+    profileId: z.string().exactOptional(),
+    cwd: z.string().exactOptional(),
+    name: z.string().exactOptional(),
+    env: z.record(z.string(), z.string().nullable()),
+    size: strictSize,
+    scrollbackLines: u32.exactOptional(),
+});
+
+/**
+ * Validates a message the app sends to a daemon, strictly: the renderer is a trust boundary, so unknown types,
+ * fields and values are refused instead of being mapped to `unspecified`.
+ */
+export const ClientMessageSchema: z.ZodType<ClientMessage> = z.discriminatedUnion('type', [
+    z.strictObject({
+        type: z.literal('hello'),
+        minProto: u32,
+        maxProto: u32,
+        appVersion: z.string(),
+        caps: z.array(z.string()),
+    }),
+    z.strictObject({ type: z.literal('ping'), requestId: u32 }),
+    z.strictObject({ type: z.literal('listSessions'), requestId: u32 }),
+    z.strictObject({ type: z.literal('listProfiles'), requestId: u32 }),
+    z.strictObject({ type: z.literal('create'), requestId: u32, spec: createSessionSpec }),
+    z.strictObject({ type: z.literal('rename'), requestId: u32, session: sessionId, name: z.string().exactOptional() }),
+    z.strictObject({ type: z.literal('reorder'), requestId: u32, session: sessionId, index: u32 }),
+    z.strictObject({ type: z.literal('stop'), requestId: u32, session: sessionId, graceMs: u32.exactOptional() }),
+    z.strictObject({ type: z.literal('restart'), requestId: u32, session: sessionId }),
+    z.strictObject({ type: z.literal('close'), requestId: u32, session: sessionId }),
+    z.strictObject({ type: z.literal('attach'), requestId: u32, session: sessionId, mode: z.enum(['full', 'events']) }),
+    z.strictObject({ type: z.literal('detach'), requestId: u32, session: sessionId }),
+    z.strictObject({ type: z.literal('resize'), requestId: u32, session: sessionId, size: strictSize }),
 ]);

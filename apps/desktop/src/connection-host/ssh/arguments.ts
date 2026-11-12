@@ -26,13 +26,13 @@ export interface SshArgumentOptions {
     readonly target: SshTarget;
     /** The remote command. */
     readonly command: string;
-    readonly seam?: TestSeam;
+    readonly seam?: TestSeam | undefined;
 }
 
 /** What the wrapper config needs. */
 export interface WrapperConfigOptions {
     readonly helpers: SshHelpers;
-    readonly seam?: TestSeam;
+    readonly seam?: TestSeam | undefined;
 }
 
 const DESTINATION_PATTERN = /^[^\s\p{Cc}-][^\s\p{Cc}]*$/u;
@@ -44,17 +44,9 @@ const MAX_PORT = 65_535;
  * over the user's configuration (US-1.1.4, SEC-03, TECH_STACK §7).
  */
 export function sshArguments(options: SshArgumentOptions): string[] {
-    const { destination, port } = options.target;
-    if (!DESTINATION_PATTERN.test(destination)) {
-        throw new Error(`The ssh destination is not valid: ${JSON.stringify(destination)}`);
-    }
-    if (port !== undefined && !(Number.isInteger(port) && port >= 1 && port <= MAX_PORT)) {
-        throw new Error(`The ssh port must be between 1 and ${MAX_PORT}: ${port}`);
-    }
     const security = securityOptions(options.helpers).flatMap(([name, value]) => ['-o', `${name}=${value}`]);
     const seam =
         options.seam === undefined ? [] : ['-o', `UserKnownHostsFile=${quoteIfSpaced(options.seam.knownHosts)}`];
-    const portArguments = port === undefined ? [] : ['-p', String(port)];
     return [
         '-F',
         options.wrapper,
@@ -63,11 +55,14 @@ export function sshArguments(options: SshArgumentOptions): string[] {
         'none',
         ...security,
         ...seam,
-        ...portArguments,
-        '--',
-        destination,
+        ...targetArguments(options.target),
         options.command,
     ];
+}
+
+/** The `ssh -G` command line that prints the effective settings for a target through the same wrapper config. */
+export function effectiveConfigArguments(wrapper: string, target: SshTarget): string[] {
+    return ['-F', wrapper, '-G', ...targetArguments(target)];
 }
 
 /**
@@ -96,6 +91,16 @@ export function sshEnvironment(
         SSH_ASKPASS_REQUIRE: 'force',
         TRC_SSH_NONCE: nonce,
     };
+}
+
+function targetArguments({ destination, port }: SshTarget): string[] {
+    if (!DESTINATION_PATTERN.test(destination)) {
+        throw new Error(`The ssh destination is not valid: ${JSON.stringify(destination)}`);
+    }
+    if (port !== undefined && !(Number.isInteger(port) && port >= 1 && port <= MAX_PORT)) {
+        throw new Error(`The ssh port must be between 1 and ${MAX_PORT}: ${port}`);
+    }
+    return [...(port === undefined ? [] : ['-p', String(port)]), '--', destination];
 }
 
 function securityOptions(helpers: SshHelpers): readonly (readonly [string, string])[] {

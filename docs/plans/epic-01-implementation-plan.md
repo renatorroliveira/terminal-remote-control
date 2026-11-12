@@ -373,6 +373,12 @@ SEC-03)
 - Tests: unit tests (args, classifier, reducer, nonce), and integration against the containers (Vitest node
   project).
 
+- Outcome: `connection-host/` holds `ssh/` (arguments, wrapper config, helpers, classifier, known_hosts),
+  `bootstrap/`, `connection/` (the `HostConnection`, lifecycle reducer, pinger, ssh tools) and `port/` (router,
+  request validation, output batching). Main forks it as a utility process and hands a MessagePort to every page
+  load; the renderer's receiver is in `renderer/connection/`. Integration tests cover every US-1.2 and US-1.3 case
+  live, including the jump host, and a paused host detected as dead within 30 s.
+
 **ST-9 App shell** (US-1.6.5, A11Y-01.5, A11Y-06.6, A11Y-07.1/3, A11Y-08.3, A11Y-11.12, NFR-06, NFR-13, SEC-01)
 
 - Main process:
@@ -642,7 +648,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-5  | Done        | —      |
 | ST-6  | Done        | —      |
 | ST-7  | Done        | —      |
-| ST-8  | Not started | —      |
+| ST-8  | Done        | —      |
 | ST-9  | Not started | —      |
 | ST-10 | Not started | —      |
 | ST-11 | Not started | —      |

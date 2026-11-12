@@ -1,4 +1,7 @@
 {
     "extends": "./tsconfig.node.base.json",
-    "include": ["src/preload", "src/shared"]
+    "include": ["src/preload", "src/shared"],
+    "compilerOptions": {
+        "lib": ["es2025", "dom"]
+    }
 }

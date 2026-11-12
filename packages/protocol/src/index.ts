@@ -30,6 +30,7 @@ export type { ShellProfile } from './generated/ShellProfile';
 export type { TerminalSize } from './generated/TerminalSize';
 export {
     AttachModeSchema,
+    ClientMessageSchema,
     ServerMessageSchema,
     SessionInfoSchema,
     ShellProfileSchema,

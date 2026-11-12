@@ -12,3 +12,14 @@ test('the window opens on the app scheme with an accessible main region', async 
 
     await app.close();
 });
+
+test('starts the connection host as a utility process (US-1.5)', async () => {
+    const app = await electron.launch({ args: ['.'] });
+    await app.firstWindow();
+    await expect.poll(() => app.evaluate(processNames)).toContain('Term Remote Control connection host');
+    await app.close();
+});
+
+function processNames({ app }: typeof import('electron')): (string | undefined)[] {
+    return app.getAppMetrics().map((metric) => metric.name);
+}
