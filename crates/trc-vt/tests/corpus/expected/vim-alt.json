@@ -1,0 +1,10 @@
+{
+  "alternateScreen": true,
+  "cursor": [
+    0,
+    23
+  ],
+  "plain": "日本語 vim テスト\nsecond line émoji 👍🏽\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n~\n/tmp/f.txt                                                    1,11-8         All\n",
+  "replies": "\u001b]11;rgb:1111/1111/1111\u0007\u001b[?0u\u001b[?62;22c",
+  "scrollbackRows": 0
+}

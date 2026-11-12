@@ -436,6 +436,15 @@ Ghostty is its reference implementation.
 - Cells take 8 bytes. That is about 10 MB per 10,000 lines of 120 columns,
   which supports NFR-10.
 - Our FFI crate's bindings are generated once with bindgen 0.73 and checked in.
+- **Build (D-14).** `tools/fetch-libghostty.sh` downloads the release
+  tarballs named in `tools/libghostty.manifest`, checks minisign and SHA-256,
+  and extracts them into `~/.cache/trc/libghostty-vt/<version>/`
+  (`TRC_CACHE_DIR` overrides). `ghostty-vt-sys`'s build script runs
+  `zig build --system` there once per target, caches the static library and
+  links it from `OUT_DIR`, so only the `.a` is visible to the linker.
+- **Scrollback.** libghostty-vt prunes whole pages, which can keep up to about
+  500 rows fewer than its line limit. `trc-vt` asks for the configured limit
+  plus 1,024 lines, so a session always keeps at least what NFR-10 promises.
 - Spike S1 confirmed D-02 ([S1](spikes/S1.md)): exact VT round trips into
   xterm.js and about 1.4 MB per idle holder. Every terminal turns on grapheme
   clustering (DEC mode 2027) by default, lifts the default 10,000-byte
@@ -1192,6 +1201,7 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | @playwright/test               | 1.65.0  | lefthook                             | 2.2.2   |
 | axe-core, @axe-core/playwright | 4.14.0  | @commitlint/cli, config-conventional | 21.2.4  |
 | @types/react, @types/react-dom | 19.3.0  | playwright (Vitest browser provider) | 1.65.0  |
+| @xterm/headless (replay test)  | 6.0.0   |                                      |         |
 
 **Daemon (crates.io and toolchains).**
 

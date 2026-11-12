@@ -1,0 +1,10 @@
+{
+  "alternateScreen": true,
+  "cursor": [
+    0,
+    23
+  ],
+  "plain": "\n    0[|                           0.7%] Tasks: 8, 0 thr, 0 kthr; 1 running\n    1[                            0.0%] Load average: 0.05 0.03 0.01\n    2[                            0.0%] Uptime: 00:01:46\n    3[                            0.0%]\n  Mem[|||||||||             255M/5.77G]\n  Swp[                           0K/0K]\n\n  [Main] [I/O]\n    PID USER       PRI  NI  VIRT   RES   SHR S  CPU%-MEM%   TIME+  Command\n      1 root        20   0 12180  6992  5944 S   0.0  0.1  0:00.01 sshd: /usr/sb\n     53 root        20   0 12440  7500  6400 S   0.0  0.1  0:00.01 sshd: tester\n     55 tester      20   0 12700  5556  4160 S   0.0  0.1  0:00.00 sshd: tester@\n     56 tester      20   0  4032  2796  2552 S   0.0  0.0  0:00.00 bash -c expor\n     57 tester      20   0  2276  1340  1260 S   0.0  0.0  0:00.00 timeout -s KI\n     58 tester      20   0  2292  1572  1468 S   0.0  0.0  0:00.00 script -q -c\n     59 tester      20   0  2276  1340  1260 S   0.0  0.0  0:00.00 timeout 2 hto\n     61 tester      20   0  4508  3152  2636 R   0.0  0.1  0:00.00 htop",
+  "replies": "",
+  "scrollbackRows": 0
+}

@@ -1,0 +1,8 @@
+# libghostty-vt release used by crates/ghostty-vt-sys (TECH_STACK D-14). Sourced by tools/fetch-libghostty.sh and
+# read by the crate's build script. Update all three hashes together with the version.
+version=1.0.1
+base_url=https://release.files.ghostty.org/libghostty-vt
+source_sha256=333dfce97641ef9b536bb9e08907ad86abaaada50e8f7417b70d9284adef37aa
+deps_sha256=91a4e10960a52bf5bf4b15aa2a2cddaff8a89d6cd903d3055bda4fd17de3356d
+minisign_key=RWQlAjJC23149WL2sEpT/l0QKy7hMIFhYdQOFy0Z7z7PbneUgvlsnYcV
+zig_minor=0.17

@@ -8,3 +8,4 @@ coverage/
 tools/ax-probe/.build/
 protocol/fixtures/
 docs/spikes/s4/
+crates/*/tests/corpus/

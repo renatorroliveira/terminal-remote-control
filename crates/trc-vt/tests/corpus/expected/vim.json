@@ -1,0 +1,10 @@
+{
+  "alternateScreen": false,
+  "cursor": [
+    0,
+    2
+  ],
+  "plain": "Vim: Caught deadly signal 'SIGTERM'",
+  "replies": "\u001b]11;rgb:1111/1111/1111\u0007\u001b[?0u\u001b[?62;22c",
+  "scrollbackRows": 0
+}

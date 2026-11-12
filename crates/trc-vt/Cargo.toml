@@ -8,3 +8,10 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+ghostty-vt-sys = { path = "../ghostty-vt-sys" }
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

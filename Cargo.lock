@@ -143,6 +143,11 @@ dependencies = [
 [[package]]
 name = "trc-vt"
 version = "0.1.0"
+dependencies = [
+ "ghostty-vt-sys",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "trcd"

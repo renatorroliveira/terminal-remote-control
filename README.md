@@ -77,7 +77,8 @@ Desktop app (Electron)                        Host
 - macOS on Apple silicon (E1 builds the macOS app and Linux daemons).
 - Node.js 24 and pnpm 12 (`corepack enable pnpm`).
 - Rust through rustup; `rust-toolchain.toml` pins the version and the musl targets.
-- `cargo install --locked cargo-nextest cargo-zigbuild`, and Zig 0.17 (`brew install zig`).
+- `cargo install --locked cargo-nextest cargo-zigbuild`, Zig 0.17 and minisign (`brew install zig minisign`), then
+  `tools/fetch-libghostty.sh` once to download and verify libghostty-vt.
 - For the Linux test hosts: colima and the docker CLI (`brew install colima docker`).
 - For the accessibility probe: Xcode command-line tools (Swift), and the Accessibility permission for your terminal.
 

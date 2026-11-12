@@ -10,6 +10,7 @@ export default defineConfig({
                     environment: 'node',
                     include: [
                         'tools/**/*.test.ts',
+                        'crates/*/tests/**/*.test.ts',
                         'packages/*/test/**/*.test.ts',
                         'apps/desktop/src/{main,preload,connection-host,shared}/**/*.test.ts',
                     ],

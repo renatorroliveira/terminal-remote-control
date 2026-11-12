@@ -17,6 +17,8 @@ tooling (`tools/*`).
 - Unit and component tests: `pnpm test`; one test:
   `pnpm exec vitest run <file> -t <name>`.
 - Rust: `cargo nextest run --workspace`; one test: `cargo nextest run <name>`.
+  The first build needs `tools/fetch-libghostty.sh` (verified libghostty-vt
+  source) and Zig 0.17. `TRC_BLESS_FIXTURES=1` rewrites golden fixtures.
 - Integration (needs `tools/test-hosts/up.sh`): `pnpm test:integration`.
 - End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax` (needs the
   macOS Accessibility permission).

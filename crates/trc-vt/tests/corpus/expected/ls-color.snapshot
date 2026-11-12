@@ -1,0 +1,433 @@
+]4;0;rgb:1d/1f/21\]4;1;rgb:cc/66/66\]4;2;rgb:b5/bd/68\]4;3;rgb:f0/c6/74\]4;4;rgb:81/a2/be\]4;5;rgb:b2/94/bb\]4;6;rgb:8a/be/b7\]4;7;rgb:c5/c8/c6\]4;8;rgb:66/66/66\]4;9;rgb:d5/4e/53\]4;10;rgb:b9/ca/4a\]4;11;rgb:e7/c5/47\]4;12;rgb:7a/a6/da\]4;13;rgb:c3/97/d8\]4;14;rgb:70/c0/b1\]4;15;rgb:ea/ea/ea\]4;16;rgb:00/00/00\]4;17;rgb:00/00/5f\]4;18;rgb:00/00/87\]4;19;rgb:00/00/af\]4;20;rgb:00/00/d7\]4;21;rgb:00/00/ff\]4;22;rgb:00/5f/00\]4;23;rgb:00/5f/5f\]4;24;rgb:00/5f/87\]4;25;rgb:00/5f/af\]4;26;rgb:00/5f/d7\]4;27;rgb:00/5f/ff\]4;28;rgb:00/87/00\]4;29;rgb:00/87/5f\]4;30;rgb:00/87/87\]4;31;rgb:00/87/af\]4;32;rgb:00/87/d7\]4;33;rgb:00/87/ff\]4;34;rgb:00/af/00\]4;35;rgb:00/af/5f\]4;36;rgb:00/af/87\]4;37;rgb:00/af/af\]4;38;rgb:00/af/d7\]4;39;rgb:00/af/ff\]4;40;rgb:00/d7/00\]4;41;rgb:00/d7/5f\]4;42;rgb:00/d7/87\]4;43;rgb:00/d7/af\]4;44;rgb:00/d7/d7\]4;45;rgb:00/d7/ff\]4;46;rgb:00/ff/00\]4;47;rgb:00/ff/5f\]4;48;rgb:00/ff/87\]4;49;rgb:00/ff/af\]4;50;rgb:00/ff/d7\]4;51;rgb:00/ff/ff\]4;52;rgb:5f/00/00\]4;53;rgb:5f/00/5f\]4;54;rgb:5f/00/87\]4;55;rgb:5f/00/af\]4;56;rgb:5f/00/d7\]4;57;rgb:5f/00/ff\]4;58;rgb:5f/5f/00\]4;59;rgb:5f/5f/5f\]4;60;rgb:5f/5f/87\]4;61;rgb:5f/5f/af\]4;62;rgb:5f/5f/d7\]4;63;rgb:5f/5f/ff\]4;64;rgb:5f/87/00\]4;65;rgb:5f/87/5f\]4;66;rgb:5f/87/87\]4;67;rgb:5f/87/af\]4;68;rgb:5f/87/d7\]4;69;rgb:5f/87/ff\]4;70;rgb:5f/af/00\]4;71;rgb:5f/af/5f\]4;72;rgb:5f/af/87\]4;73;rgb:5f/af/af\]4;74;rgb:5f/af/d7\]4;75;rgb:5f/af/ff\]4;76;rgb:5f/d7/00\]4;77;rgb:5f/d7/5f\]4;78;rgb:5f/d7/87\]4;79;rgb:5f/d7/af\]4;80;rgb:5f/d7/d7\]4;81;rgb:5f/d7/ff\]4;82;rgb:5f/ff/00\]4;83;rgb:5f/ff/5f\]4;84;rgb:5f/ff/87\]4;85;rgb:5f/ff/af\]4;86;rgb:5f/ff/d7\]4;87;rgb:5f/ff/ff\]4;88;rgb:87/00/00\]4;89;rgb:87/00/5f\]4;90;rgb:87/00/87\]4;91;rgb:87/00/af\]4;92;rgb:87/00/d7\]4;93;rgb:87/00/ff\]4;94;rgb:87/5f/00\]4;95;rgb:87/5f/5f\]4;96;rgb:87/5f/87\]4;97;rgb:87/5f/af\]4;98;rgb:87/5f/d7\]4;99;rgb:87/5f/ff\]4;100;rgb:87/87/00\]4;101;rgb:87/87/5f\]4;102;rgb:87/87/87\]4;103;rgb:87/87/af\]4;104;rgb:87/87/d7\]4;105;rgb:87/87/ff\]4;106;rgb:87/af/00\]4;107;rgb:87/af/5f\]4;108;rgb:87/af/87\]4;109;rgb:87/af/af\]4;110;rgb:87/af/d7\]4;111;rgb:87/af/ff\]4;112;rgb:87/d7/00\]4;113;rgb:87/d7/5f\]4;114;rgb:87/d7/87\]4;115;rgb:87/d7/af\]4;116;rgb:87/d7/d7\]4;117;rgb:87/d7/ff\]4;118;rgb:87/ff/00\]4;119;rgb:87/ff/5f\]4;120;rgb:87/ff/87\]4;121;rgb:87/ff/af\]4;122;rgb:87/ff/d7\]4;123;rgb:87/ff/ff\]4;124;rgb:af/00/00\]4;125;rgb:af/00/5f\]4;126;rgb:af/00/87\]4;127;rgb:af/00/af\]4;128;rgb:af/00/d7\]4;129;rgb:af/00/ff\]4;130;rgb:af/5f/00\]4;131;rgb:af/5f/5f\]4;132;rgb:af/5f/87\]4;133;rgb:af/5f/af\]4;134;rgb:af/5f/d7\]4;135;rgb:af/5f/ff\]4;136;rgb:af/87/00\]4;137;rgb:af/87/5f\]4;138;rgb:af/87/87\]4;139;rgb:af/87/af\]4;140;rgb:af/87/d7\]4;141;rgb:af/87/ff\]4;142;rgb:af/af/00\]4;143;rgb:af/af/5f\]4;144;rgb:af/af/87\]4;145;rgb:af/af/af\]4;146;rgb:af/af/d7\]4;147;rgb:af/af/ff\]4;148;rgb:af/d7/00\]4;149;rgb:af/d7/5f\]4;150;rgb:af/d7/87\]4;151;rgb:af/d7/af\]4;152;rgb:af/d7/d7\]4;153;rgb:af/d7/ff\]4;154;rgb:af/ff/00\]4;155;rgb:af/ff/5f\]4;156;rgb:af/ff/87\]4;157;rgb:af/ff/af\]4;158;rgb:af/ff/d7\]4;159;rgb:af/ff/ff\]4;160;rgb:d7/00/00\]4;161;rgb:d7/00/5f\]4;162;rgb:d7/00/87\]4;163;rgb:d7/00/af\]4;164;rgb:d7/00/d7\]4;165;rgb:d7/00/ff\]4;166;rgb:d7/5f/00\]4;167;rgb:d7/5f/5f\]4;168;rgb:d7/5f/87\]4;169;rgb:d7/5f/af\]4;170;rgb:d7/5f/d7\]4;171;rgb:d7/5f/ff\]4;172;rgb:d7/87/00\]4;173;rgb:d7/87/5f\]4;174;rgb:d7/87/87\]4;175;rgb:d7/87/af\]4;176;rgb:d7/87/d7\]4;177;rgb:d7/87/ff\]4;178;rgb:d7/af/00\]4;179;rgb:d7/af/5f\]4;180;rgb:d7/af/87\]4;181;rgb:d7/af/af\]4;182;rgb:d7/af/d7\]4;183;rgb:d7/af/ff\]4;184;rgb:d7/d7/00\]4;185;rgb:d7/d7/5f\]4;186;rgb:d7/d7/87\]4;187;rgb:d7/d7/af\]4;188;rgb:d7/d7/d7\]4;189;rgb:d7/d7/ff\]4;190;rgb:d7/ff/00\]4;191;rgb:d7/ff/5f\]4;192;rgb:d7/ff/87\]4;193;rgb:d7/ff/af\]4;194;rgb:d7/ff/d7\]4;195;rgb:d7/ff/ff\]4;196;rgb:ff/00/00\]4;197;rgb:ff/00/5f\]4;198;rgb:ff/00/87\]4;199;rgb:ff/00/af\]4;200;rgb:ff/00/d7\]4;201;rgb:ff/00/ff\]4;202;rgb:ff/5f/00\]4;203;rgb:ff/5f/5f\]4;204;rgb:ff/5f/87\]4;205;rgb:ff/5f/af\]4;206;rgb:ff/5f/d7\]4;207;rgb:ff/5f/ff\]4;208;rgb:ff/87/00\]4;209;rgb:ff/87/5f\]4;210;rgb:ff/87/87\]4;211;rgb:ff/87/af\]4;212;rgb:ff/87/d7\]4;213;rgb:ff/87/ff\]4;214;rgb:ff/af/00\]4;215;rgb:ff/af/5f\]4;216;rgb:ff/af/87\]4;217;rgb:ff/af/af\]4;218;rgb:ff/af/d7\]4;219;rgb:ff/af/ff\]4;220;rgb:ff/d7/00\]4;221;rgb:ff/d7/5f\]4;222;rgb:ff/d7/87\]4;223;rgb:ff/d7/af\]4;224;rgb:ff/d7/d7\]4;225;rgb:ff/d7/ff\]4;226;rgb:ff/ff/00\]4;227;rgb:ff/ff/5f\]4;228;rgb:ff/ff/87\]4;229;rgb:ff/ff/af\]4;230;rgb:ff/ff/d7\]4;231;rgb:ff/ff/ff\]4;232;rgb:08/08/08\]4;233;rgb:12/12/12\]4;234;rgb:1c/1c/1c\]4;235;rgb:26/26/26\]4;236;rgb:30/30/30\]4;237;rgb:3a/3a/3a\]4;238;rgb:44/44/44\]4;239;rgb:4e/4e/4e\]4;240;rgb:58/58/58\]4;241;rgb:62/62/62\]4;242;rgb:6c/6c/6c\]4;243;rgb:76/76/76\]4;244;rgb:80/80/80\]4;245;rgb:8a/8a/8a\]4;246;rgb:94/94/94\]4;247;rgb:9e/9e/9e\]4;248;rgb:a8/a8/a8\]4;249;rgb:b2/b2/b2\]4;250;rgb:bc/bc/bc\]4;251;rgb:c6/c6/c6\]4;252;rgb:d0/d0/d0\]4;253;rgb:da/da/da\]4;254;rgb:e4/e4/e4\]4;255;rgb:ee/ee/ee\[3g[9GH[17GH[25GH[33GH[41GH[49GH[57GH[65GH[73GH[Htotal 65668
+drwxr-xr-x 1 root root      4096 Nov 12 05:28  [0m[1m[38;5;4m.[0m
+drwxr-xr-x 1 root root      4096 Nov 10 04:33  [0m[1m[38;5;4m..[0m
+-rwxr-xr-x 1 root root     67760 Aug 25 15:09 [0m[1m[38;5;2m'['[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2maddpart[0m
+lrwxrwxrwx 1 root root         6 Apr  8  2024  [0m[1m[38;5;6mapropos[0m -> whatis
+-rwxr-xr-x 1 root root     67752 Nov  2 12:55  [0m[1m[38;5;2mapt[0m
+-rwxr-xr-x 1 root root    133440 Nov  2 12:55  [0m[1m[38;5;2mapt-cache[0m
+-rwxr-xr-x 1 root root     67912 Nov  2 12:55  [0m[1m[38;5;2mapt-cdrom[0m
+-rwxr-xr-x 1 root root     67760 Nov  2 12:55  [0m[1m[38;5;2mapt-config[0m
+-rwxr-xr-x 1 root root     67840 Nov  2 12:55  [0m[1m[38;5;2mapt-get[0m
+-rwxr-xr-x 1 root root     28664 Nov  2 12:55  [0m[1m[38;5;2mapt-key[0m
+-rwxr-xr-x 1 root root     67840 Nov  2 12:55  [0m[1m[38;5;2mapt-mark[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2march[0m
+lrwxrwxrwx 1 root root        21 Apr  8  2024  [0m[1m[38;5;6mawk[0m -> /etc/alternatives/awk
+-rwxr-xr-x 1 root root     67952 Aug 25 15:09  [0m[1m[38;5;2mb2sum[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mbase32[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mbase64[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mbasename[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mbasenc[0m
+-rwxr-xr-x 1 root root   1543048 Mar 31  2024  [0m[1m[38;5;2mbash[0m
+-rwxr-xr-x 1 root root      7008 Mar 31  2024  [0m[1m[38;5;2mbashbug[0m
+-rwxr-xr-x 1 root root      6841 Sep 16 18:47  [0m[1m[38;5;2mc_rehash[0m
+lrwxrwxrwx 1 root root         3 Aug 31 11:36  [0m[1m[38;5;6mcaptoinfo[0m -> tic
+-rwxr-xr-x 1 root root     67928 Aug 25 15:09  [0m[1m[38;5;2mcat[0m
+-rwxr-xr-x 1 root root     68104 Apr  8  2024  [0m[1m[38;5;2mcatman[0m
+-rwxr-sr-x 1 root shadow   71880 May 30  2024  [0m[38;5;0m[48;5;3mchage[0m
+-rwxr-xr-x 1 root root     67680 Apr 28  2024  [0m[1m[38;5;2mchattr[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mchcon[0m
+-rwsr-xr-x 1 root root     76440 May 30  2024  [0m[38;5;7m[48;5;1mchfn[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mchgrp[0m
+-rwxr-xr-x 1 root root     67952 Aug 25 15:09  [0m[1m[38;5;2mchmod[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mchoom[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mchown[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mchrt[0m
+-rwsr-xr-x 1 root root     69072 May 30  2024  [0m[38;5;7m[48;5;1mchsh[0m
+-rwxr-xr-x 1 root root    133496 Aug 25 15:09  [0m[1m[38;5;2mcksum[0m
+-rwxr-xr-x 1 root root     67680 Aug 31 11:36  [0m[1m[38;5;2mclear[0m
+-rwxr-xr-x 1 root root     67592 Mar 31  2024  [0m[1m[38;5;2mclear_console[0m
+-rwxr-xr-x 1 root root     67760 Aug 26 18:15  [0m[1m[38;5;2mcmp[0m
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2mcol[0m
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2mcolcrt[0m
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2mcolrm[0m
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2mcolumn[0m
+-rwxr-xr-x 1 root root     67960 Aug 25 15:09  [0m[1m[38;5;2mcomm[0m
+-rwxr-xr-x 1 root root     15375 Nov  5 04:56  [0m[1m[38;5;2mcorelist[0m
+-rwxr-xr-x 1 root root    133496 Aug 25 15:09  [0m[1m[38;5;2mcp[0m
+-rwxr-xr-x 1 root root      8360 Nov  5 04:56  [0m[1m[38;5;2mcpan[0m
+-rwxr-xr-x 1 root root      8382 Nov  5 04:56  [0m[1m[38;5;2mcpan5.38-aarch64-linux-gnu[0m
+-rwxr-xr-x 1 root root     67960 Aug 25 15:09  [0m[1m[38;5;2mcsplit[0m
+lrwxrwxrwx 1 root root         6 Apr 15  2026  [0m[1m[38;5;6mctstat[0m -> lnstat
+-rwxr-xr-x 1 root root     67952 Aug 25 15:09  [0m[1m[38;5;2mcut[0m
+-rwxr-xr-x 1 root root    133608 Mar 31  2024  [0m[1m[38;5;2mdash[0m
+-rwxr-xr-x 1 root root    133480 Aug 25 15:09  [0m[1m[38;5;2mdate[0m
+-rwxr-xr-x 1 root root     67984 Aug 25 15:09  [0m[1m[38;5;2mdd[0m
+-rwxr-xr-x 1 root root     24358 Dec  6  2023  [0m[1m[38;5;2mdeb-systemd-helper[0m
+-rwxr-xr-x 1 root root      7135 Dec  6  2023  [0m[1m[38;5;2mdeb-systemd-invoke[0m
+-rwxr-xr-x 1 root root      2870 Apr 12  2024  [0m[1m[38;5;2mdebconf[0m
+-rwxr-xr-x 1 root root     11846 Apr 12  2024  [0m[1m[38;5;2mdebconf-apt-progress[0m
+-rwxr-xr-x 1 root root       623 Apr 12  2024  [0m[1m[38;5;2mdebconf-communicate[0m
+-rwxr-xr-x 1 root root      1718 Apr 12  2024  [0m[1m[38;5;2mdebconf-copydb[0m
+-rwxr-xr-x 1 root root       668 Apr 12  2024  [0m[1m[38;5;2mdebconf-escape[0m
+-rwxr-xr-x 1 root root      3216 Apr 12  2024  [0m[1m[38;5;2mdebconf-set-selections[0m
+-rwxr-xr-x 1 root root      1825 Apr 12  2024  [0m[1m[38;5;2mdebconf-show[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mdelpart[0m
+-rwxr-xr-x 1 root root    134064 Aug 25 15:09  [0m[1m[38;5;2mdf[0m
+-rwxr-xr-x 1 root root    133424 Aug 26 18:15  [0m[1m[38;5;2mdiff[0m
+-rwxr-xr-x 1 root root     67848 Aug 26 18:15  [0m[1m[38;5;2mdiff3[0m
+-rwxr-xr-x 1 root root    199464 Aug 25 15:09  [0m[1m[38;5;2mdir[0m
+-rwxr-xr-x 1 root root     67960 Aug 25 15:09  [0m[1m[38;5;2mdircolors[0m
+-rwxr-xr-x 1 root root     67864 Aug 25 15:09  [0m[1m[38;5;2mdirname[0m
+-rwxr-xr-x 1 root root     70032 Aug 19 16:47  [0m[1m[38;5;2mdmesg[0m
+lrwxrwxrwx 1 root root         8 Apr  8  2024  [0m[1m[38;5;6mdnsdomainname[0m -> hostname
+lrwxrwxrwx 1 root root         8 Apr  8  2024  [0m[1m[38;5;6mdomainname[0m -> hostname
+-rwxr-xr-x 1 root root    330192 May  6  2026  [0m[1m[38;5;2mdpkg[0m
+-rwxr-xr-x 1 root root    199104 May  6  2026  [0m[1m[38;5;2mdpkg-deb[0m
+-rwxr-xr-x 1 root root    133440 May  6  2026  [0m[1m[38;5;2mdpkg-divert[0m
+-rwxr-xr-x 1 root root     21205 May  6  2026  [0m[1m[38;5;2mdpkg-maintscript-helper[0m
+-rwxr-xr-x 1 root root    199016 May  6  2026  [0m[1m[38;5;2mdpkg-query[0m
+-rwxr-xr-x 1 root root      4185 May  6  2026  [0m[1m[38;5;2mdpkg-realpath[0m
+-rwxr-xr-x 1 root root    133416 May  6  2026  [0m[1m[38;5;2mdpkg-split[0m
+-rwxr-xr-x 1 root root     67752 May  6  2026  [0m[1m[38;5;2mdpkg-statoverride[0m
+-rwxr-xr-x 1 root root     67880 May  6  2026  [0m[1m[38;5;2mdpkg-trigger[0m
+-rwxr-xr-x 1 root root    133488 Aug 25 15:09  [0m[1m[38;5;2mdu[0m
+-rwxr-xr-x 1 root root     67792 Aug 25 15:09  [0m[1m[38;5;2mecho[0m
+lrwxrwxrwx 1 root root        24 Apr  1  2024  [0m[1m[38;5;6meditor[0m -> /etc/alternatives/edito
+r
+-rwxr-xr-x 1 root root        41 Apr  8  2024  [0m[1m[38;5;2megrep[0m
+-rwxr-xr-x 1 root root     41947 Nov  5 04:56  [0m[1m[38;5;2menc2xs[0m
+-rwxr-xr-x 1 root root      3069 Nov  5 04:56  [0m[1m[38;5;2mencguess[0m
+-rwxr-xr-x 1 root root     68368 Aug 25 15:09  [0m[1m[38;5;2menv[0m
+-rwxr-xr-x 1 root root    205024 Mar 31  2024  [0m[1m[38;5;2meqn[0m
+lrwxrwxrwx 1 root root        20 Mar  4  2024  [0m[1m[38;5;6mex[0m -> /etc/alternatives/ex
+-rwxr-xr-x 1 root root     67968 Aug 25 15:09  [0m[1m[38;5;2mexpand[0m
+-rwxr-sr-x 1 root shadow   67872 May 30  2024  [0m[38;5;0m[48;5;3mexpiry[0m
+-rwxr-xr-x 1 root root     67888 Aug 25 15:09  [0m[1m[38;5;2mexpr[0m
+-rwxr-xr-x 1 root root     67952 Aug 25 15:09  [0m[1m[38;5;2mfactor[0m
+-rwxr-xr-x 1 root root     67960 May 30  2024  [0m[1m[38;5;2mfaillog[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mfallocate[0m
+-rwxr-xr-x 1 root root     67792 Aug 25 15:09  [0m[1m[38;5;2mfalse[0m
+-rwxr-xr-x 1 root root        41 Apr  8  2024  [0m[1m[38;5;2mfgrep[0m
+-rwxr-xr-x 1 root root    265440 Apr  8  2024  [0m[1m[38;5;2mfind[0m
+-rwxr-xr-x 1 root root     69040 Aug 19 16:47  [0m[1m[38;5;2mfindmnt[0m
+-rwxr-xr-x 1 root root   1510152 Jan  1  2024  [0m[1m[38;5;2mfish[0m
+-rwxr-xr-x 1 root root   1510152 Jan  1  2024  [0m[1m[38;5;2mfish_indent[0m
+-rwxr-xr-x 1 root root    330328 Jan  1  2024  [0m[1m[38;5;2mfish_key_reader[0m
+-rwxr-xr-x 1 root root     67816 Aug 19 16:47  [0m[1m[38;5;2mflock[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mfmt[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mfold[0m
+-rwxr-xr-x 1 root root     67744 Jul 13 14:43  [0m[1m[38;5;2mfree[0m
+lrwxrwxrwx 1 root root         3 Mar 31  2024  [0m[1m[38;5;6mgeqn[0m -> eqn
+-rwxr-xr-x 1 root root     67592 Sep  3 14:15  [0m[1m[38;5;2mgetconf[0m
+-rwxr-xr-x 1 root root     67936 Sep  3 14:15  [0m[1m[38;5;2mgetent[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mgetopt[0m
+-rwxr-xr-x 1 root root   4003072 Oct 16 14:11  [0m[1m[38;5;2mgit[0m
+lrwxrwxrwx 1 root root         3 Oct 16 14:11  [0m[1m[38;5;6mgit-receive-pack[0m -> git
+-rwxr-xr-x 1 root root    663864 Oct 16 14:11  [0m[1m[38;5;2mgit-shell[0m
+lrwxrwxrwx 1 root root         3 Oct 16 14:11  [0m[1m[38;5;6mgit-upload-archive[0m -> git
+lrwxrwxrwx 1 root root         3 Oct 16 14:11  [0m[1m[38;5;6mgit-upload-pack[0m -> git
+-rwsr-xr-x 1 root root     71840 May 30  2024  [0m[38;5;7m[48;5;1mgpasswd[0m
+-rwxr-xr-x 1 root root    330648 Sep  2 19:38  [0m[1m[38;5;2mgpgv[0m
+lrwxrwxrwx 1 root root         3 Mar 31  2024  [0m[1m[38;5;6mgpic[0m -> pic
+-rwxr-xr-x 1 root root    198872 Apr  8  2024  [0m[1m[38;5;2mgrep[0m
+-rwxr-xr-x 1 root root    133416 Mar 31  2024  [0m[1m[38;5;2mgroff[0m
+-rwxr-xr-x 1 root root     19195 Mar 31  2024  [0m[1m[38;5;2mgrog[0m
+-rwxr-xr-x 1 root root    199008 Mar 31  2024  [0m[1m[38;5;2mgrops[0m
+-rwxr-xr-x 1 root root    133424 Mar 31  2024  [0m[1m[38;5;2mgrotty[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mgroups[0m
+lrwxrwxrwx 1 root root         3 Mar 31  2024  [0m[1m[38;5;6mgtbl[0m -> tbl
+-rwxr-xr-x 2 root root      2346 Jul  3 11:53  [0m[1m[38;5;2mgunzip[0m
+-rwxr-xr-x 1 root root      6480 Jul  3 11:53  [0m[1m[38;5;2mgzexe[0m
+-rwxr-xr-x 1 root root    134024 Jul  3 11:53  [0m[1m[38;5;2mgzip[0m
+-rwxr-xr-x 1 root root     29227 Nov  5 04:56  [0m[1m[38;5;2mh2ph[0m
+-rwxr-xr-x 1 root root     60934 Nov  5 04:56  [0m[1m[38;5;2mh2xs[0m
+-rwxr-xr-x 1 root root     67832 Aug 19 16:47  [0m[1m[38;5;2mhardlink[0m
+lrwxrwxrwx 1 root root         7 Aug 19 16:47  [0m[1m[38;5;6mhd[0m -> hexdump
+-rwxr-xr-x 1 root root     67952 Aug 25 15:09  [0m[1m[38;5;2mhead[0m
+-rwxr-xr-x 1 root root      2514 Jun 15 22:15  [0m[1m[38;5;2mhelpztags[0m
+-rwxr-xr-x 1 root root     67760 Aug 19 16:47  [0m[1m[38;5;2mhexdump[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mhostid[0m
+-rwxr-xr-x 1 root root     67592 Apr  8  2024  [0m[1m[38;5;2mhostname[0m
+-rwxr-xr-x 1 root root    399368 Apr  8  2024  [0m[1m[38;5;2mhtop[0m
+-rwxr-xr-x 1 root root     67680 Sep  3 14:15  [0m[1m[38;5;2miconv[0m
+-rwxr-xr-x 1 root root     67952 Aug 25 15:09  [0m[1m[38;5;2mid[0m
+-rwxr-xr-x 1 root root     67744 Aug 31 11:36  [0m[1m[38;5;2minfocmp[0m
+lrwxrwxrwx 1 root root         3 Aug 31 11:36  [0m[1m[38;5;6minfotocap[0m -> tic
+-rwxr-xr-x 1 root root    133528 Aug 25 15:09  [0m[1m[38;5;2minstall[0m
+-rwxr-xr-x 1 root root      4373 Nov  5 04:56  [0m[1m[38;5;2minstmodsh[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mionice[0m
+-rwxr-xr-x 1 root root    812352 Apr 15  2026  [0m[1m[38;5;2mip[0m
+-rwxr-xr-x 1 root root     67816 Aug 19 16:47  [0m[1m[38;5;2mipcmk[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mipcrm[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mipcs[0m
+-rwxr-xr-x 1 root root     67832 Mar 31  2024  [0m[1m[38;5;2mischroot[0m
+-rwxr-xr-x 1 root root     67984 Aug 25 15:09  [0m[1m[38;5;2mjoin[0m
+-rwxr-xr-x 1 root root      4992 Nov  5 04:56  [0m[1m[38;5;2mjson_pp[0m
+-rwxr-xr-x 1 root root     67744 Jul 13 14:43  [0m[1m[38;5;2mkill[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mlast[0m
+lrwxrwxrwx 1 root root         4 Aug 19 16:47  [0m[1m[38;5;6mlastb[0m -> last
+-rwxr-xr-x 1 root root     69160 May 30  2024  [0m[1m[38;5;2mlastlog[0m
+-rwxr-xr-x 1 root root      7784 Jan 27  2023  [0m[1m[38;5;2mlcf[0m
+lrwxrwxrwx 1 root root        28 Sep  3 14:15  [0m[1m[38;5;6mld.so[0m -> ../lib/ld-linux-aarch64.
+so.1
+-rwxr-xr-x 1 root root      5334 Sep  3 14:15  [0m[1m[38;5;2mldd[0m
+-rwxr-xr-x 1 root root    215032 Apr 28  2024  [0m[1m[38;5;2mless[0m
+-rwxr-xr-x 1 root root     67680 Apr 28  2024  [0m[1m[38;5;2mlessecho[0m
+lrwxrwxrwx 1 root root         8 Apr 28  2024  [0m[1m[38;5;6mlessfile[0m -> lesspipe
+-rwxr-xr-x 1 root root     69104 Apr 28  2024  [0m[1m[38;5;2mlesskey[0m
+-rwxr-xr-x 1 root root      9047 Feb 12  2023  [0m[1m[38;5;2mlesspipe[0m
+-rwxr-xr-x 1 root root    134424 Apr  8  2024  [0m[1m[38;5;2mlexgrog[0m
+-rwxr-xr-x 1 root root     15778 Nov  5 04:56  [0m[1m[38;5;2mlibnetcfg[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mlink[0m
+lrwxrwxrwx 1 root root         7 Aug 19 16:47  [0m[1m[38;5;6mlinux32[0m -> setarch
+lrwxrwxrwx 1 root root         7 Aug 19 16:47  [0m[1m[38;5;6mlinux64[0m -> setarch
+-rwxr-xr-x 1 root root     67952 Aug 25 15:09  [0m[1m[38;5;2mln[0m
+-rwxr-xr-x 1 root root     68024 Apr 15  2026  [0m[1m[38;5;2mlnstat[0m
+-rwxr-xr-x 1 root root     75024 Sep  3 14:15  [0m[1m[38;5;2mlocale[0m
+-rwxr-xr-x 1 root root     67512 Sep  6 14:29  [0m[1m[38;5;2mlocale-check[0m
+-rwxr-xr-x 1 root root    338976 Sep  3 14:15  [0m[1m[38;5;2mlocaledef[0m
+-rwxr-xr-x 1 root root     68320 Aug 19 16:47  [0m[1m[38;5;2mlogger[0m
+-rwxr-xr-x 1 root root     69200 May 30  2024  [0m[1m[38;5;2mlogin[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mlogname[0m
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2mlook[0m
+-rwxr-xr-x 1 root root    199464 Aug 25 15:09  [0m[1m[38;5;2mls[0m
+-rwxr-xr-x 1 root root     67680 Apr 28  2024  [0m[1m[38;5;2mlsattr[0m
+-rwxr-xr-x 1 root root    198824 Aug 19 16:47  [0m[1m[38;5;2mlsblk[0m
+-rwxr-xr-x 1 root root    133288 Aug 19 16:47  [0m[1m[38;5;2mlscpu[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mlsipc[0m
+-rwxr-xr-x 1 root root     68128 Aug 19 16:47  [0m[1m[38;5;2mlslocks[0m
+-rwxr-xr-x 1 root root     67768 Aug 19 16:47  [0m[1m[38;5;2mlslogins[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mlsmem[0m
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2mlsns[0m
+-rwxr-xr-x 1 root root       320 Nov 10 04:39  [0m[1m[38;5;2mman[0m
+-rwxr-xr-x 1 root root     68752 Apr  8  2024  [0m[1m[38;5;2mman-recode[0m
+-rwxr-xr-x 1 root root    136360 Apr  8  2024  [0m[1m[38;5;2mman.REAL[0m
+-rwxr-xr-x 1 root root    200104 Apr  8  2024  [0m[1m[38;5;2mmandb[0m
+-rwxr-xr-x 1 root root     68136 Apr  8  2024  [0m[1m[38;5;2mmanpath[0m
+-rwxr-xr-x 1 root root    199152 Apr  8  2024  [0m[1m[38;5;2mmawk[0m
+-rwxr-xr-x 1 root root     67816 Aug 19 16:47  [0m[1m[38;5;2mmcookie[0m
+-rwxr-xr-x 1 root root     67896 Aug 25 15:09  [0m[1m[38;5;2mmd5sum[0m
+lrwxrwxrwx 1 root root         6 Aug 25 15:09  [0m[1m[38;5;6mmd5sum.textutils[0m -> md5sum
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mmesg[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mmkdir[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mmkfifo[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mmknod[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mmktemp[0m
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2mmore[0m
+-rwsr-xr-x 1 root root     67744 Aug 19 16:47  [0m[38;5;7m[48;5;1mmount[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mmountpoint[0m
+-rwxr-xr-x 1 root root    133496 Aug 25 15:09  [0m[1m[38;5;2mmv[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mnamei[0m
+lrwxrwxrwx 1 root root        22 Apr  8  2024  [0m[1m[38;5;6mnawk[0m -> /etc/alternatives/nawk
+-rwxr-xr-x 1 root root       913 Mar 31  2024  [0m[1m[38;5;2mneqn[0m
+-rwsr-xr-x 1 root root     69088 May 30  2024  [0m[38;5;7m[48;5;1mnewgrp[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mnice[0m
+lrwxrwxrwx 1 root root         8 Apr  8  2024  [0m[1m[38;5;6mnisdomainname[0m -> hostname
+-rwxr-xr-x 1 root root     68040 Aug 25 15:09  [0m[1m[38;5;2mnl[0m
+-rwxr-xr-x 1 root root     67888 Aug 25 15:09  [0m[1m[38;5;2mnohup[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mnproc[0m
+-rwxr-xr-x 1 root root      5718 Mar 31  2024  [0m[1m[38;5;2mnroff[0m
+-rwxr-xr-x 1 root root     67976 Aug 19 16:47  [0m[1m[38;5;2mnsenter[0m
+-rwxr-xr-x 1 root root     67744 Apr 15  2026  [0m[1m[38;5;2mnstat[0m
+-rwxr-xr-x 1 root root     67992 Aug 25 15:09  [0m[1m[38;5;2mnumfmt[0m
+-rwxr-xr-x 1 root root   4988072 Apr  1  2024  [0m[1m[38;5;2mnvim[0m
+-rwxr-xr-x 1 root root     67952 Aug 25 15:09  [0m[1m[38;5;2mod[0m
+-rwxr-xr-x 1 root root   1017208 Sep 16 18:47  [0m[1m[38;5;2mopenssl[0m
+lrwxrwxrwx 1 root root        23 Apr  9  2024  [0m[1m[38;5;6mpager[0m -> /etc/alternatives/pager
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2mpartx[0m
+-rwsr-xr-x 1 root root     72056 May 30  2024  [0m[38;5;7m[48;5;1mpasswd[0m
+-rwxr-xr-x 1 root root     67896 Aug 25 15:09  [0m[1m[38;5;2mpaste[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mpathchk[0m
+lrwxrwxrwx 1 root root         7 Nov 12  2025  [0m[1m[38;5;6mpdb3[0m -> pdb3.12
+lrwxrwxrwx 1 root root        24 Aug 31 10:18  [0m[1m[38;5;6mpdb3.12[0m -> ../lib/python3.12/pdb.
+py
+-rwxr-xr-x 2 root root   3942240 Nov  5 04:56  [0m[1m[38;5;2mperl[0m
+-rwxr-xr-x 1 root root     67672 Nov  5 04:56  [0m[1m[38;5;2mperl5.38-aarch64-linux-gnu[0m
+-rwxr-xr-x 2 root root   3942240 Nov  5 04:56  [0m[1m[38;5;2mperl5.38.2[0m
+-rwxr-xr-x 2 root root     45593 Nov  5 04:56  [0m[1m[38;5;2mperlbug[0m
+-rwxr-xr-x 1 root root       125 Apr  5  2024  [0m[1m[38;5;2mperldoc[0m
+-rwxr-xr-x 1 root root     10867 Nov  5 04:56  [0m[1m[38;5;2mperlivp[0m
+-rwxr-xr-x 2 root root     45593 Nov  5 04:56  [0m[1m[38;5;2mperlthanks[0m
+-rwxr-xr-x 1 root root     67832 Jul 13 14:43  [0m[1m[38;5;2mpgrep[0m
+-rwxr-xr-x 1 root root    200520 Mar 31  2024  [0m[1m[38;5;2mpic[0m
+-rwxr-xr-x 1 root root      8360 Nov  5 04:56  [0m[1m[38;5;2mpiconv[0m
+lrwxrwxrwx 1 root root        16 Apr  8  2024  [0m[1m[38;5;6mpidof[0m -> ../sbin/killall5
+-rwxr-xr-x 1 root root     67832 Jul 13 14:43  [0m[1m[38;5;2mpidwait[0m
+-rwxr-xr-x 1 root root     67904 Aug 25 15:09  [0m[1m[38;5;2mpinky[0m
+lrwxrwxrwx 1 root root         5 Jul 13 14:43  [0m[1m[38;5;6mpkill[0m -> pgrep
+-rwxr-xr-x 1 root root      4536 Nov  5 04:56  [0m[1m[38;5;2mpl2pm[0m
+-rwxr-xr-x 1 root root     67576 Sep  3 14:15  [0m[1m[38;5;2mpldd[0m
+-rwxr-xr-x 1 root root     67776 Jul 13 14:43  [0m[1m[38;5;2mpmap[0m
+-rwxr-xr-x 1 root root      4041 Nov  5 04:56  [0m[1m[38;5;2mpod2html[0m
+-rwxr-xr-x 1 root root     18898 Nov  5 04:56  [0m[1m[38;5;2mpod2man[0m
+-rwxr-xr-x 1 root root     13112 Nov  5 04:56  [0m[1m[38;5;2mpod2text[0m
+-rwxr-xr-x 1 root root      4107 Nov  5 04:56  [0m[1m[38;5;2mpod2usage[0m
+-rwxr-xr-x 1 root root      3658 Nov  5 04:56  [0m[1m[38;5;2mpodchecker[0m
+-rwxr-xr-x 1 root root     68016 Aug 25 15:09  [0m[1m[38;5;2mpr[0m
+-rwxr-xr-x 1 root root     67848 Mar 31  2024  [0m[1m[38;5;2mpreconv[0m
+-rwxr-xr-x 1 root root     67864 Aug 25 15:09  [0m[1m[38;5;2mprintenv[0m
+-rwxr-xr-x 1 root root     67872 Aug 25 15:09  [0m[1m[38;5;2mprintf[0m
+-rwxr-xr-x 1 root root     68256 Aug 19 16:47  [0m[1m[38;5;2mprlimit[0m
+-rwxr-xr-x 1 root root     13659 Nov  5 04:56  [0m[1m[38;5;2mprove[0m
+-rwxr-xr-x 1 root root    199440 Jul 13 14:43  [0m[1m[38;5;2mps[0m
+-rwxr-xr-x 1 root root      3566 Nov  5 04:56  [0m[1m[38;5;2mptar[0m
+-rwxr-xr-x 1 root root      2645 Nov  5 04:56  [0m[1m[38;5;2mptardiff[0m
+-rwxr-xr-x 1 root root      4395 Nov  5 04:56  [0m[1m[38;5;2mptargrep[0m
+-rwxr-xr-x 1 root root     67984 Aug 25 15:09  [0m[1m[38;5;2mptx[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mpwd[0m
+-rwxr-xr-x 1 root root     67744 Jul 13 14:43  [0m[1m[38;5;2mpwdx[0m
+-rwxr-xr-x 1 root root      7816 Nov 12  2025  [0m[1m[38;5;2mpy3clean[0m
+-rwxr-xr-x 1 root root     13314 Nov 12  2025  [0m[1m[38;5;2mpy3compile[0m
+lrwxrwxrwx 1 root root        31 Nov 12  2025  [0m[1m[38;5;6mpy3versions[0m -> ../share/python3/p
+y3versions.py
+lrwxrwxrwx 1 root root         9 Nov 12  2025  [0m[1m[38;5;6mpydoc3[0m -> pydoc3.12
+-rwxr-xr-x 1 root root        80 Aug 31 10:18  [0m[1m[38;5;2mpydoc3.12[0m
+lrwxrwxrwx 1 root root        13 Nov 12  2025  [0m[1m[38;5;6mpygettext3[0m -> pygettext3.12
+-rwxr-xr-x 1 root root     24224 Aug 31 10:18  [0m[1m[38;5;2mpygettext3.12[0m
+lrwxrwxrwx 1 root root        10 Nov 12  2025  [0m[1m[38;5;6mpython3[0m -> python3.12
+-rwxr-xr-x 1 root root   7845048 Aug 31 10:18  [0m[1m[38;5;2mpython3.12[0m
+lrwxrwxrwx 1 root root         4 Mar 31  2024  [0m[1m[38;5;6mrbash[0m -> bash
+-rwxr-xr-x 1 root root    133408 Apr 15  2026  [0m[1m[38;5;2mrdma[0m
+-rwxr-xr-x 1 root root     67888 Aug 25 15:09  [0m[1m[38;5;2mreadlink[0m
+-rwxr-xr-x 1 root root     67896 Aug 25 15:09  [0m[1m[38;5;2mrealpath[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mrename.ul[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mrenice[0m
+lrwxrwxrwx 1 root root         4 Aug 31 11:36  [0m[1m[38;5;6mreset[0m -> tset
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mresizepart[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mrev[0m
+-rwxr-xr-x 1 root root        30 Jul 21  2023  [0m[1m[38;5;2mrgrep[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mrm[0m
+-rwxr-xr-x 1 root root     67888 Aug 25 15:09  [0m[1m[38;5;2mrmdir[0m
+-rwxr-xr-x 1 root root      1658 Apr 15  2026  [0m[1m[38;5;2mroutel[0m
+lrwxrwxrwx 1 root root         6 Apr 15  2026  [0m[1m[38;5;6mrtstat[0m -> lnstat
+-rwxr-xr-x 1 root root     68192 Mar 31  2024  [0m[1m[38;5;2mrun-parts[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mruncon[0m
+lrwxrwxrwx 1 root root        23 Mar  4  2024  [0m[1m[38;5;6mrview[0m -> /etc/alternatives/rview
+lrwxrwxrwx 1 root root        22 Mar  4  2024  [0m[1m[38;5;6mrvim[0m -> /etc/alternatives/rvim
+lrwxrwxrwx 1 root root         3 Apr  8  2024  [0m[1m[38;5;6mrzsh[0m -> zsh
+-rwxr-xr-x 1 root root     10487 Mar 31  2024  [0m[1m[38;5;2msavelog[0m
+-rwxr-xr-x 1 root root    729632 Oct 16 14:11  [0m[1m[38;5;2mscalar[0m
+-rwxr-xr-x 1 root root    133520 Oct  8 17:19  [0m[1m[38;5;2mscp[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mscript[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mscriptlive[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mscriptreplay[0m
+-rwxr-xr-x 1 root root     67760 Aug 26 18:15  [0m[1m[38;5;2msdiff[0m
+-rwxr-xr-x 1 root root    133456 Apr 17  2026  [0m[1m[38;5;2msed[0m
+-rwxr-xr-x 1 root root      2450 Feb  4  2024  [0m[1m[38;5;2mselect-editor[0m
+-rwxr-xr-x 1 root root      1583 Feb  4  2024  [0m[1m[38;5;2msensible-browser[0m
+-rwxr-xr-x 1 root root      1556 Feb  4  2024  [0m[1m[38;5;2msensible-editor[0m
+-rwxr-xr-x 1 root root       921 Feb  4  2024  [0m[1m[38;5;2msensible-pager[0m
+-rwxr-xr-x 1 root root      1176 Feb  4  2024  [0m[1m[38;5;2msensible-terminal[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mseq[0m
+-rwxr-xr-x 1 root root     68008 Aug 19 16:47  [0m[1m[38;5;2msetarch[0m
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2msetpriv[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2msetsid[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2msetterm[0m
+-rwxr-xr-x 1 root root    199120 Oct  8 17:19  [0m[1m[38;5;2msftp[0m
+lrwxrwxrwx 1 root root         6 May 30  2024  [0m[1m[38;5;6msg[0m -> newgrp
+lrwxrwxrwx 1 root root         4 Mar 31  2024  [0m[1m[38;5;6msh[0m -> dash
+-rwxr-xr-x 1 root root     67896 Aug 25 15:09  [0m[1m[38;5;2msha1sum[0m
+-rwxr-xr-x 1 root root     67896 Aug 25 15:09  [0m[1m[38;5;2msha224sum[0m
+-rwxr-xr-x 1 root root     67896 Aug 25 15:09  [0m[1m[38;5;2msha256sum[0m
+-rwxr-xr-x 1 root root     67896 Aug 25 15:09  [0m[1m[38;5;2msha384sum[0m
+-rwxr-xr-x 1 root root     67896 Aug 25 15:09  [0m[1m[38;5;2msha512sum[0m
+-rwxr-xr-x 1 root root      9982 Nov  5 04:56  [0m[1m[38;5;2mshasum[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mshred[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mshuf[0m
+-rwxr-xr-x 1 root root     67784 Jul 13 14:43  [0m[1m[38;5;2mskill[0m
+-rwxr-xr-x 1 root root     67800 Jul 13 14:43  [0m[1m[38;5;2mslabtop[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2msleep[0m
+lrwxrwxrwx 1 root root         3 Oct  8 17:19  [0m[1m[38;5;6mslogin[0m -> ssh
+lrwxrwxrwx 1 root root         5 Jul 13 14:43  [0m[1m[38;5;6msnice[0m -> skill
+-rwxr-xr-x 1 root root     67848 Mar 31  2024  [0m[1m[38;5;2msoelim[0m
+-rwxr-xr-x 1 root root    133736 Aug 25 15:09  [0m[1m[38;5;2msort[0m
+-rwxr-xr-x 1 root root     19449 Nov  5 04:56  [0m[1m[38;5;2msplain[0m
+-rwxr-xr-x 1 root root     68392 Aug 25 15:09  [0m[1m[38;5;2msplit[0m
+-rwxr-xr-x 1 root root    135992 Apr 15  2026  [0m[1m[38;5;2mss[0m
+-rwxr-xr-x 1 root root    854928 Oct  8 17:19  [0m[1m[38;5;2mssh[0m
+-rwxr-xr-x 1 root root    329936 Oct  8 17:19  [0m[1m[38;5;2mssh-add[0m
+-rwxr-sr-x 1 root _ssh    330008 Oct  8 17:19  [0m[38;5;0m[48;5;3mssh-agent[0m
+-rwxr-xr-x 1 root root      1455 May 21 15:37  [0m[1m[38;5;2mssh-argv0[0m
+-rwxr-xr-x 1 root root     13078 Dec 18  2023  [0m[1m[38;5;2mssh-copy-id[0m
+-rwxr-xr-x 1 root root    461152 Oct  8 17:19  [0m[1m[38;5;2mssh-keygen[0m
+-rwxr-xr-x 1 root root    330040 Oct  8 17:19  [0m[1m[38;5;2mssh-keyscan[0m
+-rwxr-xr-x 1 root root    133488 Aug 25 15:09  [0m[1m[38;5;2mstat[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mstdbuf[0m
+-rwxr-xr-x 1 root root      8061 Nov  5 04:56  [0m[1m[38;5;2mstreamzip[0m
+-rwxr-xr-x 1 root root     67960 Aug 25 15:09  [0m[1m[38;5;2mstty[0m
+-rwsr-xr-x 1 root root     67744 Aug 19 16:47  [0m[38;5;7m[48;5;1msu[0m
+-rwxr-xr-x 1 root root     67888 Aug 25 15:09  [0m[1m[38;5;2msum[0m
+-rwxr-xr-x 1 root root     67888 Aug 25 15:09  [0m[1m[38;5;2msync[0m
+-rwxr-xr-x 1 root root     67672 Aug 31 11:36  [0m[1m[38;5;2mtabs[0m
+-rwxr-xr-x 1 root root     67888 Aug 25 15:09  [0m[1m[38;5;2mtac[0m
+-rwxr-xr-x 1 root root     67968 Aug 25 15:09  [0m[1m[38;5;2mtail[0m
+-rwxr-xr-x 1 root root    472600 Jul 20 14:38  [0m[1m[38;5;2mtar[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mtaskset[0m
+-rwxr-xr-x 1 root root    133384 Mar 31  2024  [0m[1m[38;5;2mtbl[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mtee[0m
+-rwxr-xr-x 1 root root     67928 Mar 31  2024  [0m[1m[38;5;2mtempfile[0m
+-rwxr-xr-x 1 root root     67760 Aug 25 15:09  [0m[1m[38;5;2mtest[0m
+-rwxr-xr-x 1 root root    133320 Aug 31 11:36  [0m[1m[38;5;2mtic[0m
+-rwxr-xr-x 1 root root     68368 Aug 25 15:09  [0m[1m[38;5;2mtimeout[0m
+-rwxr-xr-x 1 root root     67760 Jul 13 14:43  [0m[1m[38;5;2mtload[0m
+-rwxr-xr-x 1 root root   1123056 Oct  5 19:45  [0m[1m[38;5;2mtmux[0m
+-rwxr-xr-x 1 root root     67672 Aug 31 11:36  [0m[1m[38;5;2mtoe[0m
+-rwxr-xr-x 1 root root    138624 Jul 13 14:43  [0m[1m[38;5;2mtop[0m
+-rwxr-xr-x 1 root root    133480 Aug 25 15:09  [0m[1m[38;5;2mtouch[0m
+-rwxr-xr-x 1 root root     67704 Aug 31 11:36  [0m[1m[38;5;2mtput[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mtr[0m
+-rwxr-xr-x 1 root root    788904 Mar 31  2024  [0m[1m[38;5;2mtroff[0m
+-rwxr-xr-x 1 root root     67792 Aug 25 15:09  [0m[1m[38;5;2mtrue[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mtruncate[0m
+-rwxr-xr-x 1 root root     67680 Aug 31 11:36  [0m[1m[38;5;2mtset[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mtsort[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mtty[0m
+-rwxr-xr-x 1 root root     15378 Sep  3 14:15  [0m[1m[38;5;2mtzselect[0m
+-rwxr-xr-x 1 root root     41657 Jan 27  2023  [0m[1m[38;5;2mucf[0m
+-rwxr-xr-x 1 root root     19367 Jan 27  2023  [0m[1m[38;5;2mucfq[0m
+-rwxr-xr-x 1 root root     11111 Jan 27  2023  [0m[1m[38;5;2mucfr[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2muclampset[0m
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2mul[0m
+-rwsr-xr-x 1 root root     67744 Aug 19 16:47  [0m[38;5;7m[48;5;1mumount[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2muname[0m
+-rwxr-xr-x 2 root root      2346 Jul  3 11:53  [0m[1m[38;5;2muncompress[0m
+-rwxr-xr-x 1 root root     67968 Aug 25 15:09  [0m[1m[38;5;2munexpand[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2muniq[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2munlink[0m
+-rwxr-xr-x 1 root root      5725 Jul 10  2024  [0m[1m[38;5;2munminimize[0m
+-rwxr-xr-x 1 root root     67968 Aug 19 16:47  [0m[1m[38;5;2munshare[0m
+-rwxr-xr-x 1 root root     67760 May  6  2026  [0m[1m[38;5;2mupdate-alternatives[0m
+-rwxr-xr-x 1 root root     67744 Jul 13 14:43  [0m[1m[38;5;2muptime[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2musers[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mutmpdump[0m
+-rwxr-xr-x 1 root root    199464 Aug 25 15:09  [0m[1m[38;5;2mvdir[0m
+lrwxrwxrwx 1 root root        20 Apr  1  2024  [0m[1m[38;5;6mvi[0m -> /etc/alternatives/vi
+lrwxrwxrwx 1 root root        22 Mar  4  2024  [0m[1m[38;5;6mview[0m -> /etc/alternatives/view
+lrwxrwxrwx 1 root root        21 Apr  1  2024  [0m[1m[38;5;6mvim[0m -> /etc/alternatives/vim
+-rwxr-xr-x 1 root root   4123832 Aug 24 22:13  [0m[1m[38;5;2mvim.basic[0m
+lrwxrwxrwx 1 root root        25 Mar  4  2024  [0m[1m[38;5;6mvimdiff[0m -> /etc/alternatives/vimd
+iff
+-rwxr-xr-x 1 root root      2154 Aug 24 22:13  [0m[1m[38;5;2mvimtutor[0m
+-rwxr-xr-x 1 root root     68128 Jul 13 14:43  [0m[1m[38;5;2mvmstat[0m
+-rwxr-xr-x 1 root root     67776 Jul 13 14:43  [0m[1m[38;5;2mw[0m
+-rwxr-xr-x 1 root root     67744 Aug 19 16:47  [0m[1m[38;5;2mwall[0m
+-rwxr-xr-x 1 root root     68208 Jul 13 14:43  [0m[1m[38;5;2mwatch[0m
+-rwxr-xr-x 1 root root     67960 Aug 25 15:09  [0m[1m[38;5;2mwc[0m
+-rwxr-xr-x 1 root root     67768 Aug 19 16:47  [0m[1m[38;5;2mwdctl[0m
+-rwxr-xr-x 1 root root     68624 Apr  8  2024  [0m[1m[38;5;2mwhatis[0m
+-rwxr-xr-x 1 root root     68192 Aug 19 16:47  [0m[1m[38;5;2mwhereis[0m
+lrwxrwxrwx 1 root root        23 Mar 31  2024  [0m[1m[38;5;6mwhich[0m -> /etc/alternatives/which
+-rwxr-xr-x 1 root root      1080 Mar 31  2024  [0m[1m[38;5;2mwhich.debianutils[0m
+-rwxr-xr-x 1 root root     67992 Aug 25 15:09  [0m[1m[38;5;2mwho[0m
+-rwxr-xr-x 1 root root     67944 Aug 25 15:09  [0m[1m[38;5;2mwhoami[0m
+-rwxr-xr-x 1 root root     67752 Aug 19 16:47  [0m[1m[38;5;2mwrite[0m
+-rwxr-xr-x 1 root root     67784 Apr  8  2024  [0m[1m[38;5;2mxargs[0m
+-rwxr-xr-x 1 root root      5167 Nov  5 04:56  [0m[1m[38;5;2mxsubpp[0m
+-rwxr-xr-x 1 root root     67864 Aug 25 15:09  [0m[1m[38;5;2myes[0m
+lrwxrwxrwx 1 root root         8 Apr  8  2024  [0m[1m[38;5;6mypdomainname[0m -> hostname
+-rwxr-xr-x 1 root root      1984 Jul  3 11:53  [0m[1m[38;5;2mzcat[0m
+-rwxr-xr-x 1 root root      1678 Jul  3 11:53  [0m[1m[38;5;2mzcmp[0m
+-rwxr-xr-x 1 root root      6447 Jul  3 11:53  [0m[1m[38;5;2mzdiff[0m
+-rwxr-xr-x 1 root root     67512 Sep  3 14:15  [0m[1m[38;5;2mzdump[0m
+-rwxr-xr-x 1 root root        29 Jul  3 11:53  [0m[1m[38;5;2mzegrep[0m
+-rwxr-xr-x 1 root root        29 Jul  3 11:53  [0m[1m[38;5;2mzfgrep[0m
+-rwxr-xr-x 1 root root      2081 Jul  3 11:53  [0m[1m[38;5;2mzforce[0m
+-rwxr-xr-x 1 root root      8103 Jul  3 11:53  [0m[1m[38;5;2mzgrep[0m
+-rwxr-xr-x 1 root root     70193 Nov  5 04:56  [0m[1m[38;5;2mzipdetails[0m
+-rwxr-xr-x 1 root root      2206 Jul  3 11:53  [0m[1m[38;5;2mzless[0m
+-rwxr-xr-x 1 root root      1842 Jul  3 11:53  [0m[1m[38;5;2mzmore[0m
+-rwxr-xr-x 1 root root      4577 Jul  3 11:53  [0m[1m[38;5;2mznew[0m
+-rwxr-xr-x 1 root root    943792 Apr  8  2024  [0m[1m[38;5;2mzsh[0m
+-rwxr-xr-x 1 root root       852 Feb 23  2024  [0m[1m[38;5;2mzsh5[0m
+[24;1H[0m

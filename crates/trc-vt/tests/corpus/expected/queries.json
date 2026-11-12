@@ -1,0 +1,10 @@
+{
+  "alternateScreen": false,
+  "cursor": [
+    0,
+    0
+  ],
+  "plain": "",
+  "replies": "\u001b[?62;22c\u001b[>1;0;0c\u001b[1;1R\u001bP>|trcd 0.0.0\u001b\\\u001b]10;rgb:dddd/dddd/dddd\u001b\\\u001b]11;rgb:1111/1111/1111\u001b\\\u001b[?2004;2$y",
+  "scrollbackRows": 0
+}
