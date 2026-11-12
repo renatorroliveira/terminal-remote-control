@@ -20,8 +20,10 @@ the decision log (`D-01`…). Keep the stack minimal: the PRD is the scope, so
 add nothing it doesn't need. Record any new or changed dependency or tool in
 `docs/TECH_STACK.md` first.
 
-The implementation breakdown of each epic will go in `docs/DELIVERY_PLAN.md`
-(not created yet), not in the PRD.
+The implementation breakdown of each epic goes in
+`docs/plans/epic-NN-implementation-plan.md`, not in the PRD. Its stories are
+`ST-<n>` and its planning decisions `P-<nn>`. E1's plan is
+`docs/plans/epic-01-implementation-plan.md`; keep its status table current.
 
 Platforms arrive in this order (PRD §7.4): macOS desktop app plus Linux remote
 daemon (E1–E4), macOS daemon for local sessions and macOS hosts (E5), Windows

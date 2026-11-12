@@ -2,7 +2,7 @@
 
 | Field        | Value                                         |
 | ------------ | --------------------------------------------- |
-| Status       | Draft v0.3                                    |
+| Status       | Draft v0.4                                    |
 | Owner        | Renato Oliveira                               |
 | Last updated | 2026-11-11                                    |
 | Scope        | P0 (first release), delivered in seven epics  |
@@ -542,6 +542,9 @@ path cannot be used to plant code.
 
 1. Desktop app builds are code-signed: Apple Developer ID with notarization on
    macOS, Authenticode on Windows, signed packages on Linux.
+   **E1 exception:** E1 builds are ad-hoc signed and not notarized, because no
+   Developer ID identity exists yet. Items 2–4 apply in full. The exception
+   ends no later than the first build distributed beyond the owner.
 2. Daemon binaries ship inside the signed app bundle. The app never downloads
    them from the network at install time.
 3. After upload to a remote host, the binary's SHA-256 checksum is verified
@@ -624,7 +627,8 @@ An epic is done when all of the following hold:
 4. The risks the epic retires (§13) have verified mitigations.
 5. Nothing from earlier epics regresses.
 
-The implementation breakdown of each epic will live in a separate delivery plan.
+The implementation breakdown of each epic lives in a separate plan per epic,
+`docs/plans/epic-NN-implementation-plan.md`.
 
 | Epic | Users can…                                                                                         | Desktop                | Hosts                         | User stories |
 | ---- | -------------------------------------------------------------------------------------------------- | ---------------------- | ----------------------------- | ------------ |
@@ -1483,6 +1487,10 @@ WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
 5. **Conformance report.** An Accessibility Conformance Report (VPAT 2.5, WCAG
    edition) is published with each epic's release, covering the platforms
    delivered so far.
+   **E1 note:** E1 defers items 4 and 5. E1 is done when the automated checks
+   (item 2) pass and the owner completes the manual passes (item 3). The
+   usability sessions and the first conformance report happen before any build
+   is distributed beyond the owner.
 6. **Release gate.** No open high-severity accessibility defect. Every WCAG 2.2
    A and AA criterion passes or is documented as not applicable with rationale.
 

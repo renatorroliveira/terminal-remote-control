@@ -2,7 +2,7 @@
 
 | Field        | Value                                                                    |
 | ------------ | ------------------------------------------------------------------------ |
-| Status       | Decisions accepted (v1.0). Spikes S1–S10 (§11) may revise details.       |
+| Status       | Decisions accepted (v1.1). Spikes S1–S10 (§11) may revise details.       |
 | Owner        | Renato Oliveira                                                          |
 | Last updated | 2026-11-11                                                               |
 | Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.         |
@@ -335,7 +335,8 @@ either way.
 - **electron-builder 26** packages, signs and notarizes.
   - **macOS (E1).**
     - Developer ID signature with the hardened runtime, notarized with an App
-      Store Connect API key.
+      Store Connect API key. Until a Developer ID identity exists, E1 builds
+      are ad-hoc signed and not notarized (D-17).
     - The only entitlement is `com.apple.security.cs.allow-jit`.
     - Outputs a dmg for installs and a zip as the update payload.
   - **Windows (E6).** A per-user install with no administrator rights
@@ -629,6 +630,12 @@ needs Rust. Every request carries a `requestId`.
   sides: insta snapshots in Rust, Vitest in TypeScript. N−1 fixtures stay until
   N+1 ships.
 
+**E1 (D-19).** E1 attaches one client per session, so it uses backpressure
+instead of skip-to-latest: when the client's credit runs out, the holder stops
+reading the PTY until credit returns, and programs block as in any terminal.
+`INPUT` and `CONTROL` still never queue behind `OUTPUT`. `Resync`, `ReadRows`
+and "never block" arrive in E2 with multiple clients.
+
 ### Not used
 
 - Protobuf and buf: more tooling, and prost is passively maintained.
@@ -833,22 +840,36 @@ announcements only. Whether to also read OSC 633 stays open (OQ-6).
 - **Root `package.json` scripts** (`check`, `lint`, `format`, `test`,
   `test:e2e`, `build`) call pnpm and cargo. No Turborepo or Nx.
 
-Proposed layout:
+Layout:
 
 ```
-apps/desktop/           Electron app
-  src/main/             main process
+apps/desktop/             Electron app (@trc/desktop)
+  src/main/               main process
   src/preload/
-  src/connection-host/  utilityProcess: ssh, framing, reconnect, bootstrap
-  src/renderer/         React UI, terminal view, ATS, announcer
-  resources/bin/        askpass and known-hosts sh helpers, bootstrap.sh
-packages/protocol/      framing, generated types, zod schemas
-crates/trcd/            daemon: core, holder, bridge
-crates/trc-protocol/    protocol types (serde + ts-rs export)
-crates/ghostty-vt-sys/  FFI bindings to libghostty-vt
-protocol/fixtures/      versioned protocol fixtures shared by both sides
-tools/ax-probe/         Swift AXUIElement probe used by tests
+  src/connection-host/    utilityProcess: ssh, framing, reconnect, bootstrap
+  src/renderer/           React UI, terminal view, ATS, announcer
+  src/shared/             IPC contract, ids, pure helpers
+  resources/bin/          askpass and known-hosts sh helpers, bootstrap.sh
+  resources/daemon/       bundled trcd binaries and manifest (generated)
+  resources/docs/         user documentation (HTML)
+  test/e2e/               Playwright _electron specs
+packages/protocol/        framing, generated types, zod schemas (@trc/protocol)
+crates/trcd/              daemon: core, holder, bridge
+crates/trc-protocol/      protocol types (serde + ts-rs export), frame codec
+crates/ghostty-vt-sys/    FFI bindings to libghostty-vt
+crates/trc-vt/            safe wrapper and the TerminalState trait
+protocol/fixtures/        versioned protocol fixtures shared by both sides
+tools/ax-probe/           Swift AXUIElement probe used by tests
+tools/test-hosts/         sshd containers for integration and e2e tests (D-15)
+tools/fetch-libghostty.sh verified libghostty-vt source fetch (D-14)
+docs/plans/               one implementation plan per epic
 ```
+
+### 9.1.1 Development tools
+
+- **minisign** verifies the libghostty-vt release signature (D-14).
+- **colima** runs the Linux test hosts in its own `trc` profile, and the
+  **docker CLI** drives them (D-15). Both are development-only.
 
 ### 9.2 TypeScript 7
 
@@ -1029,8 +1050,8 @@ Notes:
   - `pre-commit` runs Prettier and `biome check --write` on staged files.
   - `commit-msg` runs commitlint 21 with `@commitlint/config-conventional`,
     which enforces the commit rules in CLAUDE.md.
-- **Claude Code hook.** A `PostToolUse` hook on `Edit|Write` runs Prettier and
-  then `biome lint --write` on the edited file.
+- **No agent or editor configuration in git.** `.claude/` and other
+  machine-specific files are git-ignored; lefthook is the only formatting hook.
 - **Agent context.** CLAUDE.md lists the build, lint and single-test commands
   once the tooling lands.
 
@@ -1051,8 +1072,8 @@ Chromium, and Cargo.
 
 | Epic | What the epic adds to the stack                                                                                                            |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| E1   | §4.1–§4.4; macOS packaging and manual downloads (§4.5); the protocol (§6), except gap backfill; SSH and bootstrap (§7); POSIX shell profiles (§8); `trcd core`, `bridge` and `holder` on Linux musl, without kill-scope isolation; all tooling (§9) |
-| E2   | Holders outside the kill scope and the Linux service-mode rule (§5.4); reconnect from an offset; `Resync` and `ReadRows` backfill; soak tests (NFR-11) |
+| E1   | §4.1–§4.4; macOS packaging, ad-hoc signed, and manual downloads (§4.5, D-17); the protocol (§6) with backpressure flow control instead of skip-to-latest (D-19); SSH and bootstrap (§7); POSIX shell profiles (§8); `trcd core`, `bridge` and `holder` on Linux musl, the core started detached by the bridge, without kill-scope isolation (D-20); all tooling (§9) |
+| E2   | Holders outside the kill scope and the Linux service-mode rule (§5.4); reconnect from an offset; skip-to-latest flow control (D-04) with `Resync` and `ReadRows` backfill; soak tests (NFR-11) |
 | E3   | Persistence and restore (§5.5); daemon management; Electron's built-in updater on macOS (US-3.4)                                           |
 | E4   | Shell-integration scripts and semantic events (§6, §8)                                                                                     |
 | E5   | macOS `trcd` (universal2, LaunchAgent through SMAppService); local bridge; detached core on remote Macs                                     |
@@ -1091,6 +1112,13 @@ Chromium, and Cargo.
 | D-11 | GitHub for code, Actions for CI, Releases for downloads and the update feed                 | Hosted runners for every target OS and architecture                                      | —                         |
 | D-12 | React 19 + React Aria Components                                                            | Accessible primitives; works with TypeScript 7; well supported by AI assistants          | —                         |
 | D-13 | Biome is the only linter; no ESLint                                                         | typescript-eslint caps TypeScript below 6.1; jsx-a11y doesn't support ESLint 10          | —                         |
+| D-14 | libghostty-vt source comes from its signed release tarballs, checked against a SHA-256 manifest and the minisign key; build.rs never touches the network | Reproducible, offline builds; no unverified download (SEC-04) | —                         |
+| D-15 | Linux test hosts are sshd containers on a dedicated colima profile `trc`, ports on `127.0.0.1` only, keys generated per run | Real OpenSSH on Ubuntu, Alpine and Rocky without touching other profiles or exposing ports | —          |
+| D-16 | In E1, CI workflows run only on manual dispatch; local `pnpm check`, integration and e2e suites are the gate | The GitHub repository arrived after planning; the local gates already cover E1 | —     |
+| D-17 | E1 builds are ad-hoc signed (`codesign -s -`) and not notarized                             | No Developer ID identity yet; Apple silicon and the fuse flip need a signature           | E1 exception to SEC-04.1  |
+| D-18 | Test builds read `TRC_TEST_SSH_CONFIG` and `TRC_TEST_KNOWN_HOSTS`; a build-time define removes the seam from release builds, and an artifact test checks it | OpenSSH reads `~/.ssh` from the passwd home, so tests need their own config | —   |
+| D-19 | E1 flow control is backpressure: the holder pauses PTY reads when its single client runs out of credit. D-04 applies from E2 | E1 has one client per session; no line is skipped, so A11Y-02.3 and A11Y-03 need no backfill | —   |
+| D-20 | In E1, `trcd bridge` starts the core detached (double fork, `setsid`, under a lock) when its socket is absent | Service-manager registration and kill-scope isolation arrive with E2 (US-2.4, US-2.5) | —     |
 
 ## 13. Versions (verified 2026-11-11)
 
@@ -1120,6 +1148,8 @@ Chromium, and Cargo.
 | ----------------------------- | ------- | --------------------- | ----------------- |
 | Rust                          | 1.99.1  | serde / serde_json    | 1.0.229 / 1.0.154 |
 | Zig (build only)              | 0.17.1  | ts-rs                 | 12.0.1            |
+| minisign (dev only)           | 0.12    | colima (dev only)     | 0.10.3            |
+| docker CLI (dev only)         | 29.8.1  |                       |                   |
 | cargo-zigbuild                | 0.24.1  | sha2                  | 0.11.1            |
 | libghostty-vt                 | 1.0.1   | crc32fast             | 1.5.5             |
 | alacritty_terminal (fallback) | 0.26.0  | tracing               | 0.1.44            |
