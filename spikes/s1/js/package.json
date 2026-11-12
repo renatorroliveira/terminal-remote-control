@@ -1,9 +1,0 @@
-{
-    "name": "s1-js",
-    "private": true,
-    "type": "module",
-    "dependencies": {
-        "@xterm/headless": "6.0.0",
-        "@xterm/addon-unicode-graphemes": "0.4.0"
-    }
-}

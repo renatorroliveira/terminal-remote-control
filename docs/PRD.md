@@ -2,7 +2,7 @@
 
 | Field        | Value                                         |
 | ------------ | --------------------------------------------- |
-| Status       | Draft v0.4                                    |
+| Status       | Draft v0.5                                    |
 | Owner        | Renato Oliveira                               |
 | Last updated | 2026-11-11                                    |
 | Scope        | P0 (first release), delivered in seven epics  |
@@ -254,7 +254,8 @@ full-screen program output.
    never sends input to the process.
 2. Review mode presents the scrollback and current screen as a read-only,
    multi-line text field. The field holds a page of logical lines around the
-   review caret (initially 500; tuned by spike R2) and loads the adjacent page
+   review caret (initially 500, kept by spike S3a and measured again when
+   review mode is built) and loads the adjacent page
    seamlessly when the caret crosses a page edge; start and end commands reach
    the start and end of the whole buffer. Each screen reader in the matrix
    navigates it by character, word, line, paragraph, page and start/end with
@@ -287,9 +288,9 @@ read-aloud tools work on it.
    selection in review mode, Select All, and "select last command output" — is
    exposed, up to the size cap in item 7, as the selection of the focused
    accessible text element through the platform API:
-   - macOS: the selection attributes Chromium exposes for the element type —
-     `AXSelectedText` and `AXSelectedTextRange` for text fields,
-     `AXSelectedTextMarkerRange` for document text — as confirmed by spike R1.
+   - macOS: `AXSelectedText`, `AXSelectedTextRange` and
+     `AXSelectedTextMarkerRange` of the terminal's text field, as spike S2
+     confirmed for R1.
    - Windows: UI Automation `TextPattern` selection, and IAccessible2 text
      selection for clients that use it.
    - Linux: AT-SPI2 `Text` interface selection.
@@ -308,7 +309,7 @@ read-aloud tools work on it.
    and sends an interrupt otherwise (configurable); Ctrl+Shift+C always copies.
    On macOS, Cmd+C copies.
 7. A selection larger than the platform API can hold in accessible text (an
-   initial cap of about 5,000 lines, tuned by spike R2) is exposed to the OS up
+   initial cap of 5,000 lines, set by spike S3a) is exposed to the OS up
    to the cap. Copy still places the entire selection on the clipboard, and the
    app announces that the selection is larger than assistive technology can
    read at once.

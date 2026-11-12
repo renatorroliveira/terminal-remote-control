@@ -1,0 +1,18 @@
+case: hostkey-changed
+exit: 255
+stdout: 
+stderr:
+n0nce HOSTKEY [127.0.0.1]:2221 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL3szIGukJu1IsllUcPhNH0eUlRcYY5n4T00aLX4jPfq SHA256:amYMTZNRGFuD9xZG9BaN9LdEQKQcpbWqaYkF50ECTU8
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+Someone could be eavesdropping on you right now (man-in-the-middle attack)!
+It is also possible that a host key has just been changed.
+The fingerprint for the ED25519 key sent by the remote host is
+SHA256:amYMTZNRGFuD9xZG9BaN9LdEQKQcpbWqaYkF50ECTU8.
+Please contact your system administrator.
+Add correct host key in <run>/known_hosts.changed to get rid of this message.
+Offending ED25519 key in <run>/known_hosts.changed:1
+Host key for [127.0.0.1]:2221 has changed and you have requested strict checking.
+Host key verification failed.

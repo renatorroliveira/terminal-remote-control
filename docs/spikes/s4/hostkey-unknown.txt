@@ -1,0 +1,7 @@
+case: hostkey-unknown
+exit: 255
+stdout: 
+stderr:
+n0nce HOSTKEY [127.0.0.1]:2221 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL3szIGukJu1IsllUcPhNH0eUlRcYY5n4T00aLX4jPfq SHA256:amYMTZNRGFuD9xZG9BaN9LdEQKQcpbWqaYkF50ECTU8
+No ED25519 host key is known for [127.0.0.1]:2221 and you have requested strict checking.
+Host key verification failed.

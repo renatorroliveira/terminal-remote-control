@@ -2,10 +2,10 @@
 
 | Field  | Value                                                                           |
 | ------ | ------------------------------------------------------------------------------- |
-| Status | Draft v1, approved in planning on 2026-11-11. Revised at the ST-1 spike gate.   |
+| Status | v2: approved in planning on 2026-11-11, revised at the ST-1 spike gate on 2026-11-12 |
 | Owner  | Renato Oliveira                                                                 |
 | Scope  | PRD §9.1 (US-1.1 to US-1.14) plus every global requirement for what E1 delivers |
-| Inputs | [PRD.md](../PRD.md) v0.4, [TECH_STACK.md](../TECH_STACK.md) v1.1                |
+| Inputs | [PRD.md](../PRD.md) v0.5, [TECH_STACK.md](../TECH_STACK.md) v1.2                |
 
 ## 1. Context
 
@@ -183,6 +183,22 @@ The spikes:
   (`docs(spikes): ...`).
 - Continue to ST-2 (P-20). Stop only if a spike result contradicts the PRD or a P-xx decision.
 
+### ST-1 gate outcome (2026-11-12)
+
+Findings are in [docs/spikes](../spikes/). No result contradicts the PRD or a P-xx decision. Changes to the stories
+below:
+
+- **S1:** D-02 stands. ST-4 turns on DEC mode 2027 by default, lifts the 10,000-byte scrollback cap, formats
+  snapshots with `EXTRAS_ALL` and `TRIM=false`, and links from a directory holding only the `.a`.
+- **S2:** D-22 replaces EditContext with a `contenteditable` ATS that cancels every edit, because EditContext broke
+  Zoom caret tracking. ST-10 adds the four selection and caret rules from [S2](../spikes/S2.md) and resolves the hint,
+  which Chromium does not expose as `AXHelp`.
+- **S3a:** the cadence, flood hold (256 KiB/s) and 5,000-line selection cap are confirmed; ST-16 measures the review
+  page.
+- **S4:** D-21 adds a generated wrapper ssh config so `ProxyJump` connections get the same options. ST-8 builds it and
+  the classifier from the [S4 corpus](../spikes/s4/). No FIDO key was available, so the touch flow moves to ST-21.
+- **S5:** ST-7 removes the directories it created when an install fails.
+
 ### Phase 2 — Foundation
 
 **ST-2 Monorepo scaffold and quality gates** (NFR-13 groundwork, SEC-01 for the dev server)
@@ -208,6 +224,7 @@ Cargo workspace:
 Packages and tooling:
 
 - Skeletons of every package and crate, each born from a first failing test.
+- `tools/doc-ids` gets its Vitest tests and joins `pnpm check`.
 - electron-vite config for the four entries. The dev server binds `127.0.0.1`.
 - One tsconfig per process.
 - Vitest projects: node-unit, browser (Chromium plus axe), and node-integration.
@@ -253,8 +270,11 @@ message.
     - query replies returned as bytes for the PTY;
     - a configurable scrollback limit;
     - title and other echo-back reports disabled.
-- Tests reuse the S1 corpus.
-- If S1 switched engines, this story implements the alacritty_terminal backend behind the same trait instead.
+- Every terminal: DEC mode 2027 on by default, `SCROLLBACK_MAX_BYTES` at `SIZE_MAX` with the line limit, foreground
+  and background colors for OSC 10/11, and an XTVERSION callback (S1).
+- Snapshots use the VT formatter with `EXTRAS_ALL` and `TRIM=false` (S1).
+- build.rs links from a directory that holds only the static library (S1).
+- Tests reuse the S1 corpus, including a check that the replay into `@xterm/headless` matches.
 
 ### Phase 3 — Daemon
 
@@ -308,7 +328,7 @@ message.
   `manifest.json` (SHA-256, version).
 - Version comparison: never downgrade, and a newer daemon means "update the app".
 - A test matrix over Ubuntu, Alpine and Rocky, the noexec home and the NSS-only user. Each test checks that
-  nothing is left behind after a failure.
+  nothing is left behind after a failure, including the directories the script created (S5).
 
 ### Phase 4 — App plumbing
 
@@ -316,7 +336,10 @@ message.
 SEC-03)
 
 - The utilityProcess entry.
-- An argument builder with exactly the arguments in TECH_STACK §7, plus the P-14 seam in test builds.
+- An argument builder with exactly the arguments in TECH_STACK §7, plus the wrapper config of D-21: a `Host *`
+  block with the same options, then `Include ~/.ssh/config` and `Include /etc/ssh/ssh_config`, passed with `-F`.
+  In test builds, the P-14 seam replaces the user include with `TRC_TEST_SSH_CONFIG` and sets
+  `UserKnownHostsFile` from `TRC_TEST_KNOWN_HOSTS`.
 - Checks: `ssh -V` ≥ 8.5, and `ssh -G` for the effective settings.
 - Production `askpass` and `known-hosts` helpers.
 - A nonce filter for startup-file noise.
@@ -325,7 +348,10 @@ SEC-03)
     - the prompt event;
     - on accept, append to `known_hosts`, hashed when `hashknownhosts yes`, then reconnect;
     - refuse a changed key.
-- The stderr classifier, built on the S4 corpus, plus `ssh-add -l`. The FIDO touch event.
+- The stderr classifier, built on the S4 corpus: text patterns, then `ssh-add -l` (exit 2 no agent, 1 empty),
+  encrypted `IdentityFile`s missing from `ssh-add -L`, expired `CertificateFile`s (`ssh-keygen -L`), and a named
+  host that is not the target for jump failures. The FIDO touch event. HOSTKEY lines are stripped from shown
+  details.
 - One channel per host, multiplexing every session. `INPUT` and `CONTROL` frames go first.
 - Ping every 5 s with a 15 s timeout.
 - The connection lifecycle as a discriminated-union reducer.
@@ -362,10 +388,15 @@ A11Y-06.1–5, A11Y-09.3–4, US-1.11.3, SEC-06)
 - Production ATS:
     - name, description and state;
     - row text nodes for the viewport, the overscan and the selection up to the cap;
-    - EditContext input;
+    - `contenteditable` input that cancels every `beforeinput` and sends IME text on `compositionend` (D-22);
     - a key encoder ported from xterm's `Keyboard.ts` (MIT, with attribution);
-    - selection mirrored both ways;
-    - a caret at the cursor, with the EditContext bounds;
+    - selection mirrored both ways, with the S2 rules: the DOM leads during a pointer drag, a selection the app did
+      not set is mirrored rather than replaced, and typing clears the selection and returns the caret in one
+      change;
+    - minimal `replaceData` row edits;
+    - a caret at the cursor, whose text-marker bounds drive Zoom and the IME window;
+    - the accessibility hint (A11Y-01.2): verify what VoiceOver speaks for `aria-describedby`, else fold it into
+      the name behind the verbosity setting;
     - transparent text aligned to the grid for pointer reading;
     - the S3a cadence.
 - Look Up and Services.
@@ -528,6 +559,7 @@ A11Y-12.1/3)
 - Write `docs/verification/E1-manual-at.md`, the scripted passes for VoiceOver, Zoom, Voice Control, Dictation,
   Full Keyboard Access and Spoken Content. The owner runs them.
 - A SEC-01 to SEC-08 checklist.
+- The FIDO touch flow (US-1.3.2) joins the manual checklist, because no security key was available at ST-1.
 - Run `code-reviewer` and `technical-auditor` in parallel on every commit after the tech stack commit
   (`docs(stack): add tech stack research and decisions`). Fix every finding test-first.
 - Final pass over CLAUDE.md, README, TECH_STACK and PRD status.
@@ -590,7 +622,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | Story | Status      | Commit |
 | ----- | ----------- | ------ |
 | ST-0  | Done        | —      |
-| ST-1  | Not started | —      |
+| ST-1  | Done        | —      |
 | ST-2  | Not started | —      |
 | ST-3  | Not started | —      |
 | ST-4  | Not started | —      |

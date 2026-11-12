@@ -2,7 +2,7 @@
 
 | Field        | Value                                                                    |
 | ------------ | ------------------------------------------------------------------------ |
-| Status       | Decisions accepted (v1.1). Spikes S1–S10 (§11) may revise details.       |
+| Status       | Decisions accepted (v1.2). S1–S5 done (§11); S6–S10 may revise details.  |
 | Owner        | Renato Oliveira                                                          |
 | Last updated | 2026-11-11                                                               |
 | Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.         |
@@ -199,42 +199,54 @@ This is the number one requirement and the main technical risk (R1, R2).
 - It reads content twice and uses list roles.
 
 **Accessible Text Surface (ATS).** Our own layer, and the single focus target
-of each terminal. It is modeled on Monaco's EditContext path.
+of each terminal. Spike S2 verified it on macOS ([S2](spikes/S2.md)).
 
-- **Element.** A `div` with `role="textbox"` and `aria-multiline="true"`. Its
-  name and description carry the session name, host and state (A11Y-01).
+- **Element.** A `contenteditable` `div` with `role="textbox"` and
+  `aria-multiline="true"` (D-22). Its name and description carry the session
+  name, host and state (A11Y-01). Chromium exposes it as `AXTextArea`, with
+  the name in `AXTitle` and `AXDescription`; the description is not exposed
+  as `AXHelp`, which ST-10 resolves.
 - **Placement.** Transparent text sits exactly over the WebGL canvas in the
   same cell metrics, so pointer reading (Speak items under the pointer) hits
   real text.
 - **Content.**
   - One text node per row: the viewport plus overscan, **plus every row of the
     current selection, up to the selection cap**.
-  - Chromium exposes `AXSelectedText` and `AXSelectedTextRange` only for text
-    fields, and `AXSelectedTextMarkerRange` everywhere. The ATS must own the
-    DOM selection.
-  - Spike S2 confirms this mapping attribute by attribute.
-- **Input** (A11Y-09).
-  - `EditContext` receives keys, IME and dictation. EditContext cannot attach
-    to a `<textarea>`, so the ATS is a `div`.
+  - Chromium exposes `AXSelectedText`, `AXSelectedTextRange` and
+    `AXSelectedTextMarkerRange` for the ATS. The ATS owns the DOM selection.
+  - Row text changes use minimal `replaceData` edits, so a caret inside a
+    changing row keeps its offset.
+- **Input** (A11Y-09, D-22).
+  - Every `beforeinput` is cancelled and its data sent to the PTY, so no input
+    edits the DOM. IME text is sent once on `compositionend`, and the next
+    update restores the row the composition touched.
+  - EditContext is not used: in Chromium's full accessibility mode it reports
+    no caret bounds, and macOS Zoom jumped away from the cursor on every
+    keystroke (S2).
   - A small key encoder, ported from xterm's MIT `Keyboard.ts`, reads
     `term.modes` and sends the bytes.
 - **Selection** (A11Y-04).
   - Selection changes in xterm (`onSelectionChange`) are mirrored into the DOM
     with `setBaseAndExtent`.
-  - DOM selection changes made by assistive technology or the keyboard flow
-    back through `term.select()`.
+  - DOM selection changes made by assistive technology, the keyboard or the
+    pointer flow back through `term.select()`.
+  - While the primary pointer button is down, the DOM selection leads and is
+    never rewritten; rewriting it cancels Chromium's native drag.
+  - A non-collapsed DOM selection the app did not set is mirrored, never
+    replaced by the caret.
+  - Typing clears the selection and returns the caret to the cursor in one
+    selection change.
   - Look Up and Services work from the DOM selection:
     `webContents.showDefinitionForSelection()` and the `services` menu role.
   - Size cap (D-08):
-    - The OS sees at most about 5,000 selected lines; spike S3 tunes the
-      number.
+    - The OS sees at most 5,000 selected lines (S3a: 42 ms to expose).
     - Copy always copies the full selection, and the cap is announced
       (A11Y-04.7).
 - **Caret** (A11Y-06).
   - With no selection, a collapsed DOM caret sits at the terminal cursor. That
-    drives `AXSelectedTextRange` and magnifier focus tracking.
-  - `EditContext.updateSelectionBounds()` and `updateControlBounds()` place
-    the IME and dictation UI.
+    drives `AXSelectedTextRange` and, through `AXBoundsForTextMarkerRange`,
+    magnifier tracking and the IME and dictation UI. Chromium's index-based
+    bounds and line attributes are unusable for this element.
 - **Announcer** (A11Y-02, A11Y-12).
   - Assembles logical lines and suppresses shell echo of typed characters (R9).
   - Collapses floods into a summary ("312 lines of output") and can be muted.
@@ -424,6 +436,11 @@ Ghostty is its reference implementation.
 - Cells take 8 bytes. That is about 10 MB per 10,000 lines of 120 columns,
   which supports NFR-10.
 - Our FFI crate's bindings are generated once with bindgen 0.73 and checked in.
+- Spike S1 confirmed D-02 ([S1](spikes/S1.md)): exact VT round trips into
+  xterm.js and about 1.4 MB per idle holder. Every terminal turns on grapheme
+  clustering (DEC mode 2027) by default, lifts the default 10,000-byte
+  scrollback cap so the line limit governs, and formats snapshots as VT with
+  every extra and without trimming.
 - On Linux and macOS it links statically. On Windows it links the way the 1.0
   release documents: x86_64 is tested in its CI through an MSVC import library.
 
@@ -689,6 +706,13 @@ ports, keys, certificates, `IdentityAgent`, `ProxyJump`, `ProxyCommand` and
 
 - OpenSSH 8.5+ runs the `KnownHostsCommand` helper with the key presented on
   this connection, including through ProxyJump.
+- **Jump hosts (D-21).** ssh starts a `ProxyJump` connection with only `-F`
+  and `-W`, so command-line `-o` options never reach it (S4). The connection
+  host therefore also writes a per-connection wrapper config: a `Host *` block
+  with every option above, then `Include ~/.ssh/config` and
+  `Include /etc/ssh/ssh_config`. It passes the wrapper with `-F` and keeps the
+  `-o` options. The first value obtained wins, so the jump connection gets the
+  same protections and reports its host key through the helper.
 - ssh splits the command line itself without a shell, so the helper path is
   quoted for the spaces in the app name.
 - The helper prints `%H %t %K` on stderr behind a per-connection nonce and
@@ -921,7 +945,7 @@ docs/plans/               one implementation plan per epic
 - **Deliberate exceptions** are suppressed line by line with
   `biome-ignore <rule>: <reason>`, never with file-wide overrides. The known
   one: the ATS `div role="textbox"` trips `useSemanticElements`, and it must
-  be a `div` because EditContext cannot attach to a `<textarea>`.
+  be a `div` because it holds one text node per terminal row (D-22).
 - **Prerequisite.** `vcs.useIgnoreFile` needs a `.gitignore` to exist.
 
 **Why no ESLint.**
@@ -1082,6 +1106,8 @@ Chromium, and Cargo.
 
 ## 11. Spikes
 
+Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spikes/S4.md), [S5](spikes/S5.md).
+
 | ID  | Epic | Spike                                                                                                                                                      | Retires                     |
 | --- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
 | S1  | E1   | libghostty-vt in Rust on musl x86_64/arm64: size, PSS per holder, VT round trip into xterm.js, matching grapheme widths and cursor columns, query replies   | D-02, US-1.11, NFR-09       |
@@ -1100,7 +1126,7 @@ Chromium, and Cargo.
 | ID   | Decision                                                                                    | Why                                                                                      | PRD effect                |
 | ---- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
 | D-01 | Rust daemon                                                                                 | Footprint, static binaries, ConPTY, memory safety (§2)                                   | Resolves OQ-2             |
-| D-02 | libghostty-vt in the daemon; alacritty_terminal if it proves incompatible on a target OS    | Grapheme fidelity, VT formatter, small cells; a switch is possible in a later epic       | —                         |
+| D-02 | libghostty-vt in the daemon; alacritty_terminal if it proves incompatible on a target OS    | Grapheme fidelity, VT formatter, small cells; confirmed for Linux and macOS by S1        | —                         |
 | D-03 | JSON control messages with ts-rs types; raw I/O frames                                      | Fewest tools; NFR-12 met through the handshake and fixtures                              | —                         |
 | D-04 | Lagging clients skip to the latest screen; programs never block                             | NFR-03 and fair sharing (US-2.6); gaps are backfilled from the daemon                    | —                         |
 | D-05 | No encryption at rest; user-only permissions                                                | SEC-05 as written; remote hosts have no keychain the daemon can reach                    | Resolves OQ-1             |
@@ -1119,6 +1145,8 @@ Chromium, and Cargo.
 | D-18 | Test builds read `TRC_TEST_SSH_CONFIG` and `TRC_TEST_KNOWN_HOSTS`; a build-time define removes the seam from release builds, and an artifact test checks it | OpenSSH reads `~/.ssh` from the passwd home, so tests need their own config | —   |
 | D-19 | E1 flow control is backpressure: the holder pauses PTY reads when its single client runs out of credit. D-04 applies from E2 | E1 has one client per session; no line is skipped, so A11Y-02.3 and A11Y-03 need no backfill | —   |
 | D-20 | In E1, `trcd bridge` starts the core detached (double fork, `setsid`, under a lock) when its socket is absent | Service-manager registration and kill-scope isolation arrive with E2 (US-2.4, US-2.5) | —     |
+| D-21 | ssh also gets a generated wrapper config (`-F`) that sets the security options first and includes the user's and the system config | `ProxyJump` connections receive none of the `-o` options (S4)  | —                         |
+| D-22 | The ATS takes input as a `contenteditable` element that cancels every edit, not through EditContext | EditContext broke caret bounds for macOS Zoom (S2, A11Y-06.3)   | —                         |
 
 ## 13. Versions (verified 2026-11-11)
 

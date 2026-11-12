@@ -1,0 +1,5 @@
+case: forwarding-disabled-exec
+exit: 0
+stdout: CONNECTED 
+stderr:
+n0nce HOSTKEY [127.0.0.1]:2222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDRuYp0j7+1OXIY/1UCAiJjzdXzux+c8uu+P4rggR6hE SHA256:ob+CzFBRbm3c341Kc3VBNL9lOWwePobRcJHTnX/su8k

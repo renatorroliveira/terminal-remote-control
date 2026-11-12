@@ -1,0 +1,5 @@
+case: dns-failure
+exit: 255
+stdout: 
+stderr:
+ssh: Could not resolve hostname no-such-host.invalid: nodename nor servname provided, or not known

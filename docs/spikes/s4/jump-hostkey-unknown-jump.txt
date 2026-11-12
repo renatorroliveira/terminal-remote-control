@@ -1,0 +1,7 @@
+case: jump-hostkey-unknown-jump
+exit: 255
+stdout: 
+stderr:
+n0nce HOSTKEY [127.0.0.1]:2225 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJfVkLClngKCR0n0tcsmJXUGFz+ByuFJYIbSGqPYIStS SHA256:qcE+F5dKvmBc1zQ7O5JyKCl7Iq17VMktF+t1czUl7Y4
+No ED25519 host key is known for [127.0.0.1]:2225 and you have requested strict checking.
+Host key verification failed.
