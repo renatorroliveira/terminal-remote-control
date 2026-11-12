@@ -126,10 +126,10 @@ describe('wrapperConfig (D-21)', () => {
 
 describe('sshEnvironment', () => {
     it('forces the askpass helper and passes the helper nonce, keeping the agent socket', () => {
-        const env = sshEnvironment({ SSH_AUTH_SOCK: '/agent', HOME: '/Users/x', DISPLAY: ':0' }, helpers, 'abcd');
+        const env = sshEnvironment({ SSH_AUTH_SOCK: '/agent', HOME: '/home/x', DISPLAY: ':0' }, helpers, 'abcd');
         expect(env).toEqual({
             SSH_AUTH_SOCK: '/agent',
-            HOME: '/Users/x',
+            HOME: '/home/x',
             DISPLAY: ':0',
             SSH_ASKPASS: helpers.askpass,
             SSH_ASKPASS_REQUIRE: 'force',

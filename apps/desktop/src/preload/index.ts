@@ -1,6 +1,12 @@
 import { contextBridge, type IpcRendererEvent, ipcRenderer } from 'electron';
 import { CONNECTION_PORT_CHANNEL, CONNECTION_PORT_MESSAGE } from '../shared/connection-port';
-import { APP_COMMAND_CHANNEL, type AppCommand, DISPLAY_CHANGED_CHANNEL, type TrcBridge } from '../shared/contract';
+import {
+    ACCESSIBILITY_CHANGED_CHANNEL,
+    APP_COMMAND_CHANNEL,
+    type AppCommand,
+    DISPLAY_CHANGED_CHANNEL,
+    type TrcBridge,
+} from '../shared/contract';
 import type { DisplaySettings } from '../shared/display';
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
@@ -14,6 +20,10 @@ const bridge: TrcBridge = {
     display: {
         get: () => ipcRenderer.invoke('display:get') as Promise<DisplaySettings>,
         onChanged: (listener) => subscribe<DisplaySettings>(DISPLAY_CHANGED_CHANNEL, listener),
+    },
+    accessibility: {
+        get: () => ipcRenderer.invoke('accessibility:get') as Promise<boolean>,
+        onChanged: (listener) => subscribe<boolean>(ACCESSIBILITY_CHANGED_CHANNEL, listener),
     },
     commands: {
         onCommand: (listener) => subscribe<AppCommand>(APP_COMMAND_CHANNEL, listener),

@@ -18,7 +18,7 @@
         "build:daemon": "node tools/build-daemon/build-daemon.ts",
         "test:daemon": "sh tools/test-hosts/rust-tests.sh",
         "test:e2e": "pnpm --filter @trc/desktop test:e2e",
-        "test:ax": "swift build -c release --package-path tools/ax-probe && vitest run --project ax",
+        "test:ax": "swift build -c release --package-path tools/ax-probe && pnpm --filter @trc/desktop build:test && vitest run --project ax",
         "gen": "cargo test -p trc-protocol --quiet export_bindings",
         "rust:check": "cargo fmt --all --check && cargo clippy --workspace --all-targets --quiet -- -D warnings && cargo nextest run --workspace --cargo-quiet",
         "build": "pnpm --filter @trc/desktop build",

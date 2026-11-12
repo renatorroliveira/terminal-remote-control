@@ -7,9 +7,14 @@ export interface MenuOptions {
     readonly appName: string;
     /** Sends a command to the renderer. */
     readonly onCommand: (command: AppCommand) => void;
+    /** Shows the macOS Look Up panel for the focused page's selection. */
+    readonly onLookUp: () => void;
 }
 
-/** The menu bar: the standard macOS menus, zoom in View, and Help with the user guide and accessibility help. */
+/**
+ * The menu bar: the standard macOS menus, Edit with Look Up and Speech, zoom in View, and Help with the user guide
+ * and accessibility help.
+ */
 export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[] {
     return [
         {
@@ -26,7 +31,7 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
                 { role: 'quit' },
             ],
         },
-        { role: 'editMenu' },
+        editMenu(options),
         {
             label: MAIN_STRINGS.viewMenu,
             submenu: [
@@ -50,4 +55,23 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
             ],
         },
     ];
+}
+
+function editMenu(options: MenuOptions): MenuItemConstructorOptions {
+    return {
+        label: MAIN_STRINGS.editMenu,
+        submenu: [
+            { role: 'undo' },
+            { role: 'redo' },
+            { type: 'separator' },
+            { role: 'cut' },
+            { role: 'copy' },
+            { role: 'paste' },
+            { role: 'selectAll' },
+            { type: 'separator' },
+            { label: MAIN_STRINGS.lookUp, accelerator: 'Ctrl+Cmd+D', click: () => options.onLookUp() },
+            { type: 'separator' },
+            { label: MAIN_STRINGS.speech, submenu: [{ role: 'startSpeaking' }, { role: 'stopSpeaking' }] },
+        ],
+    };
 }

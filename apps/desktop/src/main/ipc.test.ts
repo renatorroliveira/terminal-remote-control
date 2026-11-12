@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { registerHandlers } from './ipc';
+import { type InvokeHandlers, registerHandlers } from './ipc';
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown;
 
@@ -10,22 +10,33 @@ function fakeIpc() {
 
 const trusted = () => true;
 
+function handlers(display: unknown = {}): InvokeHandlers {
+    return {
+        'display:get': async () => display as never,
+        'accessibility:get': async () => true,
+    };
+}
+
 describe('registerHandlers (zod at the renderer boundary)', () => {
     it('answers valid requests', async () => {
-        const { handlers, ipc } = fakeIpc();
-        registerHandlers(ipc, { 'display:get': async () => ({ colorScheme: 'dark' }) as never }, trusted);
-        expect(await handlers.get('display:get')?.({})).toEqual({ colorScheme: 'dark' });
+        const { handlers: registered, ipc } = fakeIpc();
+        registerHandlers(ipc, handlers({ colorScheme: 'dark' }), trusted);
+        expect(await registered.get('display:get')?.({})).toEqual({ colorScheme: 'dark' });
+        expect(await registered.get('accessibility:get')?.({})).toBe(true);
     });
 
     it('rejects requests with arguments the contract does not allow', async () => {
-        const { handlers, ipc } = fakeIpc();
-        registerHandlers(ipc, { 'display:get': async () => ({}) as never }, trusted);
-        await expect(async () => handlers.get('display:get')?.({}, 'unexpected')).rejects.toThrow(/invalid arguments/);
+        const { handlers: registered, ipc } = fakeIpc();
+        registerHandlers(ipc, handlers(), trusted);
+        await expect(async () => registered.get('display:get')?.({}, 'unexpected')).rejects.toThrow(
+            /invalid arguments/,
+        );
+        await expect(async () => registered.get('accessibility:get')?.({}, 1)).rejects.toThrow(/invalid arguments/);
     });
 
     it('rejects requests from a page that is not the app', async () => {
-        const { handlers, ipc } = fakeIpc();
-        registerHandlers(ipc, { 'display:get': async () => ({}) as never }, () => false);
-        await expect(async () => handlers.get('display:get')?.({})).rejects.toThrow(/untrusted sender/);
+        const { handlers: registered, ipc } = fakeIpc();
+        registerHandlers(ipc, handlers(), () => false);
+        await expect(async () => registered.get('display:get')?.({})).rejects.toThrow(/untrusted sender/);
     });
 });

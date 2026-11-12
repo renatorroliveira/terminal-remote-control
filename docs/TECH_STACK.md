@@ -201,8 +201,11 @@ This is the number one requirement and the main technical risk (R1, R2).
 - **The daemon answers terminal queries.** The holder's emulator replies to DA,
   DSR/CPR, XTVERSION and OSC color queries, so programs never hang while no
   client is attached and never get duplicate replies.
-    - The renderer swallows those queries with `registerCsiHandler` and
-      `registerOscHandler` handlers that return `true`.
+    - The renderer swallows those queries with `registerCsiHandler`,
+      `registerOscHandler` and `registerDcsHandler` handlers that return
+      `true`: DA1, DA2, DA3, DSR, XTVERSION, DECRQM, the kitty keyboard query,
+      DECRQSS, XTGETTCAP, and OSC 4, 10, 11, 12, 17 and 19 queries. OSC 52 is
+      always swallowed in the renderer.
     - Title reporting and the other echo-back reports stay disabled in both
       emulators (SEC-06.3). xterm's `windowOptions` keep their all-off defaults.
 
@@ -239,6 +242,10 @@ of each terminal. Spike S2 verified it on macOS ([S2](spikes/S2.md)).
       keystroke (S2).
     - A small key encoder, ported from xterm's MIT `Keyboard.ts`, reads
       `term.modes` and sends the bytes.
+    - xterm's helper textarea is out of the tab order and hands focus to the
+      ATS. The ATS sends the DECSET 1004 focus reports; xterm's own are dropped.
+    - While a program tracks the mouse, the ATS lets the pointer through to
+      xterm, which reports it. Otherwise the wheel scrolls the buffer.
 - **Selection** (A11Y-04).
     - Selection changes in xterm (`onSelectionChange`) are mirrored into the DOM
       with `setBaseAndExtent`.
@@ -279,6 +286,9 @@ of each terminal. Spike S2 verified it on macOS ([S2](spikes/S2.md)).
       `contenteditable` froze NVDA for 15–60 s (xterm.js #4340).
 - **Update cadence** (R2). Chromium re-serializes every changed accessibility
   node.
+    - The renderer learns that AT is running from
+      `app.isAccessibilitySupportEnabled()` and its change event, relayed over
+      IPC.
     - Without AT, the ATS updates once per animation frame.
     - With AT running, it updates at most about 4 times a second and holds still
       while a flood lasts.

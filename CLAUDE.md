@@ -25,7 +25,10 @@ tooling (`tools/*`).
   builds the daemon bundle (`pnpm build:daemon`), then runs `pnpm test:daemon`, which runs the musl daemon tests as root in
   Ubuntu, Alpine and Rocky containers (Linux-only and other-user checks).
 - End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax` (needs the
-  macOS Accessibility permission).
+  macOS Accessibility permission). Both build a test build
+  (`pnpm --filter @trc/desktop build:test`, `TRC_TEST_BUILD=1`), which compiles
+  in the P-14 seam and the test host panel; their live-terminal tests skip
+  unless the test hosts are up and the daemons are built.
 - The git hooks install with `pnpm install` into `.git/hooks`; a global
   `core.hooksPath` hook manager runs them. Never bypass hooks with
   `--no-verify`.

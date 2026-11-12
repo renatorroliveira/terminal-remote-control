@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
     plugins: [react()],
+    define: { __TRC_TEST_SEAM__: 'false' },
     resolve: { dedupe: ['react', 'react-dom'] },
     optimizeDeps: {
         include: [

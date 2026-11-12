@@ -1,0 +1,40 @@
+@layer components {
+    .host {
+        position: relative;
+        overflow: hidden;
+        background: var(--trc-color-terminal-background);
+    }
+
+    .canvas {
+        position: absolute;
+        inset: 0;
+    }
+
+    .surface {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        overflow: hidden;
+        color: transparent;
+        caret-color: transparent;
+        white-space: pre;
+        cursor: text;
+        user-select: text;
+        outline-offset: -2px;
+    }
+
+    .surface[data-mouse='on'] {
+        pointer-events: none;
+    }
+
+    .surface :global(.ats-row) {
+        position: absolute;
+        left: 0;
+        right: 0;
+    }
+
+    .surface ::selection {
+        background: transparent;
+        color: transparent;
+    }
+}

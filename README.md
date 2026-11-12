@@ -93,8 +93,8 @@ Desktop app (Electron)                        Host
 | `pnpm test:integration`           | Tests against the Linux test hosts (start them with `tools/test-hosts/up.sh`)              |
 | `pnpm build:daemon`               | Builds the Linux daemons into `apps/desktop/resources/daemon` with their manifest          |
 | `pnpm test:daemon`                | The daemon's musl tests in Ubuntu, Alpine and Rocky containers (part of the above)         |
-| `pnpm test:e2e`                   | Builds the app and runs the Playwright Electron tests                                      |
-| `pnpm test:ax`                    | Builds `tools/ax-probe` and runs the macOS accessibility-tree tests                        |
+| `pnpm test:e2e`                   | Builds a test build of the app and runs the Playwright Electron tests                      |
+| `pnpm test:ax`                    | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests     |
 | `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                               |
 | `cargo nextest run`               | Rust tests                                                                                 |
 

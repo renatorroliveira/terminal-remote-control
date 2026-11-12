@@ -13,6 +13,7 @@ export type InvokeHandlers = {
 
 const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['args']> } = {
     'display:get': z.tuple([]),
+    'accessibility:get': z.tuple([]),
 };
 
 /**

@@ -160,7 +160,38 @@ describe('bootstrap failures', () => {
         expect(exists('trc-alpine', root)).toBe(false);
         expect(exists('trc-alpine', parent)).toBe(true);
     });
+});
 
+describe('bootstrap over an existing install', () => {
+    it('ignores version directories that hold no working daemon', async () => {
+        const root = freshRoot('trc-ubuntu');
+        const silent = `${root}/versions/${'a'.repeat(64)}`;
+        const foreign = `${root}/versions/${'b'.repeat(64)}`;
+        remote(
+            'trc-ubuntu',
+            `umask 077 && mkdir -p "${silent}" "${foreign}" && printf '#!/bin/sh\\n' > "${silent}/trcd" && ` +
+                `printf '#!/bin/sh\\necho other 1.0\\n' > "${foreign}/trcd" && chmod 700 "${silent}/trcd" "${foreign}/trcd"`,
+        );
+        const { outcome, steps } = await bootstrap('trc-ubuntu', root);
+        expect(outcome.kind).toBe('running');
+        expect(steps).toEqual(['checking', 'uploading', 'verifying', 'starting']);
+    });
+
+    it('replaces an installed daemon whose binary no longer matches its checksum (SEC-04.3)', async () => {
+        const root = freshRoot('trc-ubuntu');
+        const sha = manifest.binaries['linux-arm64']?.sha256 ?? '';
+        remote(
+            'trc-ubuntu',
+            `umask 077 && mkdir -p "${root}/versions/${sha}" && printf '#!/bin/sh\\necho trcd 9.9.9 ${sha}\\n' > ` +
+                `"${root}/versions/${sha}/trcd" && chmod 700 "${root}/versions/${sha}/trcd"`,
+        );
+        const bootstrapped = await bootstrap('trc-ubuntu', root);
+        expect(bootstrapped.steps).toEqual(['checking', 'uploading', 'verifying', 'starting']);
+        expect(await handshake(bootstrapped)).toMatchObject({ type: 'welcome', daemonVersion: manifest.version });
+    });
+});
+
+describe('bootstrap install locations', () => {
     it('names a noexec home and installs in a per-host location instead (US-1.4.3, R10)', async () => {
         const home = freshRoot('trc-noexec');
         const refused = await bootstrap('trc-noexec', home);

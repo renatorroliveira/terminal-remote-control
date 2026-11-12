@@ -9,6 +9,7 @@
         "electron.vite.config.ts",
         "playwright.config.ts",
         "vitest.browser.config.ts",
-        "test/e2e"
+        "test/e2e",
+        "test/ax"
     ]
 }

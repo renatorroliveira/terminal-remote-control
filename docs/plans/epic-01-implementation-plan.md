@@ -431,6 +431,23 @@ A11Y-06.1–5, A11Y-09.3–4, US-1.11.3, SEC-06)
     - e2e: type `echo hi` and read the result through the ATS DOM;
     - `pnpm test:ax`: AX attribute assertions through the probe, gated on the Accessibility permission.
 
+- Outcome: `renderer/terminal/` holds `TerminalView` (xterm, addons, focus, fit, credit), `AtsSurface` (rows,
+  selection mirroring, caret), `attachInput` (keys, `beforeinput`, IME, paste), the key encoder, the query filter,
+  the S3a scheduler and `SessionLink` (create, attach, input, credit, resize). `renderer/connection/host-client.ts`
+  correlates daemon requests over the MessagePort. AT detection is an IPC pair over
+  `app.isAccessibilitySupportEnabled()`. Edit carries Look Up (Ctrl+Cmd+D) and Speech.
+- The test host panel (`renderer/dev/`) stands in for ST-12 and ST-13; only test builds (`build:test`, which
+  `test:e2e` and `test:ax` run) compile it. Tab focus mode is Ctrl+Shift+M and "send next key" is armed through
+  `sendNextKey()`; ST-11's keymap binds both for good.
+- While a program tracks the mouse, the ATS lets the pointer through to xterm; otherwise the wheel scrolls the
+  buffer. xterm's helper textarea is out of the tab order and hands focus to the ATS, which sends the DECSET 1004
+  focus reports.
+- The live e2e test found a bootstrap bug: a version directory whose binary printed no version broke `HELLO`. The
+  script now lists only binaries whose SHA-256 matches their directory and that report as `trcd`, and an upload
+  replaces a binary that no longer matches.
+- Open with the owner: the M1 VoiceOver check, including whether VoiceOver speaks the `aria-describedby` hint
+  (A11Y-01.2), and a `pnpm test:ax` run from a terminal that holds the Accessibility permission.
+
 ### Phase 5 — Features
 
 **ST-11 Workspace layout and commands** (US-1.6.1/3, A11Y-05.1–8, A11Y-07.5–6, A11Y-11.2/3/5/7/10/11,
@@ -655,7 +672,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-7  | Done        | —      |
 | ST-8  | Done        | —      |
 | ST-9  | Done        | —      |
-| ST-10 | Not started | —      |
+| ST-10 | Done        | —      |
 | ST-11 | Not started | —      |
 | ST-12 | Not started | —      |
 | ST-13 | Not started | —      |

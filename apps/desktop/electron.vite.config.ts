@@ -3,10 +3,11 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'electron-vite';
 
 const LOOPBACK = '127.0.0.1';
+const TEST_SEAM = { __TRC_TEST_SEAM__: JSON.stringify(process.env['TRC_TEST_BUILD'] === '1') };
 
 export default defineConfig({
     main: {
-        define: { __TRC_TEST_SEAM__: JSON.stringify(process.env['TRC_TEST_BUILD'] === '1') },
+        define: TEST_SEAM,
         build: {
             externalizeDeps: { exclude: ['@trc/protocol'] },
             rollupOptions: {
@@ -25,6 +26,7 @@ export default defineConfig({
     },
     renderer: {
         root: resolve(import.meta.dirname, 'src/renderer'),
+        define: TEST_SEAM,
         plugins: [react()],
         server: { host: LOOPBACK, strictPort: false },
         build: {

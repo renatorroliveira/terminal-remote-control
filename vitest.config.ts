@@ -19,9 +19,10 @@ export default defineConfig({
             },
             {
                 extends: 'apps/desktop/vitest.browser.config.ts',
+                root: 'apps/desktop',
                 test: {
                     name: 'browser',
-                    include: ['apps/desktop/src/renderer/**/*.test.{ts,tsx}'],
+                    include: ['src/renderer/**/*.test.{ts,tsx}'],
                     browser: {
                         enabled: true,
                         headless: true,

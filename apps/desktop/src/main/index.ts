@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, Menu, protocol } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL } from '../shared/contract';
+import { relayAccessibilitySupport } from './accessibility-relay';
 import { contentTypeFor, resolveAppRequest } from './app-protocol';
 import { startConnectionHost } from './connection-host';
 import { currentDisplaySettings, relayDisplaySettings } from './display-relay';
@@ -29,14 +30,20 @@ if (app.requestSingleInstanceLock()) {
 
 function start(): void {
     protocol.handle(APP_IDENTITY.appScheme, serveAppRequest);
-    registerHandlers(ipcMain, { 'display:get': async () => currentDisplaySettings() }, (event) =>
-        isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
+    registerHandlers(
+        ipcMain,
+        {
+            'display:get': async () => currentDisplaySettings(),
+            'accessibility:get': async () => app.isAccessibilitySupportEnabled(),
+        },
+        (event) => isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
     );
     Menu.setApplicationMenu(
         Menu.buildFromTemplate(
             menuTemplate({
                 appName: APP_IDENTITY.productName,
                 onCommand: (command) => mainWindow?.webContents.send(APP_COMMAND_CHANNEL, command),
+                onLookUp: () => mainWindow?.webContents.showDefinitionForSelection(),
             }),
         ),
     );
@@ -76,6 +83,7 @@ function createWindow(): BrowserWindow {
     });
     startConnectionHost(window);
     relayDisplaySettings(window);
+    relayAccessibilitySupport(window);
     void window.loadURL(devServer ?? `${APP_IDENTITY.appScheme}://${APP_IDENTITY.appHost}/index.html`);
     return window;
 }

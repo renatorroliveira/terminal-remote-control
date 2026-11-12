@@ -57,10 +57,13 @@ installed_versions() {
     list=
     for dir in "$root"/versions/*/; do
         [ -x "${dir}trcd" ] || continue
+        sum=${dir%/}
+        sum=${sum##*/}
+        [ "$(checksum "${dir}trcd")" = "$sum" ] || continue
         report=$("${dir}trcd" --version 2>/dev/null) || continue
         set -- $report
-        sum=${dir%/}
-        list="$list${list:+,}${sum##*/}:$2"
+        [ "${1:-}" = trcd ] && [ -n "${2:-}" ] || continue
+        list="$list${list:+,}$sum:$2"
     done
     echo "${list:--}"
 }
@@ -148,6 +151,7 @@ upload() {
     say "PROGRESS testing"
     self_test "$staging/trcd" "$2"
     if [ -d "$root/versions/$2" ]; then
+        mv -f "$staging/trcd" "$root/versions/$2/trcd" || fail "root-unusable cannot install into $root/versions/$2"
         rm -rf "$staging"
     else
         mv "$staging" "$root/versions/$2" || fail "root-unusable cannot install into $root/versions"
