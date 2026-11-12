@@ -1,0 +1,8 @@
+#!/bin/sh
+# Prototype SSH_ASKPASS helper: relays notices, refuses every prompt.
+if [ "${SSH_ASKPASS_PROMPT:-}" = none ]; then
+    printf '%s NOTICE %s\n' "${TRC_NONCE:-}" "$1" >&2
+    exit 0
+fi
+printf '%s PROMPT-REFUSED %s\n' "${TRC_NONCE:-}" "$1" >&2
+exit 1

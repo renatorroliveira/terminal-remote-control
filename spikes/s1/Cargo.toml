@@ -1,0 +1,17 @@
+[package]
+name = "s1"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+portable-pty = "0.9"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "s"
+panic = "abort"
+
+[workspace]
