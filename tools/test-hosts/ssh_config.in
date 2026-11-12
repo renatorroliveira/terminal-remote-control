@@ -1,0 +1,61 @@
+Host trc-ubuntu-nss
+    User nssuser
+
+Host trc-ubuntu trc-ubuntu-nss trc-cert trc-expired trc-rejected trc-pass
+    Port 2221
+
+Host trc-cert
+    IdentityFile @RUN@/id_cert
+    CertificateFile @RUN@/id_cert-cert.pub
+
+Host trc-expired
+    IdentityFile @RUN@/id_expired
+    CertificateFile @RUN@/id_expired-cert.pub
+
+Host trc-rejected
+    IdentityFile @RUN@/id_rejected
+
+Host trc-pass
+    IdentityFile @RUN@/id_ed25519_pass
+
+Host trc-alpine
+    Port 2222
+
+Host trc-rocky
+    Port 2223
+
+Host trc-noexec
+    Port 2224
+
+Host trc-jump
+    Port 2225
+
+Host trc-behind trc-badjump
+    HostName behind
+    Port 22
+
+Host trc-behind
+    ProxyJump trc-jump
+
+Host trc-badjump
+    ProxyJump trc-unreachable
+
+Host trc-unreachable
+    Port 2299
+
+Host trc-dns
+    HostName no-such-host.invalid
+
+Host trc-timeout
+    HostName 10.255.255.1
+    ConnectTimeout 3
+
+Host trc-ubuntu trc-ubuntu-nss trc-alpine trc-rocky trc-noexec trc-jump trc-behind trc-badjump trc-unreachable trc-dns trc-timeout
+    IdentityFile @RUN@/id_ed25519
+
+Host trc-*
+    HostName 127.0.0.1
+    User tester
+    IdentitiesOnly yes
+    UserKnownHostsFile @RUN@/known_hosts
+    ConnectTimeout 5

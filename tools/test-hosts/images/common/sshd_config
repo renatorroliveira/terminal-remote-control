@@ -1,0 +1,12 @@
+Port 22
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+AuthorizedKeysFile .ssh/authorized_keys
+TrustedUserCAKeys /etc/ssh/trc_user_ca.pub
+DisableForwarding yes
+PrintMotd no
+PrintLastLog no
+MaxSessions 10
+Subsystem sftp internal-sftp

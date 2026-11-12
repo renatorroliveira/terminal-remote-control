@@ -1,0 +1,46 @@
+name: trc-test-hosts
+
+x-host: &host
+  volumes:
+    - ./.run/keys-public:/trc-keys:ro
+  restart: "no"
+
+services:
+  ubuntu:
+    <<: *host
+    build: { context: images, dockerfile: ubuntu/Dockerfile }
+    image: trc-test-ubuntu
+    environment: { TRC_USERS: tester nssuser }
+    ports: ["127.0.0.1:2221:22"]
+  alpine:
+    <<: *host
+    build: { context: images, dockerfile: alpine/Dockerfile }
+    image: trc-test-alpine
+    ports: ["127.0.0.1:2222:22"]
+  rocky:
+    <<: *host
+    build: { context: images, dockerfile: rocky/Dockerfile }
+    image: trc-test-rocky
+    ports: ["127.0.0.1:2223:22"]
+  noexec:
+    <<: *host
+    image: trc-test-ubuntu
+    depends_on: [ubuntu]
+    tmpfs: ["/home/tester:rw,noexec,nosuid,mode=0755"]
+    ports: ["127.0.0.1:2224:22"]
+  jump:
+    <<: *host
+    image: trc-test-alpine
+    depends_on: [alpine]
+    environment: { TRC_ALLOW_FORWARDING: "1" }
+    networks: [front, back]
+    ports: ["127.0.0.1:2225:22"]
+  behind:
+    <<: *host
+    image: trc-test-alpine
+    depends_on: [alpine]
+    networks: [back]
+
+networks:
+  front: {}
+  back: { internal: true }
