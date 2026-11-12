@@ -1,0 +1,38 @@
+{
+    "name": "term-remote-control",
+    "private": true,
+    "type": "module",
+    "packageManager": "pnpm@12.18.0",
+    "engines": {
+        "node": ">=24.22 <25"
+    },
+    "scripts": {
+        "check": "pnpm format:check && pnpm lint && pnpm docs:ids && pnpm typecheck && pnpm test && pnpm rust:check",
+        "format": "prettier --write .",
+        "format:check": "prettier --check --log-level warn .",
+        "lint": "biome check --reporter=concise .",
+        "docs:ids": "node tools/doc-ids/check-doc-ids.ts",
+        "typecheck": "tsc -p tools --pretty false && pnpm -r --parallel run typecheck",
+        "test": "vitest run --project node-unit --project browser",
+        "test:integration": "vitest run --project node-integration",
+        "test:e2e": "pnpm --filter @trc/desktop test:e2e",
+        "test:ax": "swift build -c release --package-path tools/ax-probe && vitest run --project ax",
+        "gen": "cargo test -p trc-protocol --quiet export_typescript",
+        "rust:check": "cargo fmt --all --check && cargo clippy --workspace --all-targets --quiet -- -D warnings && cargo nextest run --workspace --cargo-quiet",
+        "build": "pnpm --filter @trc/desktop build",
+        "dist": "pnpm --filter @trc/desktop dist",
+        "prepare": "sh tools/git-hooks/install.sh"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.6.7",
+        "@commitlint/cli": "21.2.4",
+        "@commitlint/config-conventional": "21.2.4",
+        "@types/node": "~24.19.2",
+        "@vitest/browser-playwright": "5.1.0",
+        "lefthook": "2.2.2",
+        "playwright": "1.65.0",
+        "prettier": "3.10.0",
+        "typescript": "7.0.2",
+        "vitest": "5.1.0"
+    }
+}

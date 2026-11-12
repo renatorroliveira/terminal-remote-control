@@ -1,0 +1,21 @@
+pre-commit:
+    parallel: false
+    jobs:
+        - name: guard
+          run: sh tools/git-hooks/guard-staged.sh {staged_files}
+        - name: prettier
+          glob: '*.{ts,tsx,js,mjs,cjs,json,jsonc,md,yml,yaml,css,html}'
+          run: pnpm exec prettier --write --ignore-unknown --log-level warn {staged_files}
+          stage_fixed: true
+        - name: biome
+          glob: '*.{ts,tsx,js,mjs,cjs,json,jsonc,css,html}'
+          run: pnpm exec biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+          stage_fixed: true
+        - name: rustfmt
+          glob: '*.rs'
+          run: cargo fmt --all
+
+commit-msg:
+    jobs:
+        - name: commitlint
+          run: pnpm exec commitlint --edit {1}

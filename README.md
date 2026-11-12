@@ -72,8 +72,29 @@ Desktop app (Electron)                        Host
 
 ## Development
 
-The build, lint and test tooling is being set up as part of Epic 1. This section will list the prerequisites and
-commands once it lands.
+### Prerequisites
+
+- macOS on Apple silicon (E1 builds the macOS app and Linux daemons).
+- Node.js 24 and pnpm 12 (`corepack enable pnpm`).
+- Rust through rustup; `rust-toolchain.toml` pins the version and the musl targets.
+- `cargo install --locked cargo-nextest cargo-zigbuild`, and Zig 0.17 (`brew install zig`).
+- For the Linux test hosts: colima and the docker CLI (`brew install colima docker`).
+- For the accessibility probe: Xcode command-line tools (Swift), and the Accessibility permission for your terminal.
+
+### Commands
+
+| Command                   | What it does                                                                       |
+| ------------------------- | ---------------------------------------------------------------------------------- |
+| `pnpm install`            | Installs dependencies and the git hooks                                            |
+| `pnpm check`              | The full local gate: Prettier, Biome, document IDs, `tsc`, Vitest, Rust fmt/clippy/nextest |
+| `pnpm test`               | Vitest unit tests (Node) and component tests (Chromium, with axe)                  |
+| `pnpm test:integration`   | Tests against the Linux test hosts (start them with `tools/test-hosts/up.sh`)      |
+| `pnpm test:e2e`           | Builds the app and runs the Playwright Electron tests                              |
+| `pnpm test:ax`            | Builds `tools/ax-probe` and runs the macOS accessibility-tree tests                |
+| `pnpm --filter @trc/desktop dev` | Runs the app with hot reload                                                 |
+| `cargo nextest run`       | Rust tests                                                                         |
+
+Single tests: `pnpm exec vitest run <file> -t <name>` and `cargo nextest run <name>`.
 
 ## Contributing
 

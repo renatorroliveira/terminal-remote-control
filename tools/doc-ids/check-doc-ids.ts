@@ -35,17 +35,9 @@ const REFERENCE =
 export function collectDefinitions(documents: readonly string[]): ReadonlyMap<string, Definition> {
     const definitions = new Map<string, Definition>();
     for (const text of documents) {
-        let current: { id: string; itemCount: number } | undefined;
+        let current: MutableDefinition | undefined;
         for (const line of text.split('\n')) {
-            const id = matchDefinition(line);
-            if (id !== undefined) {
-                current = { id, itemCount: 0 };
-                definitions.set(id, current);
-            } else if (line.startsWith('#')) {
-                current = undefined;
-            } else if (current !== undefined && NUMBERED_ITEM.test(line)) {
-                current.itemCount += 1;
-            }
+            current = readLine(line, current, definitions);
         }
     }
     return definitions;
@@ -74,6 +66,31 @@ export function checkRepository(root: string): readonly UndefinedReference[] {
     const texts = DEFAULT_DOCUMENTS.map((file) => ({ file, text: readFileSync(resolve(root, file), 'utf8') }));
     const definitions = collectDefinitions(texts.map(({ text }) => text));
     return texts.flatMap(({ file, text }) => findUndefinedReferences(file, text, definitions));
+}
+
+interface MutableDefinition {
+    readonly id: string;
+    itemCount: number;
+}
+
+function readLine(
+    line: string,
+    current: MutableDefinition | undefined,
+    definitions: Map<string, Definition>,
+): MutableDefinition | undefined {
+    const id = matchDefinition(line);
+    if (id !== undefined) {
+        const definition: MutableDefinition = { id, itemCount: 0 };
+        definitions.set(id, definition);
+        return definition;
+    }
+    if (line.startsWith('#')) {
+        return undefined;
+    }
+    if (current !== undefined && NUMBERED_ITEM.test(line)) {
+        current.itemCount += 1;
+    }
+    return current;
 }
 
 function matchDefinition(line: string): string | undefined {

@@ -1,0 +1,7 @@
+{
+    "extends": "./tsconfig.node.base.json",
+    "compilerOptions": {
+        "types": ["node", "electron"]
+    },
+    "include": ["src/connection-host", "src/shared"]
+}

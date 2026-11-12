@@ -1,0 +1,14 @@
+{
+    "extends": "./tsconfig.node.base.json",
+    "compilerOptions": {
+        "types": ["node", "electron-vite/node"]
+    },
+    "include": [
+        "src/main",
+        "src/shared",
+        "electron.vite.config.ts",
+        "playwright.config.ts",
+        "vitest.browser.config.ts",
+        "test/e2e"
+    ]
+}

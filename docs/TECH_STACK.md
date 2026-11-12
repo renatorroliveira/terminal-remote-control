@@ -858,8 +858,11 @@ announcements only. Whether to also read OSC 633 stays open (OQ-6).
 
 ### 9.1 Workspace
 
-- **pnpm 12 workspaces (D-10).** Settings live in `pnpm-workspace.yaml`,
-  including `minimumReleaseAge` for supply-chain safety.
+- **pnpm 12 workspaces (D-10).** Settings live in `pnpm-workspace.yaml`:
+  `minimumReleaseAge` of one day for supply-chain safety, with each pinned
+  version that is younger listed exactly in `minimumReleaseAgeExclude`, and
+  `allowBuilds` for the only packages that run install scripts (electron,
+  lefthook).
 - **Cargo workspace** for the Rust side.
 - **Root `package.json` scripts** (`check`, `lint`, `format`, `test`,
   `test:e2e`, `build`) call pnpm and cargo. No Turborepo or Nx.
@@ -1071,7 +1074,12 @@ Notes:
 ### 9.7 Git hooks and AI-driven development
 
 - **lefthook 2.**
-  - `pre-commit` runs Prettier and `biome check --write` on staged files.
+  - `pre-commit` rejects staged `.claude/` paths and absolute home-directory
+    paths, then runs Prettier, `biome check --write` and `cargo fmt` on staged
+    files.
+  - `pnpm install` installs the hooks into the repository's `.git/hooks`
+    without touching a global `core.hooksPath`, whose hook manager then runs
+    them.
   - `commit-msg` runs commitlint 21 with `@commitlint/config-conventional`,
     which enforces the commit rules in CLAUDE.md.
 - **No agent or editor configuration in git.** `.claude/` and other
@@ -1169,6 +1177,7 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | vitest-browser-react           | 2.3.0   | colorjs.io (dev)                     | 0.7.1   |
 | @playwright/test               | 1.65.0  | lefthook                             | 2.2.2   |
 | axe-core, @axe-core/playwright | 4.14.0  | @commitlint/cli, config-conventional | 21.2.4  |
+| @types/react, @types/react-dom | 19.3.0  | playwright (Vitest browser provider) | 1.65.0  |
 
 **Daemon (crates.io and toolchains).**
 

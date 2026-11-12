@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+**/generated/**
+**/*.rs
+target/
+dist/
+out/
+coverage/
+tools/ax-probe/.build/
+protocol/fixtures/
+docs/spikes/s4/

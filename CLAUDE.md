@@ -4,9 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Pre-implementation. The repository holds product documentation only; there is
-no source code, build system, linter or test runner yet. When tooling lands,
-add its commands (build, lint, full test run, single test) to this file.
+E1 is in progress; see `docs/plans/epic-01-implementation-plan.md` for the
+story status. The monorepo holds the Electron app (`apps/desktop`), the
+protocol package (`packages/protocol`), the Rust crates (`crates/*`) and
+tooling (`tools/*`).
+
+## Commands
+
+- Full local gate: `pnpm check` (Prettier, Biome, document IDs, `tsc` per
+  process, Vitest node and browser projects, `cargo fmt`, clippy, nextest).
+- Lint only: `pnpm lint`. Format: `pnpm format`. Types: `pnpm typecheck`.
+- Unit and component tests: `pnpm test`; one test:
+  `pnpm exec vitest run <file> -t <name>`.
+- Rust: `cargo nextest run --workspace`; one test: `cargo nextest run <name>`.
+- Integration (needs `tools/test-hosts/up.sh`): `pnpm test:integration`.
+- End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax` (needs the
+  macOS Accessibility permission).
+- The git hooks install with `pnpm install` into `.git/hooks`; a global
+  `core.hooksPath` hook manager runs them. Never bypass hooks with
+  `--no-verify`.
 
 `docs/PRD.md` is the source of truth for requirements. Reference its IDs in
 designs, code reviews and commits:

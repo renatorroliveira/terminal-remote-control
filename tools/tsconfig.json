@@ -1,0 +1,10 @@
+{
+    "extends": "../tsconfig.base.json",
+    "compilerOptions": {
+        "lib": ["es2025"],
+        "types": ["node"],
+        "allowImportingTsExtensions": true
+    },
+    "include": ["**/*.ts"],
+    "exclude": ["ax-probe/.build", "test-hosts/.run"]
+}

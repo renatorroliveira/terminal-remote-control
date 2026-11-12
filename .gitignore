@@ -74,3 +74,4 @@ target/
 # Logs and caches
 *.log
 .cache/
+/hooks/

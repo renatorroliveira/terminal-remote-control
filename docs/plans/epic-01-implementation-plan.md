@@ -623,7 +623,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ----- | ----------- | ------ |
 | ST-0  | Done        | —      |
 | ST-1  | Done        | —      |
-| ST-2  | Not started | —      |
+| ST-2  | Done        | —      |
 | ST-3  | Not started | —      |
 | ST-4  | Not started | —      |
 | ST-5  | Not started | —      |

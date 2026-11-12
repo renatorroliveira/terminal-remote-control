@@ -1,0 +1,27 @@
+{
+    "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+    "root": true,
+    "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true, "defaultBranch": "main" },
+    "files": { "includes": ["**", "!**/dist", "!**/out", "!**/target", "!**/.vitest"] },
+    "formatter": { "enabled": false },
+    "assist": { "enabled": true, "actions": { "source": { "organizeImports": "on" } } },
+    "html": { "experimentalFullSupportEnabled": true },
+    "linter": {
+        "enabled": true,
+        "domains": { "project": "recommended", "types": "recommended" },
+        "rules": {
+            "preset": "recommended",
+            "a11y": "error",
+            "complexity": {
+                "noExcessiveCognitiveComplexity": { "level": "error", "options": { "maxAllowedComplexity": 10 } },
+                "noExcessiveLinesPerFunction": {
+                    "level": "warn",
+                    "options": { "maxLines": 50, "skipBlankLines": true }
+                },
+                "noExcessiveNestedCallbacks": { "level": "error", "options": { "max": 3 } },
+                "useMaxParams": "error"
+            },
+            "suspicious": { "noConsole": { "level": "error", "options": { "allow": ["error", "warn"] } } }
+        }
+    }
+}
