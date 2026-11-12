@@ -807,30 +807,55 @@ so either would mean reimplementing the user's SSH setup (US-1.1).
 
 ### Bootstrap (US-1.4)
 
-A POSIX `sh` script is piped to `/bin/sh -s` on the host.
+`apps/desktop/resources/bin/bootstrap.sh`, a POSIX `sh` script, is piped to
+`exec /bin/sh -s` over `ssh -T`. The app prepends `TRC_NONCE` (hex) and
+`TRC_ROOT` (the per-host install location, absolute or `~/…`) as single-quoted
+assignments. Every line for the app starts with the nonce, so startup-file
+noise is ignored. The driver (`connection-host/bootstrap/`) sends nothing after
+the script until it has read `HELLO`.
 
 1. **Hello.**
-    - `umask 077`, then print `<nonce> HELLO`.
-    - Report the OS (`uname -s`), the architecture (`uname -m`, mapped to x86_64
-      or arm64), the installed versions and the available checksum tool.
-    - An unsupported system gets an error that names what is missing, and
-      nothing is left behind.
-2. **Command.** Read one command: `UPLOAD <size> <sha256> <version>` or
-   `RUN <version>`.
+    - `umask 077`, then `<nonce> HELLO os=… arch=… checksum=… installed=…`:
+      `uname -s`; `x86_64`, `arm64` or `unsupported`; the checksum tool or
+      `none`; and `<sha256>:<version>` pairs, comma-separated, or `-`. Each
+      installed version comes from that binary's `--version`.
+    - An unsupported OS or architecture gets an error that names both, before
+      anything is created.
+2. **Commands**, one per line: `UPLOAD <size> <sha256> <version>` followed by
+   exactly `<size>` bytes, `RUN <sha256>`, or `EXIT`.
 3. **Upload.**
-    1. Take an atomic `mkdir` lock, breaking it if stale.
-    2. Read exactly the stated number of bytes (`head -c`, falling back to `dd`)
-       into a temporary file.
-    3. Verify the checksum with `sha256sum`, `shasum -a 256` or
+    1. Create the root (its parent must exist) and `versions/`, remembering
+       which it created. The root must be the user's, not a symlink, and not
+       writable by group or others.
+    2. Take an atomic `mkdir` lock, breaking it when its PID is gone and
+       waiting up to 60 s (`sleep 1`).
+    3. Read exactly the stated number of bytes (`head -c`, falling back to `dd`)
+       into a staging directory.
+    4. Verify the checksum with `sha256sum`, `shasum -a 256` or
        `openssl dgst -sha256`.
-    4. `chmod 700`, then rename into `versions/<sha256>/`.
-    5. Run `--version`. Exit code 126 means a noexec mount, so point the user to
-       the per-host install location setting (R10).
+    5. `chmod 700`, then run `--version`. Exit code 126 means a noexec mount;
+       the app points the user to the per-host install location setting (R10).
+       The reported checksum must match.
+    6. Rename into `versions/<sha256>/`.
 
-    A trap removes everything on any failure.
+    Progress lines are `PROGRESS receiving|verifying|testing`, then
+    `INSTALLED <sha256> <version>`. On any failure, a trap removes the staging
+    directory, the lock and the directories this run created.
 
-4. **Run.** `exec "$bin" bridge`. `Hello` and `Welcome` follow on the same
-   channel.
+4. **Run.** Print `RUNNING`, then `exec "$bin" bridge`. Protocol frames follow on
+   the same channel.
+5. **Errors** are `ERROR <code> <detail>`, with the codes `unsupported-os`,
+   `unsupported-arch`, `missing-tool`, `root-unusable`, `noexec`,
+   `checksum-mismatch`, `short-upload`, `lock-busy`, `self-test`,
+   `not-installed` and `protocol`.
+
+**The app's decision (US-1.4.6).** Run the bundled daemon when its SHA-256 is
+installed; upload it when the host has none or only older versions; never
+downgrade, so a newer installed version asks the user to update the app.
+
+**The bundle (SEC-04.2).** `pnpm build:daemon` builds both musl targets with
+cargo-zigbuild into `apps/desktop/resources/daemon/<linux-x64|linux-arm64>/trcd`
+and writes `manifest.json` with the version and each binary's SHA-256 and size.
 
 ## 8. Shell selection (US-1.7, US-4.1, US-6.2, US-6.3)
 

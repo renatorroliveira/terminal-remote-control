@@ -20,7 +20,7 @@ tooling (`tools/*`).
   The first build needs `tools/fetch-libghostty.sh` (verified libghostty-vt
   source) and Zig 0.17. `TRC_BLESS_FIXTURES=1` rewrites golden fixtures.
 - Integration (needs `tools/test-hosts/up.sh`): `pnpm test:integration`. It
-  starts with `pnpm test:daemon`, which runs the musl daemon tests as root in
+  builds the daemon bundle (`pnpm build:daemon`), then runs `pnpm test:daemon`, which runs the musl daemon tests as root in
   Ubuntu, Alpine and Rocky containers (Linux-only and other-user checks).
 - End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax` (needs the
   macOS Accessibility permission).

@@ -37,3 +37,10 @@ for image in $images; do
             printf "%s: %s\n" "${binary##*/}" "$(grep "^test result" /tmp/out)"
         done' rust-tests "$@"
 done
+
+for bundle in linux-x64:amd64 linux-arm64:arm64; do
+    dir=$root/apps/desktop/resources/daemon/${bundle%%:*}
+    [ -x "$dir/trcd" ] || continue
+    printf 'rust-tests: bundled %s: ' "${bundle%%:*}"
+    docker run --rm --platform "linux/${bundle##*:}" -v "$dir:/d:ro" alpine:3.23 /d/trcd --version
+done

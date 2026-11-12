@@ -341,6 +341,10 @@ message.
 
 ### Phase 4 — App plumbing
 
+- Outcome: the bootstrap driver (`connection-host/bootstrap/`) is built and tested here, against every test host
+  over real ssh, instead of in ST-8. ST-8 wires it to the connection's ssh process and the progress events. The
+  driver keeps reading the host's error when the host stops reading mid-upload.
+
 **ST-8 Connection host and SSH transport** (US-1.1.2–4, US-1.2 mechanism, US-1.3 classification, US-1.5, NFR-07,
 SEC-03)
 
@@ -352,7 +356,7 @@ SEC-03)
 - Checks: `ssh -V` ≥ 8.5, and `ssh -G` for the effective settings.
 - Production `askpass` and `known-hosts` helpers.
 - A nonce filter for startup-file noise.
-- The bootstrap driver for ST-7, with progress events.
+- The bootstrap driver from ST-7, wired to the ssh process, with progress events.
 - Host key flow:
     - the prompt event;
     - on accept, append to `known_hosts`, hashed when `hashknownhosts yes`, then reconnect;
@@ -637,7 +641,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-4  | Done        | —      |
 | ST-5  | Done        | —      |
 | ST-6  | Done        | —      |
-| ST-7  | Not started | —      |
+| ST-7  | Done        | —      |
 | ST-8  | Not started | —      |
 | ST-9  | Not started | —      |
 | ST-10 | Not started | —      |
