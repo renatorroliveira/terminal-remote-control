@@ -1,12 +1,12 @@
 # Term Remote Control — Product Requirements Document
 
-| Field        | Value                                         |
-| ------------ | --------------------------------------------- |
-| Status       | Draft v0.5                                    |
-| Owner        | Renato Oliveira                               |
-| Last updated | 2026-11-11                                    |
-| Scope        | P0 (first release), delivered in seven epics  |
-| Working name | Term Remote Control (final name TBD)          |
+| Field        | Value                                        |
+| ------------ | -------------------------------------------- |
+| Status       | Draft v0.5                                   |
+| Owner        | Renato Oliveira                              |
+| Last updated | 2026-11-11                                   |
+| Scope        | P0 (first release), delivered in seven epics |
+| Working name | Term Remote Control (final name TBD)         |
 
 The keywords MUST, MUST NOT, SHOULD, SHOULD NOT and MAY follow
 [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Targets marked
@@ -73,13 +73,13 @@ and first-class assistive-technology support.
 
 ## 3. Goals
 
-| ID | Goal                                                                                                                                                                         |
-| -- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G1 | **Accessible.** WCAG 2.2 AA plus native assistive-technology integration on macOS, Windows and Linux. Screen reader, magnifier, keyboard-only and voice-control users (where the OS provides voice control) complete every core task. |
-| G2 | **Persistent.** Sessions survive app quit, app crash, daemon crash and daemon upgrade. Remote sessions also survive network loss and client reboot. After a host reboot, sessions respawn with their scrollback. |
-| G3 | **Zero remote setup.** Any host the user can reach with `ssh` and a key works. No sudo, no package installs and no internet access are required on the host.                  |
-| G4 | **One place.** All sessions, local and remote, in one list with live state.                                                                                                  |
-| G5 | **Secure by default.** No network listeners, OS-enforced access control, and SSH as the only remote trust boundary.                                                          |
+| ID  | Goal                                                                                                                                                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | **Accessible.** WCAG 2.2 AA plus native assistive-technology integration on macOS, Windows and Linux. Screen reader, magnifier, keyboard-only and voice-control users (where the OS provides voice control) complete every core task. |
+| G2  | **Persistent.** Sessions survive app quit, app crash, daemon crash and daemon upgrade. Remote sessions also survive network loss and client reboot. After a host reboot, sessions respawn with their scrollback.                      |
+| G3  | **Zero remote setup.** Any host the user can reach with `ssh` and a key works. No sudo, no package installs and no internet access are required on the host.                                                                          |
+| G4  | **One place.** All sessions, local and remote, in one list with live state.                                                                                                                                                           |
+| G5  | **Secure by default.** No network listeners, OS-enforced access control, and SSH as the only remote trust boundary.                                                                                                                   |
 
 Non-goals for P0 are listed in [§12](#12-out-of-scope-for-p0).
 
@@ -99,46 +99,46 @@ Non-goals for P0 are listed in [§12](#12-out-of-scope-for-p0).
 
 ## 5. Personas
 
-| Persona   | Description                                                                                                                                                       |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Sam**   | Blind developer. Uses JAWS or NVDA on Windows and VoiceOver on macOS, with a refreshable braille display. Keyboard only. Runs builds and log tails on cloud desktops for hours. |
-| **Lee**   | Low-vision site reliability engineer. Uses macOS Zoom or Windows Magnifier at 400–800%, high-contrast themes, large fonts, and Speak Selection to read long output. |
-| **Alex**  | Developer with a repetitive strain injury. Uses the keyboard plus macOS Voice Control or Windows Voice Access, and dictation.                                      |
-| **Jordan**| Sighted power user. Keeps dozens of sessions across the local computer and ten or more remote hosts. Wants speed and sessions that never die.                    |
+| Persona    | Description                                                                                                                                                                     |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Sam**    | Blind developer. Uses JAWS or NVDA on Windows and VoiceOver on macOS, with a refreshable braille display. Keyboard only. Runs builds and log tails on cloud desktops for hours. |
+| **Lee**    | Low-vision site reliability engineer. Uses macOS Zoom or Windows Magnifier at 400–800%, high-contrast themes, large fonts, and Speak Selection to read long output.             |
+| **Alex**   | Developer with a repetitive strain injury. Uses the keyboard plus macOS Voice Control or Windows Voice Access, and dictation.                                                   |
+| **Jordan** | Sighted power user. Keeps dozens of sessions across the local computer and ten or more remote hosts. Wants speed and sessions that never die.                                   |
 
 ## 6. Glossary
 
-| Term                 | Meaning                                                                                                                         |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Desktop app          | The Electron application the user sees.                                                                                         |
-| Daemon               | The per-user background service on a host that owns sessions. The same daemon runs on the local computer and on remote hosts.  |
-| Host                 | A computer that runs a daemon: "This computer" or a remote host reached over SSH.                                               |
-| Session              | A terminal: a pseudo-terminal (PTY on macOS/Linux, ConPTY on Windows), the process running in it, its scrollback and metadata. |
-| Attach / detach      | A desktop app connecting to or disconnecting from a session. Detaching never affects the session.                              |
-| Scrollback           | The retained output history of a session, kept by the daemon in memory and, from E3, on disk.                                  |
-| Review mode          | A read-only, screen-reader-navigable text view of a session's scrollback and screen (see A11Y-03).                              |
-| Shell integration    | Escape sequences (OSC 133 and compatible) that mark prompts, commands, output and exit status.                                  |
-| AT                   | Assistive technology: screen readers, magnifiers, voice control, read-aloud tools, braille displays.                           |
-| Global requirement   | A requirement every epic MUST meet for everything it delivers ([§8](#8-global-requirements)). IDs: `A11Y-*`, `SEC-*`, `NFR-*`.  |
-| Epic                 | An incremental deliverable users can use for real ([§9](#9-epics)). IDs: `E1`–`E7`.                                            |
-| User story           | A customer-facing capability that is part of an epic's acceptance criteria. IDs: `US-<epic>.<n>`.                              |
+| Term               | Meaning                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Desktop app        | The Electron application the user sees.                                                                                        |
+| Daemon             | The per-user background service on a host that owns sessions. The same daemon runs on the local computer and on remote hosts.  |
+| Host               | A computer that runs a daemon: "This computer" or a remote host reached over SSH.                                              |
+| Session            | A terminal: a pseudo-terminal (PTY on macOS/Linux, ConPTY on Windows), the process running in it, its scrollback and metadata. |
+| Attach / detach    | A desktop app connecting to or disconnecting from a session. Detaching never affects the session.                              |
+| Scrollback         | The retained output history of a session, kept by the daemon in memory and, from E3, on disk.                                  |
+| Review mode        | A read-only, screen-reader-navigable text view of a session's scrollback and screen (see A11Y-03).                             |
+| Shell integration  | Escape sequences (OSC 133 and compatible) that mark prompts, commands, output and exit status.                                 |
+| AT                 | Assistive technology: screen readers, magnifiers, voice control, read-aloud tools, braille displays.                           |
+| Global requirement | A requirement every epic MUST meet for everything it delivers ([§8](#8-global-requirements)). IDs: `A11Y-*`, `SEC-*`, `NFR-*`. |
+| Epic               | An incremental deliverable users can use for real ([§9](#9-epics)). IDs: `E1`–`E7`.                                            |
+| User story         | A customer-facing capability that is part of an epic's acceptance criteria. IDs: `US-<epic>.<n>`.                              |
 
 ## 7. Platform support
 
 ### 7.1 Desktop app
 
-| OS      | Versions                                         | Notes                                                                 |
-| ------- | ------------------------------------------------ | --------------------------------------------------------------------- |
-| macOS   | Current and previous major release; Apple silicon and Intel | Local shells: the user's login shell.                       |
-| Windows | Windows 11, all versions under Microsoft support | Local shells: PowerShell 7, Windows PowerShell 5.1, cmd, WSL distributions. |
-| Linux   | Ubuntu LTS (current and previous), Fedora (current); GNOME on Wayland and X11 | Local shells: the user's login shell.          |
+| OS      | Versions                                                                      | Notes                                                                       |
+| ------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| macOS   | Current and previous major release; Apple silicon and Intel                   | Local shells: the user's login shell.                                       |
+| Windows | Windows 11, all versions under Microsoft support                              | Local shells: PowerShell 7, Windows PowerShell 5.1, cmd, WSL distributions. |
+| Linux   | Ubuntu LTS (current and previous), Fedora (current); GNOME on Wayland and X11 | Local shells: the user's login shell.                                       |
 
 ### 7.2 Remote hosts
 
-| OS    | Architectures     | Notes                                                    |
-| ----- | ----------------- | -------------------------------------------------------- |
-| Linux | x86_64, arm64     | glibc and musl distributions. No packages installed.     |
-| macOS | arm64, x86_64     | Current and previous two major releases.                 |
+| OS    | Architectures | Notes                                                |
+| ----- | ------------- | ---------------------------------------------------- |
+| Linux | x86_64, arm64 | glibc and musl distributions. No packages installed. |
+| macOS | arm64, x86_64 | Current and previous two major releases.             |
 
 Remote host prerequisites: an OpenSSH server that accepts public-key
 authentication for the user, a POSIX `sh`, standard base utilities, and a
@@ -154,29 +154,29 @@ this matrix, for each desktop platform an epic delivers (§7.4). A cell marked
 gate. "Current and previous" means the current and previous major release of the
 AT.
 
-| Capability              | macOS                                                                 | Windows                                                         | Linux                                  |
-| ----------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------- |
-| Platform API            | NSAccessibility                                                       | UI Automation; MSAA / IAccessible2                              | AT-SPI2                                |
-| Screen readers          | VoiceOver                                                             | JAWS, NVDA (current and previous); Narrator                     | Orca                                   |
-| Braille                 | VoiceOver braille                                                     | JAWS and NVDA braille                                           | Orca braille (BRLTTY)                  |
-| Magnifier               | Zoom                                                                  | Magnifier                                                       | GNOME Magnifier                        |
-| Voice control, dictation| Voice Control, Dictation                                              | Voice Access, Voice Typing                                      | — (no OS-provided voice control; not gated) |
-| Read aloud              | Spoken Content: Speak Selection, Speak items under the pointer        | Narrator                                                        | Orca                                   |
-| Keyboard access         | Full Keyboard Access                                                  | Standard keyboard navigation                                    | Standard keyboard navigation           |
-| Display preferences     | Dark mode, Increase Contrast, Reduce Motion, Reduce Transparency, Differentiate Without Color | Dark mode, Contrast themes, Animation effects, Text size | Dark style, High Contrast, Reduce Animation, Large Text |
+| Capability               | macOS                                                                                         | Windows                                                  | Linux                                                   |
+| ------------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------- |
+| Platform API             | NSAccessibility                                                                               | UI Automation; MSAA / IAccessible2                       | AT-SPI2                                                 |
+| Screen readers           | VoiceOver                                                                                     | JAWS, NVDA (current and previous); Narrator              | Orca                                                    |
+| Braille                  | VoiceOver braille                                                                             | JAWS and NVDA braille                                    | Orca braille (BRLTTY)                                   |
+| Magnifier                | Zoom                                                                                          | Magnifier                                                | GNOME Magnifier                                         |
+| Voice control, dictation | Voice Control, Dictation                                                                      | Voice Access, Voice Typing                               | — (no OS-provided voice control; not gated)             |
+| Read aloud               | Spoken Content: Speak Selection, Speak items under the pointer                                | Narrator                                                 | Orca                                                    |
+| Keyboard access          | Full Keyboard Access                                                                          | Standard keyboard navigation                             | Standard keyboard navigation                            |
+| Display preferences      | Dark mode, Increase Contrast, Reduce Motion, Reduce Transparency, Differentiate Without Color | Dark mode, Contrast themes, Animation effects, Text size | Dark style, High Contrast, Reduce Animation, Large Text |
 
 Dragon (Windows) and macOS Switch Control SHOULD work. They are not release gates
 for P0.
 
 ### 7.4 Platform delivery order
 
-| Order | Platform                                                      | First delivered in |
-| ----- | ------------------------------------------------------------- | ------------------ |
-| 1     | macOS desktop app                                             | E1                 |
-| 2     | Linux remote daemon                                           | E1                 |
+| Order | Platform                                                       | First delivered in |
+| ----- | -------------------------------------------------------------- | ------------------ |
+| 1     | macOS desktop app                                              | E1                 |
+| 2     | Linux remote daemon                                            | E1                 |
 | 3     | macOS daemon: local sessions on the Mac and macOS remote hosts | E5                 |
-| 4     | Windows desktop app and local Windows daemon                  | E6                 |
-| 5     | Linux desktop app and local Linux daemon                      | E7                 |
+| 4     | Windows desktop app and local Windows daemon                   | E6                 |
+| 5     | Linux desktop app and local Linux daemon                       | E7                 |
 
 ## 8. Global requirements
 
@@ -288,12 +288,12 @@ read-aloud tools work on it.
    selection in review mode, Select All, and "select last command output" — is
    exposed, up to the size cap in item 7, as the selection of the focused
    accessible text element through the platform API:
-   - macOS: `AXSelectedText`, `AXSelectedTextRange` and
-     `AXSelectedTextMarkerRange` of the terminal's text field, as spike S2
-     confirmed for R1.
-   - Windows: UI Automation `TextPattern` selection, and IAccessible2 text
-     selection for clients that use it.
-   - Linux: AT-SPI2 `Text` interface selection.
+    - macOS: `AXSelectedText`, `AXSelectedTextRange` and
+      `AXSelectedTextMarkerRange` of the terminal's text field, as spike S2
+      confirmed for R1.
+    - Windows: UI Automation `TextPattern` selection, and IAccessible2 text
+      selection for clients that use it.
+    - Linux: AT-SPI2 `Text` interface selection.
 2. These work on the selection in both the live terminal and review mode:
    macOS Spoken Content "Speak Selection"; each screen reader's command for
    reading the current selection, where it has one; macOS Look Up and the
@@ -598,21 +598,21 @@ Logs the user shares for support MUST contain nothing sensitive.
 All targets are initial and are validated during design. Each requirement
 applies from the epic in the last column onward.
 
-| ID     | Area                        | Requirement                                                                                                                         | Initial target                                  | Applies from |
-| ------ | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------ |
-| NFR-01 | Input latency (local)       | Latency the app and daemon add between a keystroke and its echo, excluding the shell.                                               | p95 ≤ 10 ms                                     | E5           |
-| NFR-02 | Input latency (remote)      | Same, for remote sessions.                                                                                                          | p95 ≤ SSH round-trip time + 10 ms               | E1           |
-| NFR-03 | Throughput                  | Under sustained output (for example `yes`, or `cat` of a 1 GB file), the UI stays interactive and Ctrl+C reaches the process quickly. | Interrupt delivered p95 ≤ 100 ms                | E1           |
-| NFR-04 | AT responsiveness           | With a screen reader on, speech of new output starts promptly, and flood control keeps the screen reader responsive under sustained output. | Speech starts ≤ 500 ms after output, when idle | E1           |
-| NFR-05 | Scale                       | Sessions per host and hosts per app without breaching the latency targets; state changes reach attached clients quickly.           | ≥ 100 sessions/host; ≥ 25 hosts; state p95 ≤ 250 ms | E1       |
-| NFR-06 | Startup                     | Window interactive after launch; remote reconnects started; local sessions listed.                                                  | ≤ 2 s; ≤ 1 s after window; ≤ 1 s after window   | E1; E2; E5   |
-| NFR-07 | Reconnect                   | Dead-connection detection; reconnection once the network is back.                                                                  | Detect ≤ 30 s; reconnect ≤ 5 s on a healthy network | E1; E2   |
-| NFR-08 | Durability                  | Lag between live output and on-disk scrollback, which bounds loss on power failure.                                                 | ≤ 5 s                                           | E3           |
-| NFR-09 | Daemon footprint            | Idle daemon memory and CPU; overhead per session beyond scrollback.                                                                 | ≤ 30 MB RSS, ≤ 0.5% CPU idle; ≤ 10 MB/session   | E1           |
-| NFR-10 | Scrollback                  | Configurable per session with bounded memory.                                                                                       | Default 10,000 lines; configurable to ≥ 100,000 | E1           |
-| NFR-11 | Reliability                 | Session loss across automated soak cycles of app quit and crash, daemon kill and upgrade, and network flaps.                       | 0 sessions lost in 1,000 cycles per scenario    | E2           |
-| NFR-12 | Compatibility               | App-to-daemon protocol compatibility.                                                                                               | Current and previous protocol version           | E2           |
-| NFR-13 | Localization                | UI strings externalized; UI language exposed programmatically.                                                                      | P0 ships English                                | E1           |
+| ID     | Area                   | Requirement                                                                                                                                 | Initial target                                      | Applies from |
+| ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------ |
+| NFR-01 | Input latency (local)  | Latency the app and daemon add between a keystroke and its echo, excluding the shell.                                                       | p95 ≤ 10 ms                                         | E5           |
+| NFR-02 | Input latency (remote) | Same, for remote sessions.                                                                                                                  | p95 ≤ SSH round-trip time + 10 ms                   | E1           |
+| NFR-03 | Throughput             | Under sustained output (for example `yes`, or `cat` of a 1 GB file), the UI stays interactive and Ctrl+C reaches the process quickly.       | Interrupt delivered p95 ≤ 100 ms                    | E1           |
+| NFR-04 | AT responsiveness      | With a screen reader on, speech of new output starts promptly, and flood control keeps the screen reader responsive under sustained output. | Speech starts ≤ 500 ms after output, when idle      | E1           |
+| NFR-05 | Scale                  | Sessions per host and hosts per app without breaching the latency targets; state changes reach attached clients quickly.                    | ≥ 100 sessions/host; ≥ 25 hosts; state p95 ≤ 250 ms | E1           |
+| NFR-06 | Startup                | Window interactive after launch; remote reconnects started; local sessions listed.                                                          | ≤ 2 s; ≤ 1 s after window; ≤ 1 s after window       | E1; E2; E5   |
+| NFR-07 | Reconnect              | Dead-connection detection; reconnection once the network is back.                                                                           | Detect ≤ 30 s; reconnect ≤ 5 s on a healthy network | E1; E2       |
+| NFR-08 | Durability             | Lag between live output and on-disk scrollback, which bounds loss on power failure.                                                         | ≤ 5 s                                               | E3           |
+| NFR-09 | Daemon footprint       | Idle daemon memory and CPU; overhead per session beyond scrollback.                                                                         | ≤ 30 MB RSS, ≤ 0.5% CPU idle; ≤ 10 MB/session       | E1           |
+| NFR-10 | Scrollback             | Configurable per session with bounded memory.                                                                                               | Default 10,000 lines; configurable to ≥ 100,000     | E1           |
+| NFR-11 | Reliability            | Session loss across automated soak cycles of app quit and crash, daemon kill and upgrade, and network flaps.                                | 0 sessions lost in 1,000 cycles per scenario        | E2           |
+| NFR-12 | Compatibility          | App-to-daemon protocol compatibility.                                                                                                       | Current and previous protocol version               | E2           |
+| NFR-13 | Localization           | UI strings externalized; UI language exposed programmatically.                                                                              | P0 ships English                                    | E1           |
 
 ## 9. Epics
 
@@ -631,15 +631,15 @@ An epic is done when all of the following hold:
 The implementation breakdown of each epic lives in a separate plan per epic,
 `docs/plans/epic-NN-implementation-plan.md`.
 
-| Epic | Users can…                                                                                         | Desktop                | Hosts                         | User stories |
-| ---- | -------------------------------------------------------------------------------------------------- | ---------------------- | ----------------------------- | ------------ |
-| [E1](#91-e1--accessible-remote-terminal-macos-app-to-linux-hosts) | Run and manage terminal sessions on Linux hosts from an accessible macOS app | macOS                  | Linux                         | 14           |
-| [E2](#92-e2--remote-sessions-that-outlive-the-app-and-the-network) | Quit, sleep or roam and come back to the same running sessions, from more than one Mac | macOS | Linux                  | 6            |
-| [E3](#93-e3--sessions-that-survive-a-host-reboot) | Get sessions back, with their history, after a host restarts, manage each host's daemon, and keep the app up to date | macOS | Linux | 4            |
-| [E4](#94-e4--command-aware-terminal) | Jump between commands, hear exit status and background events, reach any session fast          | macOS                  | Linux                         | 4            |
-| [E5](#95-e5--local-sessions-on-the-mac-and-macos-hosts) | Run persistent local sessions on the Mac, and add macOS hosts                    | macOS                  | Linux, macOS, this Mac        | 5            |
-| [E6](#96-e6--windows-desktop) | Do everything above from Windows, with persistent local Windows sessions                           | macOS, Windows         | Linux, macOS, this computer   | 3            |
-| [E7](#97-e7--linux-desktop) | Do everything above from Linux, with persistent local Linux sessions                                   | macOS, Windows, Linux  | Linux, macOS, this computer   | 2            |
+| Epic                                                               | Users can…                                                                                                           | Desktop               | Hosts                       | User stories |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | --------------------- | --------------------------- | ------------ |
+| [E1](#91-e1--accessible-remote-terminal-macos-app-to-linux-hosts)  | Run and manage terminal sessions on Linux hosts from an accessible macOS app                                         | macOS                 | Linux                       | 14           |
+| [E2](#92-e2--remote-sessions-that-outlive-the-app-and-the-network) | Quit, sleep or roam and come back to the same running sessions, from more than one Mac                               | macOS                 | Linux                       | 6            |
+| [E3](#93-e3--sessions-that-survive-a-host-reboot)                  | Get sessions back, with their history, after a host restarts, manage each host's daemon, and keep the app up to date | macOS                 | Linux                       | 4            |
+| [E4](#94-e4--command-aware-terminal)                               | Jump between commands, hear exit status and background events, reach any session fast                                | macOS                 | Linux                       | 4            |
+| [E5](#95-e5--local-sessions-on-the-mac-and-macos-hosts)            | Run persistent local sessions on the Mac, and add macOS hosts                                                        | macOS                 | Linux, macOS, this Mac      | 5            |
+| [E6](#96-e6--windows-desktop)                                      | Do everything above from Windows, with persistent local Windows sessions                                             | macOS, Windows        | Linux, macOS, this computer | 3            |
+| [E7](#97-e7--linux-desktop)                                        | Do everything above from Linux, with persistent local Linux sessions                                                 | macOS, Windows, Linux | Linux, macOS, this computer | 2            |
 
 ### 9.1 E1 — Accessible remote terminal: macOS app to Linux hosts
 
@@ -1403,59 +1403,59 @@ Text that programs write to a terminal is third-party content. The product is
 responsible for exposing it accessibly — as real text, with minimum contrast,
 navigable, selectable — but not for the semantics of a program's own layout.
 
-| SC      | Name                                   | Level | How it applies                                                                                              | Requirements                       |
-| ------- | -------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| 1.1.1   | Non-text Content                       | A     | Icons have text alternatives; decorative icons are hidden; audio cues have spoken or visual equivalents.    | A11Y-11, A11Y-12                   |
-| 1.2.1–1.2.5 | Time-based media                   | A/AA  | Not applicable: P0 contains no audio or video content. Future documentation videos need captions and audio description. | —                  |
-| 1.3.1   | Info and Relationships                 | A     | Regions, session tree, dialog and field labels are exposed programmatically; terminal text is exposed as lines. | A11Y-01, A11Y-03, A11Y-11, US-1.6 |
-| 1.3.2   | Meaningful Sequence                    | A     | Terminal reading order is logical line order with soft wraps joined.                                        | A11Y-02, A11Y-03                   |
-| 1.3.3   | Sensory Characteristics                | A     | Instructions do not rely on shape, color, position or sound alone.                                          | A11Y-10                            |
-| 1.3.4   | Orientation                            | AA    | The layout works in any display orientation.                                                                | A11Y-11                            |
-| 1.3.5   | Identify Input Purpose                 | AA    | The SSH user-name field exposes its purpose.                                                                | A11Y-11, US-1.1                    |
-| 1.4.1   | Use of Color                           | A     | States and errors never rely on color alone; the selection highlight also differs in luminance by at least 3:1. | A11Y-04, A11Y-07, US-1.9       |
-| 1.4.2   | Audio Control                          | A     | Audio cues are under 3 seconds with volume and off controls.                                                | A11Y-12                            |
-| 1.4.3   | Contrast (Minimum)                     | AA    | UI contrast in all themes; terminal minimum-contrast enforcement.                                           | A11Y-07                            |
-| 1.4.4   | Resize Text                            | AA    | Font size and zoom to at least 200%.                                                                        | A11Y-07                            |
-| 1.4.5   | Images of Text                         | AA    | No images of text in the UI. Terminal glyphs are rendered from user-selectable fonts. If they are drawn on a canvas or GPU surface, the Customizable exception applies, because font, size and colors are user-controlled. | A11Y-07 |
-| 1.4.10  | Reflow                                 | AA    | UI reflows at 320 CSS px; the terminal grid is two-dimensional content excepted by the criterion.           | A11Y-07                            |
-| 1.4.11  | Non-text Contrast                      | AA    | Focus indicators, control boundaries, cursor and selection at least 3:1.                                    | A11Y-04, A11Y-06, A11Y-07          |
-| 1.4.12  | Text Spacing                           | AA    | Applies to markup-based content: app UI and review mode tolerate the overrides. The terminal grid offers line-height and letter-spacing settings. | A11Y-07 |
-| 1.4.13  | Content on Hover or Focus              | AA    | Tooltips and link previews are dismissible, hoverable and persistent.                                       | A11Y-11, US-1.12                   |
-| 2.1.1   | Keyboard                               | A     | Every function, including text selection, works from the keyboard.                                          | A11Y-03, A11Y-05                   |
-| 2.1.2   | No Keyboard Trap                       | A     | Region-cycling key, Tab focus mode, and the leave-terminal hint on focus.                                   | A11Y-01, A11Y-05                   |
-| 2.1.4   | Character Key Shortcuts                | A     | No single-character shortcuts; all shortcuts rebindable.                                                    | A11Y-05                            |
-| 2.2.1   | Timing Adjustable                      | A     | No time limits on dialogs, confirmations or host-key prompts.                                               | A11Y-11, US-1.2                    |
-| 2.2.2   | Pause, Stop, Hide                      | A     | Blink controls. Terminal output is the primary content, not content presented in parallel with it; the user pauses it by scrolling back (pinned viewport) or reading in review mode, which does not move with output. | A11Y-03, A11Y-08 |
-| 2.3.1   | Three Flashes or Below Threshold       | A     | Visual bell rate limit.                                                                                     | A11Y-08                            |
-| 2.4.1   | Bypass Blocks                          | A     | Named regions and region-cycling key.                                                                       | A11Y-05, A11Y-11                   |
-| 2.4.2   | Page Titled                            | A     | Window title names the session and host.                                                                    | A11Y-01                            |
-| 2.4.3   | Focus Order                            | A     | Focus order follows the visual layout; focus returns to the opener.                                         | A11Y-05                            |
-| 2.4.4   | Link Purpose (In Context)              | A     | UI links are descriptive; terminal links expose their target.                                               | A11Y-11, US-1.12                   |
-| 2.4.5   | Multiple Ways                          | AA    | Intent met in-app: sidebar, next/previous shortcuts, quick switcher.                                        | US-1.6, US-1.8, US-4.4             |
-| 2.4.6   | Headings and Labels                    | AA    | Descriptive labels and dialog headings.                                                                     | A11Y-11                            |
-| 2.4.7   | Focus Visible                          | AA    | Visible focus indicator everywhere.                                                                         | A11Y-06                            |
-| 2.4.11  | Focus Not Obscured (Minimum)           | AA    | Overlays never fully hide the focused element.                                                              | A11Y-06                            |
-| 2.5.1   | Pointer Gestures                       | A     | No multipoint or path-based gestures required.                                                              | A11Y-11                            |
-| 2.5.2   | Pointer Cancellation                   | A     | Activation on pointer release.                                                                              | A11Y-11                            |
-| 2.5.3   | Label in Name                          | A     | Accessible names contain visible labels.                                                                    | A11Y-09, A11Y-11                   |
-| 2.5.4   | Motion Actuation                       | A     | Not applicable: no motion-triggered functions.                                                              | —                                  |
-| 2.5.7   | Dragging Movements                     | AA    | Keyboard and single-pointer alternatives for sidebar resize, session reorder and text selection.           | A11Y-04, A11Y-11, US-1.6, US-1.10  |
-| 2.5.8   | Target Size (Minimum)                  | AA    | Targets at least 24 by 24 CSS px.                                                                           | A11Y-11                            |
-| 3.1.1   | Language of Page                       | A     | UI language is exposed programmatically.                                                                    | A11Y-11, NFR-13                    |
-| 3.1.2   | Language of Parts                      | AA    | UI passages in another language are marked. Terminal output language is unknown third-party content.       | A11Y-11                            |
-| 3.2.1   | On Focus                               | A     | Moving focus in the session list does not switch the terminal.                                              | A11Y-11, US-1.8                    |
-| 3.2.2   | On Input                               | A     | Changing a setting never moves focus or opens a window unexpectedly.                                        | A11Y-11                            |
-| 3.2.3   | Consistent Navigation                  | AA    | Intent met in-app: regions and menus keep the same order everywhere.                                        | A11Y-11                            |
-| 3.2.4   | Consistent Identification              | AA    | Intent met in-app: same function, same label and icon everywhere.                                           | A11Y-11                            |
-| 3.2.6   | Consistent Help                        | A     | Help menu and accessibility-help shortcut in the same place in every context.                               | A11Y-10                            |
-| 3.3.1   | Error Identification                   | A     | Errors identified in text.                                                                                  | A11Y-11, US-1.3                    |
-| 3.3.2   | Labels or Instructions                 | A     | All fields labeled with instructions where needed.                                                          | A11Y-11                            |
-| 3.3.3   | Error Suggestion                       | AA    | Every error suggests a fix.                                                                                 | A11Y-11, US-1.3                    |
-| 3.3.4   | Error Prevention (Legal, Financial, Data) | AA | Deleting user data (close session, remove daemon, forget host) requires confirmation.                       | A11Y-11, US-1.10, US-3.3           |
-| 3.3.7   | Redundant Entry                        | A     | Previously entered hosts and session settings are offered again.                                            | A11Y-11, US-1.1                    |
-| 3.3.8   | Accessible Authentication (Minimum)    | AA    | Key-based SSH: no passwords and no cognitive test. Host-key fingerprints are copyable for comparison.      | US-1.1, US-1.2                     |
-| 4.1.2   | Name, Role, Value                      | A     | Every control and the terminal expose name, role, state and value.                                          | A11Y-01, A11Y-11                   |
-| 4.1.3   | Status Messages                        | AA    | State changes, progress, results and errors are announced without moving focus.                             | A11Y-12, A11Y-04, US-3.4           |
+| SC          | Name                                      | Level | How it applies                                                                                                                                                                                                             | Requirements                      |
+| ----------- | ----------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| 1.1.1       | Non-text Content                          | A     | Icons have text alternatives; decorative icons are hidden; audio cues have spoken or visual equivalents.                                                                                                                   | A11Y-11, A11Y-12                  |
+| 1.2.1–1.2.5 | Time-based media                          | A/AA  | Not applicable: P0 contains no audio or video content. Future documentation videos need captions and audio description.                                                                                                    | —                                 |
+| 1.3.1       | Info and Relationships                    | A     | Regions, session tree, dialog and field labels are exposed programmatically; terminal text is exposed as lines.                                                                                                            | A11Y-01, A11Y-03, A11Y-11, US-1.6 |
+| 1.3.2       | Meaningful Sequence                       | A     | Terminal reading order is logical line order with soft wraps joined.                                                                                                                                                       | A11Y-02, A11Y-03                  |
+| 1.3.3       | Sensory Characteristics                   | A     | Instructions do not rely on shape, color, position or sound alone.                                                                                                                                                         | A11Y-10                           |
+| 1.3.4       | Orientation                               | AA    | The layout works in any display orientation.                                                                                                                                                                               | A11Y-11                           |
+| 1.3.5       | Identify Input Purpose                    | AA    | The SSH user-name field exposes its purpose.                                                                                                                                                                               | A11Y-11, US-1.1                   |
+| 1.4.1       | Use of Color                              | A     | States and errors never rely on color alone; the selection highlight also differs in luminance by at least 3:1.                                                                                                            | A11Y-04, A11Y-07, US-1.9          |
+| 1.4.2       | Audio Control                             | A     | Audio cues are under 3 seconds with volume and off controls.                                                                                                                                                               | A11Y-12                           |
+| 1.4.3       | Contrast (Minimum)                        | AA    | UI contrast in all themes; terminal minimum-contrast enforcement.                                                                                                                                                          | A11Y-07                           |
+| 1.4.4       | Resize Text                               | AA    | Font size and zoom to at least 200%.                                                                                                                                                                                       | A11Y-07                           |
+| 1.4.5       | Images of Text                            | AA    | No images of text in the UI. Terminal glyphs are rendered from user-selectable fonts. If they are drawn on a canvas or GPU surface, the Customizable exception applies, because font, size and colors are user-controlled. | A11Y-07                           |
+| 1.4.10      | Reflow                                    | AA    | UI reflows at 320 CSS px; the terminal grid is two-dimensional content excepted by the criterion.                                                                                                                          | A11Y-07                           |
+| 1.4.11      | Non-text Contrast                         | AA    | Focus indicators, control boundaries, cursor and selection at least 3:1.                                                                                                                                                   | A11Y-04, A11Y-06, A11Y-07         |
+| 1.4.12      | Text Spacing                              | AA    | Applies to markup-based content: app UI and review mode tolerate the overrides. The terminal grid offers line-height and letter-spacing settings.                                                                          | A11Y-07                           |
+| 1.4.13      | Content on Hover or Focus                 | AA    | Tooltips and link previews are dismissible, hoverable and persistent.                                                                                                                                                      | A11Y-11, US-1.12                  |
+| 2.1.1       | Keyboard                                  | A     | Every function, including text selection, works from the keyboard.                                                                                                                                                         | A11Y-03, A11Y-05                  |
+| 2.1.2       | No Keyboard Trap                          | A     | Region-cycling key, Tab focus mode, and the leave-terminal hint on focus.                                                                                                                                                  | A11Y-01, A11Y-05                  |
+| 2.1.4       | Character Key Shortcuts                   | A     | No single-character shortcuts; all shortcuts rebindable.                                                                                                                                                                   | A11Y-05                           |
+| 2.2.1       | Timing Adjustable                         | A     | No time limits on dialogs, confirmations or host-key prompts.                                                                                                                                                              | A11Y-11, US-1.2                   |
+| 2.2.2       | Pause, Stop, Hide                         | A     | Blink controls. Terminal output is the primary content, not content presented in parallel with it; the user pauses it by scrolling back (pinned viewport) or reading in review mode, which does not move with output.      | A11Y-03, A11Y-08                  |
+| 2.3.1       | Three Flashes or Below Threshold          | A     | Visual bell rate limit.                                                                                                                                                                                                    | A11Y-08                           |
+| 2.4.1       | Bypass Blocks                             | A     | Named regions and region-cycling key.                                                                                                                                                                                      | A11Y-05, A11Y-11                  |
+| 2.4.2       | Page Titled                               | A     | Window title names the session and host.                                                                                                                                                                                   | A11Y-01                           |
+| 2.4.3       | Focus Order                               | A     | Focus order follows the visual layout; focus returns to the opener.                                                                                                                                                        | A11Y-05                           |
+| 2.4.4       | Link Purpose (In Context)                 | A     | UI links are descriptive; terminal links expose their target.                                                                                                                                                              | A11Y-11, US-1.12                  |
+| 2.4.5       | Multiple Ways                             | AA    | Intent met in-app: sidebar, next/previous shortcuts, quick switcher.                                                                                                                                                       | US-1.6, US-1.8, US-4.4            |
+| 2.4.6       | Headings and Labels                       | AA    | Descriptive labels and dialog headings.                                                                                                                                                                                    | A11Y-11                           |
+| 2.4.7       | Focus Visible                             | AA    | Visible focus indicator everywhere.                                                                                                                                                                                        | A11Y-06                           |
+| 2.4.11      | Focus Not Obscured (Minimum)              | AA    | Overlays never fully hide the focused element.                                                                                                                                                                             | A11Y-06                           |
+| 2.5.1       | Pointer Gestures                          | A     | No multipoint or path-based gestures required.                                                                                                                                                                             | A11Y-11                           |
+| 2.5.2       | Pointer Cancellation                      | A     | Activation on pointer release.                                                                                                                                                                                             | A11Y-11                           |
+| 2.5.3       | Label in Name                             | A     | Accessible names contain visible labels.                                                                                                                                                                                   | A11Y-09, A11Y-11                  |
+| 2.5.4       | Motion Actuation                          | A     | Not applicable: no motion-triggered functions.                                                                                                                                                                             | —                                 |
+| 2.5.7       | Dragging Movements                        | AA    | Keyboard and single-pointer alternatives for sidebar resize, session reorder and text selection.                                                                                                                           | A11Y-04, A11Y-11, US-1.6, US-1.10 |
+| 2.5.8       | Target Size (Minimum)                     | AA    | Targets at least 24 by 24 CSS px.                                                                                                                                                                                          | A11Y-11                           |
+| 3.1.1       | Language of Page                          | A     | UI language is exposed programmatically.                                                                                                                                                                                   | A11Y-11, NFR-13                   |
+| 3.1.2       | Language of Parts                         | AA    | UI passages in another language are marked. Terminal output language is unknown third-party content.                                                                                                                       | A11Y-11                           |
+| 3.2.1       | On Focus                                  | A     | Moving focus in the session list does not switch the terminal.                                                                                                                                                             | A11Y-11, US-1.8                   |
+| 3.2.2       | On Input                                  | A     | Changing a setting never moves focus or opens a window unexpectedly.                                                                                                                                                       | A11Y-11                           |
+| 3.2.3       | Consistent Navigation                     | AA    | Intent met in-app: regions and menus keep the same order everywhere.                                                                                                                                                       | A11Y-11                           |
+| 3.2.4       | Consistent Identification                 | AA    | Intent met in-app: same function, same label and icon everywhere.                                                                                                                                                          | A11Y-11                           |
+| 3.2.6       | Consistent Help                           | A     | Help menu and accessibility-help shortcut in the same place in every context.                                                                                                                                              | A11Y-10                           |
+| 3.3.1       | Error Identification                      | A     | Errors identified in text.                                                                                                                                                                                                 | A11Y-11, US-1.3                   |
+| 3.3.2       | Labels or Instructions                    | A     | All fields labeled with instructions where needed.                                                                                                                                                                         | A11Y-11                           |
+| 3.3.3       | Error Suggestion                          | AA    | Every error suggests a fix.                                                                                                                                                                                                | A11Y-11, US-1.3                   |
+| 3.3.4       | Error Prevention (Legal, Financial, Data) | AA    | Deleting user data (close session, remove daemon, forget host) requires confirmation.                                                                                                                                      | A11Y-11, US-1.10, US-3.3          |
+| 3.3.7       | Redundant Entry                           | A     | Previously entered hosts and session settings are offered again.                                                                                                                                                           | A11Y-11, US-1.1                   |
+| 3.3.8       | Accessible Authentication (Minimum)       | AA    | Key-based SSH: no passwords and no cognitive test. Host-key fingerprints are copyable for comparison.                                                                                                                      | US-1.1, US-1.2                    |
+| 4.1.2       | Name, Role, Value                         | A     | Every control and the terminal expose name, role, state and value.                                                                                                                                                         | A11Y-01, A11Y-11                  |
+| 4.1.3       | Status Messages                           | AA    | State changes, progress, results and errors are announced without moving focus.                                                                                                                                            | A11Y-12, A11Y-04, US-3.4          |
 
 WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
 
@@ -1467,13 +1467,13 @@ WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
    matrix ([§7.3](#73-assistive-technology-matrix-p0)) for the desktop
    platforms delivered so far ([§7.4](#74-platform-delivery-order)).
 2. **Automated checks in CI.**
-   - axe-core with the WCAG 2.2 A and AA rule sets on every view of the
-     renderer, driven through the Electron app.
-   - Keyboard-only end-to-end tests for every user story.
-   - Contrast checks for every built-in theme and the selection, focus and
-     cursor colors.
-   - Accessibility tree snapshot tests for the terminal, review mode and session
-     list where the platform allows scripted inspection.
+    - axe-core with the WCAG 2.2 A and AA rule sets on every view of the
+      renderer, driven through the Electron app.
+    - Keyboard-only end-to-end tests for every user story.
+    - Contrast checks for every built-in theme and the selection, focus and
+      cursor colors.
+    - Accessibility tree snapshot tests for the terminal, review mode and session
+      list where the platform allows scripted inspection.
 3. **Manual verification.** Scripted test passes per user story with each screen
    reader, magnifier and voice-control tool in the matrix. Platform inspectors —
    Accessibility Inspector (macOS), Accessibility Insights for Windows,
@@ -1497,46 +1497,46 @@ WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
 
 ## 12. Out of scope for P0
 
-| Item                                                        | Notes                         |
-| ----------------------------------------------------------- | ----------------------------- |
-| Windows remote hosts (OpenSSH Server on Windows)            | Candidate for P1.             |
-| Password and keyboard-interactive SSH authentication        | Not planned.                  |
-| Split panes, tabs and multiple windows                      | Candidate for P1.             |
+| Item                                                        | Notes                                    |
+| ----------------------------------------------------------- | ---------------------------------------- |
+| Windows remote hosts (OpenSSH Server on Windows)            | Candidate for P1.                        |
+| Password and keyboard-interactive SSH authentication        | Not planned.                             |
+| Split panes, tabs and multiple windows                      | Candidate for P1.                        |
 | Automatic restart policies (restart on exit or failure)     | Candidate for P1. P0 has manual restart. |
-| Per-session resource metrics (CPU, memory)                  | Candidate for P1.             |
-| Command-line client to list and attach sessions             | Candidate for P1.             |
-| File transfer, port-forwarding UI, SSH configuration editor | Not planned for P1.           |
-| Sharing sessions with other OS users                        | Not planned.                  |
-| Mobile and web clients; settings sync across computers      | Not planned for P1.           |
-| Importing existing tmux or screen sessions                  | Not planned.                  |
-| Serial, telnet and mosh connections                         | Not planned.                  |
-| Right-to-left UI localization                               | After P0 localization work.   |
+| Per-session resource metrics (CPU, memory)                  | Candidate for P1.                        |
+| Command-line client to list and attach sessions             | Candidate for P1.                        |
+| File transfer, port-forwarding UI, SSH configuration editor | Not planned for P1.                      |
+| Sharing sessions with other OS users                        | Not planned.                             |
+| Mobile and web clients; settings sync across computers      | Not planned for P1.                      |
+| Importing existing tmux or screen sessions                  | Not planned.                             |
+| Serial, telnet and mosh connections                         | Not planned.                             |
+| Right-to-left UI localization                               | After P0 localization work.              |
 
 ## 13. Risks and required spikes
 
-| ID  | Risk                                                                                                                                                                                                 | Mitigation                                                                                                                          | Retired by |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| R1  | **OS-visible selection (A11Y-04).** Terminal libraries such as xterm.js draw their own selection over a canvas or GPU surface. The OS sees no selected text. Which selection attributes Chromium exposes for read-only text (on macOS, text markers rather than `AXSelectedTextRange`) is unconfirmed. | Spike at the start of E1: mirror the terminal selection into a real selection on accessible text that Chromium exposes to each platform API. Record the attribute mapping per OS, and verify Speak Selection and each screen reader's selection command on every matrix cell as each platform arrives. | E1 (macOS); re-verified in E6, E7 |
-| R2  | **Accessible text layer performance.** A parallel text layer for AT must track a fast-changing grid and a large scrollback without slowing rendering or flooding the accessibility tree.            | Spike at the start of E1: virtualize the text layer, batch updates, and measure against NFR-03 and NFR-04 with each screen reader running. | E1; re-verified in E6, E7 |
-| R3  | **Linux AT detection.** Chromium's detection of a running AT on Linux is less reliable than on macOS and Windows.                                                                                     | Manual toggle and command-line flag (A11Y-10); test Orca on Wayland and X11.                                                        | E7         |
+| ID  | Risk                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Mitigation                                                                                                                                                                                                                                                                                                                                                                     | Retired by                           |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| R1  | **OS-visible selection (A11Y-04).** Terminal libraries such as xterm.js draw their own selection over a canvas or GPU surface. The OS sees no selected text. Which selection attributes Chromium exposes for read-only text (on macOS, text markers rather than `AXSelectedTextRange`) is unconfirmed.                                                                                                                                                           | Spike at the start of E1: mirror the terminal selection into a real selection on accessible text that Chromium exposes to each platform API. Record the attribute mapping per OS, and verify Speak Selection and each screen reader's selection command on every matrix cell as each platform arrives.                                                                         | E1 (macOS); re-verified in E6, E7    |
+| R2  | **Accessible text layer performance.** A parallel text layer for AT must track a fast-changing grid and a large scrollback without slowing rendering or flooding the accessibility tree.                                                                                                                                                                                                                                                                         | Spike at the start of E1: virtualize the text layer, batch updates, and measure against NFR-03 and NFR-04 with each screen reader running.                                                                                                                                                                                                                                     | E1; re-verified in E6, E7            |
+| R3  | **Linux AT detection.** Chromium's detection of a running AT on Linux is less reliable than on macOS and Windows.                                                                                                                                                                                                                                                                                                                                                | Manual toggle and command-line flag (A11Y-10); test Orca on Wayland and X11.                                                                                                                                                                                                                                                                                                   | E7                                   |
 | R4  | **Daemon crash or upgrade without session loss (US-2.5).** Replacing the process that holds PTYs ends sessions unless PTY ownership is separated from the upgradable component. Separation alone is not enough: on stop or restart, systemd kills every process in the unit's control group (`KillMode=control-group`), launchd kills the job's process group unless `AbandonProcessGroup` is set, and on Windows a ConPTY's processes end when its owner exits. | Spike at the start of E2: isolate each session's PTY in a long-lived holder process outside the daemon's kill scope on each OS (for example a separate systemd scope or unit, a separate process group with `AbandonProcessGroup`, a ConPTY owner independent of the daemon core). Alternatively, hand PTY file descriptors across the upgrade. Prove it with the US-2.5 test. | E2 (Linux), E5 (macOS), E6 (Windows) |
-| R5  | **Process lifetime on each OS.** Windows job objects can end child processes with the app; Linux logout can end user processes (`KillUserProcesses`); macOS LaunchAgents start only at GUI login.   | Launch the daemon through the OS service manager, never as an app child (SEC-07). State reduced guarantees in the UI (US-2.4, US-7.2). | E2 (Linux), E5 (macOS), E6 (Windows) |
-| R6  | **Linux hosts without lingering.** Without lingering, systemd stops the user's service manager and every user unit about 10 seconds (`UserStopDelaySec`) after the last login session ends. That would kill a daemon run as a user unit at SSH disconnect. Enabling lingering may need administrator approval. With `KillUserProcesses=yes`, even a detached daemon dies at logout. | Detached daemon outside the user's systemd instance when lingering is unavailable; respawn after reboot on the app's next connection (US-3.1); a clear warning on hosts where sessions cannot persist (US-2.4). | E2 |
-| R7  | **Remote macOS without a GUI login** cannot load a LaunchAgent and does not start one after reboot.                                                                                                 | Detached daemon started over SSH; respawn on the app's next connection (US-5.5).                                                    | E5         |
-| R8  | **ConPTY output** on Windows can repaint regions, producing noisy or duplicated announcements.                                                                                                      | Announcement diffing on logical lines (A11Y-02); dedicated Windows test scripts for JAWS, NVDA and Narrator.                        | E6         |
-| R9  | **Double speech** from screen-reader typing echo plus shell echo.                                                                                                                                   | Suppress announcements of echoed input (A11Y-01).                                                                                   | E1         |
-| R10 | **Restrictive remote hosts** (home directory mounted `noexec`, quotas, SELinux policies).                                                                                                            | Configurable install location per host and specific error messages (US-1.4).                                                        | E1         |
+| R5  | **Process lifetime on each OS.** Windows job objects can end child processes with the app; Linux logout can end user processes (`KillUserProcesses`); macOS LaunchAgents start only at GUI login.                                                                                                                                                                                                                                                                | Launch the daemon through the OS service manager, never as an app child (SEC-07). State reduced guarantees in the UI (US-2.4, US-7.2).                                                                                                                                                                                                                                         | E2 (Linux), E5 (macOS), E6 (Windows) |
+| R6  | **Linux hosts without lingering.** Without lingering, systemd stops the user's service manager and every user unit about 10 seconds (`UserStopDelaySec`) after the last login session ends. That would kill a daemon run as a user unit at SSH disconnect. Enabling lingering may need administrator approval. With `KillUserProcesses=yes`, even a detached daemon dies at logout.                                                                              | Detached daemon outside the user's systemd instance when lingering is unavailable; respawn after reboot on the app's next connection (US-3.1); a clear warning on hosts where sessions cannot persist (US-2.4).                                                                                                                                                                | E2                                   |
+| R7  | **Remote macOS without a GUI login** cannot load a LaunchAgent and does not start one after reboot.                                                                                                                                                                                                                                                                                                                                                              | Detached daemon started over SSH; respawn on the app's next connection (US-5.5).                                                                                                                                                                                                                                                                                               | E5                                   |
+| R8  | **ConPTY output** on Windows can repaint regions, producing noisy or duplicated announcements.                                                                                                                                                                                                                                                                                                                                                                   | Announcement diffing on logical lines (A11Y-02); dedicated Windows test scripts for JAWS, NVDA and Narrator.                                                                                                                                                                                                                                                                   | E6                                   |
+| R9  | **Double speech** from screen-reader typing echo plus shell echo.                                                                                                                                                                                                                                                                                                                                                                                                | Suppress announcements of echoed input (A11Y-01).                                                                                                                                                                                                                                                                                                                              | E1                                   |
+| R10 | **Restrictive remote hosts** (home directory mounted `noexec`, quotas, SELinux policies).                                                                                                                                                                                                                                                                                                                                                                        | Configurable install location per host and specific error messages (US-1.4).                                                                                                                                                                                                                                                                                                   | E1                                   |
 
 ## 14. Open questions
 
-| ID   | Question                                                                                                                         | Resolution                                                                                         |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| OQ-1 | Should persisted scrollback be encrypted at rest, with the key held in the OS keychain or credential store?                     | No. User-only permissions (SEC-05) are the control. [TECH_STACK.md](TECH_STACK.md) D-05.           |
-| OQ-2 | Which language and runtime produce the daemon as a small, self-contained binary for every target OS and architecture? (Design decision.) | Rust: static musl binaries on Linux, universal2 on macOS, MSVC on Windows. [TECH_STACK.md](TECH_STACK.md) D-01. |
-| OQ-3 | What are the distribution channels and update mechanism for the desktop app on each OS?                                         | macOS: signed downloads from GitHub Releases in E1–E2; automatic updates through Electron's built-in updater from E3 (US-3.4). Windows (E6) and Linux (E7) mechanisms are chosen in those epics within SEC-01 and SEC-07. [TECH_STACK.md](TECH_STACK.md) D-06. |
-| OQ-4 | Does the product collect any telemetry? If yes, it must be opt-in and exclude terminal content.                                 | No telemetry and no crash uploads in P0. [TECH_STACK.md](TECH_STACK.md) D-09.                     |
-| OQ-5 | What is the final product name?                                                                                                 | Open.                                                                                              |
-| OQ-6 | Which shell integration sequences beyond OSC 133 (for example VS Code's OSC 633) should the app read?                           | Open. OSC 133 and OSC 7 are read in any case.                                                      |
+| ID   | Question                                                                                                                                 | Resolution                                                                                                                                                                                                                                                     |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OQ-1 | Should persisted scrollback be encrypted at rest, with the key held in the OS keychain or credential store?                              | No. User-only permissions (SEC-05) are the control. [TECH_STACK.md](TECH_STACK.md) D-05.                                                                                                                                                                       |
+| OQ-2 | Which language and runtime produce the daemon as a small, self-contained binary for every target OS and architecture? (Design decision.) | Rust: static musl binaries on Linux, universal2 on macOS, MSVC on Windows. [TECH_STACK.md](TECH_STACK.md) D-01.                                                                                                                                                |
+| OQ-3 | What are the distribution channels and update mechanism for the desktop app on each OS?                                                  | macOS: signed downloads from GitHub Releases in E1–E2; automatic updates through Electron's built-in updater from E3 (US-3.4). Windows (E6) and Linux (E7) mechanisms are chosen in those epics within SEC-01 and SEC-07. [TECH_STACK.md](TECH_STACK.md) D-06. |
+| OQ-4 | Does the product collect any telemetry? If yes, it must be opt-in and exclude terminal content.                                          | No telemetry and no crash uploads in P0. [TECH_STACK.md](TECH_STACK.md) D-09.                                                                                                                                                                                  |
+| OQ-5 | What is the final product name?                                                                                                          | Open.                                                                                                                                                                                                                                                          |
+| OQ-6 | Which shell integration sequences beyond OSC 133 (for example VS Code's OSC 633) should the app read?                                    | Open. OSC 133 and OSC 7 are read in any case.                                                                                                                                                                                                                  |
 
 ## 15. References
 

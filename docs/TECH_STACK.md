@@ -1,11 +1,11 @@
 # Term Remote Control — Tech Stack
 
-| Field        | Value                                                                    |
-| ------------ | ------------------------------------------------------------------------ |
-| Status       | Decisions accepted (v1.2). S1–S5 done (§11); S6–S10 may revise details.  |
-| Owner        | Renato Oliveira                                                          |
-| Last updated | 2026-11-11                                                               |
-| Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.         |
+| Field        | Value                                                                   |
+| ------------ | ----------------------------------------------------------------------- |
+| Status       | Decisions accepted (v1.2). S1–S5 done (§11); S6–S10 may revise details. |
+| Owner        | Renato Oliveira                                                         |
+| Last updated | 2026-11-11                                                              |
+| Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.        |
 
 This document records the technology choices for P0 and why each one was made.
 Versions were checked against the npm registry and crates.io on 2026-11-11.
@@ -20,21 +20,21 @@ working names until the product is named (OQ-5).
 
 ## 1. Summary
 
-| Layer               | Choice                                                                    | Main reason                                                              |
-| ------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Languages           | TypeScript 7 (app), Rust (daemon), POSIX `sh` (bootstrap, SSH helpers)    | Each runs where it must, with the smallest footprint                     |
-| Desktop runtime     | Electron 45 (Node 24, Chromium 156)                                       | Owner's baseline; Chromium accessibility on every desktop OS             |
-| Terminal view       | xterm.js 6 with WebGL, plus our own Accessible Text Surface (ATS)         | Proven emulation; OS-visible text, selection and caret (A11Y-01..06)     |
-| UI                  | React 19 + React Aria Components, Zustand, react-intl, CSS Modules        | Strongest accessible primitives; best support from AI assistants         |
-| SSH                 | System OpenSSH client, one exec channel per host                          | Uses the user's config, agent and keys unchanged (US-1.1, SEC-03)        |
-| App↔daemon protocol | Length-prefixed frames: JSON control (types from Rust via ts-rs), raw I/O | Simplest contract that still meets NFR-03 and NFR-12                     |
-| Daemon              | Rust: tokio, portable-pty, libghostty-vt (fallback alacritty_terminal)    | Small static binary, low memory (NFR-09), memory safety                  |
-| Persistence         | Per-session append-only files; no database; no encryption                 | Meets NFR-08 and SEC-05 with the least machinery                         |
-| Build               | pnpm 12, electron-vite 6 (Vite 8), electron-builder 26, cargo-zigbuild    | Fast feedback, one tool per job                                          |
-| Lint and format     | Biome 2.6 (lint, a11y, cognitive complexity ≤ 10), Prettier 3.10          | Owner's baseline; no ESLint needed                                       |
-| Tests               | Vitest 5, Playwright 1.65 + axe-core, nextest, a macOS AX probe           | Covers DOM, OS accessibility tree, protocol and daemon                   |
-| CI and releases     | GitHub Actions and GitHub Releases                                        | Hosted macOS, Linux and Windows runners                                  |
-| Updates             | Signed manual downloads in E1–E2; Electron's built-in updater from E3     | Owner's decision; the built-in updater opens no listener (SEC-01)        |
+| Layer               | Choice                                                                    | Main reason                                                          |
+| ------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Languages           | TypeScript 7 (app), Rust (daemon), POSIX `sh` (bootstrap, SSH helpers)    | Each runs where it must, with the smallest footprint                 |
+| Desktop runtime     | Electron 45 (Node 24, Chromium 156)                                       | Owner's baseline; Chromium accessibility on every desktop OS         |
+| Terminal view       | xterm.js 6 with WebGL, plus our own Accessible Text Surface (ATS)         | Proven emulation; OS-visible text, selection and caret (A11Y-01..06) |
+| UI                  | React 19 + React Aria Components, Zustand, react-intl, CSS Modules        | Strongest accessible primitives; best support from AI assistants     |
+| SSH                 | System OpenSSH client, one exec channel per host                          | Uses the user's config, agent and keys unchanged (US-1.1, SEC-03)    |
+| App↔daemon protocol | Length-prefixed frames: JSON control (types from Rust via ts-rs), raw I/O | Simplest contract that still meets NFR-03 and NFR-12                 |
+| Daemon              | Rust: tokio, portable-pty, libghostty-vt (fallback alacritty_terminal)    | Small static binary, low memory (NFR-09), memory safety              |
+| Persistence         | Per-session append-only files; no database; no encryption                 | Meets NFR-08 and SEC-05 with the least machinery                     |
+| Build               | pnpm 12, electron-vite 6 (Vite 8), electron-builder 26, cargo-zigbuild    | Fast feedback, one tool per job                                      |
+| Lint and format     | Biome 2.6 (lint, a11y, cognitive complexity ≤ 10), Prettier 3.10          | Owner's baseline; no ESLint needed                                   |
+| Tests               | Vitest 5, Playwright 1.65 + axe-core, nextest, a macOS AX probe           | Covers DOM, OS accessibility tree, protocol and daemon               |
+| CI and releases     | GitHub Actions and GitHub Releases                                        | Hosted macOS, Linux and Windows runners                              |
+| Updates             | Signed manual downloads in E1–E2; Electron's built-in updater from E3     | Owner's decision; the built-in updater opens no listener (SEC-01)    |
 
 ## 2. Languages, and "does it need Rust IPC?"
 
@@ -43,9 +43,9 @@ Three product languages, each confined to one place:
 - **TypeScript 7:** everything in the Electron app.
 - **Rust:** the daemon `trcd`, the only code that runs on remote hosts.
 - **POSIX `sh`:**
-  - the bootstrap the app sends over SSH to detect the host, then upload and
-    start the daemon (§7);
-  - two small SSH helper scripts shipped inside the app (§7).
+    - the bootstrap the app sends over SSH to detect the host, then upload and
+      start the daemon (§7);
+    - two small SSH helper scripts shipped inside the app (§7).
 
 Two more appear only as tools. Zig is the cross-linker for cargo-zigbuild and
 the build system of libghostty-vt; we write no Zig. Swift is used for one test
@@ -98,16 +98,16 @@ Electron app (macOS in E1)                                    Host (Linux in E1)
   never affects sessions.
 - **Connection host.** An Electron `utilityProcess`, following VS Code's
   pty-host pattern.
-  - It owns every daemon connection, so SSH I/O and framing never compete with
-    UI events.
-  - It can restart without affecting windows, because sessions live in the
-    daemons.
+    - It owns every daemon connection, so SSH I/O and framing never compete with
+      UI events.
+    - It can restart without affecting windows, because sessions live in the
+      daemons.
 - **Renderer.** Receives output and events over a `MessagePort`, and sends
   input and credits back.
 - **`trcd`.** One binary with three subcommands, `core`, `holder` and `bridge`
   (§5.4).
-  - E1 ships only the Linux builds.
-  - The macOS build arrives with local sessions in E5 (§7.4 of the PRD).
+    - E1 ships only the Linux builds.
+    - The macOS build arrives with local sessions in E5 (§7.4 of the PRD).
 - **Local sessions (E5 onward).** Same path: the connection host spawns
   `trcd bridge` locally instead of through `ssh`.
 
@@ -128,44 +128,44 @@ Electron app (macOS in E1)                                    Host (Linux in E1)
 ### 4.2 Processes, IPC and Electron security
 
 - **Main ⇄ renderer.**
-  - A small hand-written `contract.ts` maps each channel to its request and
-    response types.
-  - The preload exposes it through `contextBridge`.
-  - `ipcMain.handle` validates every payload with zod.
+    - A small hand-written `contract.ts` maps each channel to its request and
+      response types.
+    - The preload exposes it through `contextBridge`.
+    - `ipcMain.handle` validates every payload with zod.
 - **Renderer ⇄ connection host.**
-  - Main creates a `MessageChannelMain`. The preload forwards one port to the
-    page with `window.postMessage`, Electron's pattern for context-isolated
-    pages.
-  - Output is batched for about 5 ms per session before posting, like VS
-    Code's `TerminalDataBufferer`.
+    - Main creates a `MessageChannelMain`. The preload forwards one port to the
+      page with `window.postMessage`, Electron's pattern for context-isolated
+      pages.
+    - Output is batched for about 5 ms per session before posting, like VS
+      Code's `TerminalDataBufferer`.
 - **zod at the two trust boundaries.**
-  - IPC from the sandboxed renderer.
-  - Control messages from daemons. A compromised host controls its daemon, so
-    these are untrusted like terminal output (SEC-06). Each schema is typed
-    `z.ZodType<GeneratedType>`, which ties it to the type ts-rs generates.
+    - IPC from the sandboxed renderer.
+    - Control messages from daemons. A compromised host controls its daemon, so
+      these are untrusted like terminal output (SEC-06). Each schema is typed
+      `z.ZodType<GeneratedType>`, which ties it to the type ts-rs generates.
 - **Electron settings.**
-  - `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`.
-  - The UI is served from an `app://` scheme via `protocol.handle`, never
-    `file://`.
-  - CSP: `default-src 'none'; script-src 'self'; style-src 'self'
-    'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src
-    'none'`. `unsafe-inline` styles are needed because xterm.js injects style
-    elements.
+    - `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`.
+    - The UI is served from an `app://` scheme via `protocol.handle`, never
+      `file://`.
+    - CSP: `default-src 'none'; script-src 'self'; style-src 'self'
+'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src
+'none'`. `unsafe-inline` styles are needed because xterm.js injects style
+      elements.
 - **Fuses**, set with electron-builder's `electronFuses` before signing.
-  - Off: `RunAsNode`, `EnableNodeOptionsEnvironmentVariable`,
-    `EnableNodeCliInspectArguments`, `GrantFileProtocolExtraPrivileges`.
-  - On: `EnableEmbeddedAsarIntegrityValidation` and `OnlyLoadAppFromAsar`.
-  - CI checks the release artifact with `npx @electron/fuses read`.
+    - Off: `RunAsNode`, `EnableNodeOptionsEnvironmentVariable`,
+      `EnableNodeCliInspectArguments`, `GrantFileProtocolExtraPrivileges`.
+    - On: `EnableEmbeddedAsarIntegrityValidation` and `OnlyLoadAppFromAsar`.
+    - CI checks the release artifact with `npx @electron/fuses read`.
 - **No debugging listener in releases.** Release builds never pass
   `--remote-debugging-port`; it is a Chromium switch, not a fuse. The SEC-01
   "no listening sockets" test runs against the signed release artifact, not
   the Playwright test build.
 - **No login-shell environment read.**
-  - macOS GUI apps already receive launchd's `SSH_AUTH_SOCK`.
-  - ssh reads `IdentityAgent` from its own config.
-  - `/usr/bin/ssh` is spawned by absolute path.
-  - Revisit only if spike S4 finds agents that are reachable only from shell
-    startup files.
+    - macOS GUI apps already receive launchd's `SSH_AUTH_SOCK`.
+    - ssh reads `IdentityAgent` from its own config.
+    - `/usr/bin/ssh` is spawned by absolute path.
+    - Revisit only if spike S4 finds agents that are reachable only from shell
+      startup files.
 
 ### 4.3 Terminal view and accessibility
 
@@ -176,10 +176,10 @@ This is the number one requirement and the main technical risk (R1, R2).
 - One xterm.js 6 `Terminal` per session, rendered with `@xterm/addon-webgl`.
   The fallback is xterm's built-in DOM renderer.
 - Addons:
-  - `@xterm/addon-unicode-graphemes`, experimental, for grapheme clusters and
-    widths (US-1.11);
-  - `@xterm/addon-search` for find (US-1.13, A11Y-03.6);
-  - `@xterm/addon-fit` for resizing.
+    - `@xterm/addon-unicode-graphemes`, experimental, for grapheme clusters and
+      widths (US-1.11);
+    - `@xterm/addon-search` for find (US-1.13, A11Y-03.6);
+    - `@xterm/addon-fit` for resizing.
 - OSC 8 links go through `linkHandler`. OSC 52 uses `registerOscHandler` and is
   off by default (SEC-06).
 - Terminal instances live in a `Map` outside React, so React never renders
@@ -187,10 +187,10 @@ This is the number one requirement and the main technical risk (R1, R2).
 - **The daemon answers terminal queries.** The holder's emulator replies to DA,
   DSR/CPR, XTVERSION and OSC color queries, so programs never hang while no
   client is attached and never get duplicate replies.
-  - The renderer swallows those queries with `registerCsiHandler` and
-    `registerOscHandler` handlers that return `true`.
-  - Title reporting and the other echo-back reports stay disabled in both
-    emulators (SEC-06.3). xterm's `windowOptions` keep their all-off defaults.
+    - The renderer swallows those queries with `registerCsiHandler` and
+      `registerOscHandler` handlers that return `true`.
+    - Title reporting and the other echo-back reports stay disabled in both
+      emulators (SEC-06.3). xterm's `windowOptions` keep their all-off defaults.
 
 **xterm.js's own screen reader mode stays off.**
 
@@ -210,72 +210,72 @@ of each terminal. Spike S2 verified it on macOS ([S2](spikes/S2.md)).
   same cell metrics, so pointer reading (Speak items under the pointer) hits
   real text.
 - **Content.**
-  - One text node per row: the viewport plus overscan, **plus every row of the
-    current selection, up to the selection cap**.
-  - Chromium exposes `AXSelectedText`, `AXSelectedTextRange` and
-    `AXSelectedTextMarkerRange` for the ATS. The ATS owns the DOM selection.
-  - Row text changes use minimal `replaceData` edits, so a caret inside a
-    changing row keeps its offset.
+    - One text node per row: the viewport plus overscan, **plus every row of the
+      current selection, up to the selection cap**.
+    - Chromium exposes `AXSelectedText`, `AXSelectedTextRange` and
+      `AXSelectedTextMarkerRange` for the ATS. The ATS owns the DOM selection.
+    - Row text changes use minimal `replaceData` edits, so a caret inside a
+      changing row keeps its offset.
 - **Input** (A11Y-09, D-22).
-  - Every `beforeinput` is cancelled and its data sent to the PTY, so no input
-    edits the DOM. IME text is sent once on `compositionend`, and the next
-    update restores the row the composition touched.
-  - EditContext is not used: in Chromium's full accessibility mode it reports
-    no caret bounds, and macOS Zoom jumped away from the cursor on every
-    keystroke (S2).
-  - A small key encoder, ported from xterm's MIT `Keyboard.ts`, reads
-    `term.modes` and sends the bytes.
+    - Every `beforeinput` is cancelled and its data sent to the PTY, so no input
+      edits the DOM. IME text is sent once on `compositionend`, and the next
+      update restores the row the composition touched.
+    - EditContext is not used: in Chromium's full accessibility mode it reports
+      no caret bounds, and macOS Zoom jumped away from the cursor on every
+      keystroke (S2).
+    - A small key encoder, ported from xterm's MIT `Keyboard.ts`, reads
+      `term.modes` and sends the bytes.
 - **Selection** (A11Y-04).
-  - Selection changes in xterm (`onSelectionChange`) are mirrored into the DOM
-    with `setBaseAndExtent`.
-  - DOM selection changes made by assistive technology, the keyboard or the
-    pointer flow back through `term.select()`.
-  - While the primary pointer button is down, the DOM selection leads and is
-    never rewritten; rewriting it cancels Chromium's native drag.
-  - A non-collapsed DOM selection the app did not set is mirrored, never
-    replaced by the caret.
-  - Typing clears the selection and returns the caret to the cursor in one
-    selection change.
-  - Look Up and Services work from the DOM selection:
-    `webContents.showDefinitionForSelection()` and the `services` menu role.
-  - Size cap (D-08):
-    - The OS sees at most 5,000 selected lines (S3a: 42 ms to expose).
-    - Copy always copies the full selection, and the cap is announced
-      (A11Y-04.7).
+    - Selection changes in xterm (`onSelectionChange`) are mirrored into the DOM
+      with `setBaseAndExtent`.
+    - DOM selection changes made by assistive technology, the keyboard or the
+      pointer flow back through `term.select()`.
+    - While the primary pointer button is down, the DOM selection leads and is
+      never rewritten; rewriting it cancels Chromium's native drag.
+    - A non-collapsed DOM selection the app did not set is mirrored, never
+      replaced by the caret.
+    - Typing clears the selection and returns the caret to the cursor in one
+      selection change.
+    - Look Up and Services work from the DOM selection:
+      `webContents.showDefinitionForSelection()` and the `services` menu role.
+    - Size cap (D-08):
+        - The OS sees at most 5,000 selected lines (S3a: 42 ms to expose).
+        - Copy always copies the full selection, and the cap is announced
+          (A11Y-04.7).
 - **Caret** (A11Y-06).
-  - With no selection, a collapsed DOM caret sits at the terminal cursor. That
-    drives `AXSelectedTextRange` and, through `AXBoundsForTextMarkerRange`,
-    magnifier tracking and the IME and dictation UI. Chromium's index-based
-    bounds and line attributes are unusable for this element.
+    - With no selection, a collapsed DOM caret sits at the terminal cursor. That
+      drives `AXSelectedTextRange` and, through `AXBoundsForTextMarkerRange`,
+      magnifier tracking and the IME and dictation UI. Chromium's index-based
+      bounds and line attributes are unusable for this element.
 - **Announcer** (A11Y-02, A11Y-12).
-  - Assembles logical lines and suppresses shell echo of typed characters (R9).
-  - Collapses floods into a summary ("312 lines of output") and can be muted.
-  - Speaks through `Element.ariaNotify()`, available since Chromium 141. If
-    VoiceOver drops notifications, the fallback is one persistent polite live
-    region.
-  - The UI's status messages go through the same announcer.
+    - Assembles logical lines and suppresses shell echo of typed characters (R9).
+    - Collapses floods into a summary ("312 lines of output") and can be muted.
+    - Speaks through `Element.ariaNotify()`, available since Chromium 141. If
+      VoiceOver drops notifications, the fallback is one persistent polite live
+      region.
+    - The UI's status messages go through the same announcer.
 - **Review mode** (A11Y-03, D-07).
-  - The same ATS in read-only mode, holding a page of about 500 logical lines
-    around the review caret. It re-pages when the caret crosses an edge, like
-    VS Code's Accessible View.
-  - The page grows to cover a selection, up to the same cap.
-  - Screen readers navigate it with caret commands in focus mode. NVDA switches
-    to focus mode on its own for read-only editable text.
-  - The page is bounded because a prototype that put the whole buffer into one
-    `contenteditable` froze NVDA for 15–60 s (xterm.js #4340).
+    - The same ATS in read-only mode, holding a page of about 500 logical lines
+      around the review caret. It re-pages when the caret crosses an edge, like
+      VS Code's Accessible View.
+    - The page grows to cover a selection, up to the same cap.
+    - Screen readers navigate it with caret commands in focus mode. NVDA switches
+      to focus mode on its own for read-only editable text.
+    - The page is bounded because a prototype that put the whole buffer into one
+      `contenteditable` froze NVDA for 15–60 s (xterm.js #4340).
 - **Update cadence** (R2). Chromium re-serializes every changed accessibility
   node.
-  - Without AT, the ATS updates once per animation frame.
-  - With AT running, it updates at most about 4 times a second and holds still
-    while a flood lasts.
+    - Without AT, the ATS updates once per animation frame.
+    - With AT running, it updates at most about 4 times a second and holds still
+      while a flood lasts.
 - **Always on.** The ATS and the DOM selection stay active without a screen
   reader, so Speak Selection and Look Up always work. Announcements depend on
   Chromium reporting AT, or on the manual screen-reader setting (A11Y-10).
 - **Minimum contrast** (A11Y-07).
-  - xterm.js `minimumContrastRatio` is set to 4.5.
-  - xterm halves that floor for dim (SGR 2) text, and A11Y-07 needs the full
-    floor. The E1 terminal work fixes dim rendering whenever contrast is
-    enforced.
+    - xterm.js `minimumContrastRatio` is set to 4.5.
+    - xterm halves that floor for dim (SGR 2) text, and A11Y-07 needs the full
+      floor. The E1 terminal work fixes dim rendering whenever contrast is
+      enforced.
 
 **Fallback engine.** libghostty-vt's WASM build (under 1 MB) sits behind a
 `TerminalModel` interface. It replaces xterm.js's parser only if
@@ -286,104 +286,104 @@ either way.
 
 - **React 19.3**, built with `@vitejs/plugin-react`, without the React
   Compiler, which is experimental and needs an extra native transform package.
-  - Svelte and Vue lose because TypeScript 7.0 has no programmatic API, which
-    their type checkers (svelte-check, vue-tsc) need.
-  - Lit loses because shadow DOM breaks ARIA ID references.
-  - Vanilla TypeScript would mean writing every ARIA pattern by hand.
+    - Svelte and Vue lose because TypeScript 7.0 has no programmatic API, which
+      their type checkers (svelte-check, vue-tsc) need.
+    - Lit loses because shadow DOM breaks ARIA ID references.
+    - Vanilla TypeScript would mean writing every ARIA pattern by hand.
 - **React Aria Components 1.22** (Adobe, Apache-2.0) supplies:
-  - Dialog and Modal;
-  - Menu, including context menus;
-  - Autocomplete with ListBox for the command palette and quick switcher
-    (US-4.4);
-  - Tooltip, form fields, SearchField, Switch, NumberField;
-  - I18nProvider.
+    - Dialog and Modal;
+    - Menu, including context menus;
+    - Autocomplete with ListBox for the command palette and quick switcher
+      (US-4.4);
+    - Tooltip, form fields, SearchField, Switch, NumberField;
+    - I18nProvider.
 - **Built in-house**, because each needs exact semantics:
-  - **Session tree** with `role="tree"` on `div` elements. RAC Tree renders a
-    `treegrid`, which VoiceOver presents as a table.
-    - Every row sets `aria-level`, `aria-posinset`, `aria-setsize` and
-      `aria-expanded`.
-    - Row actions go through the context menu and the palette (A11Y-11).
-  - **Splitter** following the APG window splitter pattern.
-  - **Announcer**, shared with the terminal.
-  - **Persistent notification list** in the status bar. Nothing dismisses
-    itself (A11Y-11).
-  - RAC Toast is not used. It is still `UNSTABLE_`, and its landmark handler
-    captures F6, which conflicts with A11Y-05 and with htop and mc.
-  - No list virtualization in P0. Measure with VoiceOver against NFR-05 first.
+    - **Session tree** with `role="tree"` on `div` elements. RAC Tree renders a
+      `treegrid`, which VoiceOver presents as a table.
+        - Every row sets `aria-level`, `aria-posinset`, `aria-setsize` and
+          `aria-expanded`.
+        - Row actions go through the context menu and the palette (A11Y-11).
+    - **Splitter** following the APG window splitter pattern.
+    - **Announcer**, shared with the terminal.
+    - **Persistent notification list** in the status bar. Nothing dismisses
+      itself (A11Y-11).
+    - RAC Toast is not used. It is still `UNSTABLE_`, and its landmark handler
+      captures F6, which conflicts with A11Y-05 and with htop and mc.
+    - No list virtualization in P0. Measure with VoiceOver against NFR-05 first.
 - **State.**
-  - The renderer holds one vanilla Zustand 5 store: a read model of hosts and
-    sessions, normalized by ID and fed by snapshot-plus-patch events.
-  - In the connection host, each host's connection lifecycle is a
-    discriminated-union reducer with an exhaustive switch, covered by unit
-    tests.
+    - The renderer holds one vanilla Zustand 5 store: a read model of hosts and
+      sessions, normalized by ID and fed by snapshot-plus-patch events.
+    - In the connection host, each host's connection lifecycle is a
+      discriminated-union reducer with an exhaustive switch, covered by unit
+      tests.
 - **i18n** (NFR-13). react-intl 12 with ICU messages, precompiled with
   `@formatjs/cli`. `<html lang>` and RAC's `I18nProvider` follow the active
   locale.
 - **Styling and themes** (A11Y-07, A11Y-08).
-  - CSS Modules, which Vite supports natively. Design tokens are CSS custom
-    properties in `@layer`s. No Tailwind and no CSS-in-JS.
-  - The main process relays these OS display settings to the renderer as
-    `data-*` attributes on `<html>`, using `nativeTheme` and
-    `systemPreferences`:
-    - dark mode;
-    - high contrast and Increase Contrast;
-    - forced colors (Windows);
-    - inverted colors;
-    - reduced transparency;
-    - differentiate without color;
-    - reduced motion.
-  - Media queries are a secondary signal only. Electron may not drive
-    `prefers-contrast` on macOS; verify in E1.
-  - Forced colors (E6) use system colors and outline focus rings.
-  - A dev-only colorjs.io test checks every token pair in every theme, plus the
-    focus, selection and cursor colors (PRD §11.2).
+    - CSS Modules, which Vite supports natively. Design tokens are CSS custom
+      properties in `@layer`s. No Tailwind and no CSS-in-JS.
+    - The main process relays these OS display settings to the renderer as
+      `data-*` attributes on `<html>`, using `nativeTheme` and
+      `systemPreferences`:
+        - dark mode;
+        - high contrast and Increase Contrast;
+        - forced colors (Windows);
+        - inverted colors;
+        - reduced transparency;
+        - differentiate without color;
+        - reduced motion.
+    - Media queries are a secondary signal only. Electron may not drive
+      `prefers-contrast` on macOS; verify in E1.
+    - Forced colors (E6) use system colors and outline focus rings.
+    - A dev-only colorjs.io test checks every token pair in every theme, plus the
+      focus, selection and cursor colors (PRD §11.2).
 
 ### 4.5 Packaging, signing and updates
 
 - **electron-vite 6** builds main, preload, the utility process and the
   renderer with Vite 8, with hot module replacement in the renderer.
-  - The dev server binds to `127.0.0.1` and exists only in development.
-  - Packaged builds load from `app://` and open no listener (SEC-01).
+    - The dev server binds to `127.0.0.1` and exists only in development.
+    - Packaged builds load from `app://` and open no listener (SEC-01).
 - **electron-builder 26** packages, signs and notarizes.
-  - **macOS (E1).**
-    - Developer ID signature with the hardened runtime, notarized with an App
-      Store Connect API key. Until a Developer ID identity exists, E1 builds
-      are ad-hoc signed and not notarized (D-17).
-    - The only entitlement is `com.apple.security.cs.allow-jit`.
-    - Outputs a dmg for installs and a zip as the update payload.
-  - **Windows (E6).** A per-user install with no administrator rights
-    (SEC-07), signed through Azure Artifact Signing. The installer format is
-    chosen together with the Windows updater.
-  - **Linux (E7).** A user-level install with no root (SEC-07.1), so an
-    AppImage. deb and rpm packages need root to install. Signing and the update
-    path are settled in E7.
+    - **macOS (E1).**
+        - Developer ID signature with the hardened runtime, notarized with an App
+          Store Connect API key. Until a Developer ID identity exists, E1 builds
+          are ad-hoc signed and not notarized (D-17).
+        - The only entitlement is `com.apple.security.cs.allow-jit`.
+        - Outputs a dmg for installs and a zip as the update payload.
+    - **Windows (E6).** A per-user install with no administrator rights
+      (SEC-07), signed through Azure Artifact Signing. The installer format is
+      chosen together with the Windows updater.
+    - **Linux (E7).** A user-level install with no root (SEC-07.1), so an
+      AppImage. deb and rpm packages need root to install. Signing and the update
+      path are settled in E7.
 - **Daemon binaries.**
-  - They ship under `Contents/Resources/daemon/<os>-<arch>/` via
-    `extraResources`, with a SHA-256 manifest inside the signed bundle
-    (SEC-04).
-  - Linux ELF files are sealed as resources by the bundle signature.
-  - The macOS daemon (E5) is listed in `mac.binaries`, so it gets a Developer
-    ID signature and the hardened runtime.
+    - They ship under `Contents/Resources/daemon/<os>-<arch>/` via
+      `extraResources`, with a SHA-256 manifest inside the signed bundle
+      (SEC-04).
+    - Linux ELF files are sealed as resources by the bundle signature.
+    - The macOS daemon (E5) is listed in `mac.binaries`, so it gets a Developer
+      ID signature and the hardened runtime.
 - **SSH helpers.** `askpass` and `known-hosts` are POSIX `sh` scripts in
   `Contents/Resources/bin/` (§7). On Windows (E6) they become `trcd`
   subcommands, because the Windows daemon ships in that epic.
 - **Updates (D-06).**
-  - **E1–E2.** Users download signed, notarized builds from GitHub Releases.
-  - **E3 (US-3.4).**
-    - Electron's built-in `autoUpdater` (Squirrel.Mac) reads a static JSON feed
-      (`serverType: 'json'`) published as a GitHub Release asset. Each entry
-      carries the zip's `sha256` and `size`.
-    - Squirrel.Mac checks that the update's code signature matches the running
-      app before installing.
-    - The update installs on restart.
-    - The feed must be publicly downloadable; otherwise host the same files on
-      any static HTTPS host.
-  - **Why not electron-updater.** On macOS it serves the downloaded update to
-    Squirrel.Mac through a local HTTP server on `127.0.0.1`, which SEC-01
-    forbids.
-  - **E6 and E7.** The Windows and Linux updaters are chosen in those epics,
-    under the same SEC-01 and SEC-07 constraints. US-6.1 and US-7.1 carry
-    US-3.4 to those platforms.
+    - **E1–E2.** Users download signed, notarized builds from GitHub Releases.
+    - **E3 (US-3.4).**
+        - Electron's built-in `autoUpdater` (Squirrel.Mac) reads a static JSON feed
+          (`serverType: 'json'`) published as a GitHub Release asset. Each entry
+          carries the zip's `sha256` and `size`.
+        - Squirrel.Mac checks that the update's code signature matches the running
+          app before installing.
+        - The update installs on restart.
+        - The feed must be publicly downloadable; otherwise host the same files on
+          any static HTTPS host.
+    - **Why not electron-updater.** On macOS it serves the downloaded update to
+      Squirrel.Mac through a local HTTP server on `127.0.0.1`, which SEC-01
+      forbids.
+    - **E6 and E7.** The Windows and Linux updaters are chosen in those epics,
+      under the same SEC-01 and SEC-07 constraints. US-6.1 and US-7.1 carry
+      US-3.4 to those platforms.
 - **No telemetry, no crash reporting (D-09).** `crashReporter` is never
   started, because minidumps can hold terminal text (SEC-08).
 
@@ -401,18 +401,18 @@ either way.
 
 ### 5.2 Crates
 
-| Need                                             | Crate (version, license)                                        | Fallback (spike that decides)      |
-| ------------------------------------------------ | --------------------------------------------------------------- | ---------------------------------- |
-| Async runtime, sockets, named pipes, processes   | tokio 1.54 (MIT); tokio-util 0.7 (MIT) for framing              | —                                  |
-| PTY and ConPTY                                   | portable-pty 0.9 (MIT)                                          | pty-process 0.5 (S1, S9)           |
-| VT emulator, snapshots, persistence format       | libghostty-vt 1.0.1 (MIT) through our own thin FFI crate        | alacritty_terminal 0.26 (S1, S9)   |
-| Unix calls (setsid, modes, flock, fdatasync)     | rustix 1.1 (Apache-2.0/MIT)                                     | —                                  |
-| Windows calls (pipe client PID, SIDs, ACLs, jobs)| windows-sys 0.61 (MIT/Apache-2.0)                               | —                                  |
-| Control messages and metadata                    | serde 1.0 + serde_json 1.0 (MIT/Apache-2.0)                     | —                                  |
-| TypeScript types generated from Rust             | ts-rs 12 (MIT)                                                  | —                                  |
-| Checksums                                        | sha2 0.11 (binaries), crc32fast 1.5 (log records)               | —                                  |
-| Logging                                          | tracing 0.1, tracing-subscriber 0.3 (JSON), tracing-appender 0.2 | —                                 |
-| Errors                                           | thiserror 2                                                     | —                                  |
+| Need                                              | Crate (version, license)                                         | Fallback (spike that decides)    |
+| ------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------- |
+| Async runtime, sockets, named pipes, processes    | tokio 1.54 (MIT); tokio-util 0.7 (MIT) for framing               | —                                |
+| PTY and ConPTY                                    | portable-pty 0.9 (MIT)                                           | pty-process 0.5 (S1, S9)         |
+| VT emulator, snapshots, persistence format        | libghostty-vt 1.0.1 (MIT) through our own thin FFI crate         | alacritty_terminal 0.26 (S1, S9) |
+| Unix calls (setsid, modes, flock, fdatasync)      | rustix 1.1 (Apache-2.0/MIT)                                      | —                                |
+| Windows calls (pipe client PID, SIDs, ACLs, jobs) | windows-sys 0.61 (MIT/Apache-2.0)                                | —                                |
+| Control messages and metadata                     | serde 1.0 + serde_json 1.0 (MIT/Apache-2.0)                      | —                                |
+| TypeScript types generated from Rust              | ts-rs 12 (MIT)                                                   | —                                |
+| Checksums                                         | sha2 0.11 (binaries), crc32fast 1.5 (log records)                | —                                |
+| Logging                                           | tracing 0.1, tracing-subscriber 0.3 (JSON), tracing-appender 0.2 | —                                |
+| Errors                                            | thiserror 2                                                      | —                                |
 
 Not used:
 
@@ -492,14 +492,14 @@ writable by group or others.
   holder starts through `systemd-run --user --scope --collect` before its
   shell, which takes it out of the unit's control group. tmux does the same.
 - **macOS (E5).**
-  - Holders call `setsid()`, and the LaunchAgent sets `AbandonProcessGroup`.
-  - Registration uses Electron's
-    `app.setLoginItemSettings({ type: 'agentService' })` (SMAppService).
-  - Remote Macs without a GUI login get a detached core (R7).
+    - Holders call `setsid()`, and the LaunchAgent sets `AbandonProcessGroup`.
+    - Registration uses Electron's
+      `app.setLoginItemSettings({ type: 'agentService' })` (SMAppService).
+    - Remote Macs without a GUI login get a detached core (R7).
 - **Windows (E6).**
-  - Each holder owns its pseudoconsole and starts with
-    `CREATE_BREAKAWAY_FROM_JOB | DETACHED_PROCESS`.
-  - Microsoft's redistributable `conpty.dll` (MIT) ships next to the binary.
+    - Each holder owns its pseudoconsole and starts with
+      `CREATE_BREAKAWAY_FROM_JOB | DETACHED_PROCESS`.
+    - Microsoft's redistributable `conpty.dll` (MIT) ships next to the binary.
 
 **Upgrade without session loss (US-2.5).**
 
@@ -523,10 +523,10 @@ One directory per session (mode 0700, files 0600):
   fsynced, then renamed into place.
 - **`history.log`** holds append-only `[len][crc32][VT-formatted rows]` records
   for rows that have left the screen.
-  - `fdatasync` runs every 2 s while there are new records, so on-disk lag
-    stays well inside NFR-08's 5 s.
-  - Recovery truncates the log at the first bad CRC.
-  - Compaction runs when the log grows past twice the scrollback limit.
+    - `fdatasync` runs every 2 s while there are new records, so on-disk lag
+      stays well inside NFR-08's 5 s.
+    - Recovery truncates the log at the first bad CRC.
+    - Compaction runs when the log grows past twice the scrollback limit.
 - **`screen.vt`** holds the current screen. It is rewritten (temp file, fsync,
   rename) at most every 2 s while the screen changes.
 
@@ -581,12 +581,12 @@ and on the signed app.
 One byte stream per daemon connection, made of frames:
 `u32 length (big-endian) | u8 kind | u32 stream | payload`.
 
-| Kind      | Payload                                       |
-| --------- | --------------------------------------------- |
-| `CONTROL` | One JSON message (stream 0)                   |
-| `OUTPUT`  | Raw PTY bytes, at most 32 KiB per frame       |
-| `INPUT`   | Raw input bytes                               |
-| `CREDIT`  | `u32` bytes granted to the sender             |
+| Kind      | Payload                                 |
+| --------- | --------------------------------------- |
+| `CONTROL` | One JSON message (stream 0)             |
+| `OUTPUT`  | Raw PTY bytes, at most 32 KiB per frame |
+| `INPUT`   | Raw input bytes                         |
+| `CREDIT`  | `u32` bytes granted to the sender       |
 
 The connection host routes output after reading the 9-byte header, without
 parsing JSON.
@@ -605,17 +605,17 @@ needs Rust. Every request carries a `requestId`.
    `SessionEvent` (created, updated, closed, state) to every client (US-2.6).
 4. **Lifecycle.** `Create`, `Rename`, `Reorder`, `Stop`, `Restart`.
 5. **Attach.**
-   - `Attach { session, fromOffset, mode: full | events }`, answered by
-     `Attached { stream, offset, snapshot? }`.
-   - `Detach` and `Resize`.
-   - `ReadRows { session, fromRow, count }`, which returns scrollback rows the
-     client lacks.
-   - Reconnecting is an `Attach` with `fromOffset` (US-2.2).
+    - `Attach { session, fromOffset, mode: full | events }`, answered by
+      `Attached { stream, offset, snapshot? }`.
+    - `Detach` and `Resize`.
+    - `ReadRows { session, fromRow, count }`, which returns scrollback rows the
+      client lacks.
+    - Reconnecting is an `Attach` with `fromOffset` (US-2.2).
 6. **Semantic events.** The daemon parses OSC 133, OSC 7, OSC 0/2 and BEL into
    `CommandFinished`, `Cwd`, `Title`, `Bell` and `Activity`.
-   - Background sessions attach in `events` mode, so no output flows for them.
-   - That keeps 25 hosts × 100 sessions cheap (NFR-05) while US-4.3 still
-     works.
+    - Background sessions attach in `events` mode, so no output flows for them.
+    - That keeps 25 hosts × 100 sessions cheap (NFR-05) while US-4.3 still
+      works.
 7. **Errors.** `Error { requestId, code, message }`.
 
 ### Flow control (D-04: skip to latest)
@@ -639,10 +639,10 @@ needs Rust. Every request carries a `requestId`.
 - App and daemon each implement protocol versions N and N−1, and the handshake
   picks the highest version both support.
 - Schema rules:
-  - new fields are added and optional;
-  - unknown fields are ignored;
-  - enums have an `unspecified` default;
-  - optional features are capability strings.
+    - new fields are added and optional;
+    - unknown fields are ignored;
+    - enums have an `unspecified` default;
+    - optional features are capability strings.
 - **Fixtures.** A shared corpus (`protocol/fixtures/v<N>/`) is checked by both
   sides: insta snapshots in Rust, Vitest in TypeScript. N−1 fixtures stay until
   N+1 ships.
@@ -761,24 +761,25 @@ so either would mean reimplementing the user's SSH setup (US-1.1).
 A POSIX `sh` script is piped to `/bin/sh -s` on the host.
 
 1. **Hello.**
-   - `umask 077`, then print `<nonce> HELLO`.
-   - Report the OS (`uname -s`), the architecture (`uname -m`, mapped to x86_64
-     or arm64), the installed versions and the available checksum tool.
-   - An unsupported system gets an error that names what is missing, and
-     nothing is left behind.
+    - `umask 077`, then print `<nonce> HELLO`.
+    - Report the OS (`uname -s`), the architecture (`uname -m`, mapped to x86_64
+      or arm64), the installed versions and the available checksum tool.
+    - An unsupported system gets an error that names what is missing, and
+      nothing is left behind.
 2. **Command.** Read one command: `UPLOAD <size> <sha256> <version>` or
    `RUN <version>`.
 3. **Upload.**
-   1. Take an atomic `mkdir` lock, breaking it if stale.
-   2. Read exactly the stated number of bytes (`head -c`, falling back to `dd`)
-      into a temporary file.
-   3. Verify the checksum with `sha256sum`, `shasum -a 256` or
-      `openssl dgst -sha256`.
-   4. `chmod 700`, then rename into `versions/<sha256>/`.
-   5. Run `--version`. Exit code 126 means a noexec mount, so point the user to
-      the per-host install location setting (R10).
+    1. Take an atomic `mkdir` lock, breaking it if stale.
+    2. Read exactly the stated number of bytes (`head -c`, falling back to `dd`)
+       into a temporary file.
+    3. Verify the checksum with `sha256sum`, `shasum -a 256` or
+       `openssl dgst -sha256`.
+    4. `chmod 700`, then rename into `versions/<sha256>/`.
+    5. Run `--version`. Exit code 126 means a noexec mount, so point the user to
+       the per-host install location setting (R10).
 
-   A trap removes everything on any failure.
+    A trap removes everything on any failure.
+
 4. **Run.** `exec "$bin" bridge`. `Hello` and `Welcome` follow on the same
    channel.
 
@@ -979,7 +980,10 @@ docs/plans/               one implementation plan per epic
             "a11y": "error",
             "complexity": {
                 "noExcessiveCognitiveComplexity": { "level": "error", "options": { "maxAllowedComplexity": 10 } },
-                "noExcessiveLinesPerFunction": { "level": "warn", "options": { "maxLines": 50, "skipBlankLines": true } },
+                "noExcessiveLinesPerFunction": {
+                    "level": "warn",
+                    "options": { "maxLines": 50, "skipBlankLines": true }
+                },
                 "noExcessiveNestedCallbacks": { "level": "error", "options": { "max": 3 } },
                 "useMaxParams": "error"
             },
@@ -1045,43 +1049,43 @@ max_line_length = 120
 
 ### 9.6 Testing
 
-| Level                     | Tool                                                                                           | Covers                                                                           |
-| ------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| TypeScript unit           | Vitest 5 projects for main, connection host and shared code                                    | Reducers, framing, ssh arguments, parsers                                        |
-| Renderer components       | Vitest browser mode (`@vitest/browser-playwright`, Chromium) + vitest-browser-react + axe-core | Keyboard behavior, ARIA, WCAG rules for each component state                     |
-| Protocol contract         | Shared fixtures; insta (Rust) and Vitest (TypeScript)                                          | Compatibility of versions N and N−1 (NFR-12)                                     |
-| Rust unit and integration | cargo-nextest 0.9, insta 1.49                                                                  | Holder, core, persistence, bootstrap                                             |
-| Daemon over real SSH      | Vitest integration project with `sshd` in a container on Linux CI                              | US-1.1–US-1.5 end to end; no listeners (SEC-01)                                  |
-| App end to end            | Playwright 1.65 `_electron` + `@axe-core/playwright` 4.14 + ARIA snapshots                     | User-story flows; WCAG 2.2 AA rules on every view; tree snapshots (PRD §11.2)    |
-| OS accessibility tree     | `tools/ax-probe`: a Swift CLI reading `AXUIElement` attributes                                 | A11Y-04 and A11Y-06 attributes: selected text, ranges, caret, focus              |
-| Screen readers            | Scripted manual passes per user story (PRD §11.3)                                              | Announcements, NFR-04 timing, everything automation cannot judge                 |
+| Level                     | Tool                                                                                           | Covers                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| TypeScript unit           | Vitest 5 projects for main, connection host and shared code                                    | Reducers, framing, ssh arguments, parsers                                     |
+| Renderer components       | Vitest browser mode (`@vitest/browser-playwright`, Chromium) + vitest-browser-react + axe-core | Keyboard behavior, ARIA, WCAG rules for each component state                  |
+| Protocol contract         | Shared fixtures; insta (Rust) and Vitest (TypeScript)                                          | Compatibility of versions N and N−1 (NFR-12)                                  |
+| Rust unit and integration | cargo-nextest 0.9, insta 1.49                                                                  | Holder, core, persistence, bootstrap                                          |
+| Daemon over real SSH      | Vitest integration project with `sshd` in a container on Linux CI                              | US-1.1–US-1.5 end to end; no listeners (SEC-01)                               |
+| App end to end            | Playwright 1.65 `_electron` + `@axe-core/playwright` 4.14 + ARIA snapshots                     | User-story flows; WCAG 2.2 AA rules on every view; tree snapshots (PRD §11.2) |
+| OS accessibility tree     | `tools/ax-probe`: a Swift CLI reading `AXUIElement` attributes                                 | A11Y-04 and A11Y-06 attributes: selected text, ranges, caret, focus           |
+| Screen readers            | Scripted manual passes per user story (PRD §11.3)                                              | Announcements, NFR-04 timing, everything automation cannot judge              |
 
 Notes:
 
 - **The AX probe needs the macOS Accessibility permission.**
-  - It runs in spike S2 and before every release on a Mac where that
-    permission is granted.
-  - It also runs in CI if the hosted runner allows the grant, which S2 checks.
+    - It runs in spike S2 and before every release on a Mac where that
+      permission is granted.
+    - It also runs in CI if the hosted runner allows the grant, which S2 checks.
 - **Playwright's Electron support is still experimental.** It launches with
   `--inspect` and a remote-debugging port, which the release build forbids.
-  - End-to-end tests run on a test build that differs only in that fuse.
-  - Every signed release still gets a manual smoke test.
+    - End-to-end tests run on a test build that differs only in that fuse.
+    - Every signed release still gets a manual smoke test.
 - **Commands for coding agents.**
-  - Concise reporters: `vitest --reporter=agent`,
-    `biome lint --reporter=concise`, `tsc --pretty false`.
-  - Single tests: `vitest run <file> -t <name>`, `cargo nextest run <name>`.
+    - Concise reporters: `vitest --reporter=agent`,
+      `biome lint --reporter=concise`, `tsc --pretty false`.
+    - Single tests: `vitest run <file> -t <name>`, `cargo nextest run <name>`.
 
 ### 9.7 Git hooks and AI-driven development
 
 - **lefthook 2.**
-  - `pre-commit` rejects staged `.claude/` paths and absolute home-directory
-    paths, then runs Prettier, `biome check --write` and `cargo fmt` on staged
-    files.
-  - `pnpm install` installs the hooks into the repository's `.git/hooks`
-    without touching a global `core.hooksPath`, whose hook manager then runs
-    them.
-  - `commit-msg` runs commitlint 21 with `@commitlint/config-conventional`,
-    which enforces the commit rules in CLAUDE.md.
+    - `pre-commit` rejects staged `.claude/` paths and absolute home-directory
+      paths, then runs Prettier, `biome check --write` and `cargo fmt` on staged
+      files.
+    - `pnpm install` installs the hooks into the repository's `.git/hooks`
+      without touching a global `core.hooksPath`, whose hook manager then runs
+      them.
+    - `commit-msg` runs commitlint 21 with `@commitlint/config-conventional`,
+      which enforces the commit rules in CLAUDE.md.
 - **No agent or editor configuration in git.** `.claude/` and other
   machine-specific files are git-ignored; lefthook is the only formatting hook.
 - **Agent context.** CLAUDE.md lists the build, lint and single-test commands
@@ -1089,72 +1093,72 @@ Notes:
 
 ### 9.8 CI on GitHub Actions (D-11)
 
-| Runner                             | From | Jobs                                                              |
-| ---------------------------------- | ---- | ----------------------------------------------------------------- |
-| `macos-15` / `macos-26` (arm64)    | E1   | App build, signing, notarization, end-to-end tests                |
-| `macos-15-intel`                   | E1   | x64 smoke test                                                    |
-| `ubuntu-24.04`, `ubuntu-24.04-arm` | E1   | Daemon musl builds and tests, sshd integration, renderer tests    |
-| `macos-15` / `macos-26` (arm64)    | E5   | Daemon universal2 build and tests                                 |
-| `windows-2025`, `windows-11-arm`   | E6   | Windows app, ConPTY holder, Authenticode                          |
+| Runner                             | From | Jobs                                                           |
+| ---------------------------------- | ---- | -------------------------------------------------------------- |
+| `macos-15` / `macos-26` (arm64)    | E1   | App build, signing, notarization, end-to-end tests             |
+| `macos-15-intel`                   | E1   | x64 smoke test                                                 |
+| `ubuntu-24.04`, `ubuntu-24.04-arm` | E1   | Daemon musl builds and tests, sshd integration, renderer tests |
+| `macos-15` / `macos-26` (arm64)    | E5   | Daemon universal2 build and tests                              |
+| `windows-2025`, `windows-11-arm`   | E6   | Windows app, ConPTY holder, Authenticode                       |
 
 Caches: the pnpm store, Electron and electron-builder downloads, Playwright's
 Chromium, and Cargo.
 
 ## 10. Adoption by epic
 
-| Epic | What the epic adds to the stack                                                                                                            |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Epic | What the epic adds to the stack                                                                                                                                                                                                                                                                                                                                      |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | E1   | §4.1–§4.4; macOS packaging, ad-hoc signed, and manual downloads (§4.5, D-17); the protocol (§6) with backpressure flow control instead of skip-to-latest (D-19); SSH and bootstrap (§7); POSIX shell profiles (§8); `trcd core`, `bridge` and `holder` on Linux musl, the core started detached by the bridge, without kill-scope isolation (D-20); all tooling (§9) |
-| E2   | Holders outside the kill scope and the Linux service-mode rule (§5.4); reconnect from an offset; skip-to-latest flow control (D-04) with `Resync` and `ReadRows` backfill; soak tests (NFR-11) |
-| E3   | Persistence and restore (§5.5); daemon management; Electron's built-in updater on macOS (US-3.4)                                           |
-| E4   | Shell-integration scripts and semantic events (§6, §8)                                                                                     |
-| E5   | macOS `trcd` (universal2, LaunchAgent through SMAppService); local bridge; detached core on remote Macs                                     |
-| E6   | Windows: ConPTY holders, named pipes, Windows profile detection, Windows helpers in `trcd`, installer and updater, Authenticode            |
-| E7   | Linux desktop: AppImage, local systemd daemon, AT-detection fallback (R3), Linux updater                                                   |
+| E2   | Holders outside the kill scope and the Linux service-mode rule (§5.4); reconnect from an offset; skip-to-latest flow control (D-04) with `Resync` and `ReadRows` backfill; soak tests (NFR-11)                                                                                                                                                                       |
+| E3   | Persistence and restore (§5.5); daemon management; Electron's built-in updater on macOS (US-3.4)                                                                                                                                                                                                                                                                     |
+| E4   | Shell-integration scripts and semantic events (§6, §8)                                                                                                                                                                                                                                                                                                               |
+| E5   | macOS `trcd` (universal2, LaunchAgent through SMAppService); local bridge; detached core on remote Macs                                                                                                                                                                                                                                                              |
+| E6   | Windows: ConPTY holders, named pipes, Windows profile detection, Windows helpers in `trcd`, installer and updater, Authenticode                                                                                                                                                                                                                                      |
+| E7   | Linux desktop: AppImage, local systemd daemon, AT-detection fallback (R3), Linux updater                                                                                                                                                                                                                                                                             |
 
 ## 11. Spikes
 
 Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spikes/S4.md), [S5](spikes/S5.md).
 
-| ID  | Epic | Spike                                                                                                                                                      | Retires                     |
-| --- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| S1  | E1   | libghostty-vt in Rust on musl x86_64/arm64: size, PSS per holder, VT round trip into xterm.js, matching grapheme widths and cursor columns, query replies   | D-02, US-1.11, NFR-09       |
-| S2  | E1   | ATS selection and caret: every macOS attribute through the AX probe; Speak Selection, VoiceOver's read-selection command, Look Up, Services, Zoom caret tracking, dictation and IME | R1, A11Y-09           |
-| S3  | E1   | Floods and churn with VoiceOver on: `yes`, a 1 GB `cat`, `tree /` at 100 ms RTT; tune the credit window, page size, cadence and selection cap; echo suppression | R2, R9, NFR-03, NFR-04 |
-| S4  | E1   | `KnownHostsCommand` and `SSH_ASKPASS` behavior; the stderr message corpus for US-1.3; agent discovery for GUI launches                                     | US-1.2, US-1.3              |
-| S5  | E1   | Bootstrap on Alpine/busybox, Ubuntu and RHEL; noexec home directories; LDAP users                                                                          | R10                         |
-| S6  | E2   | A 1,000-cycle soak of daemon kill and upgrade, with and without lingering, and across logout                                                               | R4, R5, R6 (Linux), NFR-11  |
-| S7  | E3   | Consistency of the persistence logs after a power cut                                                                                                       | NFR-08                      |
-| S8  | E5   | `setsid` + `AbandonProcessGroup`; SMAppService registration; detached core on remote Macs                                                                   | R4, R5, R7 (macOS)          |
-| S9  | E6   | ConPTY holder outside the app's job object; libghostty-vt on MSVC; re-verify the ATS with JAWS, NVDA and Narrator                                           | R1, R2, R4, R5, R8 (Windows) |
-| S10 | E7   | Chromium AT detection and Orca on Wayland and X11; re-verify the ATS                                                                                        | R1, R2, R3 (Linux)          |
+| ID  | Epic | Spike                                                                                                                                                                               | Retires                      |
+| --- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| S1  | E1   | libghostty-vt in Rust on musl x86_64/arm64: size, PSS per holder, VT round trip into xterm.js, matching grapheme widths and cursor columns, query replies                           | D-02, US-1.11, NFR-09        |
+| S2  | E1   | ATS selection and caret: every macOS attribute through the AX probe; Speak Selection, VoiceOver's read-selection command, Look Up, Services, Zoom caret tracking, dictation and IME | R1, A11Y-09                  |
+| S3  | E1   | Floods and churn with VoiceOver on: `yes`, a 1 GB `cat`, `tree /` at 100 ms RTT; tune the credit window, page size, cadence and selection cap; echo suppression                     | R2, R9, NFR-03, NFR-04       |
+| S4  | E1   | `KnownHostsCommand` and `SSH_ASKPASS` behavior; the stderr message corpus for US-1.3; agent discovery for GUI launches                                                              | US-1.2, US-1.3               |
+| S5  | E1   | Bootstrap on Alpine/busybox, Ubuntu and RHEL; noexec home directories; LDAP users                                                                                                   | R10                          |
+| S6  | E2   | A 1,000-cycle soak of daemon kill and upgrade, with and without lingering, and across logout                                                                                        | R4, R5, R6 (Linux), NFR-11   |
+| S7  | E3   | Consistency of the persistence logs after a power cut                                                                                                                               | NFR-08                       |
+| S8  | E5   | `setsid` + `AbandonProcessGroup`; SMAppService registration; detached core on remote Macs                                                                                           | R4, R5, R7 (macOS)           |
+| S9  | E6   | ConPTY holder outside the app's job object; libghostty-vt on MSVC; re-verify the ATS with JAWS, NVDA and Narrator                                                                   | R1, R2, R4, R5, R8 (Windows) |
+| S10 | E7   | Chromium AT detection and Orca on Wayland and X11; re-verify the ATS                                                                                                                | R1, R2, R3 (Linux)           |
 
 ## 12. Decision log
 
-| ID   | Decision                                                                                    | Why                                                                                      | PRD effect                |
-| ---- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
-| D-01 | Rust daemon                                                                                 | Footprint, static binaries, ConPTY, memory safety (§2)                                   | Resolves OQ-2             |
-| D-02 | libghostty-vt in the daemon; alacritty_terminal if it proves incompatible on a target OS    | Grapheme fidelity, VT formatter, small cells; confirmed for Linux and macOS by S1        | —                         |
-| D-03 | JSON control messages with ts-rs types; raw I/O frames                                      | Fewest tools; NFR-12 met through the handshake and fixtures                              | —                         |
-| D-04 | Lagging clients skip to the latest screen; programs never block                             | NFR-03 and fair sharing (US-2.6); gaps are backfilled from the daemon                    | —                         |
-| D-05 | No encryption at rest; user-only permissions                                                | SEC-05 as written; remote hosts have no keychain the daemon can reach                    | Resolves OQ-1             |
-| D-06 | Manual signed downloads in E1–E2; Electron's built-in updater on macOS from E3              | Simplest start. electron-updater's macOS path opens a loopback listener (SEC-01)         | Resolves OQ-3; adds US-3.4 |
-| D-07 | Review mode is a paged, read-only text field with caret navigation                          | A single element holding the whole buffer froze NVDA; matches VS Code                    | Rewords A11Y-03.2         |
-| D-08 | OS-visible selection is capped; copy is always exact                                        | Chromium can't hold 100k selectable lines                                                | Adds A11Y-04.7            |
-| D-09 | No telemetry and no crash reporting                                                         | SEC-08; nothing in the PRD needs them                                                    | Resolves OQ-4             |
-| D-10 | pnpm 12 workspaces; no task runner                                                          | Strict, fast, supply-chain settings                                                      | —                         |
-| D-11 | GitHub for code, Actions for CI, Releases for downloads and the update feed                 | Hosted runners for every target OS and architecture                                      | —                         |
-| D-12 | React 19 + React Aria Components                                                            | Accessible primitives; works with TypeScript 7; well supported by AI assistants          | —                         |
-| D-13 | Biome is the only linter; no ESLint                                                         | typescript-eslint caps TypeScript below 6.1; jsx-a11y doesn't support ESLint 10          | —                         |
-| D-14 | libghostty-vt source comes from its signed release tarballs, checked against a SHA-256 manifest and the minisign key; build.rs never touches the network | Reproducible, offline builds; no unverified download (SEC-04) | —                         |
-| D-15 | Linux test hosts are sshd containers on a dedicated colima profile `trc`, ports on `127.0.0.1` only, keys generated per run | Real OpenSSH on Ubuntu, Alpine and Rocky without touching other profiles or exposing ports | —          |
-| D-16 | In E1, CI workflows run only on manual dispatch; local `pnpm check`, integration and e2e suites are the gate | The GitHub repository arrived after planning; the local gates already cover E1 | —     |
-| D-17 | E1 builds are ad-hoc signed (`codesign -s -`) and not notarized                             | No Developer ID identity yet; Apple silicon and the fuse flip need a signature           | E1 exception to SEC-04.1  |
-| D-18 | Test builds read `TRC_TEST_SSH_CONFIG` and `TRC_TEST_KNOWN_HOSTS`; a build-time define removes the seam from release builds, and an artifact test checks it | OpenSSH reads `~/.ssh` from the passwd home, so tests need their own config | —   |
-| D-19 | E1 flow control is backpressure: the holder pauses PTY reads when its single client runs out of credit. D-04 applies from E2 | E1 has one client per session; no line is skipped, so A11Y-02.3 and A11Y-03 need no backfill | —   |
-| D-20 | In E1, `trcd bridge` starts the core detached (double fork, `setsid`, under a lock) when its socket is absent | Service-manager registration and kill-scope isolation arrive with E2 (US-2.4, US-2.5) | —     |
-| D-21 | ssh also gets a generated wrapper config (`-F`) that sets the security options first and includes the user's and the system config | `ProxyJump` connections receive none of the `-o` options (S4)  | —                         |
-| D-22 | The ATS takes input as a `contenteditable` element that cancels every edit, not through EditContext | EditContext broke caret bounds for macOS Zoom (S2, A11Y-06.3)   | —                         |
+| ID   | Decision                                                                                                                                                    | Why                                                                                          | PRD effect                 |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------- |
+| D-01 | Rust daemon                                                                                                                                                 | Footprint, static binaries, ConPTY, memory safety (§2)                                       | Resolves OQ-2              |
+| D-02 | libghostty-vt in the daemon; alacritty_terminal if it proves incompatible on a target OS                                                                    | Grapheme fidelity, VT formatter, small cells; confirmed for Linux and macOS by S1            | —                          |
+| D-03 | JSON control messages with ts-rs types; raw I/O frames                                                                                                      | Fewest tools; NFR-12 met through the handshake and fixtures                                  | —                          |
+| D-04 | Lagging clients skip to the latest screen; programs never block                                                                                             | NFR-03 and fair sharing (US-2.6); gaps are backfilled from the daemon                        | —                          |
+| D-05 | No encryption at rest; user-only permissions                                                                                                                | SEC-05 as written; remote hosts have no keychain the daemon can reach                        | Resolves OQ-1              |
+| D-06 | Manual signed downloads in E1–E2; Electron's built-in updater on macOS from E3                                                                              | Simplest start. electron-updater's macOS path opens a loopback listener (SEC-01)             | Resolves OQ-3; adds US-3.4 |
+| D-07 | Review mode is a paged, read-only text field with caret navigation                                                                                          | A single element holding the whole buffer froze NVDA; matches VS Code                        | Rewords A11Y-03.2          |
+| D-08 | OS-visible selection is capped; copy is always exact                                                                                                        | Chromium can't hold 100k selectable lines                                                    | Adds A11Y-04.7             |
+| D-09 | No telemetry and no crash reporting                                                                                                                         | SEC-08; nothing in the PRD needs them                                                        | Resolves OQ-4              |
+| D-10 | pnpm 12 workspaces; no task runner                                                                                                                          | Strict, fast, supply-chain settings                                                          | —                          |
+| D-11 | GitHub for code, Actions for CI, Releases for downloads and the update feed                                                                                 | Hosted runners for every target OS and architecture                                          | —                          |
+| D-12 | React 19 + React Aria Components                                                                                                                            | Accessible primitives; works with TypeScript 7; well supported by AI assistants              | —                          |
+| D-13 | Biome is the only linter; no ESLint                                                                                                                         | typescript-eslint caps TypeScript below 6.1; jsx-a11y doesn't support ESLint 10              | —                          |
+| D-14 | libghostty-vt source comes from its signed release tarballs, checked against a SHA-256 manifest and the minisign key; build.rs never touches the network    | Reproducible, offline builds; no unverified download (SEC-04)                                | —                          |
+| D-15 | Linux test hosts are sshd containers on a dedicated colima profile `trc`, ports on `127.0.0.1` only, keys generated per run                                 | Real OpenSSH on Ubuntu, Alpine and Rocky without touching other profiles or exposing ports   | —                          |
+| D-16 | In E1, CI workflows run only on manual dispatch; local `pnpm check`, integration and e2e suites are the gate                                                | The GitHub repository arrived after planning; the local gates already cover E1               | —                          |
+| D-17 | E1 builds are ad-hoc signed (`codesign -s -`) and not notarized                                                                                             | No Developer ID identity yet; Apple silicon and the fuse flip need a signature               | E1 exception to SEC-04.1   |
+| D-18 | Test builds read `TRC_TEST_SSH_CONFIG` and `TRC_TEST_KNOWN_HOSTS`; a build-time define removes the seam from release builds, and an artifact test checks it | OpenSSH reads `~/.ssh` from the passwd home, so tests need their own config                  | —                          |
+| D-19 | E1 flow control is backpressure: the holder pauses PTY reads when its single client runs out of credit. D-04 applies from E2                                | E1 has one client per session; no line is skipped, so A11Y-02.3 and A11Y-03 need no backfill | —                          |
+| D-20 | In E1, `trcd bridge` starts the core detached (double fork, `setsid`, under a lock) when its socket is absent                                               | Service-manager registration and kill-scope isolation arrive with E2 (US-2.4, US-2.5)        | —                          |
+| D-21 | ssh also gets a generated wrapper config (`-F`) that sets the security options first and includes the user's and the system config                          | `ProxyJump` connections receive none of the `-o` options (S4)                                | —                          |
+| D-22 | The ATS takes input as a `contenteditable` element that cancels every edit, not through EditContext                                                         | EditContext broke caret bounds for macOS Zoom (S2, A11Y-06.3)                                | —                          |
 
 ## 13. Versions (verified 2026-11-11)
 
@@ -1198,65 +1202,65 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 
 ## 14. Not used, and why
 
-| Rejected                                  | Reason                                                                                            |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| node-pty, napi-rs, any native Node module | PTYs live in the daemon; the app needs only Node built-ins                                        |
-| xterm.js screen reader mode               | Its custom selection is invisible to the OS; its announcements are assertive and duplicated       |
-| electron-updater                          | Its macOS updater serves the update over a loopback HTTP server (SEC-01)                          |
-| `crashReporter`, Sentry, telemetry        | SEC-08; not required by the PRD                                                                   |
-| ESLint, typescript-eslint, TypeScript 6   | Incompatible with TypeScript 7 and ESLint 10; Biome covers lint and a11y rules                    |
-| React Compiler                            | Experimental, needs an extra native package; not needed for the PRD                               |
+| Rejected                                  | Reason                                                                                             |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| node-pty, napi-rs, any native Node module | PTYs live in the daemon; the app needs only Node built-ins                                         |
+| xterm.js screen reader mode               | Its custom selection is invisible to the OS; its announcements are assertive and duplicated        |
+| electron-updater                          | Its macOS updater serves the update over a loopback HTTP server (SEC-01)                           |
+| `crashReporter`, Sentry, telemetry        | SEC-08; not required by the PRD                                                                    |
+| ESLint, typescript-eslint, TypeScript 6   | Incompatible with TypeScript 7 and ESLint 10; Biome covers lint and a11y rules                     |
+| React Compiler                            | Experimental, needs an extra native package; not needed for the PRD                                |
 | Svelte, Vue, Lit, Solid                   | TypeScript 7 template checks (Svelte, Vue); shadow DOM breaks ARIA (Lit); Solid 2.0 not yet stable |
-| Tailwind, CSS-in-JS, vanilla-extract      | CSS Modules and custom properties are enough                                                      |
-| Protobuf, ConnectRPC, gRPC, Cap'n Proto   | More tooling than the protocol needs (§6)                                                         |
-| ssh2, russh                               | They don't read `ssh_config` or support the user's full key setup                                 |
-| SQLite                                    | Needs a C build; nothing is queried                                                               |
-| Turborepo, Nx, Bun                        | One app and one daemon need no task graph and no second runtime                                   |
-| Storybook                                 | A second build; its a11y run can skip silently                                                    |
-| Guidepup screen-reader automation         | Pre-1.0, needs a dedicated Mac for VoiceOver; the PRD gates on scripted manual passes (§11.3)     |
-| Electron Forge                            | Squirrel-only updates and more packages than electron-builder                                     |
+| Tailwind, CSS-in-JS, vanilla-extract      | CSS Modules and custom properties are enough                                                       |
+| Protobuf, ConnectRPC, gRPC, Cap'n Proto   | More tooling than the protocol needs (§6)                                                          |
+| ssh2, russh                               | They don't read `ssh_config` or support the user's full key setup                                  |
+| SQLite                                    | Needs a C build; nothing is queried                                                                |
+| Turborepo, Nx, Bun                        | One app and one daemon need no task graph and no second runtime                                    |
+| Storybook                                 | A second build; its a11y run can skip silently                                                     |
+| Guidepup screen-reader automation         | Pre-1.0, needs a dedicated Mac for VoiceOver; the PRD gates on scripted manual passes (§11.3)      |
+| Electron Forge                            | Squirrel-only updates and more packages than electron-builder                                      |
 
 ## 15. Key sources
 
 - **xterm.js:**
-  - [releases](https://github.com/xtermjs/xterm.js/releases)
-  - [AccessibilityManager.ts](https://github.com/xtermjs/xterm.js/blob/master/src/browser/AccessibilityManager.ts)
-  - [flow control guide](https://xtermjs.org/docs/guides/flowcontrol/)
-  - [PR 4340](https://github.com/xtermjs/xterm.js/issues/4340)
+    - [releases](https://github.com/xtermjs/xterm.js/releases)
+    - [AccessibilityManager.ts](https://github.com/xtermjs/xterm.js/blob/master/src/browser/AccessibilityManager.ts)
+    - [flow control guide](https://xtermjs.org/docs/guides/flowcontrol/)
+    - [PR 4340](https://github.com/xtermjs/xterm.js/issues/4340)
 - **VS Code:**
-  - [native EditContext](https://github.com/microsoft/vscode/tree/main/src/vs/editor/browser/controller/editContext/native)
-  - [pty host starter](https://github.com/microsoft/vscode/blob/main/src/vs/platform/terminal/electron-main/electronPtyHostStarter.ts)
-  - [terminal accessibility](https://code.visualstudio.com/docs/configure/accessibility/accessibility)
+    - [native EditContext](https://github.com/microsoft/vscode/tree/main/src/vs/editor/browser/controller/editContext/native)
+    - [pty host starter](https://github.com/microsoft/vscode/blob/main/src/vs/platform/terminal/electron-main/electronPtyHostStarter.ts)
+    - [terminal accessibility](https://code.visualstudio.com/docs/configure/accessibility/accessibility)
 - **Chromium:**
-  - [browser_accessibility_cocoa.mm](https://source.chromium.org/chromium/chromium/src/+/main:ui/accessibility/platform/browser_accessibility_cocoa.mm)
-  - [UIA support](https://developer.chrome.com/blog/windows-uia-support-update)
-  - [ariaNotify](https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaNotify)
+    - [browser_accessibility_cocoa.mm](https://source.chromium.org/chromium/chromium/src/+/main:ui/accessibility/platform/browser_accessibility_cocoa.mm)
+    - [UIA support](https://developer.chrome.com/blog/windows-uia-support-update)
+    - [ariaNotify](https://developer.mozilla.org/en-US/docs/Web/API/Element/ariaNotify)
 - **libghostty:**
-  - [1.0 announcement](https://mitchellh.com/writing/libghostty-1-0)
-  - [API and formatter](https://lib.ghostty.org/vt/)
+    - [1.0 announcement](https://mitchellh.com/writing/libghostty-1-0)
+    - [API and formatter](https://lib.ghostty.org/vt/)
 - **Electron:**
-  - [releases](https://releases.electronjs.org/)
-  - [utilityProcess](https://www.electronjs.org/docs/latest/api/utility-process)
-  - [autoUpdater](https://www.electronjs.org/docs/latest/api/auto-updater)
-  - [fuses](https://www.electronjs.org/docs/latest/tutorial/fuses)
-  - [nativeTheme](https://www.electronjs.org/docs/latest/api/native-theme)
+    - [releases](https://releases.electronjs.org/)
+    - [utilityProcess](https://www.electronjs.org/docs/latest/api/utility-process)
+    - [autoUpdater](https://www.electronjs.org/docs/latest/api/auto-updater)
+    - [fuses](https://www.electronjs.org/docs/latest/tutorial/fuses)
+    - [nativeTheme](https://www.electronjs.org/docs/latest/api/native-theme)
 - **Squirrel.Mac:** [static JSON feed](https://github.com/Squirrel/Squirrel.Mac#update-file-json-format)
 - **TypeScript:** [7.0 announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)
 - **Biome:**
-  - [cognitive complexity](https://biomejs.dev/linter/rules/no-excessive-cognitive-complexity/)
-  - [rule sources](https://biomejs.dev/linter/rules-sources/)
+    - [cognitive complexity](https://biomejs.dev/linter/rules/no-excessive-cognitive-complexity/)
+    - [rule sources](https://biomejs.dev/linter/rules-sources/)
 - **OpenSSH:**
-  - [ssh_config(5)](https://man.openbsd.org/ssh_config)
-  - [readpass.c](https://github.com/openssh/openssh-portable/blob/master/readpass.c)
-  - [sshconnect.c](https://github.com/openssh/openssh-portable/blob/master/sshconnect.c)
+    - [ssh_config(5)](https://man.openbsd.org/ssh_config)
+    - [readpass.c](https://github.com/openssh/openssh-portable/blob/master/readpass.c)
+    - [sshconnect.c](https://github.com/openssh/openssh-portable/blob/master/sshconnect.c)
 - **systemd:**
-  - [systemd-run](https://www.freedesktop.org/software/systemd/man/latest/systemd-run.html)
-  - [kill modes](https://www.freedesktop.org/software/systemd/man/latest/systemd.kill.html)
+    - [systemd-run](https://www.freedesktop.org/software/systemd/man/latest/systemd-run.html)
+    - [kill modes](https://www.freedesktop.org/software/systemd/man/latest/systemd.kill.html)
 - **Prior art:**
-  - [zmx](https://zmx.sh/architecture)
-  - [shpool](https://github.com/shell-pool/shpool)
-  - [tmux control mode](https://github.com/tmux/tmux/wiki/Control-Mode)
-  - [mosh](https://mosh.org/)
+    - [zmx](https://zmx.sh/architecture)
+    - [shpool](https://github.com/shell-pool/shpool)
+    - [tmux control mode](https://github.com/tmux/tmux/wiki/Control-Mode)
+    - [mosh](https://mosh.org/)
 - **Testing:**
-  - [Playwright Electron](https://playwright.dev/docs/api/class-electron)
-  - [Vitest browser mode](https://vitest.dev/guide/browser/)
+    - [Playwright Electron](https://playwright.dev/docs/api/class-electron)
+    - [Vitest browser mode](https://vitest.dev/guide/browser/)

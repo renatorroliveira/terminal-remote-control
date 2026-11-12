@@ -64,30 +64,31 @@ others.
 - **Desktop app (Electron, TypeScript 7, React).** Renders sessions and relays
   input. It holds no session state that a daemon can't recover. Three
   processes:
-  - The main process holds no session state.
-  - A `utilityProcess` connection host owns every `ssh` child and daemon
-    connection.
-  - The sandboxed renderer runs xterm.js plus the Accessible Text Surface, which
-    gives the OS real text, selection and caret.
+    - The main process holds no session state.
+    - A `utilityProcess` connection host owns every `ssh` child and daemon
+      connection.
+    - The sandboxed renderer runs xterm.js plus the Accessible Text Surface, which
+      gives the OS real text, selection and caret.
 
-  The app has no native Node modules (no node-pty).
+    The app has no native Node modules (no node-pty).
+
 - **Daemon (`trcd`, Rust).** One per user per host, the same binary locally and
   remotely.
-  - Registered with the OS per-user service manager: launchd LaunchAgent,
-    systemd user unit, Windows per-user auto-start.
-  - Owns PTYs (ConPTY on Windows), supervises processes, persists scrollback,
-    and serves several attached clients at once.
-  - Three subcommands:
-    - `core`: the restartable supervisor.
-    - `holder`: one per session; owns the PTY, the shell and the libghostty-vt
-      emulator.
-    - `bridge`: relays stdio to the core's socket.
-  - A daemon crash or upgrade must not end sessions (US-2.5). So holders run
-    apart from the upgradable core *and* outside the service manager's kill
-    scope: systemd kills the whole unit cgroup, launchd kills the job's process
-    group, and ConPTY children die with their owner.
-  - App↔daemon traffic is length-prefixed frames: JSON control messages (with
-    TypeScript types generated from Rust by ts-rs) plus raw I/O.
+    - Registered with the OS per-user service manager: launchd LaunchAgent,
+      systemd user unit, Windows per-user auto-start.
+    - Owns PTYs (ConPTY on Windows), supervises processes, persists scrollback,
+      and serves several attached clients at once.
+    - Three subcommands:
+        - `core`: the restartable supervisor.
+        - `holder`: one per session; owns the PTY, the shell and the libghostty-vt
+          emulator.
+        - `bridge`: relays stdio to the core's socket.
+    - A daemon crash or upgrade must not end sessions (US-2.5). So holders run
+      apart from the upgradable core _and_ outside the service manager's kill
+      scope: systemd kills the whole unit cgroup, launchd kills the job's process
+      group, and ConPTY children die with their owner.
+    - App↔daemon traffic is length-prefixed frames: JSON control messages (with
+      TypeScript types generated from Rust by ts-rs) plus raw I/O.
 - **Remote hosts (Linux x86_64/arm64, macOS).** The app connects with the
   system OpenSSH client and the user's SSH config and agent, uploads the daemon
   binary bundled in the app, verifies its SHA-256, installs it under the user's
@@ -107,11 +108,11 @@ others.
   terminal rendering, focus, keyboard handling, selection or UI chrome must
   keep the global `A11Y-*` requirements in `docs/PRD.md` passing. In
   particular:
-  - Terminal text must be exposed to the OS as real text, not only pixels.
-  - Terminal selection must be real OS-visible selection (A11Y-04), which a
-    canvas/WebGL renderer does not provide on its own.
-  - The OS must be able to track focus and the terminal cursor (A11Y-06).
-  - Focus must never be trapped in the terminal (A11Y-05).
+    - Terminal text must be exposed to the OS as real text, not only pixels.
+    - Terminal selection must be real OS-visible selection (A11Y-04), which a
+      canvas/WebGL renderer does not provide on its own.
+    - The OS must be able to track focus and the terminal cursor (A11Y-06).
+    - Focus must never be trapped in the terminal (A11Y-05).
 - **No network listeners anywhere, including loopback.** Daemon IPC uses a Unix
   socket (mode 0600 inside a 0700 directory) or a Windows named pipe restricted
   to the user. Peers are authenticated by OS identity (peer credentials, pipe
