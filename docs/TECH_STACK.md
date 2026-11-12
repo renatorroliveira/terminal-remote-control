@@ -449,7 +449,8 @@ Ghostty is its reference implementation.
   xterm.js and about 1.4 MB per idle holder. Every terminal turns on grapheme
   clustering (DEC mode 2027) by default, lifts the default 10,000-byte
   scrollback cap so the line limit governs, and formats snapshots as VT with
-  every extra and without trimming.
+  every extra except the palette, without trimming. A palette in the snapshot
+  would replay as OSC 4 and override the app's theme colors (A11Y-07).
 - On Linux and macOS it links statically. On Windows it links the way the 1.0
   release documents: x86_64 is tested in its CI through an MSVC import library.
 

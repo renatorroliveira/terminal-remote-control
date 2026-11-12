@@ -16,8 +16,9 @@ use crate::{Rgb, TerminalConfig, TerminalEvent, TerminalSize, TerminalState, VtE
 const GRAPHEME_CLUSTER_MODE: sys::GhosttyMode = 2027;
 /// Extra lines asked of libghostty-vt so that whole-page pruning never keeps fewer than the configured limit.
 const PAGE_SLACK_LINES: usize = 1024;
-/// Every formatter extra, so a snapshot restores modes, cursor, colors and character sets.
-const EXTRAS_ALL: sys::GhosttyFormatterExtras = 0xfff;
+/// Every formatter extra except the palette, so a snapshot restores modes, cursor, styles and character sets but
+/// never overrides the app's theme colors (A11Y-07).
+const SNAPSHOT_EXTRAS: sys::GhosttyFormatterExtras = 0xfff & !1;
 
 /// A libghostty-vt terminal configured for `trcd`: grapheme clustering on, title reports off, line-bounded
 /// scrollback, and query replies collected as [`TerminalEvent::Reply`].
@@ -159,7 +160,7 @@ impl TerminalState for GhosttyTerminal {
     }
 
     fn snapshot(&self) -> Result<Vec<u8>, VtError> {
-        self.format(GHOSTTY_FORMATTER_FORMAT_VT, EXTRAS_ALL, false)
+        self.format(GHOSTTY_FORMATTER_FORMAT_VT, SNAPSHOT_EXTRAS, false)
     }
 
     fn plain_text(&self) -> Result<String, VtError> {
@@ -426,6 +427,14 @@ mod tests {
                 "{cols} columns, limit {limit}: kept {rows}"
             );
         }
+    }
+
+    #[test]
+    fn snapshots_never_carry_the_palette() {
+        let mut term = terminal(20, 3);
+        term.feed(b"x");
+        let snapshot = String::from_utf8(term.snapshot().unwrap()).unwrap();
+        assert!(!snapshot.contains("\x1b]4;"), "{snapshot:?}");
     }
 
     #[test]
