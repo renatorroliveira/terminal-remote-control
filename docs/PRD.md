@@ -2,7 +2,7 @@
 
 | Field        | Value                                         |
 | ------------ | --------------------------------------------- |
-| Status       | Draft v0.2                                    |
+| Status       | Draft v0.3                                    |
 | Owner        | Renato Oliveira                               |
 | Last updated | 2026-11-11                                    |
 | Scope        | P0 (first release), delivered in seven epics  |
@@ -253,10 +253,15 @@ full-screen program output.
    shortcut or Escape returns focus to the terminal input. Opening review mode
    never sends input to the process.
 2. Review mode presents the scrollback and current screen as a read-only,
-   multi-line text document. Each screen reader in the matrix navigates it by
-   character, word, line, paragraph, page and start/end with its standard
-   commands (VoiceOver cursor and rotor, NVDA and JAWS browse mode, Narrator
-   scan mode, Orca caret navigation).
+   multi-line text field. The field holds a page of logical lines around the
+   review caret (initially 500; tuned by spike R2) and loads the adjacent page
+   seamlessly when the caret crosses a page edge; start and end commands reach
+   the start and end of the whole buffer. Each screen reader in the matrix
+   navigates it by character, word, line, paragraph, page and start/end with
+   its standard text-field reading commands (VoiceOver cursor and rotor, NVDA
+   and JAWS caret navigation in focus mode, Narrator, Orca caret navigation).
+   Browse and scan modes over the whole buffer are not required: a single
+   element holding a buffer of this size has frozen screen readers.
 3. The review caret opens on the line that holds the terminal cursor.
 4. Soft-wrapped lines read as one logical line, trailing blanks are trimmed, and
    wide (CJK, emoji) and combining characters read correctly.
@@ -268,7 +273,8 @@ full-screen program output.
 7. Braille displays show the line at the review caret, and cursor routing keys
    move the review caret.
 8. Shift with arrow, Home, End, Page Up and Page Down selects text, and the
-   platform copy shortcut copies it. Selection behaves as in A11Y-04.
+   platform copy shortcut copies it. Selection behaves as in A11Y-04,
+   including its size cap (A11Y-04 item 7).
 
 #### A11Y-04 — Selected text is real, OS-visible selection
 
@@ -279,8 +285,8 @@ read-aloud tools work on it.
 1. Every selection — mouse drag, double-click (word), triple-click (line),
    Shift+click (extend, a single-pointer alternative to dragging), keyboard
    selection in review mode, Select All, and "select last command output" — is
-   exposed as the selection of the focused accessible text element through the
-   platform API:
+   exposed, up to the size cap in item 7, as the selection of the focused
+   accessible text element through the platform API:
    - macOS: the selection attributes Chromium exposes for the element type —
      `AXSelectedText` and `AXSelectedTextRange` for text fields,
      `AXSelectedTextMarkerRange` for document text — as confirmed by spike R1.
@@ -301,6 +307,11 @@ read-aloud tools work on it.
    trailing padding. On Windows and Linux, Ctrl+C copies when a selection exists
    and sends an interrupt otherwise (configurable); Ctrl+Shift+C always copies.
    On macOS, Cmd+C copies.
+7. A selection larger than the platform API can hold in accessible text (an
+   initial cap of about 5,000 lines, tuned by spike R2) is exposed to the OS up
+   to the cap. Copy still places the entire selection on the clipboard, and the
+   app announces that the selection is larger than assistive technology can
+   read at once.
 
 #### A11Y-05 — Everything works from the keyboard, and the terminal never traps focus
 
@@ -619,7 +630,7 @@ The implementation breakdown of each epic will live in a separate delivery plan.
 | ---- | -------------------------------------------------------------------------------------------------- | ---------------------- | ----------------------------- | ------------ |
 | [E1](#91-e1--accessible-remote-terminal-macos-app-to-linux-hosts) | Run and manage terminal sessions on Linux hosts from an accessible macOS app | macOS                  | Linux                         | 14           |
 | [E2](#92-e2--remote-sessions-that-outlive-the-app-and-the-network) | Quit, sleep or roam and come back to the same running sessions, from more than one Mac | macOS | Linux                  | 6            |
-| [E3](#93-e3--sessions-that-survive-a-host-reboot) | Get sessions back, with their history, after a host restarts, and manage each host's daemon | macOS | Linux                   | 3            |
+| [E3](#93-e3--sessions-that-survive-a-host-reboot) | Get sessions back, with their history, after a host restarts, manage each host's daemon, and keep the app up to date | macOS | Linux | 4            |
 | [E4](#94-e4--command-aware-terminal) | Jump between commands, hear exit status and background events, reach any session fast          | macOS                  | Linux                         | 4            |
 | [E5](#95-e5--local-sessions-on-the-mac-and-macos-hosts) | Run persistent local sessions on the Mac, and add macOS hosts                    | macOS                  | Linux, macOS, this Mac        | 5            |
 | [E6](#96-e6--windows-desktop) | Do everything above from Windows, with persistent local Windows sessions                           | macOS, Windows         | Linux, macOS, this computer   | 3            |
@@ -1033,11 +1044,12 @@ Acceptance criteria:
 
 **Outcome.** When a Linux host reboots, its sessions come back with the same
 shell, working directory and name, and with the previous output above a
-marker. Users see and manage each host's daemon from the app.
+marker. Users see and manage each host's daemon from the app, and the app
+keeps itself up to date.
 
 **Scope.** macOS desktop app; Linux hosts.
 
-**Acceptance criteria.** US-3.1 to US-3.3 are fully implemented, and the epic
+**Acceptance criteria.** US-3.1 to US-3.4 are fully implemented, and the epic
 completion conditions in §9 hold on the macOS cells of the AT matrix.
 
 #### US-3.1 — Sessions come back after a host reboot
@@ -1098,6 +1110,26 @@ Acceptance criteria:
 4. "Forget host" asks whether to leave the host's sessions running or to stop
    them and remove the daemon.
 5. Documentation describes manual removal for every platform delivered so far.
+
+#### US-3.4 — The app keeps itself up to date
+
+> As **Jordan**, I want the app to update itself, so that I always run a
+> version my hosts' daemons support without hunting for downloads.
+
+Acceptance criteria:
+
+1. The app checks for updates at launch and once a day, downloads them in the
+   background, and installs an update only after verifying its code signature.
+2. An update installs only when the user chooses to restart now or on the next
+   quit. Checking and downloading never steal focus or interrupt typing.
+   Update availability is announced politely and listed in the status bar
+   notifications.
+3. Updating ends no session (US-2.1) and the app reattaches every session after
+   the restart (US-2.3). Host daemons are then upgraded as in US-2.5, keeping
+   sessions.
+4. Users can turn automatic checks off and check manually from the menu.
+5. Before this story ships (E1 and E2), each release is a signed, notarized
+   download that users install by hand.
 
 ### 9.4 E4 — Command-aware terminal
 
@@ -1418,7 +1450,7 @@ navigable, selectable — but not for the semantics of a program's own layout.
 | 3.3.7   | Redundant Entry                        | A     | Previously entered hosts and session settings are offered again.                                            | A11Y-11, US-1.1                    |
 | 3.3.8   | Accessible Authentication (Minimum)    | AA    | Key-based SSH: no passwords and no cognitive test. Host-key fingerprints are copyable for comparison.      | US-1.1, US-1.2                     |
 | 4.1.2   | Name, Role, Value                      | A     | Every control and the terminal expose name, role, state and value.                                          | A11Y-01, A11Y-11                   |
-| 4.1.3   | Status Messages                        | AA    | State changes, progress, results and errors are announced without moving focus.                             | A11Y-12                            |
+| 4.1.3   | Status Messages                        | AA    | State changes, progress, results and errors are announced without moving focus.                             | A11Y-12, A11Y-04, US-3.4           |
 
 WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
 
@@ -1488,14 +1520,14 @@ WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
 
 ## 14. Open questions
 
-| ID   | Question                                                                                                                         |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------- |
-| OQ-1 | Should persisted scrollback be encrypted at rest, with the key held in the OS keychain or credential store?                     |
-| OQ-2 | Which language and runtime produce the daemon as a small, self-contained binary for every target OS and architecture? (Design decision.) |
-| OQ-3 | What are the distribution channels and update mechanism for the desktop app on each OS?                                         |
-| OQ-4 | Does the product collect any telemetry? If yes, it must be opt-in and exclude terminal content.                                 |
-| OQ-5 | What is the final product name?                                                                                                 |
-| OQ-6 | Which shell integration sequences beyond OSC 133 (for example VS Code's OSC 633) should the app read?                           |
+| ID   | Question                                                                                                                         | Resolution                                                                                         |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| OQ-1 | Should persisted scrollback be encrypted at rest, with the key held in the OS keychain or credential store?                     | No. User-only permissions (SEC-05) are the control. [TECH_STACK.md](TECH_STACK.md) D-05.           |
+| OQ-2 | Which language and runtime produce the daemon as a small, self-contained binary for every target OS and architecture? (Design decision.) | Rust: static musl binaries on Linux, universal2 on macOS, MSVC on Windows. [TECH_STACK.md](TECH_STACK.md) D-01. |
+| OQ-3 | What are the distribution channels and update mechanism for the desktop app on each OS?                                         | macOS: signed downloads from GitHub Releases in E1–E2; automatic updates through Electron's built-in updater from E3 (US-3.4). Windows (E6) and Linux (E7) mechanisms are chosen in those epics within SEC-01 and SEC-07. [TECH_STACK.md](TECH_STACK.md) D-06. |
+| OQ-4 | Does the product collect any telemetry? If yes, it must be opt-in and exclude terminal content.                                 | No telemetry and no crash uploads in P0. [TECH_STACK.md](TECH_STACK.md) D-09.                     |
+| OQ-5 | What is the final product name?                                                                                                 | Open.                                                                                              |
+| OQ-6 | Which shell integration sequences beyond OSC 133 (for example VS Code's OSC 633) should the app read?                           | Open. OSC 133 and OSC 7 are read in any case.                                                      |
 
 ## 15. References
 

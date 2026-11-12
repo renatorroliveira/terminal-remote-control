@@ -15,6 +15,11 @@ designs, code reviews and commits:
 - Epics `E1`–`E7`: incremental, usable deliverables. Each epic's acceptance
   criteria is its list of user stories, `US-<epic>.<n>`.
 
+`docs/TECH_STACK.md` records the chosen languages, libraries, tools, configs and
+the decision log (`D-01`…). Keep the stack minimal: the PRD is the scope, so
+add nothing it doesn't need. Record any new or changed dependency or tool in
+`docs/TECH_STACK.md` first.
+
 The implementation breakdown of each epic will go in `docs/DELIVERY_PLAN.md`
 (not created yet), not in the PRD.
 
@@ -38,26 +43,43 @@ re-runs commands.
 These components span the whole system; changes in one usually constrain the
 others.
 
-- **Desktop app (Electron).** Renders sessions and relays input. Holds no
-  session state that is not recoverable from a daemon.
-- **Daemon.** One per user per host, the same binary locally and remotely.
-  Registered with the OS per-user service manager (launchd LaunchAgent, systemd
-  user unit, Windows per-user auto-start). Owns PTYs (ConPTY on Windows),
-  supervises processes, persists scrollback, and serves multiple attached
-  clients at once. A daemon crash or upgrade must not end sessions (US-2.5), so
-  PTY holders must be separate from the upgradable daemon core *and* outside
-  the service manager's kill scope: systemd kills the whole unit cgroup,
-  launchd kills the job's process group, and ConPTY children die with their
-  owner.
+- **Desktop app (Electron, TypeScript 7, React).** Renders sessions and relays
+  input. It holds no session state that a daemon can't recover. Three
+  processes:
+  - The main process holds no session state.
+  - A `utilityProcess` connection host owns every `ssh` child and daemon
+    connection.
+  - The sandboxed renderer runs xterm.js plus the Accessible Text Surface, which
+    gives the OS real text, selection and caret.
+
+  The app has no native Node modules (no node-pty).
+- **Daemon (`trcd`, Rust).** One per user per host, the same binary locally and
+  remotely.
+  - Registered with the OS per-user service manager: launchd LaunchAgent,
+    systemd user unit, Windows per-user auto-start.
+  - Owns PTYs (ConPTY on Windows), supervises processes, persists scrollback,
+    and serves several attached clients at once.
+  - Three subcommands:
+    - `core`: the restartable supervisor.
+    - `holder`: one per session; owns the PTY, the shell and the libghostty-vt
+      emulator.
+    - `bridge`: relays stdio to the core's socket.
+  - A daemon crash or upgrade must not end sessions (US-2.5). So holders run
+    apart from the upgradable core *and* outside the service manager's kill
+    scope: systemd kills the whole unit cgroup, launchd kills the job's process
+    group, and ConPTY children die with their owner.
+  - App↔daemon traffic is length-prefixed frames: JSON control messages (with
+    TypeScript types generated from Rust by ts-rs) plus raw I/O.
 - **Remote hosts (Linux x86_64/arm64, macOS).** The app connects with the
   system OpenSSH client and the user's SSH config and agent, uploads the daemon
   binary bundled in the app, verifies its SHA-256, installs it under the user's
   home without sudo or internet access, and talks to it through the SSH
-  connection (an exec channel bridged to the daemon's Unix socket, so it works
-  even when SSH forwarding is disabled). On Linux without systemd lingering, a
-  user unit dies about 10 s after the last SSH session closes, so the daemon
-  must then run detached outside the user's systemd instance (US-2.4). Remote
-  macOS without a GUI login gets a detached daemon too.
+  connection. One exec channel per host runs `trcd bridge` into the daemon's
+  Unix socket, so this works even when SSH forwarding is disabled.
+- **Detached daemon.** On Linux without systemd lingering, a user unit dies
+  about 10 s after the last SSH session closes, so the daemon must then run
+  detached, outside the user's systemd instance (US-2.4). Remote macOS without
+  a GUI login also gets a detached daemon.
 
 ## Non-negotiable constraints
 
