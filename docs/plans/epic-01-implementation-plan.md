@@ -40,7 +40,7 @@ only subagents are the two reviewers that run at the end of the epic.
 | P-16 | E1 flow control is backpressure: E1 has one attached client per session, and when its credit runs out the holder pauses PTY reads. Programs block as in any terminal, and `INPUT` never queues behind `OUTPUT` (NFR-03). E2 adds "never block", `Resync` and `ReadRows`, together with multiple clients (US-2.6). No line is ever skipped in E1, so A11Y-02.3 and A11Y-03 hold without a backfill. |
 | P-17 | In E1, `trcd bridge` starts the core detached (double fork plus `setsid`, under a lock) when its socket is absent. E2 adds service-manager registration and kill-scope isolation.                                                                                                                                                                                                             |
 | P-18 | App state (hosts, settings, UI state) is JSON files in `userData`, mode 0600. Writes are atomic (temp file, fsync, rename), and reads are validated with zod. Audio cues are tones generated with Web Audio, with no sound assets. User docs are hand-written accessible HTML bundled in the app and opened from the Help menu.                                                               |
-| P-19 | macOS builds are separate arm64 and x64 artifacts. The x64 smoke test runs under Rosetta 2 on this Mac.                                                                                                                                                                                                                                                                                      |
+| P-19 | macOS builds are separate arm64 and x64 artifacts. The x64 smoke test runs under Rosetta 2 on an Apple silicon Mac.                                                                                                                                                                                                                                                                  |
 | P-20 | Autonomy: the session develops, verifies, commits and proceeds through every story without asking. The PRD is the tie-breaker for every open design decision. The owner is asked only about a decision that would go against the PRD or change a P-xx decision. The ST-1 gate pause is replaced by recording the findings and continuing, unless a spike forces such a decision.             |
 
 ST-0 records P-03, P-04, P-10, P-11, P-14, P-16 and P-17 in the TECH_STACK decision log (D-14 onward), because they
@@ -194,7 +194,8 @@ Root configuration:
 - `pnpm-workspace.yaml`: `minimumReleaseAge` and `onlyBuiltDependencies`.
 - `.gitignore`, `.editorconfig`, `.prettierrc.json`, `.prettierignore`, `biome.json` and `tsconfig.base.json`,
   exactly as in TECH_STACK §9.
-- `lefthook.yml` and commitlint.
+- `lefthook.yml` and commitlint. The pre-commit hook also rejects staged `.claude/` paths and absolute home-directory
+  paths, so no agent or machine-specific file reaches git.
 - `.claude/` and every other agent or machine-specific file stay out of git (`.gitignore`). No editor or agent
   hook is part of the project; lefthook formats staged files.
 
