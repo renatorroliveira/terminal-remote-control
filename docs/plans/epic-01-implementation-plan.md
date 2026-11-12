@@ -397,6 +397,11 @@ SEC-03)
     - A colorjs.io contrast test over every pair of tokens.
 - e2e: the window is interactive within 2 s.
 
+- Outcome: the window title is the renderer's `document.title`, from `windowTitle()`. Menus carry Help with the
+  user guide and accessibility help (Option+F1) as commands for ST-18. The `JsonStore` is ready for the stores of
+  ST-11–ST-13; no file uses it yet. Browser tests dedupe React, because Vite's late pre-bundling of react-intl loaded
+  a second copy.
+
 **ST-10 Terminal view and ATS: milestone M1, a working terminal** (A11Y-01.1/3, A11Y-04.1–5, A11Y-05.2–4,
 A11Y-06.1–5, A11Y-09.3–4, US-1.11.3, SEC-06)
 
@@ -649,7 +654,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-6  | Done        | —      |
 | ST-7  | Done        | —      |
 | ST-8  | Done        | —      |
-| ST-9  | Not started | —      |
+| ST-9  | Done        | —      |
 | ST-10 | Not started | —      |
 | ST-11 | Not started | —      |
 | ST-12 | Not started | —      |

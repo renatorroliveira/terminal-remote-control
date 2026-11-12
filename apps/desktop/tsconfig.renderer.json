@@ -3,7 +3,8 @@
     "compilerOptions": {
         "lib": ["es2025", "dom", "dom.iterable"],
         "types": ["vite/client", "@vitest/browser-playwright"],
-        "jsx": "react-jsx"
+        "jsx": "react-jsx",
+        "resolveJsonModule": true
     },
     "include": ["src/renderer", "src/shared"]
 }

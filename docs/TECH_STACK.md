@@ -128,10 +128,14 @@ Electron app (macOS in E1)                                    Host (Linux in E1)
 ### 4.2 Processes, IPC and Electron security
 
 - **Main ⇄ renderer.**
-    - A small hand-written `contract.ts` maps each channel to its request and
-      response types.
-    - The preload exposes it through `contextBridge`.
-    - `ipcMain.handle` validates every payload with zod.
+    - A small hand-written `src/shared/contract.ts` maps each channel to its
+      request and response types.
+    - The preload exposes it through `contextBridge` as `window.trc`.
+    - `ipcMain.handle` validates every payload with zod and refuses senders
+      that are not the app's own page (`app://trc`, or the dev server in
+      development).
+    - The menus send commands (`app:command`) and the display relay sends
+      `display:changed` to the renderer.
 - **Renderer ⇄ connection host.**
     - Main creates a `MessageChannelMain`. The preload forwards one port to the
       page with `window.postMessage`, Electron's pattern for context-isolated
@@ -329,6 +333,12 @@ either way.
 - **i18n** (NFR-13). react-intl 12 with ICU messages, precompiled with
   `@formatjs/cli`. `<html lang>` and RAC's `I18nProvider` follow the active
   locale.
+    - Messages are `defineMessages` with explicit IDs. `pnpm --filter
+@trc/desktop i18n` extracts them to `apps/desktop/lang/en.json` and compiles
+      them to `src/renderer/i18n/compiled/en.json`; `pnpm check` fails when
+      either is stale.
+    - The main process keeps its menu strings in one module,
+      `src/main/strings.ts`.
 - **Styling and themes** (A11Y-07, A11Y-08).
     - CSS Modules, which Vite supports natively. Design tokens are CSS custom
       properties in `@layer`s. No Tailwind and no CSS-in-JS.
@@ -347,6 +357,13 @@ either way.
     - Forced colors (E6) use system colors and outline focus rings.
     - A dev-only colorjs.io test checks every token pair in every theme, plus the
       focus, selection and cursor colors (PRD §11.2).
+    - The palettes live in `src/renderer/ui/themes.ts`, the single source for
+      the contrast test and the generated `@layer tokens` style sheet. Layers
+      are `reset, tokens, base, components`; the reduced-motion override is
+      unlayered so it beats component animations without `!important`.
+    - App state files (P-18) go through one `JsonStore`: zod-validated reads
+      that fall back to defaults, atomic writes, mode 0600 in a 0700
+      directory.
 
 ### 4.5 Packaging, signing and updates
 

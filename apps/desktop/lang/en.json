@@ -1,0 +1,6 @@
+{
+  "shell.noSession": {
+    "defaultMessage": "No session is open.",
+    "description": "Shown in the terminal area while no session is open."
+  }
+}

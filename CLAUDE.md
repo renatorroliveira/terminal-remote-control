@@ -14,6 +14,8 @@ tooling (`tools/*`).
 - Full local gate: `pnpm check` (Prettier, Biome, document IDs, `tsc` per
   process, Vitest node and browser projects, `cargo fmt`, clippy, nextest).
 - Lint only: `pnpm lint`. Format: `pnpm format`. Types: `pnpm typecheck`.
+- UI messages: `pnpm --filter @trc/desktop i18n` after changing any
+  `defineMessages`; `pnpm check` fails while they are stale.
 - Unit and component tests: `pnpm test`; one test:
   `pnpm exec vitest run <file> -t <name>`.
 - Rust: `cargo nextest run --workspace`; one test: `cargo nextest run <name>`.

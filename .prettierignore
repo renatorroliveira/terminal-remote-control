@@ -9,3 +9,5 @@ tools/ax-probe/.build/
 protocol/fixtures/
 docs/spikes/s4/
 crates/*/tests/corpus/
+apps/desktop/lang/
+apps/desktop/src/renderer/i18n/compiled/

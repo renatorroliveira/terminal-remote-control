@@ -7,7 +7,7 @@
         "node": ">=24.22 <25"
     },
     "scripts": {
-        "check": "pnpm format:check && pnpm lint && pnpm docs:ids && pnpm typecheck && pnpm test && pnpm rust:check && pnpm gen:check",
+        "check": "pnpm format:check && pnpm lint && pnpm docs:ids && pnpm --filter @trc/desktop i18n:check && pnpm typecheck && pnpm test && pnpm rust:check && pnpm gen:check",
         "format": "prettier --write .",
         "format:check": "prettier --check --log-level warn .",
         "lint": "biome check --reporter=concise .",

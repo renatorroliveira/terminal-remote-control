@@ -1,0 +1,48 @@
+@layer reset {
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+    }
+}
+
+@layer base {
+    :root {
+        --trc-focus-ring-width: 2px;
+        --trc-focus-ring-offset: 2px;
+        color-scheme: light;
+        font-family:
+            system-ui,
+            -apple-system,
+            sans-serif;
+        background: var(--trc-color-background);
+        color: var(--trc-color-text);
+    }
+
+    :root[data-color-scheme='dark'] {
+        color-scheme: dark;
+    }
+
+    :focus-visible {
+        outline: var(--trc-focus-ring-width) solid var(--trc-color-focus-ring);
+        outline-offset: var(--trc-focus-ring-offset);
+    }
+
+    ::selection {
+        background: var(--trc-color-selection-background);
+        color: var(--trc-color-selection-text);
+    }
+}
+
+:root[data-reduced-motion='true'] *,
+:root[data-reduced-motion='true'] *::before,
+:root[data-reduced-motion='true'] *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
+}

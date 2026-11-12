@@ -1,0 +1,8 @@
+{
+  "shell.noSession": [
+    {
+      "type": 0,
+      "value": "No session is open."
+    }
+  ]
+}

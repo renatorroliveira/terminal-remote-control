@@ -1,12 +1,24 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, type IpcRendererEvent, ipcRenderer } from 'electron';
 import { CONNECTION_PORT_CHANNEL, CONNECTION_PORT_MESSAGE } from '../shared/connection-port';
+import { APP_COMMAND_CHANNEL, type AppCommand, DISPLAY_CHANGED_CHANNEL, type TrcBridge } from '../shared/contract';
+import type { DisplaySettings } from '../shared/display';
 
-/** The API the preload exposes to the renderer as `window.trc`. */
-export interface TrcBridge {
-    readonly platform: string;
+function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
+    const handler = (_event: IpcRendererEvent, value: T): void => listener(value);
+    ipcRenderer.on(channel, handler);
+    return () => ipcRenderer.off(channel, handler);
 }
 
-const bridge: TrcBridge = { platform: process.platform };
+const bridge: TrcBridge = {
+    platform: process.platform,
+    display: {
+        get: () => ipcRenderer.invoke('display:get') as Promise<DisplaySettings>,
+        onChanged: (listener) => subscribe<DisplaySettings>(DISPLAY_CHANGED_CHANNEL, listener),
+    },
+    commands: {
+        onCommand: (listener) => subscribe<AppCommand>(APP_COMMAND_CHANNEL, listener),
+    },
+};
 
 contextBridge.exposeInMainWorld('trc', bridge);
 
