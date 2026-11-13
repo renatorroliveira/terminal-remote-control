@@ -58,6 +58,21 @@ export const commandMessages = defineMessages<CommandId>({
         defaultMessage: 'Previous session',
         description: 'Command name.',
     },
+    'terminal.zoomIn': {
+        id: 'command.terminalZoomIn',
+        defaultMessage: 'Bigger terminal text',
+        description: 'Command name.',
+    },
+    'terminal.zoomOut': {
+        id: 'command.terminalZoomOut',
+        defaultMessage: 'Smaller terminal text',
+        description: 'Command name.',
+    },
+    'terminal.zoomReset': {
+        id: 'command.terminalZoomReset',
+        defaultMessage: 'Default terminal text size',
+        description: 'Command name.',
+    },
     'terminal.listLinks': {
         id: 'command.terminalListLinks',
         defaultMessage: 'List links…',
@@ -95,6 +110,25 @@ export const shellAnnouncements = defineMessages({
     },
     sidebarShown: { id: 'announce.sidebarShown', defaultMessage: 'Sidebar shown.', description: 'Announcement.' },
 });
+
+/** The terminal text size after a change (A11Y-07.4). */
+export const zoomAnnouncements = {
+    level: defineMessage<{ zoom: number }>({
+        id: 'announce.zoom',
+        defaultMessage: 'Terminal text {zoom}%.',
+        description: 'Announced after the terminal text size changes.',
+    }),
+    largest: defineMessage<{ zoom: number }>({
+        id: 'announce.zoomLargest',
+        defaultMessage: 'Terminal text {zoom}%, the largest.',
+        description: 'Announced when the terminal text cannot grow any more.',
+    }),
+    smallest: defineMessage<{ zoom: number }>({
+        id: 'announce.zoomSmallest',
+        defaultMessage: 'Terminal text {zoom}%, the smallest.',
+        description: 'Announced when the terminal text cannot shrink any more.',
+    }),
+};
 
 /** Screen-reader mode turning on or off (A11Y-10.2). */
 export const screenReaderAnnouncements = defineMessages({

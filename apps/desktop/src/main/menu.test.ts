@@ -67,8 +67,13 @@ describe('menuTemplate: View', () => {
             'separator',
             'togglefullscreen',
         ]);
+        expect(
+            view.filter((item) => item.role?.toLowerCase().includes('zoom')).map((item) => item.accelerator),
+        ).toEqual(['Control+Command+0', 'Control+Command+=', 'Control+Command+-']);
     });
+});
 
+describe('menuTemplate: Command shortcuts', () => {
     it('shows each Command shortcut from the keymap and sends the command to the renderer (docs/design/keymap.md)', () => {
         const commands: string[] = [];
         const template = menuTemplate({ ...options(), onCommand: (id) => commands.push(id) });
@@ -87,6 +92,9 @@ describe('menuTemplate: View', () => {
             ['Send Next Key to Terminal', 'Shift+Command+K'],
             ['Mute Output Announcements', 'Shift+Command+A'],
             ['List Links…', 'Shift+Command+O'],
+            ['Bigger Text', 'Command+='],
+            ['Smaller Text', 'Command+-'],
+            ['Default Text Size', 'Command+0'],
         ]);
         for (const item of terminal) {
             item.click?.(undefined as never, undefined, undefined as never);
@@ -96,6 +104,9 @@ describe('menuTemplate: View', () => {
             'terminal.sendNextKey',
             'announcements.toggleMute',
             'terminal.listLinks',
+            'terminal.zoomIn',
+            'terminal.zoomOut',
+            'terminal.zoomReset',
         ]);
     });
 

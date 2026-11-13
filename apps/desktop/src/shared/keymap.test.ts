@@ -74,6 +74,15 @@ describe('bindingProblem: the A11Y-05.5 and A11Y-05.6 rules', () => {
         expect(bindingProblem(chord('Cmd+C'))).toBe('reserved');
         expect(bindingProblem(chord('Ctrl+Cmd+F'))).toBe('reserved');
         expect(bindingProblem(chord('Shift+Cmd+4'))).toBe('reserved');
+        expect(bindingProblem(chord('Ctrl+Cmd+='))).toBe('reserved');
+        expect(bindingProblem(chord('Option+Cmd+='))).toBe('reserved');
+    });
+
+    it('leaves Command+=, Command+- and Command+0 to the terminal text size (A11Y-07.4)', () => {
+        expect(bindingProblem(chord('Cmd+='))).toBeUndefined();
+        expect(resolveKeymap({}).chordFor('terminal.zoomIn')).toEqual(chord('Cmd+='));
+        expect(resolveKeymap({}).chordFor('terminal.zoomOut')).toEqual(chord('Cmd+-'));
+        expect(resolveKeymap({}).chordFor('terminal.zoomReset')).toEqual(chord('Cmd+0'));
     });
 });
 
@@ -109,7 +118,7 @@ describe('resolveKeymap: defaults plus the user’s bindings', () => {
         for (const binding of Object.values(DEFAULT_KEYMAP)) {
             const words = formatChord(chord(binding)).replace('Ctrl', 'Control').replace('Cmd', 'Command').split('+');
             const documented = [words.slice(0, -1).sort(), words.at(-1)];
-            const rows = [...design.matchAll(/\| ([A-Za-z+0-9[\]]+) +\|/g)].map((match) => {
+            const rows = [...design.matchAll(/\| ([A-Za-z+0-9[\]=-]+) +\|/g)].map((match) => {
                 const parts = (match[1] ?? '').split('+');
                 return [parts.slice(0, -1).sort(), parts.at(-1)];
             });

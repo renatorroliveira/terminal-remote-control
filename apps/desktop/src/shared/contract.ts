@@ -24,6 +24,8 @@ export interface InvokeContract {
     };
     readonly 'menus:terminal': { readonly args: readonly [canCopy: boolean]; readonly result: undefined };
     readonly 'clipboard:write': { readonly args: readonly [text: string]; readonly result: undefined };
+    readonly 'terminal:get-zoom': { readonly args: readonly []; readonly result: number };
+    readonly 'terminal:set-zoom': { readonly args: readonly [zoom: number]; readonly result: undefined };
     readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
     readonly 'sidebar:get-collapsed': { readonly args: readonly []; readonly result: boolean };
@@ -83,6 +85,12 @@ export interface TrcBridge {
     readonly clipboard: {
         /** Puts text a program wrote with OSC 52 on the clipboard, for a host that allows it (SEC-06.1). */
         write(text: string): Promise<void>;
+    };
+    readonly terminal: {
+        /** The terminal text size the user last chose, in percent (A11Y-07.4). */
+        zoom(): Promise<number>;
+        /** Keeps a terminal text size in `config.json`. */
+        setZoom(zoom: number): Promise<void>;
     };
     readonly menus: {
         /** Shows the terminal's context menu: Copy when `canCopy`, Paste, List Links and Look Up (A11Y-11.11). */

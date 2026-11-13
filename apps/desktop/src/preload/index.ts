@@ -44,6 +44,10 @@ const bridge: TrcBridge = {
     clipboard: {
         write: (text) => ipcRenderer.invoke('clipboard:write', text) as Promise<void>,
     },
+    terminal: {
+        zoom: () => ipcRenderer.invoke('terminal:get-zoom') as Promise<number>,
+        setZoom: (zoom) => ipcRenderer.invoke('terminal:set-zoom', zoom) as Promise<void>,
+    },
     menus: {
         terminal: (canCopy) => ipcRenderer.invoke('menus:terminal', canCopy) as Promise<void>,
     },

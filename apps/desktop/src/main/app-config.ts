@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { SCREEN_READER_MODES, type ScreenReaderMode } from '../shared/accessibility';
 import { DEFAULT_THEME_PREFERENCE, type ThemePreference } from '../shared/display';
 import { SIDEBAR_WIDTH } from '../shared/layout';
+import { TERMINAL_ZOOM } from '../shared/terminal-zoom';
 import { JsonStore } from './json-store';
 
 /** What the user configured, kept in the TRC home's `config.json` (P-18). ST-18's settings page adds the rest. */
@@ -14,6 +15,8 @@ export interface AppConfig {
     readonly sidebarCollapsed: boolean;
     /** Whether screen-reader mode follows Chromium's detection or is forced on or off (A11Y-10.2). */
     readonly screenReaderMode: ScreenReaderMode;
+    /** The terminal text size, in percent (A11Y-07.4). */
+    readonly terminalZoom: number;
 }
 
 /** The configuration of a new install. */
@@ -22,6 +25,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
     sidebarWidth: SIDEBAR_WIDTH.initial,
     sidebarCollapsed: false,
     screenReaderMode: 'auto',
+    terminalZoom: TERMINAL_ZOOM.initial,
 };
 
 const THEME_PREFERENCES = ['midnight', 'system', 'light', 'dark', 'hc-light', 'hc-dark'] as const;
@@ -32,6 +36,7 @@ const CONFIG_SCHEMA: z.ZodType<AppConfig> = z.object({
     sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max).catch(DEFAULT_APP_CONFIG.sidebarWidth),
     sidebarCollapsed: z.boolean().catch(DEFAULT_APP_CONFIG.sidebarCollapsed),
     screenReaderMode: z.enum(SCREEN_READER_MODES).catch(DEFAULT_APP_CONFIG.screenReaderMode),
+    terminalZoom: z.number().int().min(TERMINAL_ZOOM.min).max(TERMINAL_ZOOM.max).catch(DEFAULT_APP_CONFIG.terminalZoom),
 });
 
 /** The theme preference in `value`, when it names one. */

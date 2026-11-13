@@ -3,6 +3,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ScreenReaderMode } from '../../shared/accessibility';
 import type { CommandId, Keymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
+import { nextZoom, TERMINAL_ZOOM, type ZoomChange } from '../../shared/terminal-zoom';
 import { CommandRegistry } from '../commands/command-registry';
 import { installShortcuts } from '../commands/shortcuts';
 import { failureMessage } from '../sessions/failure-messages';
@@ -31,6 +32,7 @@ import {
     openAnnouncements,
     screenReaderAnnouncements,
     shellAnnouncements,
+    zoomAnnouncements,
 } from './shell-messages';
 
 /** What the shell's commands ask of the terminals. */
@@ -43,6 +45,14 @@ export interface TerminalControls {
     visibleLinks(): readonly TerminalLink[];
     /** Pastes text into a session's terminal (US-1.12.2). */
     paste(key: SessionKey, text: string): void;
+    /** Sets every terminal's text size, in percent (A11Y-07.4). */
+    setZoom(zoom: number): void;
+}
+
+/** Where the terminal text size is kept: `config.json` in the TRC home. */
+export interface ZoomSettings {
+    get(): Promise<number>;
+    set(zoom: number): Promise<void>;
 }
 
 /** A paste of more than one line, waiting for the user's confirmation (US-1.12.2). */
@@ -102,6 +112,8 @@ export interface ShellState {
     readonly linkDialog: LinkDialog | undefined;
     /** The paste waiting for confirmation (US-1.12.2). */
     readonly pasteDialog: PasteDialog | undefined;
+    /** The terminal text size, in percent (A11Y-07.4). */
+    readonly terminalZoom: number;
 }
 
 /** A dialog about a session, or the New session dialog. */
@@ -131,6 +143,8 @@ export interface ShellOptions {
     readonly screenReader?: ScreenReaderControls;
     /** Where links open; without it, links do nothing. */
     readonly links?: LinkControls;
+    /** Where the terminal text size is kept; without it, it starts at 100% each time. */
+    readonly terminalZoom?: ZoomSettings;
 }
 
 const INITIAL_STATE: ShellState = {
@@ -144,6 +158,7 @@ const INITIAL_STATE: ShellState = {
     sessionDialog: undefined,
     linkDialog: undefined,
     pasteDialog: undefined,
+    terminalZoom: TERMINAL_ZOOM.initial,
 };
 
 /**
@@ -192,6 +207,7 @@ export class Shell {
             this.#options.screenReader?.onScreenReaderChanged((on) => this.#announceScreenReader(on)) ??
             (() => undefined);
         void this.#options.sidebar.collapsed().then((sidebarCollapsed) => this.state.setState({ sidebarCollapsed }));
+        void this.#options.terminalZoom?.get().then((terminalZoom) => this.#applyZoom(terminalZoom));
         return () => {
             stopShortcuts();
             stopRegions();
@@ -403,6 +419,9 @@ export class Shell {
             'session.next': () => this.#options.workspace.openNext(1),
             'session.previous': () => this.#options.workspace.openNext(-1),
             'terminal.listLinks': () => this.#listLinks(),
+            'terminal.zoomIn': () => this.#zoom('in'),
+            'terminal.zoomOut': () => this.#zoom('out'),
+            'terminal.zoomReset': () => this.#zoom('reset'),
         };
         for (const [id, run] of Object.entries(actions) as [CommandId, () => void][]) {
             this.commands.register({ id, label: this.#options.intl.formatMessage(commandMessages[id]), run });
@@ -415,6 +434,25 @@ export class Shell {
             return;
         }
         void this.#options.workspace.newSessionHere();
+    }
+
+    #zoom(change: ZoomChange): void {
+        const zoom = nextZoom(this.state.getState().terminalZoom, change);
+        this.#applyZoom(zoom);
+        void this.#options.terminalZoom?.set(zoom);
+        const { intl, announcer } = this.#options;
+        const message =
+            change === 'in' && zoom === TERMINAL_ZOOM.max
+                ? zoomAnnouncements.largest
+                : change === 'out' && zoom === TERMINAL_ZOOM.min
+                  ? zoomAnnouncements.smallest
+                  : zoomAnnouncements.level;
+        announcer.announce(intl.formatMessage(message, { zoom }), { group: 'terminal-zoom' });
+    }
+
+    #applyZoom(terminalZoom: number): void {
+        this.state.setState({ terminalZoom });
+        this.#options.terminals.setZoom(terminalZoom);
     }
 
     #listLinks(): void {
