@@ -4,8 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-E1 is in progress; see `docs/plans/epic-01-implementation-plan.md` for the
-story status. The monorepo holds the Electron app (`apps/desktop`), the
+E1 is in progress (M1 shipped as v0.1.0); see
+`docs/plans/epic-01-implementation-plan.md` for the story status. Usage is in
+`USER_GUIDE.md`. The monorepo holds the Electron app (`apps/desktop`), the
 protocol package (`packages/protocol`), the Rust crates (`crates/*`) and
 tooling (`tools/*`).
 
@@ -31,6 +32,16 @@ tooling (`tools/*`).
   unless the test hosts are up and the daemons are built. Test launches open
   behind the focused app (`TRC_TEST_BACKGROUND=1`, D-27), but `pnpm test:ax`
   must take focus, so warn the owner before running it.
+- App state lives in the TRC home, `~/.trc` (`config.json`, `hosts.json`), or
+  `TRC_HOME` when set; hosts always install the daemon under `~/.trc`.
+- Icons: `pnpm icons` renders `apps/desktop/resources/icons` from
+  `tools/icons`. Packaging: `pnpm dist` (ad-hoc signed arm64 and x64 dmg and
+  zip in `apps/desktop/dist`).
+- Releases: `pnpm release <major|minor|patch> [--dry-run]` from a clean,
+  pushed `main` with `gh` logged in (D-34). Run it with
+  `GIT_AUTHOR_NAME="$(git config user.name) (Agentic)"` and
+  `GIT_AUTHOR_EMAIL="$(git config user.email)"` set. CI
+  (`.github/workflows/ci.yml`) builds and unit-tests every push and PR.
 - The git hooks install with `pnpm install` into `.git/hooks`; a global
   `core.hooksPath` hook manager runs them. Never bypass hooks with
   `--no-verify`.
