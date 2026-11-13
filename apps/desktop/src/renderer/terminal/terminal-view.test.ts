@@ -40,7 +40,7 @@ function mount(overrides: Partial<TerminalViewOptions> = {}): Harness {
         ...overrides,
     });
     view.mount(host);
-    view.setLabel('build, devbox-1', 'Option F1: accessibility help.');
+    view.setLabel('build, devbox-1', 'Option F1: accessibility help.', 'New output below');
     views.push(view);
     return { view, host, inputs, credits, sizes };
 }
@@ -674,5 +674,32 @@ describe('TerminalView: appearance (A11Y-07.6, A11Y-07.8)', () => {
         expect(view.terminal.options.letterSpacing).toBe(spacing + 2);
         expect(view.terminal.options.cursorStyle).toBe('bar');
         expect(view.terminal.options.cursorWidth).toBe(3);
+    });
+});
+
+describe('TerminalView: bell and pinned viewport (A11Y-08.2, A11Y-08.4)', () => {
+    it('reports the bell', async () => {
+        const notices: unknown[] = [];
+        const { view } = mount({ onNotice: (notice) => notices.push(notice) });
+        await written(view, 'ding\u0007');
+        expect(notices).toEqual([{ kind: 'bell' }]);
+    });
+
+    it('keeps a scrolled-back viewport still, shows and reports new output below once, and clears at the bottom', async () => {
+        const notices: unknown[] = [];
+        const { view, host } = mount({ onNotice: (notice) => notices.push(notice) });
+        await written(view, Array.from({ length: 100 }, (_, index) => `line ${index}`).join('\r\n'));
+        view.terminal.scrollLines(-10);
+        const pinnedAt = view.terminal.buffer.active.viewportY;
+        await written(view, '\r\nmore\r\nand more');
+        expect(view.terminal.buffer.active.viewportY).toBe(pinnedAt);
+        const indicator = host.querySelector<HTMLElement>('[data-output-below]');
+        expect(indicator?.hidden).toBe(false);
+        expect(indicator?.textContent).toBe('New output below');
+        expect(notices).toEqual([{ kind: 'output-below' }]);
+        indicator?.click();
+        await frames();
+        expect(view.terminal.buffer.active.viewportY).toBe(view.terminal.buffer.active.baseY);
+        expect(indicator?.hidden).toBe(true);
     });
 });

@@ -67,6 +67,7 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
                 host: destination(hostId),
             }),
             hint: intl.formatMessage(terminalMessages.hint),
+            outputBelow: intl.formatMessage(terminalMessages.outputBelow),
         }),
         onActivity: (key) => workspace?.recordActivity(key),
         speech: sessionSpeech(sources.speech, (lines) => intl.formatMessage(floodMessage, { lines })),

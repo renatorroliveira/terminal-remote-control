@@ -273,6 +273,29 @@ describe('Shell paste and copy (US-1.12.1, US-1.12.2, A11Y-04.7)', () => {
     });
 });
 
+describe('Shell bell and new output below (A11Y-08.2, A11Y-08.4)', () => {
+    it('badges a background session’s bell, and shows and announces the open session’s without flashing', async () => {
+        const { shell, client, workspace, spoken } = await setup();
+        client.push('host-0', CONNECTED);
+        await expect.poll(() => workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
+        shell.terminalNotice('host-0/a', { kind: 'bell' });
+        expect(workspace.store.getState().bells.has('host-0/a')).toBe(true);
+        expect(shell.state.getState().bell).toBe(false);
+        workspace.open('host-0/a');
+        spoken.length = 0;
+        shell.terminalNotice('host-0/a', { kind: 'bell' });
+        expect(shell.state.getState().bell).toBe(true);
+        expect(spoken).toEqual(['Bell in bash.']);
+        await expect.poll(() => shell.state.getState().bell, { timeout: 5_000 }).toBe(false);
+    });
+
+    it('announces new output below a pinned viewport', async () => {
+        const { shell, spoken } = await setup();
+        shell.terminalNotice('host-0/a', { kind: 'output-below' });
+        expect(spoken).toEqual(['New output below.']);
+    });
+});
+
 describe('Shell terminal text size (A11Y-07.4)', () => {
     it('applies the saved size, steps it by 10% up to 200%, keeps and announces it, and resets it', async () => {
         const { shell, terminals, spoken, zooms } = await setup();

@@ -178,7 +178,11 @@ function SessionRow(props: SessionRowProps) {
     const intl = useIntl();
     const { item, focus, workspace } = props;
     const state = sessionStateText(intl, item);
-    const badge = item.unread ? intl.formatMessage(treeMessages.newOutput) : undefined;
+    const badges = [
+        ...(item.unread ? [intl.formatMessage(treeMessages.newOutput)] : []),
+        ...(item.bell ? [intl.formatMessage(treeMessages.bell)] : []),
+    ];
+    const badge = badges.length === 0 ? undefined : intl.formatList(badges, { type: 'unit' });
     const label =
         badge === undefined
             ? intl.formatMessage(sessionRowMessage, { name: item.label, state })

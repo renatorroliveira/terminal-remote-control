@@ -13,6 +13,8 @@ import { TERMINAL_FONT_SIZE, TerminalView } from './terminal-view';
 export interface TerminalLabel {
     readonly name: string;
     readonly hint: string;
+    /** The text of the indicator on a scrolled-back terminal while new output arrives (A11Y-08.4). */
+    readonly outputBelow: string;
 }
 
 /** How sessions' output is spoken (A11Y-02); the registry adds that only the open session speaks. */
@@ -99,7 +101,7 @@ export class TerminalRegistry implements TerminalHost {
             other.frame.hidden = other !== entry;
         }
         const label = this.#options.labelFor(hostId, session);
-        entry.view.setLabel(label.name, label.hint);
+        entry.view.setLabel(label.name, label.hint, label.outputBelow);
         if (this.#open !== undefined && this.#open !== key) {
             this.#options.speech?.cancel(this.#open);
         }

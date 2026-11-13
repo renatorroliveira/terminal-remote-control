@@ -101,6 +101,11 @@ export const terminalMessages = defineMessages({
         defaultMessage: 'Option F1: accessibility help.',
         description: 'Hint read after the terminal name.',
     },
+    outputBelow: {
+        id: 'terminal.outputBelow',
+        defaultMessage: 'New output below',
+        description: 'Indicator on a terminal scrolled back while new output arrives; clicking it jumps to the end.',
+    },
 });
 
 /** A host or session row's accessible name. */

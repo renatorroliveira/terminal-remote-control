@@ -3,4 +3,8 @@ export type TerminalNotice =
     /** A copy took more lines than the OS sees selected (A11Y-04.7). */
     | { readonly kind: 'copy-capped'; readonly lines: number }
     /** A program on a host that allows it wrote the clipboard (SEC-06.1). */
-    | { readonly kind: 'clipboard-written' };
+    | { readonly kind: 'clipboard-written' }
+    /** The program rang the bell (A11Y-08.2). */
+    | { readonly kind: 'bell' }
+    /** Output arrived below a viewport the user scrolled back (A11Y-08.4). */
+    | { readonly kind: 'output-below' };

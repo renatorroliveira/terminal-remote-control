@@ -32,6 +32,7 @@ import {
     openAnnouncements,
     screenReaderAnnouncements,
     shellAnnouncements,
+    terminalAnnouncements,
     zoomAnnouncements,
 } from './shell-messages';
 
@@ -114,6 +115,8 @@ export interface ShellState {
     readonly pasteDialog: PasteDialog | undefined;
     /** The terminal text size, in percent (A11Y-07.4). */
     readonly terminalZoom: number;
+    /** Whether the status bar shows that the open session just rang its bell (A11Y-08.2). */
+    readonly bell: boolean;
 }
 
 /** A dialog about a session, or the New session dialog. */
@@ -159,7 +162,11 @@ const INITIAL_STATE: ShellState = {
     linkDialog: undefined,
     pasteDialog: undefined,
     terminalZoom: TERMINAL_ZOOM.initial,
+    bell: false,
 };
+
+/** How long the status bar shows the bell. */
+const BELL_SHOWN_MS = 3_000;
 
 /**
  * The workspace shell (US-1.6, A11Y-05): the commands every shortcut, menu item and the palette run, the regions they
@@ -306,11 +313,21 @@ export class Shell {
     /** Shows or announces what a terminal reported. */
     terminalNotice(key: SessionKey, notice: TerminalNotice): void {
         const { intl, announcer, workspace } = this.#options;
-        if (notice.kind === 'copy-capped') {
-            announcer.announce(intl.formatMessage(copyCappedMessage, { lines: notice.lines, cap: SELECTION_CAP }));
-        } else {
-            const host = workspace.store.getState().hosts.find((entry) => key.startsWith(`${entry.id}/`));
-            announcer.announce(intl.formatMessage(clipboardWrittenMessage, { host: host?.destination ?? key }));
+        switch (notice.kind) {
+            case 'copy-capped':
+                announcer.announce(intl.formatMessage(copyCappedMessage, { lines: notice.lines, cap: SELECTION_CAP }));
+                break;
+            case 'clipboard-written': {
+                const host = workspace.store.getState().hosts.find((entry) => key.startsWith(`${entry.id}/`));
+                announcer.announce(intl.formatMessage(clipboardWrittenMessage, { host: host?.destination ?? key }));
+                break;
+            }
+            case 'bell':
+                this.#bell(key);
+                break;
+            case 'output-below':
+                announcer.announce(intl.formatMessage(terminalAnnouncements.outputBelow), { group: `below:${key}` });
+                break;
         }
     }
 
@@ -434,6 +451,23 @@ export class Shell {
             return;
         }
         void this.#options.workspace.newSessionHere();
+    }
+
+    #bell(key: SessionKey): void {
+        const { intl, announcer, workspace, document } = this.#options;
+        const state = workspace.store.getState();
+        if (state.open !== key) {
+            workspace.recordBell(key);
+            return;
+        }
+        const item = hostGroups(state)
+            .flatMap((group) => group.sessions)
+            .find((entry) => entry.key === key);
+        this.state.setState({ bell: true });
+        announcer.announce(intl.formatMessage(terminalAnnouncements.bell, { session: item?.label ?? key }), {
+            group: 'bell',
+        });
+        document.defaultView?.setTimeout(() => this.state.setState({ bell: false }), BELL_SHOWN_MS);
     }
 
     #zoom(change: ZoomChange): void {

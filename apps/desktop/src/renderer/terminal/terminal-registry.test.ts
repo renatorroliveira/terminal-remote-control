@@ -121,6 +121,7 @@ function setup() {
         labelFor: (hostId, session) => ({
             name: `${session.profile.name}, ${hostId}`,
             hint: 'Option F1: accessibility help.',
+            outputBelow: 'New output below',
         }),
         speech,
     });

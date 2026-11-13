@@ -167,6 +167,12 @@ A selection of more than 5,000 lines still copies whole; VoiceOver sees its firs
 Pasting more than one line shows the text and asks first, because the shell may run each line. Programs that ask
 for bracketed paste, such as bash and zsh, then wait for Return before they run anything.
 
+When you scroll back, the terminal stays where you are while output arrives, and a "New output below" button appears
+(TRC says so once). Click it, press Shift-Page Down to the end, or type to return to the bottom.
+
+The bell never flashes: the status bar shows "Bell" for a few seconds and TRC says it. A session in the background
+gets a "bell" badge in the session list instead, until you open it.
+
 ### Links
 
 Command-click a web address in the terminal, or a link a program prints (such as `ls --hyperlink`), to open it

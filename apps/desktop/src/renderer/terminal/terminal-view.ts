@@ -78,6 +78,7 @@ export class TerminalView {
     readonly surface: HTMLElement;
     readonly #options: TerminalViewOptions;
     readonly #hint: HTMLElement;
+    readonly #outputBelow: HTMLButtonElement;
     readonly #ats: AtsSurface;
     readonly #scheduler: UpdateScheduler;
     readonly #credit: CreditTracker;
@@ -111,6 +112,7 @@ export class TerminalView {
         });
         this.surface = createSurface(options.fontSize ?? TERMINAL_FONT_SIZE);
         this.#hint = createHint();
+        this.#outputBelow = createOutputBelow();
         this.#measurer = createMeasurer(options.fontSize ?? TERMINAL_FONT_SIZE);
         this.#ats = new AtsSurface(this.terminal, this.surface);
         this.#scheduler = new UpdateScheduler(() => this.#ats.update(), options.assistiveTechnology);
@@ -135,7 +137,7 @@ export class TerminalView {
         host.className = styles['host'] ?? '';
         const canvas = document.createElement('div');
         canvas.className = styles['canvas'] ?? '';
-        host.append(canvas, this.surface, this.#hint, this.#measurer);
+        host.append(canvas, this.surface, this.#hint, this.#measurer, this.#outputBelow);
         frame.append(host);
         container.append(frame);
         this.surface.setAttribute('aria-describedby', this.#hint.id);
@@ -166,9 +168,10 @@ export class TerminalView {
     }
 
     /** Sets the accessible name (session, host and state) and the shortcut hint (A11Y-01.1, A11Y-01.2). */
-    setLabel(name: string, hint: string): void {
+    setLabel(name: string, hint: string, outputBelow: string): void {
         this.surface.setAttribute('aria-label', name);
         this.#hint.textContent = hint;
+        this.#outputBelow.textContent = outputBelow;
     }
 
     /** Applies a theme's terminal colors. */
@@ -295,9 +298,14 @@ export class TerminalView {
             keyboard,
             this.terminal.onWriteParsed(() => {
                 this.#syncPointerMode();
+                this.#noticeOutputBelow();
                 request();
             }),
-            this.terminal.onScroll(request),
+            this.terminal.onScroll(() => {
+                this.#clearOutputBelow();
+                request();
+            }),
+            this.terminal.onBell(() => this.#options.onNotice?.({ kind: 'bell' })),
             this.terminal.onSelectionChange(request),
             this.terminal.onResize(({ cols, rows }) => {
                 this.#geometry?.align();
@@ -329,6 +337,7 @@ export class TerminalView {
         this.#listenInterrupt();
         this.#listenLinks();
         this.#listenClipboard();
+        this.#listenOutputBelow();
     }
 
     #listenClipboard(): void {
@@ -417,6 +426,21 @@ export class TerminalView {
         return true;
     }
 
+    #noticeOutputBelow(): void {
+        const buffer = this.terminal.buffer.active;
+        if (buffer.viewportY < buffer.baseY && this.#outputBelow.hidden) {
+            this.#outputBelow.hidden = false;
+            this.#options.onNotice?.({ kind: 'output-below' });
+        }
+    }
+
+    #clearOutputBelow(): void {
+        const buffer = this.terminal.buffer.active;
+        if (buffer.viewportY >= buffer.baseY) {
+            this.#outputBelow.hidden = true;
+        }
+    }
+
     #syncPointerMode(): void {
         this.surface.dataset['mouse'] = this.terminal.modes.mouseTrackingMode === 'none' ? 'off' : 'on';
     }
@@ -478,6 +502,15 @@ export class TerminalView {
         });
     }
 
+    #listenOutputBelow(): void {
+        const jump = (): void => {
+            this.terminal.scrollToBottom();
+            this.focus();
+        };
+        this.#outputBelow.addEventListener('click', jump);
+        this.#cleanups.push(() => this.#outputBelow.removeEventListener('click', jump));
+    }
+
     #listenWheel(): void {
         const onWheel = (event: WheelEvent): void => {
             const height = this.surface.getBoundingClientRect().height / Math.max(1, this.terminal.rows);
@@ -513,6 +546,16 @@ function createHint(): HTMLElement {
     hint.id = `trc-terminal-hint-${hintCounter}`;
     hint.hidden = true;
     return hint;
+}
+
+function createOutputBelow(): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.tabIndex = -1;
+    button.hidden = true;
+    button.dataset['outputBelow'] = '';
+    button.className = styles['outputBelow'] ?? '';
+    return button;
 }
 
 function createMeasurer(fontSize: number): HTMLElement {
