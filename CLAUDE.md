@@ -42,6 +42,9 @@ tooling (`tools/*`).
   `GIT_AUTHOR_NAME="$(git config user.name) (Agentic)"` and
   `GIT_AUTHOR_EMAIL="$(git config user.email)"` set. CI
   (`.github/workflows/ci.yml`) builds and unit-tests every push and PR.
+- `pnpm install` also brands the development Electron.app (name, icon,
+  ad-hoc re-signature) through `tools/dev-electron` (D-35), so menus and the
+  About panel show the product in dev and test builds.
 - The git hooks install with `pnpm install` into `.git/hooks`; a global
   `core.hooksPath` hook manager runs them. Never bypass hooks with
   `--no-verify`.

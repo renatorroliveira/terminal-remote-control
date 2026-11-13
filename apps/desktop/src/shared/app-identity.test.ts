@@ -9,9 +9,12 @@ describe('APP_IDENTITY', () => {
     it('holds the working product identity in one place (P-12, OQ-5)', () => {
         expect(APP_IDENTITY).toEqual({
             productName: 'Terminal Remote Control',
+            acronym: 'TRC',
             bundleId: 'dev.trc.desktop',
             appScheme: 'app',
             appHost: 'trc',
+            copyright: 'Copyright © 2026 Renato Oliveira',
+            repositoryUrl: 'https://github.com/renatorroliveira/terminal-remote-control',
         });
     });
 
@@ -23,5 +26,6 @@ describe('APP_IDENTITY', () => {
         expect(manifest.productName).toBe(APP_IDENTITY.productName);
         expect(builder).toContain(`productName: ${APP_IDENTITY.productName}\n`);
         expect(builder).toContain(`appId: ${APP_IDENTITY.bundleId}\n`);
+        expect(builder).toContain(`copyright: ${APP_IDENTITY.copyright}\n`);
     });
 });

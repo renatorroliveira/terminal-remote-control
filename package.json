@@ -27,6 +27,7 @@
         "build": "pnpm --filter @trc/desktop build",
         "dist": "pnpm --filter @trc/desktop dist",
         "prepare": "sh tools/git-hooks/install.sh",
+        "postinstall": "node tools/dev-electron/brand-electron.ts",
         "gen:check": "pnpm gen && sh -c 'test -z \"$(git status --porcelain -- packages/protocol/src/generated protocol/fixtures)\" || { echo \"generated protocol files differ from the committed ones; commit them\" >&2; git status --short -- packages/protocol/src/generated protocol/fixtures >&2; exit 1; }'"
     },
     "devDependencies": {

@@ -1,13 +1,15 @@
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'electron-vite';
+import { buildCommit } from '../../tools/build-info/build-commit';
 
 const LOOPBACK = '127.0.0.1';
 const TEST_SEAM = { __TRC_TEST_SEAM__: JSON.stringify(process.env['TRC_TEST_BUILD'] === '1') };
+const BUILD_INFO = { __TRC_BUILD_COMMIT__: JSON.stringify(buildCommit(resolve(import.meta.dirname, '../..'))) };
 
 export default defineConfig({
     main: {
-        define: TEST_SEAM,
+        define: { ...TEST_SEAM, ...BUILD_INFO },
         build: {
             externalizeDeps: false,
             rollupOptions: {

@@ -24,7 +24,12 @@ export function releaseNotes(version: string, subjects: readonly string[]): stri
         { title: 'Other changes', lines: changes.filter((change) => !known.includes(change.type)) },
     ].filter((group) => group.lines.length > 0);
     const body = groups.flatMap((group) => [`## ${group.title}`, '', ...group.lines.map((change) => change.line), '']);
-    return [`# Terminal Remote Control ${version}`, '', ...body].join('\n');
+    return [`# ${releaseTitle(version)}`, '', ...body].join('\n');
+}
+
+/** A release's title on GitHub and in its tag: the product acronym and the tag, such as `TRC v0.2.0`. */
+export function releaseTitle(version: string): string {
+    return `TRC v${version}`;
 }
 
 function parse(subject: string): Change | undefined {
