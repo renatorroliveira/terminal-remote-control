@@ -1,7 +1,7 @@
 import type { Readable, Writable } from 'node:stream';
 import type { InstallPlan } from './install-plan';
 import { planInstall } from './install-plan';
-import { LineReader } from './line-reader';
+import { LineReader, LineTooLongError } from './line-reader';
 import type { BootstrapErrorCode, BootstrapLine, InstalledDaemon } from './lines';
 import { parseBootstrapLine } from './lines';
 import type { DaemonManifest, DaemonPlatform } from './manifest';
@@ -29,13 +29,33 @@ export interface BootstrapOptions {
     readonly readBinary: (platform: DaemonPlatform) => Promise<Uint8Array>;
     /** Called as each step starts: `checking` once the host has answered, so ssh itself has connected. */
     readonly onStep: (step: BootstrapStep) => void;
+    /** How long the host may take to answer; {@link BOOTSTRAP_TIMING} when not given. */
+    readonly timing?: BootstrapTiming;
 }
+
+/** How long the host may take to answer each part of the bootstrap. */
+export interface BootstrapTiming {
+    /** From sending the script to the host's hello, which includes ssh's own connection and login. */
+    readonly helloMs: number;
+    /** For any other answer, besides the upload's own transfer time. */
+    readonly stepMs: number;
+    /** The slowest upload rate allowed for, which bounds the wait for the upload's answer. */
+    readonly uploadBytesPerSecond: number;
+}
+
+/** The bootstrap's deadlines: generous for slow links, so that only a host that stopped answering fails them. */
+export const BOOTSTRAP_TIMING: BootstrapTiming = {
+    helloMs: 120_000,
+    stepMs: 30_000,
+    uploadBytesPerSecond: 16 * 1024,
+};
 
 /** Why the bootstrap stopped. */
 export type BootstrapFailure =
     | { readonly kind: 'host'; readonly code: BootstrapErrorCode; readonly detail: string }
     | { readonly kind: 'plan'; readonly plan: InstallPlan }
-    | { readonly kind: 'closed' };
+    | { readonly kind: 'closed' }
+    | { readonly kind: 'silent' };
 
 /** How the bootstrap ended. */
 export type BootstrapOutcome =
@@ -54,7 +74,10 @@ interface Conversation {
     readonly channel: BootstrapChannel;
     readonly reader: LineReader;
     readonly options: BootstrapOptions;
+    readonly timing: BootstrapTiming;
 }
+
+const LATE = Symbol('late');
 
 /**
  * Runs the bootstrap over an exec channel: sends the script, waits for the host's hello, uploads the bundled daemon
@@ -62,11 +85,13 @@ interface Conversation {
  */
 export async function runBootstrap(channel: BootstrapChannel, options: BootstrapOptions): Promise<BootstrapOutcome> {
     const reader = new LineReader(channel.output);
+    const timing = options.timing ?? BOOTSTRAP_TIMING;
     const ignoreWriteErrors = (): void => undefined;
     channel.input.on('error', ignoreWriteErrors);
     try {
+        const deadline = Date.now() + timing.helloMs;
         await send(channel.input, options.script);
-        const hello = await next(reader, options.nonce);
+        const hello = await next(reader, options.nonce, deadline);
         if ('failure' in hello) {
             return failed(hello.failure);
         }
@@ -75,7 +100,7 @@ export async function runBootstrap(channel: BootstrapChannel, options: Bootstrap
         }
         options.onStep('checking');
         const plan = planInstall(hello.line, options.manifest);
-        return await follow({ channel, reader, options }, plan, hello.line.installed);
+        return await follow({ channel, reader, options, timing }, plan, hello.line.installed);
     } finally {
         reader.release();
         channel.input.off('error', ignoreWriteErrors);
@@ -103,15 +128,16 @@ async function follow(
 }
 
 async function upload(
-    { channel, reader, options }: Conversation,
+    { channel, reader, options, timing }: Conversation,
     plan: Extract<InstallPlan, { kind: 'upload' }>,
 ): Promise<{ readonly daemon: InstalledDaemon } | { readonly failure: BootstrapFailure }> {
     options.onStep('uploading');
     const bytes = await options.readBinary(plan.platform);
+    const deadline = Date.now() + timing.stepMs + (bytes.length / timing.uploadBytesPerSecond) * 1_000;
     await send(channel.input, `UPLOAD ${bytes.length} ${plan.binary.sha256} ${plan.version}\n`);
     await send(channel.input, bytes);
     for (;;) {
-        const result = await next(reader, options.nonce);
+        const result = await next(reader, options.nonce, deadline);
         if ('failure' in result) {
             return result;
         }
@@ -127,10 +153,14 @@ async function upload(
     }
 }
 
-async function start({ channel, reader, options }: Conversation, daemon: InstalledDaemon): Promise<BootstrapOutcome> {
+async function start(
+    { channel, reader, options, timing }: Conversation,
+    daemon: InstalledDaemon,
+): Promise<BootstrapOutcome> {
     options.onStep('starting');
+    const deadline = Date.now() + timing.stepMs;
     await send(channel.input, `RUN ${daemon.sha256}\n`);
-    const result = await next(reader, options.nonce);
+    const result = await next(reader, options.nonce, deadline);
     if ('failure' in result) {
         return failed(result.failure);
     }
@@ -140,9 +170,13 @@ async function start({ channel, reader, options }: Conversation, daemon: Install
     return { kind: 'running', daemon, remainder: reader.release() };
 }
 
-async function next(reader: LineReader, nonce: string): Promise<Next> {
+async function next(reader: LineReader, nonce: string, deadline: number): Promise<Next> {
     for (;;) {
-        const text = await reader.next();
+        const read = await readLine(reader, deadline);
+        if ('failure' in read) {
+            return read;
+        }
+        const { text } = read;
         if (text === undefined) {
             return { failure: { kind: 'closed' } };
         }
@@ -153,6 +187,35 @@ async function next(reader: LineReader, nonce: string): Promise<Next> {
         if (line !== undefined) {
             return { line };
         }
+    }
+}
+
+/** The host's next line, or why there is none: it stopped answering by the deadline, or sent too long a line. */
+async function readLine(
+    reader: LineReader,
+    deadline: number,
+): Promise<{ readonly text: string | undefined } | { readonly failure: BootstrapFailure }> {
+    try {
+        const text = await within(reader.next(), deadline);
+        return text === LATE ? { failure: { kind: 'silent' } } : { text };
+    } catch (error) {
+        if (error instanceof LineTooLongError) {
+            return { failure: { kind: 'host', code: 'protocol', detail: error.message } };
+        }
+        throw error;
+    }
+}
+
+async function within<T>(work: Promise<T>, deadline: number): Promise<T | typeof LATE> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<typeof LATE>((resolve) => {
+        timer = setTimeout(() => resolve(LATE), Math.max(0, deadline - Date.now()));
+    });
+    work.catch(() => undefined);
+    try {
+        return await Promise.race([work, late]);
+    } finally {
+        clearTimeout(timer);
     }
 }
 

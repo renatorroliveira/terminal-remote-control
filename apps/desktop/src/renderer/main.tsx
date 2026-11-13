@@ -77,8 +77,12 @@ if (container !== null) {
             onNotice: (key, notice) => shell?.terminalNotice(key, notice),
             onContextMenu: (canCopy) => void window.trc.menus.terminal(canCopy),
             onClipboardWrite: (key, text) => {
-                void window.trc.clipboard.write(text);
-                shell?.terminalNotice(key, { kind: 'clipboard-written' });
+                const hostId = key.split('/')[0] ?? '';
+                void window.trc.clipboard.write(hostId, text).then((written) => {
+                    if (written) {
+                        shell?.terminalNotice(key, { kind: 'clipboard-written' });
+                    }
+                });
             },
             settings: () => settings.current,
         });

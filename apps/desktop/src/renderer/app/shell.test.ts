@@ -82,12 +82,17 @@ const NO_CHORD = { ctrl: false, option: false, shift: false, cmd: false, key: ''
 class FakeSettingsSource {
     stored: Settings = { ...DEFAULT_SETTINGS, terminalZoom: 190 };
     readonly changes: Partial<Settings>[] = [];
+    /** Whether config.json refuses changes, as on a read-only disk. */
+    refuse = false;
 
     get(): Promise<Settings> {
         return Promise.resolve(this.stored);
     }
 
     set(change: Partial<Settings>): Promise<void> {
+        if (this.refuse) {
+            return Promise.reject(new Error('read-only'));
+        }
         this.changes.push(change);
         this.stored = { ...this.stored, ...change };
         return Promise.resolve();
@@ -316,6 +321,24 @@ describe('Shell bell and new output below (A11Y-08.2, A11Y-08.4)', () => {
         await expect.poll(() => shell.state.getState().bell, { timeout: 5_000 }).toBe(false);
     });
 
+    it('keeps showing the bell for 3 s after the latest one, not the first', async () => {
+        const { shell, client, workspace } = await setup();
+        client.push('host-0', CONNECTED);
+        await expect.poll(() => workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
+        workspace.open('host-0/a');
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        onTestFinished(() => {
+            vi.useRealTimers();
+        });
+        shell.terminalNotice('host-0/a', { kind: 'bell' });
+        vi.advanceTimersByTime(2_900);
+        shell.terminalNotice('host-0/a', { kind: 'bell' });
+        vi.advanceTimersByTime(200);
+        expect(shell.state.getState().bell).toBe(true);
+        vi.advanceTimersByTime(2_900);
+        expect(shell.state.getState().bell).toBe(false);
+    });
+
     it('announces refused input right away (US-1.14.2)', async () => {
         const { shell, spoken } = await setup();
         shell.terminalNotice('host-0/a', { kind: 'input-refused' });
@@ -371,6 +394,16 @@ describe('Shell review mode and find (A11Y-03, US-1.13)', () => {
         shell.closeFind();
         expect(shell.state.getState().find).toBeUndefined();
         expect(terminals.searches.at(-1)).toBe('<end>');
+    });
+
+    it('keeps and announces the result when Find opens again over a search', async () => {
+        const { shell, terminals, spoken } = await withSession();
+        terminals.matches = 3;
+        shell.run('terminal.find');
+        shell.updateFind({ query: 'err' });
+        shell.run('terminal.find');
+        expect(shell.state.getState().find?.result).toEqual({ index: 2, count: 3 });
+        expect(spoken).toEqual(['Match 3 of 3.', 'Match 3 of 3.']);
     });
 
     it('announces output that arrives in review mode', async () => {
@@ -491,6 +524,17 @@ describe('Shell sound cues (A11Y-12.4)', () => {
 });
 
 describe('Shell action failures (US-1.10, US-1.14.3, WCAG 3.3.1)', () => {
+    it('announces and lists a settings change that could not be kept', async () => {
+        const { shell, source, spoken, cues } = await setup();
+        source.refuse = true;
+        shell.run('terminal.zoomIn');
+        await vi.waitFor(() =>
+            expect(spoken).toContain('! Couldn’t save the settings, so they are back as they were.'),
+        );
+        expect(shell.notifications.store.getState().items.map((item) => item.level)).toEqual(['error']);
+        expect(cues).toContain('failed');
+    });
+
     it('announces assertively, lists and cues an action the daemon refuses, with its reason', async () => {
         const { shell, client, workspace, spoken, cues } = await setup();
         client.push('host-0', CONNECTED);

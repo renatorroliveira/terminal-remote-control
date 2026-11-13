@@ -5,7 +5,8 @@ export interface TextLink {
     readonly target: string;
 }
 
-const URL_PATTERN = /\b(?:[a-z][a-z0-9+.-]{0,31}:\/\/|mailto:)[^\s<>"'`{}|\\^]+/gi;
+const URL_PATTERN =
+    /\b(?:[a-z][a-z0-9+.-]{0,31}:\/\/|mailto:)[^\s<>"'`{}|\\^\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]+/gi;
 const TRAILING_PUNCTUATION = /[.,;:!?]$/;
 const CLOSERS: Readonly<Record<string, string>> = { ')': '(', ']': '[' };
 

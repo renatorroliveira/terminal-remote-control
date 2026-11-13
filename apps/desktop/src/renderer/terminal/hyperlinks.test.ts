@@ -80,3 +80,19 @@ describe('TerminalLinks: the link under a cell (US-1.12.3)', () => {
         expect(links.linkAt(0, 0)).toBeUndefined();
     });
 });
+
+describe('TerminalLinks: untrusted hyperlinks (SEC-06.4)', () => {
+    it('ignores a hyperlink whose target hides its direction or is longer than the app opens', async () => {
+        const { links, write } = setUp();
+        await write(osc8('https://good.example\u202elave/moc.live//:sptth', 'one'));
+        await write(osc8(`https://example.com/${'a'.repeat(9_000)}`, 'two'));
+        expect(links.visible()).toEqual([]);
+        expect(links.linkAt(0, 0)).toBeUndefined();
+    });
+
+    it('lists a hyperlink’s text without control or bidirectional formatting characters', async () => {
+        const { links, write } = setUp();
+        await write(osc8('https://example.com', 'a\u202eb\u2066c'));
+        expect(links.visible()).toEqual([{ text: 'abc', target: 'https://example.com' }]);
+    });
+});

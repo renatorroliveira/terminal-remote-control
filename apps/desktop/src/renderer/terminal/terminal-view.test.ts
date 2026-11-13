@@ -606,6 +606,19 @@ describe('TerminalView: paste and copy (US-1.12.1, US-1.12.2, A11Y-04.7)', () =>
         expect(event.defaultPrevented).toBe(true);
         expect(data.getData('text/plain')).toBe(`${long}\nnext`);
     });
+});
+
+describe('TerminalView: copy and cut (US-1.12.1, A11Y-04.7)', () => {
+    it('makes Cut copy what Copy does, since a terminal has nothing to cut', async () => {
+        const { view } = mount();
+        await written(view, 'cut me');
+        view.terminal.select(0, 0, 'cut me'.length);
+        const data = new DataTransfer();
+        const event = new ClipboardEvent('cut', { bubbles: true, cancelable: true, clipboardData: data });
+        view.surface.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(true);
+        expect(data.getData('text/plain')).toBe('cut me');
+    });
 
     it('copies a selection past the cap whole, and reports that the OS sees only part of it', async () => {
         const notices: unknown[] = [];

@@ -374,6 +374,7 @@ export class TerminalView {
     /** Releases the terminal and its listeners. */
     dispose(): void {
         this.#disposed = true;
+        this.#scheduler.dispose();
         this.#announcer?.dispose();
         this.#review?.close();
         this.#blink.dispose();
@@ -499,10 +500,12 @@ export class TerminalView {
             }
         };
         this.surface.addEventListener('copy', onCopy);
+        this.surface.addEventListener('cut', onCopy);
         this.surface.addEventListener('contextmenu', onContextMenu);
         this.surface.addEventListener('keydown', onMenuKey, { capture: true });
         this.#cleanups.push(() => {
             this.surface.removeEventListener('copy', onCopy);
+            this.surface.removeEventListener('cut', onCopy);
             this.surface.removeEventListener('contextmenu', onContextMenu);
             this.surface.removeEventListener('keydown', onMenuKey, { capture: true });
         });

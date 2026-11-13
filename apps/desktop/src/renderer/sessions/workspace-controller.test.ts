@@ -311,6 +311,8 @@ describe('WorkspaceController: forgetting, moving and testing hosts (US-1.1.5, U
         expect(workspace.store.getState().hosts).toEqual([]);
         expect(workspace.store.getState().sessions.has(host.id)).toBe(false);
         expect(terminals.closed).toContain(host.id);
+        expect(client.messages.has(host.id)).toBe(false);
+        expect(client.states.has(host.id)).toBe(false);
     });
 
     it('moves a host’s install location for its next connection', async () => {

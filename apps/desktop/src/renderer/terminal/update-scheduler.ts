@@ -22,6 +22,7 @@ export class UpdateScheduler {
     #windowStart = 0;
     #windowBytes = 0;
     #holdUntil = 0;
+    #disposed = false;
 
     /** A scheduler running `update`; `assistiveTechnology` reports whether AT is active. */
     constructor(update: () => void, assistiveTechnology: () => boolean) {
@@ -31,6 +32,9 @@ export class UpdateScheduler {
 
     /** Asks for an update. */
     request(): void {
+        if (this.#disposed) {
+            return;
+        }
         const fast = !this.#assistiveTechnology() || performance.now() - this.#lastInput <= ECHO_WINDOW_MS;
         if (this.#pending !== undefined && (this.#pending.fast || !fast)) {
             return;
@@ -55,6 +59,13 @@ export class UpdateScheduler {
         if (this.#windowBytes > FLOOD_BYTES_PER_INTERVAL) {
             this.#holdUntil = now + FLOOD_HOLD_MS;
         }
+    }
+
+    /** Cancels the pending update; requests do nothing from now on, so no update runs against a disposed terminal. */
+    dispose(): void {
+        this.#disposed = true;
+        this.#pending?.cancel();
+        this.#pending = undefined;
     }
 
     #nextFrame() {

@@ -29,6 +29,8 @@ class FakeTransport implements SessionTransport {
     readonly refuse = new Set<string>();
     /** While set, attach replies wait for it. */
     hold: Promise<void> | undefined;
+    /** While set, create replies wait for it. */
+    holdCreate: Promise<void> | undefined;
     readonly #outputs = new Map<number, (data: Uint8Array) => void>();
     #stream = 0;
 
@@ -45,7 +47,8 @@ class FakeTransport implements SessionTransport {
     request(_hostId: string, request: ClientRequest): Promise<ServerMessage> {
         this.requests.push(request);
         if (request.type === 'create') {
-            return Promise.resolve({ type: 'created', requestId: 1, session: info('new') });
+            const created: ServerMessage = { type: 'created', requestId: 1, session: info('new') };
+            return (this.holdCreate ?? Promise.resolve()).then(() => created);
         }
         if (request.type === 'attach' && this.refuse.has(request.session)) {
             return Promise.reject(new Error('unknownSession'));
@@ -199,6 +202,45 @@ describe('TerminalRegistry (US-1.8)', () => {
         const resizes = transport.requests.flatMap((request) => (request.type === 'resize' ? [request.size.cols] : []));
         expect(Math.min(...resizes)).toBeGreaterThan(100);
         expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(2);
+    });
+});
+
+/** A create the test releases by hand. */
+function heldCreate(transport: FakeTransport): () => void {
+    let release = (): void => undefined;
+    transport.holdCreate = new Promise((resolve) => {
+        release = resolve;
+    });
+    return release;
+}
+
+describe('TerminalRegistry: creating sessions (US-1.7.1, A11Y-01.1)', () => {
+    it('keeps a new terminal hidden until it is shown, so it never covers the open one unnamed', async () => {
+        const { area, registry, transport } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        const release = heldCreate(transport);
+        const created = registry.create('h1');
+        await expect.poll(() => requestsOf(transport, 'create')).toBe(1);
+        expect(visibleSurfaces(area)).toEqual(['bash, h1']);
+        release();
+        await created;
+        expect(visibleSurfaces(area)).toEqual(['bash, h1']);
+        registry.show('h1/new', 'h1', info('new'));
+        expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(2);
+        expect(visibleSurfaces(area)).toHaveLength(1);
+    });
+
+    it('opens a session announced while its create is in flight with the created terminal, not a second one', async () => {
+        const { area, registry, transport } = setup();
+        const release = heldCreate(transport);
+        const created = registry.create('h1');
+        await expect.poll(() => requestsOf(transport, 'create')).toBe(1);
+        registry.show('h1/new', 'h1', info('new'));
+        release();
+        await created;
+        await expect.poll(() => visibleSurfaces(area)).toEqual(['bash, h1']);
+        expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(1);
+        expect(requestsOf(transport, 'attach')).toBe(1);
     });
 });
 

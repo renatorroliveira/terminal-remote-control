@@ -1,5 +1,7 @@
 /** How long a typed character waits for its echo. */
 const ECHO_TIMEOUT_MS = 2_000;
+/** The most typed characters kept waiting for their echo. */
+const MOST_PENDING = 4_096;
 const ERASE_KEYS: ReadonlySet<string> = new Set(['\u007f', '\b']);
 const C0_END = 0x1f;
 const DELETE = 0x7f;
@@ -33,15 +35,21 @@ export class EchoFilter {
             return;
         }
         const at = this.#now();
+        this.#forgetOld();
         for (const character of characters(text)) {
             this.#typed.push({ character, at });
         }
+        this.#typed.splice(0, Math.max(0, this.#typed.length - MOST_PENDING));
+    }
+
+    /** How many typed characters wait for their echo. */
+    get pending(): number {
+        return this.#typed.length;
     }
 
     /** Removes the echo of typed characters from the start of `text`; typing it does not match is forgotten. */
     strip(text: string): string {
-        const oldest = this.#now() - ECHO_TIMEOUT_MS;
-        this.#typed = this.#typed.filter((entry) => entry.at >= oldest);
+        this.#forgetOld();
         const output = characters(text);
         let matched = 0;
         while (matched < output.length && this.#typed[matched]?.character === output[matched]) {
@@ -49,6 +57,11 @@ export class EchoFilter {
         }
         this.#typed = matched === 0 && output.length > 0 ? [] : this.#typed.slice(matched);
         return output.slice(matched).join('');
+    }
+
+    #forgetOld(): void {
+        const oldest = this.#now() - ECHO_TIMEOUT_MS;
+        this.#typed = this.#typed.filter((entry) => entry.at >= oldest);
     }
 }
 

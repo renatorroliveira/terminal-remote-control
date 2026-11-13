@@ -12,6 +12,8 @@ export type SettingsSource = TrcBridge['settings'];
 export class SettingsStore {
     /** The current settings, for the page and for what they affect. */
     readonly state: StoreApi<Settings> = createStore<Settings>(() => DEFAULT_SETTINGS);
+    /** Goes up each time a change could not be kept and was undone, for the shell to report (WCAG 3.3.1). */
+    readonly failures: StoreApi<number> = createStore<number>(() => 0);
     readonly #source: SettingsSource;
 
     /** A store at the defaults until {@link SettingsStore.load} reads the kept settings. */
@@ -29,9 +31,21 @@ export class SettingsStore {
         this.state.setState(await this.#source.get(), true);
     }
 
-    /** Changes some settings now and keeps them. */
-    update(change: Partial<Settings>): Promise<void> {
+    /** Changes some settings now and keeps them; a change `config.json` refuses is undone and counted in `failures`. */
+    async update(change: Partial<Settings>): Promise<void> {
+        const before = this.state.getState();
         this.state.setState(change);
-        return this.#source.set(change);
+        try {
+            await this.#source.set(change);
+        } catch {
+            this.#undo(change, before);
+            this.failures.setState((count) => count + 1, true);
+        }
+    }
+
+    #undo(change: Partial<Settings>, before: Settings): void {
+        const current = this.state.getState();
+        const keys = (Object.keys(change) as (keyof Settings)[]).filter((key) => current[key] === change[key]);
+        this.state.setState(Object.fromEntries(keys.map((key) => [key, before[key]])) as Partial<Settings>);
     }
 }

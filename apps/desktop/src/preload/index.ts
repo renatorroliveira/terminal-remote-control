@@ -45,7 +45,7 @@ const bridge: TrcBridge = {
         open: (target, trustOrigin) => ipcRenderer.invoke('links:open', target, trustOrigin) as Promise<void>,
     },
     clipboard: {
-        write: (text) => ipcRenderer.invoke('clipboard:write', text) as Promise<void>,
+        write: (hostId, text) => ipcRenderer.invoke('clipboard:write', hostId, text) as Promise<boolean>,
     },
     menus: {
         terminal: (canCopy) => ipcRenderer.invoke('menus:terminal', canCopy) as Promise<void>,

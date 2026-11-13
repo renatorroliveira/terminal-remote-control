@@ -67,6 +67,8 @@ export class TerminalRegistry implements TerminalHost {
     readonly #entries = new Map<SessionKey, Entry>();
     /** Hosts whose connection is lost, whose terminals refuse input (US-1.14.2). */
     readonly #offline = new Set<string>();
+    /** Each host's creates in flight, which a `show` of a session not yet known waits for. */
+    readonly #creating = new Map<string, Set<Promise<unknown>>>();
     #area: HTMLElement | undefined;
     #palette: TerminalPalette;
     #open: SessionKey | undefined;
@@ -97,6 +99,11 @@ export class TerminalRegistry implements TerminalHost {
 
     /** Shows a session's terminal, attaching it the first time, and focuses it. */
     show(key: SessionKey, hostId: string, session: SessionInfo): void {
+        const creating = this.#creating.get(hostId);
+        if (!this.#entries.has(key) && creating !== undefined) {
+            void Promise.allSettled([...creating]).then(() => this.show(key, hostId, session));
+            return;
+        }
         const entry = this.#entries.get(key) ?? this.#attachNew(key, hostId, session);
         for (const other of this.#entries.values()) {
             other.frame.hidden = other !== entry;
@@ -217,17 +224,22 @@ export class TerminalRegistry implements TerminalHost {
         return this.#openEntry()?.view.visibleLinks() ?? [];
     }
 
-    /** Creates a session on `hostId` at the terminal area's size, with the options given, in a frame of its own. */
-    async create(hostId: string, options: SessionOptions = {}): Promise<SessionInfo> {
-        const entry = this.#newEntry(hostId);
-        await entry.view.ready;
-        const spec = { ...options, env: options.env ?? {}, scrollbackLines: this.#scrollback };
-        const session = await entry.link.create(spec).catch((error: unknown) => {
-            this.#dispose(entry);
-            throw error;
+    /**
+     * Creates a session on `hostId` at the terminal area's size, with the options given, in a hidden frame of its own
+     * that `show` reveals. A session shown while a create on its host is in flight waits for it, so the daemon's
+     * announcement of the new session never builds a second terminal for it.
+     */
+    create(hostId: string, options: SessionOptions = {}): Promise<SessionInfo> {
+        const creating = this.#creating.get(hostId) ?? new Set<Promise<unknown>>();
+        this.#creating.set(hostId, creating);
+        const tracked: Promise<SessionInfo> = this.#create(hostId, options).finally(() => {
+            creating.delete(tracked);
+            if (creating.size === 0) {
+                this.#creating.delete(hostId);
+            }
         });
-        this.#entries.set(`${hostId}/${session.id}`, entry);
-        return session;
+        creating.add(tracked);
+        return tracked;
     }
 
     /** Lets a host's terminals send input again, or refuses it while the host is disconnected (US-1.14.2). */
@@ -317,6 +329,18 @@ export class TerminalRegistry implements TerminalHost {
         }
     }
 
+    async #create(hostId: string, options: SessionOptions): Promise<SessionInfo> {
+        const entry = this.#newEntry(hostId);
+        await entry.view.ready;
+        const spec = { ...options, env: options.env ?? {}, scrollbackLines: this.#scrollback };
+        const session = await entry.link.create(spec).catch((error: unknown) => {
+            this.#dispose(entry);
+            throw error;
+        });
+        this.#entries.set(`${hostId}/${session.id}`, entry);
+        return session;
+    }
+
     #keyOf(link: SessionLink): SessionKey | undefined {
         for (const [key, entry] of this.#entries) {
             if (entry.link === link) {
@@ -358,6 +382,7 @@ export class TerminalRegistry implements TerminalHost {
     #newEntry(hostId: string): Entry {
         const frame = document.createElement('div');
         frame.className = styles['frame'] ?? '';
+        frame.hidden = true;
         this.#area?.append(frame);
         let view: TerminalView | undefined;
         const link = new SessionLink(this.#options.transport, hostId, (data) => {

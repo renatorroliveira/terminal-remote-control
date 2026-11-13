@@ -51,4 +51,8 @@ describe('fromBootstrap', () => {
             details: '',
         });
     });
+
+    it('reports a host that stopped answering during the bootstrap (US-1.4.5)', () => {
+        expect(fromBootstrap({ kind: 'silent' })).toEqual({ kind: 'no-answer', details: '' });
+    });
 });
