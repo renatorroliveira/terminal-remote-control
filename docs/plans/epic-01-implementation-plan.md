@@ -841,8 +841,8 @@ As built (2026-11-13):
 - Test builds report each terminal write's arrival and parse time (`write-timing.ts`, P-14), so NFR-02 is measured
   to the echo parsed in the app, with the next display frame recorded beside it.
 - Tuned: the credit window is 1 MiB (S3b). Fixed: a silent ssh exit now has details (US-1.3.1).
-- Open for the owner: NFR-02 misses by about 1 ms on a sub-millisecond link; the spread is in Electron's port
-  delivery between the renderer and the utility process.
+- NFR-02 misses by about 1 ms on a sub-millisecond link, from Electron's port delivery between the renderer and the
+  utility process; the owner accepted it for E1 on 2026-11-13, and the UI test guards it at 15 ms.
 
 **ST-20 Packaging and the release workflow** (SEC-01.3, SEC-04.2, P-11, P-19, P-21)
 
