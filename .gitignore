@@ -59,6 +59,7 @@ apps/desktop/resources/daemon/
 
 # Test outputs
 test-results/
+nfr-results/
 playwright-report/
 blob-report/
 tools/test-hosts/.run/

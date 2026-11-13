@@ -21,6 +21,7 @@ import { ReviewField } from './review-field';
 import { SCROLLBAR_WIDTH, TerminalGeometry } from './terminal-geometry';
 import { xtermTheme } from './terminal-theme';
 import { UpdateScheduler } from './update-scheduler';
+import { reportWriteTiming } from './write-timing';
 import { showCursor } from './xterm-cursor';
 import '@xterm/xterm/css/xterm.css';
 import '../ui/fonts.css';
@@ -198,9 +199,13 @@ export class TerminalView {
     /** Feeds output from the daemon; resolves once xterm has parsed it. */
     write(data: Uint8Array): Promise<void> {
         this.#scheduler.output(data.length);
+        const arrived = performance.now();
         return new Promise((resolve) => {
             this.terminal.write(data, () => {
                 this.#credit.parsed(data.length);
+                if (__TRC_TEST_SEAM__) {
+                    reportWriteTiming(arrived, performance.now(), data.length);
+                }
                 resolve();
             });
         });
