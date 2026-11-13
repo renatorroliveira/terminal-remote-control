@@ -20,6 +20,8 @@ function handlers(display: unknown = {}): InvokeHandlers {
             address: { destination: 'x' },
             installRoot: '~/.trc',
         }),
+        'sidebar:get-width': async () => 400,
+        'sidebar:set-width': async () => undefined,
     };
 }
 
@@ -38,7 +40,22 @@ describe('registerHandlers (zod at the renderer boundary)', () => {
             /invalid arguments/,
         );
         await expect(async () => registered.get('accessibility:get')?.({}, 1)).rejects.toThrow(/invalid arguments/);
-        await expect(async () => registered.get('hosts:add')?.({}, 'devbox-1')).rejects.toThrow(/invalid arguments/);
+        await expect(async () => registered.get('hosts:add')?.({}, 'devbox-1', '~/.trc')).rejects.toThrow(
+            /invalid arguments/,
+        );
+        for (const width of [299, 801, 400.5, '400']) {
+            await expect(async () => registered.get('sidebar:set-width')?.({}, width)).rejects.toThrow(
+                /invalid arguments/,
+            );
+        }
+    });
+
+    it('adds a host by address alone, and takes sidebar widths from 300 to 800 px', async () => {
+        const { handlers: registered, ipc } = fakeIpc();
+        registerHandlers(ipc, handlers(), trusted);
+        expect(await registered.get('hosts:add')?.({}, 'devbox-1')).toMatchObject({ installRoot: '~/.trc' });
+        expect(await registered.get('sidebar:get-width')?.({})).toBe(400);
+        await expect(registered.get('sidebar:set-width')?.({}, 300)).resolves.toBeUndefined();
     });
 
     it('rejects requests from a page that is not the app', async () => {

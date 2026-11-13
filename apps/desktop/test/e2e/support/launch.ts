@@ -16,11 +16,15 @@ export function scratchProfile(): string {
     return `--user-data-dir=${mkdtempSync(join(tmpdir(), 'trc-e2e-profile-'))}`;
 }
 
-/** Launches the test build without taking the developer's focus, in a scratch profile unless `args` names one. */
+/**
+ * Launches the test build without taking the developer's focus, in a scratch profile unless `args` names one and a
+ * scratch TRC home unless `env` names one, so a test never reads or writes the developer's own.
+ */
 export function launchApp(
     args: readonly string[] = [],
     env: Readonly<Record<string, string>> = {},
 ): Promise<ElectronApplication> {
     const profile = args.some((arg) => arg.startsWith('--user-data-dir=')) ? [] : [scratchProfile()];
-    return electron.launch({ args: [APP_DIRECTORY, ...profile, ...args], env: testEnvironment(env) });
+    const home = { TRC_HOME: mkdtempSync(join(tmpdir(), 'trc-e2e-home-')), ...env };
+    return electron.launch({ args: [APP_DIRECTORY, ...profile, ...args], env: testEnvironment(home) });
 }

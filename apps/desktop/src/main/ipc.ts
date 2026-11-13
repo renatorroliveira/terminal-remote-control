@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { InvokeChannel, InvokeContract } from '../shared/contract';
+import { SIDEBAR_WIDTH } from '../shared/layout';
 
 /** The part of `ipcMain` the registry uses. */
 export interface IpcMainLike {
@@ -15,7 +16,9 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'display:get': z.tuple([]),
     'accessibility:get': z.tuple([]),
     'hosts:list': z.tuple([]),
-    'hosts:add': z.tuple([z.string().min(1).max(1024), z.string().min(1).max(4096)]),
+    'hosts:add': z.tuple([z.string().min(1).max(1024)]),
+    'sidebar:get-width': z.tuple([]),
+    'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),
 };
 
 /**

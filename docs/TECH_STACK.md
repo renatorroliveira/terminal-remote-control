@@ -389,9 +389,12 @@ either way.
       unlayered so it beats component animations without `!important`.
     - App state files (P-18) go through one `JsonStore`: zod-validated reads
       that fall back to defaults, atomic writes, mode 0600 in a 0700
-      directory. `settings.json` holds the theme; `hosts.json` holds the known
-      hosts (address, port and install location), which the main process
-      serves over the `hosts:list` and `hosts:add` channels.
+      directory, the TRC home (`~/.trc`, or `TRC_HOME`; D-33). `config.json`
+      holds the theme and the sidebar width, each field falling back to its own
+      default; `hosts.json` holds the known hosts (address, port and install
+      location), which the main process serves over the `hosts:list` and
+      `hosts:add` channels. Earlier versions' files in Application Support are
+      copied in once. Logs and Chromium's own data stay in Application Support.
 
 ### 4.5 Packaging, signing and updates
 
@@ -1323,6 +1326,7 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | D-30 | The renderer honors the kitty keyboard protocol's disambiguate level: it follows the flags programs push, pop and set per screen, and the key encoder then sends Escape, modified Enter, Tab and Backspace, and Ctrl or Alt keys as `CSI u` | The daemon's libghostty-vt answers the flags query, so programs such as Claude Code turn the protocol on; with legacy keys Shift+Enter read as Enter. Other flag bits and reattach state are not carried yet | Stop answering the query                         |
 | D-31 | The logo is drawn by code (`tools/icons`, `pnpm icons`): an SVG master and a simplified one for 48 px and below, rendered with Playwright's Chromium; `.icns` comes from macOS `iconutil` and `.ico` is packed in-house                     | Reproducible icons from one source, with no new dependency or design tool                                                                                                                                    | A drawing tool, ImageMagick                      |
 | D-32 | The renderer sets xterm.js's private `coreService.isCursorInitialized` once the terminal opens (`terminal/xterm-cursor.ts`), the one use of xterm.js internals                                                                              | xterm.js draws no cursor until its hidden textarea has had focus, and the ATS takes all focus, so the cursor never showed; a pixel test fails if an upgrade moves the flag                                   | Focusing the textarea, which would move AT focus |
+| D-33 | The app keeps `config.json` and `hosts.json` in the TRC home, `~/.trc` or `TRC_HOME` (a leading `~` is the home folder); hosts always install the daemon to `~/.trc`, and test builds take `TRC_TEST_INSTALL_ROOT`                          | Owner's choice: one folder the user can find, back up and point elsewhere; the install location is no longer asked                                                                                           | `userData` (P-18 as first written)               |
 
 ## 13. Versions (verified 2026-11-11)
 

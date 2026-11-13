@@ -28,7 +28,11 @@ const bridge: TrcBridge = {
     },
     hosts: {
         list: () => ipcRenderer.invoke('hosts:list') as Promise<readonly KnownHost[]>,
-        add: (address, installRoot) => ipcRenderer.invoke('hosts:add', address, installRoot) as Promise<KnownHost>,
+        add: (address) => ipcRenderer.invoke('hosts:add', address) as Promise<KnownHost>,
+    },
+    sidebar: {
+        width: () => ipcRenderer.invoke('sidebar:get-width') as Promise<number>,
+        setWidth: (width) => ipcRenderer.invoke('sidebar:set-width', width) as Promise<void>,
     },
     commands: {
         onCommand: (listener) => subscribe<AppCommand>(APP_COMMAND_CHANNEL, listener),

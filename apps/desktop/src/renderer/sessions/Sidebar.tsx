@@ -20,22 +20,20 @@ export interface SidebarProps {
     readonly workspace: WorkspaceController;
     /** Called after a session opens, so a narrow layout can hide the panel. */
     readonly onOpened: () => void;
-    /** Test builds also ask where the daemon installs (P-14). */
-    readonly askInstallLocation: boolean;
 }
 
 /**
  * The sidebar (US-1.6.1): at the top, the open sessions by host with the host a new session starts on and the New
  * session button; at the bottom, the known hosts and the field that adds one.
  */
-export function Sidebar({ id, className, workspace, onOpened, askInstallLocation }: SidebarProps) {
+export function Sidebar({ id, className, workspace, onOpened }: SidebarProps) {
     const intl = useIntl();
     return (
         <nav id={id} aria-label={intl.formatMessage(sidebarMessages.region)} className={className}>
             <div className={styles['layout']}>
                 <SessionsPanel workspace={workspace} onOpened={onOpened} />
                 <div className={styles['hosts']}>
-                    <HostsPanel workspace={workspace} askInstallLocation={askInstallLocation} />
+                    <HostsPanel workspace={workspace} />
                 </div>
             </div>
         </nav>

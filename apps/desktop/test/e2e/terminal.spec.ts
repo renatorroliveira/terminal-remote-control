@@ -83,8 +83,8 @@ test.describe('a live terminal on a Linux host (M1)', () => {
     const install = liveHost();
 
     test('types a command and reads its output as real text (US-1.11, A11Y-04.1, D-22)', async () => {
-        const { app, window } = await launchWithTestHosts();
-        const terminal = await openTerminal(window, 'trc-ubuntu', install.root);
+        const { app, window } = await launchWithTestHosts(install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
         await terminal.focus();
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
         await window.keyboard.type('echo hi');
@@ -100,14 +100,14 @@ test.describe('a live terminal on a Linux host: size and keys (M1)', () => {
     const install = liveHost();
 
     test('keeps the PTY the size of the grid as the window resizes (US-1.11.3)', async () => {
-        const { app, window } = await launchWithTestHosts();
+        const { app, window } = await launchWithTestHosts(install.root);
         const resize = (width: number, height: number) =>
             app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]?.setSize(size[0], size[1]), [
                 width,
                 height,
             ] as const);
         await resize(1000, 700);
-        const terminal = await openTerminal(window, 'trc-ubuntu', install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
         const before = await terminal.getAttribute('data-columns');
         await resize(1500, 900);
@@ -120,8 +120,8 @@ test.describe('a live terminal on a Linux host: size and keys (M1)', () => {
     });
 
     test('delivers Shift+Enter as CSI 13;2u to a program that turned on kitty keys (US-1.11, D-30)', async () => {
-        const { app, window } = await launchWithTestHosts();
-        const terminal = await openTerminal(window, 'trc-ubuntu', install.root);
+        const { app, window } = await launchWithTestHosts(install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
         await terminal.pressSequentially(
             "printf '\\033[>1u'; IFS= read -rs -d u key; printf '\\033[<u'; printf 'key=%q\\n' \"$key\"\n",
@@ -137,9 +137,9 @@ test.describe('a live terminal on a Linux host: selection and glyphs (M1)', () =
     const install = liveHost();
 
     test('selects words and drags across text with the pointer while VoiceOver is on (A11Y-04.1, A11Y-04.3)', async () => {
-        const { app, window } = await launchWithTestHosts();
+        const { app, window } = await launchWithTestHosts(install.root);
         await app.evaluate(({ app: electronApp }) => electronApp.setAccessibilitySupportEnabled(true));
-        const terminal = await openTerminal(window, 'trc-ubuntu', install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
         await terminal.focus();
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
         await window.keyboard.type('echo the quick brown fox');
@@ -161,10 +161,10 @@ test.describe('a live terminal on a Linux host: selection and glyphs (M1)', () =
     });
 
     test('draws terminal glyphs in Intel One Mono, the font the canvas accepted (A11Y-07, US-1.11)', async () => {
-        const { app, window } = await launchWithTestHosts();
+        const { app, window } = await launchWithTestHosts(install.root);
         await app.context().addInitScript(recordCanvasFonts);
         await window.reload();
-        const terminal = await openTerminal(window, 'trc-ubuntu', install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
         const fonts = await window.evaluate(() => (window as unknown as { canvasFonts?: string[] }).canvasFonts ?? []);
         expect(fonts.filter((font) => font.startsWith('rejected:'))).toEqual([]);

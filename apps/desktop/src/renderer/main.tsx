@@ -49,7 +49,7 @@ if (container !== null) {
         reactRoot.render(
             <StrictMode>
                 <AppProviders locale={DEFAULT_LOCALE}>
-                    <App workspace={workspace} terminals={terminals} askInstallLocation={__TRC_TEST_SEAM__} />
+                    <App workspace={workspace} terminals={terminals} />
                 </AppProviders>
             </StrictMode>,
         );

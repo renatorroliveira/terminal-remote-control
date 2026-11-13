@@ -76,9 +76,9 @@ describe.skipIf(skip !== undefined)('the terminal in the macOS accessibility tre
     const root = scratchInstallRoot();
 
     beforeAll(async () => {
-        launched = await launchWithTestHosts();
+        launched = await launchWithTestHosts(root);
         await launched.app.evaluate(({ app }) => app.setAccessibilitySupportEnabled(true));
-        const terminal = await openTerminal(launched.window, 'trc-ubuntu', root);
+        const terminal = await openTerminal(launched.window, 'trc-ubuntu');
         await terminal.focus();
         await launched.window.keyboard.type('clear; echo hi');
         await launched.window.keyboard.press('Enter');
