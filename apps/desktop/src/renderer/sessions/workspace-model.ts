@@ -28,6 +28,8 @@ export interface Workspace {
     readonly failureNotice: string | undefined;
     /** Sessions with output the user has not seen since they last had them open (US-1.8.3). */
     readonly unread: ReadonlySet<SessionKey>;
+    /** Background sessions whose bell rang since they were last open (A11Y-08.2). */
+    readonly bells: ReadonlySet<SessionKey>;
 }
 
 /** One session in a host's list. */
@@ -37,6 +39,8 @@ export interface SessionItem {
     readonly session: SessionInfo;
     /** Whether it has output the user has not seen (US-1.8.3). */
     readonly unread: boolean;
+    /** Whether its bell rang while it was in the background (A11Y-08.2). */
+    readonly bell: boolean;
 }
 
 /** A host in the Sessions area, with its sessions; the sidebar hides them while the host is collapsed. */
@@ -60,6 +64,7 @@ export const EMPTY_WORKSPACE: Workspace = {
     collapsed: new Set(),
     failureNotice: undefined,
     unread: new Set(),
+    bells: new Set(),
 };
 
 /** The key of a host's session. */
@@ -166,12 +171,22 @@ export function applySessionChange(sessions: readonly SessionInfo[], change: Ses
 
 /** Opens a session in the terminal area; its output counts as seen. */
 export function sessionOpened(workspace: Workspace, key: SessionKey | undefined): Workspace {
-    if (key === undefined || !workspace.unread.has(key)) {
+    if (key === undefined || (!workspace.unread.has(key) && !workspace.bells.has(key))) {
         return { ...workspace, open: key };
     }
     const unread = new Set(workspace.unread);
+    const bells = new Set(workspace.bells);
     unread.delete(key);
-    return { ...workspace, open: key, unread };
+    bells.delete(key);
+    return { ...workspace, open: key, unread, bells };
+}
+
+/** Records a session's bell; unless it is open, its row shows a bell badge (A11Y-08.2). */
+export function sessionBell(workspace: Workspace, key: SessionKey): Workspace {
+    if (key === workspace.open || workspace.bells.has(key)) {
+        return workspace;
+    }
+    return { ...workspace, bells: new Set([...workspace.bells, key]) };
 }
 
 /** Records output in a session; unless it is open, it now has unread output (US-1.8.3). */
@@ -201,6 +216,7 @@ export function hostGroups(workspace: Workspace): readonly HostGroup[] {
             sessions: (workspace.sessions.get(host.id) ?? []).map((session) => ({
                 key: sessionKey(host.id, session.id),
                 unread: workspace.unread.has(sessionKey(host.id, session.id)),
+                bell: workspace.bells.has(sessionKey(host.id, session.id)),
                 label: sessionName(session),
                 session,
             })),

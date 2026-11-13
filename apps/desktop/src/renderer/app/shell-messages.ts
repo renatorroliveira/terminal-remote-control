@@ -130,6 +130,20 @@ export const zoomAnnouncements = {
     }),
 };
 
+/** The terminal's bell and new output below a scrolled-back viewport (A11Y-08.2, A11Y-08.4). */
+export const terminalAnnouncements = {
+    bell: defineMessage<{ session: string }>({
+        id: 'announce.bell',
+        defaultMessage: 'Bell in {session}.',
+        description: 'Announced when the open session rings its bell.',
+    }),
+    outputBelow: defineMessage({
+        id: 'announce.outputBelow',
+        defaultMessage: 'New output below.',
+        description: 'Announced once when output arrives while the user has scrolled the terminal back.',
+    }),
+};
+
 /** Screen-reader mode turning on or off (A11Y-10.2). */
 export const screenReaderAnnouncements = defineMessages({
     on: {
@@ -233,6 +247,11 @@ export const statusMessages = {
         id: 'status.noDaemon',
         defaultMessage: 'Daemon not reached',
         description: 'Shown while the open session’s host is not connected.',
+    }),
+    bell: defineMessage({
+        id: 'status.bell',
+        defaultMessage: 'Bell',
+        description: 'Shown for a few seconds after the open session rang its bell.',
     }),
     tabMovesFocus: defineMessage({
         id: 'status.tabMovesFocus',

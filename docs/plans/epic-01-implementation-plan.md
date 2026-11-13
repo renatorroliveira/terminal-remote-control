@@ -691,7 +691,7 @@ As built:
   flashes (owner's choice), so A11Y-08.2's limit holds. The sound joins ST-18's audio cues.
 - A pinned viewport with an announced "new output below" indicator.
 
-As built so far (links first, by the owner's request on 2026-11-13):
+As built (links first, by the owner's request on 2026-11-13):
 
 - Links (D-38): Command+click (Control+click elsewhere) on a detected URL of any scheme or an OSC 8 hyperlink, and
   Shift+Command+O ("List links") for the keyboard. Every link asks first with its full address, unless it starts
@@ -713,6 +713,10 @@ As built so far (links first, by the owner's request on 2026-11-13):
 - `terminalAppearance` in `config.json` sets line height, extra letter spacing, the cursor's shape and bar width, and
   blinking; ST-18's settings page edits it. A blinking cursor stops after 5 seconds without input and never blinks
   under Reduce motion. xterm.js never draws SGR 5 blinking text.
+- The bell shows "Bell" in the status bar for 3 seconds and is announced; a background session's row gets a "bell"
+  badge until it opens. Nothing flashes.
+- A scrolled-back viewport stays put (xterm.js already pins it); the first output below shows a "New output below"
+  button, which jumps to the end, and is announced once.
 - Fixed on the way: Add host's suggestions now narrow as the user types (US-1.1.1).
 
 **ST-16 Review mode and find** (A11Y-03.1–8, US-1.13)
@@ -857,7 +861,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-12 | Done        | —      |
 | ST-13 | Done        | —      |
 | ST-14 | Done        | —      |
-| ST-15 | In progress | —      |
+| ST-15 | Done        | —      |
 | ST-16 | Not started | —      |
 | ST-17 | Not started | —      |
 | ST-18 | Not started | —      |

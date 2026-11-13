@@ -71,6 +71,17 @@ describe('SessionTree: keys, badges and dragging (US-1.8, US-1.10.6)', () => {
         await expect.element(host).toHaveAttribute('aria-expanded', 'true');
     });
 
+    it('marks a background session whose bell rang, until it opens (A11Y-08.2)', async () => {
+        const { screen, workspace } = await renderTree();
+        workspace.recordActivity('host-0/a');
+        workspace.recordBell('host-0/a');
+        await expect.element(screen.getByRole('treeitem', { name: 'build, Running, new output, bell' })).toBeVisible();
+        workspace.open('host-0/a');
+        await expect.element(screen.getByRole('treeitem', { name: 'build, Running' })).toBeVisible();
+        workspace.recordBell('host-0/a');
+        await expect.element(screen.getByRole('treeitem', { name: 'build, Running' })).toBeVisible();
+    });
+
     it('marks a session with output the user has not seen (US-1.8.3)', async () => {
         const { screen, workspace } = await renderTree();
         workspace.recordActivity('host-0/a');

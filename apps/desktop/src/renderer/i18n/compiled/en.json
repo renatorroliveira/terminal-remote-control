@@ -11,6 +11,20 @@
       "value": "User (optional)"
     }
   ],
+  "announce.bell": [
+    {
+      "type": 0,
+      "value": "Bell in "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "announce.connectStep": [
     {
       "type": 1,
@@ -153,6 +167,12 @@
     {
       "type": 0,
       "value": ", new output."
+    }
+  ],
+  "announce.outputBelow": [
+    {
+      "type": 0,
+      "value": "New output below."
     }
   ],
   "announce.screenReaderOff": [
@@ -2027,6 +2047,12 @@
       "value": "Trust"
     }
   ],
+  "status.bell": [
+    {
+      "type": 0,
+      "value": "Bell"
+    }
+  ],
   "status.daemon": [
     {
       "type": 0,
@@ -2163,6 +2189,18 @@
     {
       "type": 1,
       "value": "host"
+    }
+  ],
+  "terminal.outputBelow": [
+    {
+      "type": 0,
+      "value": "New output below"
+    }
+  ],
+  "tree.bell": [
+    {
+      "type": 0,
+      "value": "bell"
     }
   ],
   "tree.hostRow": [

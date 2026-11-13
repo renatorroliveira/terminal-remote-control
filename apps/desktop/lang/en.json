@@ -7,6 +7,10 @@
     "defaultMessage": "User (optional)",
     "description": "Field label."
   },
+  "announce.bell": {
+    "defaultMessage": "Bell in {session}.",
+    "description": "Announced when the open session rings its bell."
+  },
   "announce.connectStep": {
     "defaultMessage": "{host}: {step}.",
     "description": "Announced politely at each step of connecting."
@@ -46,6 +50,10 @@
   "announce.openedUnread": {
     "defaultMessage": "{session} on {host}: {state}, new output.",
     "description": "Announced politely when a session with unseen output opens."
+  },
+  "announce.outputBelow": {
+    "defaultMessage": "New output below.",
+    "description": "Announced once when output arrives while the user has scrolled the terminal back."
   },
   "announce.screenReaderOff": {
     "defaultMessage": "Screen reader mode off.",
@@ -891,6 +899,10 @@
     "defaultMessage": "Trust",
     "description": "Button that trusts a presented host key."
   },
+  "status.bell": {
+    "defaultMessage": "Bell",
+    "description": "Shown for a few seconds after the open session rang its bell."
+  },
   "status.daemon": {
     "defaultMessage": "Daemon {version}",
     "description": "The version of the daemon the open session’s host runs."
@@ -958,6 +970,14 @@
   "terminal.label": {
     "defaultMessage": "{session}, {host}",
     "description": "Accessible name of a terminal: the session name, then its host."
+  },
+  "terminal.outputBelow": {
+    "defaultMessage": "New output below",
+    "description": "Indicator on a terminal scrolled back while new output arrives; clicking it jumps to the end."
+  },
+  "tree.bell": {
+    "defaultMessage": "bell",
+    "description": "Badge of a background session whose bell rang."
   },
   "tree.hostRow": {
     "defaultMessage": "{host}, {state}",

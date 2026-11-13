@@ -8,6 +8,11 @@ export const treeMessages = defineMessages({
         defaultMessage: 'new output',
         description: 'Badge of a session with output the user has not seen.',
     },
+    bell: {
+        id: 'tree.bell',
+        defaultMessage: 'bell',
+        description: 'Badge of a background session whose bell rang.',
+    },
 });
 
 /** A host row's accessible name. */

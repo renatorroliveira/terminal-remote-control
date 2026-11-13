@@ -76,4 +76,23 @@
         white-space: pre;
         pointer-events: none;
     }
+
+    .outputBelow {
+        position: absolute;
+        right: calc(var(--trc-terminal-padding) + 16px);
+        bottom: var(--trc-terminal-padding);
+        z-index: 2;
+        min-height: 24px;
+        padding: 0.25rem 0.75rem;
+        border: 1px solid var(--trc-color-focus-ring);
+        border-radius: 4px;
+        background: var(--trc-color-surface);
+        color: var(--trc-color-text);
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .outputBelow[hidden] {
+        display: none;
+    }
 }

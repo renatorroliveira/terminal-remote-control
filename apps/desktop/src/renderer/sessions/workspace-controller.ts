@@ -17,6 +17,7 @@ import {
     isConnected,
     type SessionKey,
     sessionActivity,
+    sessionBell,
     sessionChanged,
     sessionKey,
     sessionOpened,
@@ -199,6 +200,15 @@ export class WorkspaceController {
         this.#lastHost = found.hostId;
         this.#update((workspace) => sessionOpened(workspace, key));
         this.#terminals.show(key, found.hostId, found.session);
+    }
+
+    /** Records a session's bell, which badges it unless it is open (A11Y-08.2). */
+    recordBell(key: SessionKey): void {
+        const before = this.store.getState();
+        const after = sessionBell(before, key);
+        if (after !== before) {
+            this.store.setState(after, true);
+        }
     }
 
     /** Notes output in a session, which has unread output unless it is open (US-1.8.3). */
