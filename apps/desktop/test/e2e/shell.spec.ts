@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { axeViolations } from './support/axe';
 import { APP_DIRECTORY, launchApp, scratchProfile, testEnvironment } from './support/launch';
 
 const electronBinary = createRequire(import.meta.url)('electron') as string;
@@ -87,5 +88,26 @@ test('offers the SSH config hosts in Add host, read from the seam config ahead o
     const window = await app.firstWindow();
     await window.getByRole('combobox', { name: 'New host' }).fill('trc-sugg');
     await expect(window.getByRole('option', { name: 'trc-suggested-host' })).toBeVisible();
+    await app.close();
+});
+
+test('Option+F1 lists the shortcuts, and opens the user guide in its own accessible window (A11Y-10.1, A11Y-10.4)', async () => {
+    const app = await launchApp();
+    const window = await app.firstWindow();
+    const field = window.getByRole('combobox', { name: 'New host' });
+    await field.focus();
+    await window.keyboard.press('Alt+F1');
+    const help = window.getByRole('dialog', { name: 'Accessibility help' });
+    await expect(help.getByRole('table', { name: 'Everywhere' })).toBeVisible();
+    await expect(help.getByRole('row', { name: /^Accessibility help Option\+F1$/ })).toBeVisible();
+    expect(await axeViolations(window)).toEqual([]);
+    const opened = app.waitForEvent('window');
+    await help.getByRole('button', { name: 'VoiceOver quick start' }).click();
+    const guide = await opened;
+    await expect(guide).toHaveTitle('Terminal Remote Control user guide');
+    await expect(guide.getByRole('heading', { level: 2, name: 'Quick start with VoiceOver' })).toBeInViewport();
+    await expect(guide.getByRole('main')).toBeVisible();
+    expect(await axeViolations(guide)).toEqual([]);
+    await expect(help).toHaveCount(0);
     await app.close();
 });

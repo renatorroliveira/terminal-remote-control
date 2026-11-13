@@ -59,6 +59,9 @@ const bridge: TrcBridge = {
         collapsed: () => ipcRenderer.invoke('sidebar:get-collapsed') as Promise<boolean>,
         setCollapsed: (collapsed) => ipcRenderer.invoke('sidebar:set-collapsed', collapsed) as Promise<void>,
     },
+    help: {
+        openGuide: (section) => ipcRenderer.invoke('help:open-guide', section) as Promise<void>,
+    },
     commands: {
         onCommand: (listener) => subscribe<AppCommand>(APP_COMMAND_CHANNEL, listener),
     },

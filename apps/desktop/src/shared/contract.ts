@@ -1,5 +1,6 @@
 import type { AccessibilityState, ScreenReaderMode } from './accessibility';
 import type { DisplaySettings } from './display';
+import type { GuideSection } from './guide';
 import type { KnownHost } from './hosts';
 import type { CommandId } from './keymap';
 import type { LinkCheck } from './links';
@@ -32,6 +33,10 @@ export interface InvokeContract {
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
     readonly 'sidebar:get-collapsed': { readonly args: readonly []; readonly result: boolean };
     readonly 'sidebar:set-collapsed': { readonly args: readonly [collapsed: boolean]; readonly result: undefined };
+    readonly 'help:open-guide': {
+        readonly args: readonly [section: GuideSection | undefined];
+        readonly result: undefined;
+    };
 }
 
 /** One invoke channel. */
@@ -109,6 +114,10 @@ export interface TrcBridge {
         collapsed(): Promise<boolean>;
         /** Keeps whether the sidebar is hidden in `config.json`. */
         setCollapsed(collapsed: boolean): Promise<void>;
+    };
+    readonly help: {
+        /** Opens the user guide in its own window, at a section when given (A11Y-10.4). */
+        openGuide(section?: GuideSection): Promise<void>;
     };
     readonly commands: {
         /** Calls `listener` with each menu command; returns a function that stops listening. */

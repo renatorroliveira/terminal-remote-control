@@ -3,6 +3,9 @@ export const CONTENT_SECURITY_POLICY =
     "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
     "font-src 'self'; connect-src 'none'";
 
+/** The Content-Security-Policy of the user guide's pages: their own stylesheet and images, and no scripts. */
+export const GUIDE_CONTENT_SECURITY_POLICY = "default-src 'none'; style-src 'self'; img-src 'self'";
+
 /** Web preferences for a sandboxed, context-isolated renderer. */
 export interface SecureWebPreferences {
     readonly preload: string;
@@ -18,8 +21,12 @@ export interface SecureWebPreferences {
 
 /** Returns the web preferences every app window uses, with the given preload script. */
 export function secureWebPreferences(preload: string): SecureWebPreferences {
+    return { preload, ...documentWebPreferences() };
+}
+
+/** Returns the web preferences of a window that shows a document and gets no preload, such as the user guide. */
+export function documentWebPreferences(): Omit<SecureWebPreferences, 'preload'> {
     return {
-        preload,
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,

@@ -1181,6 +1181,168 @@
       "value": "?"
     }
   ],
+  "help.action": [
+    {
+      "type": 0,
+      "value": "Action"
+    }
+  ],
+  "help.close": [
+    {
+      "type": 0,
+      "value": "Close"
+    }
+  ],
+  "help.documentation": [
+    {
+      "type": 0,
+      "value": "Documentation"
+    }
+  ],
+  "help.general": [
+    {
+      "type": 0,
+      "value": "Everywhere"
+    }
+  ],
+  "help.intro": [
+    {
+      "type": 0,
+      "value": "Shortcuts for where you are, then those that work everywhere."
+    }
+  ],
+  "help.key.bufferEnd": [
+    {
+      "type": 0,
+      "value": "Go to the end of the buffer"
+    }
+  ],
+  "help.key.bufferStart": [
+    {
+      "type": 0,
+      "value": "Go to the start of the buffer"
+    }
+  ],
+  "help.key.closeReview": [
+    {
+      "type": 0,
+      "value": "Close review mode"
+    }
+  ],
+  "help.key.collapse": [
+    {
+      "type": 0,
+      "value": "Collapse or expand a host"
+    }
+  ],
+  "help.key.contextMenu": [
+    {
+      "type": 0,
+      "value": "Show the actions menu"
+    }
+  ],
+  "help.key.copy": [
+    {
+      "type": 0,
+      "value": "Copy the selection"
+    }
+  ],
+  "help.key.firstLast": [
+    {
+      "type": 0,
+      "value": "Go to the first or last row"
+    }
+  ],
+  "help.key.moveRows": [
+    {
+      "type": 0,
+      "value": "Move between hosts and sessions"
+    }
+  ],
+  "help.key.openLink": [
+    {
+      "type": 0,
+      "value": "Open the link under the pointer"
+    }
+  ],
+  "help.key.openSession": [
+    {
+      "type": 0,
+      "value": "Open the session"
+    }
+  ],
+  "help.key.paste": [
+    {
+      "type": 0,
+      "value": "Paste"
+    }
+  ],
+  "help.key.readLines": [
+    {
+      "type": 0,
+      "value": "Read the previous or next line"
+    }
+  ],
+  "help.key.scrollPage": [
+    {
+      "type": 0,
+      "value": "Scroll a page up or down"
+    }
+  ],
+  "help.key.select": [
+    {
+      "type": 0,
+      "value": "Select text"
+    }
+  ],
+  "help.key.typeAhead": [
+    {
+      "type": 0,
+      "value": "Go to a session by name"
+    }
+  ],
+  "help.key.typeAheadKeys": [
+    {
+      "type": 0,
+      "value": "Type its first letters"
+    }
+  ],
+  "help.keys": [
+    {
+      "type": 0,
+      "value": "Keys"
+    }
+  ],
+  "help.review": [
+    {
+      "type": 0,
+      "value": "In review mode"
+    }
+  ],
+  "help.sessions": [
+    {
+      "type": 0,
+      "value": "In the session list"
+    }
+  ],
+  "help.terminal": [
+    {
+      "type": 0,
+      "value": "In the terminal"
+    }
+  ],
+  "help.title": [
+    {
+      "type": 0,
+      "value": "Accessibility help"
+    }
+  ],
+  "help.voiceOver": [
+    {
+      "type": 0,
+      "value": "VoiceOver quick start"
+    }
+  ],
   "host.action.cancel": [
     {
       "type": 0,

@@ -1,86 +1,7 @@
 import axe from 'axe-core';
-import { createIntl } from 'react-intl';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { render } from 'vitest-browser-react';
-import { resolveKeymap } from '../../shared/keymap';
-import { messagesFor } from '../i18n/locale';
-import { WorkspaceController } from '../sessions/workspace-controller';
-import {
-    bashSession,
-    FakeKnownHostStore,
-    FakeTerminalHost,
-    FakeWorkspaceClient,
-} from '../sessions/workspace-test-doubles';
-import { themeStyleSheet } from '../ui/themes';
-import { App } from './App';
-import { AppProviders } from './AppProviders';
-import { NotificationCenter } from './notifications';
-import { Shell } from './shell';
-
-const CONNECTED = { status: 'connected', daemon: { version: '0.1.0', sha256: 'ab', proto: 1 } } as const;
-
-/** Loads the Midnight tokens, as the app does; returns their removal. */
-function installTokens(): () => void {
-    const tokens = document.createElement('style');
-    tokens.textContent = themeStyleSheet();
-    document.head.append(tokens);
-    document.documentElement.dataset['theme'] = 'midnight';
-    return () => {
-        tokens.remove();
-        delete document.documentElement.dataset['theme'];
-    };
-}
-
-function renderApp(savedWidth = 400) {
-    const client = new FakeWorkspaceClient([bashSession('a')]);
-    const terminals = new FakeTerminalHost([bashSession('b')]);
-    const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore());
-    const saved: (number | boolean)[] = [];
-    const spoken: string[] = [];
-    const shell = new Shell({
-        workspace,
-        terminals,
-        sidebar: {
-            width: () => Promise.resolve(savedWidth),
-            setWidth: (width: number) => {
-                saved.push(width);
-                return Promise.resolve();
-            },
-            collapsed: () => Promise.resolve(false),
-            setCollapsed: (collapsed: boolean) => {
-                saved.push(collapsed);
-                return Promise.resolve();
-            },
-        },
-        announcer: { announce: (text: string) => spoken.push(text) },
-        notifications: new NotificationCenter(() => 0),
-        keymap: resolveKeymap({}),
-        intl: createIntl({ locale: 'en', messages: messagesFor('en') }),
-        document,
-        isNarrow: () => window.innerWidth <= 800,
-    });
-    return {
-        client,
-        terminals,
-        workspace,
-        shell,
-        saved,
-        spoken,
-        rendered: render(
-            <AppProviders locale="en">
-                <App workspace={workspace} terminals={terminals} shell={shell} />
-            </AppProviders>,
-        ),
-    };
-}
-
-async function connectedHost(screen: Awaited<ReturnType<typeof renderApp>['rendered']>, client: FakeWorkspaceClient) {
-    await screen.getByRole('combobox', { name: 'New host' }).fill('devbox-1');
-    await userEvent.keyboard('{Enter}');
-    client.push('host-0', CONNECTED);
-    await expect.element(screen.getByRole('button', { name: 'New session on devbox-1' })).toBeVisible();
-}
+import { type AppScreen, CONNECTED, connectedHost, installTokens, renderApp } from './app-test-harness';
 
 describe('App (US-1.6.1)', () => {
     it('has a sessions sidebar and the named main region, with nothing open yet', async () => {
@@ -150,7 +71,7 @@ describe('App: layout (US-1.6.1, A11Y-07.5)', () => {
 });
 
 describe('App: sidebar splitter (US-1.6.3, A11Y-05)', () => {
-    const sidebarWidth = (screen: Awaited<ReturnType<typeof renderApp>['rendered']>) =>
+    const sidebarWidth = (screen: AppScreen) =>
         screen.getByRole('navigation', { name: 'Sessions and hosts' }).element().getBoundingClientRect().width;
 
     it('starts at the saved width and resizes from the keyboard between 300 and 800 px, saving each width', async () => {
@@ -441,7 +362,7 @@ describe('App: host key dialog (US-1.2.1)', () => {
 });
 
 describe('App: forgetting and moving hosts (A11Y-11.9, US-1.4.3, US-1.1.5)', () => {
-    async function hostMenu(screen: Awaited<ReturnType<typeof renderApp>['rendered']>, item: string) {
+    async function hostMenu(screen: AppScreen, item: string) {
         const row = screen.getByRole('list', { name: 'Known hosts' }).getByRole('button', { name: /devbox-1/ });
         (row.element() as HTMLElement).focus();
         await userEvent.keyboard('{Shift>}{F10}{/Shift}');
@@ -500,7 +421,7 @@ describe('App: forgetting and moving hosts (A11Y-11.9, US-1.4.3, US-1.1.5)', () 
 });
 
 describe('App: managing sessions (US-1.10)', () => {
-    async function sessionMenu(screen: Awaited<ReturnType<typeof renderApp>['rendered']>, item: string) {
+    async function sessionMenu(screen: AppScreen, item: string) {
         (screen.getByRole('treeitem', { name: 'bash, Running' }).element() as HTMLElement).focus();
         await userEvent.keyboard('{Shift>}{F10}{/Shift}');
         await screen.getByRole('menuitem', { name: item }).click();

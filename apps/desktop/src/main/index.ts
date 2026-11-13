@@ -13,6 +13,7 @@ import { contentTypeFor, resolveAppRequest } from './app-protocol';
 import { isBackgroundLaunch } from './background-launch';
 import { startConnectionHost } from './connection-host';
 import { DisplayRelay } from './display-relay';
+import { GuideWindow } from './guide-window';
 import { suggestedAddresses } from './host-suggestions';
 import { installRootFor } from './install-root';
 import { type InvokeHandlers, registerHandlers } from './ipc';
@@ -22,13 +23,14 @@ import { LinkService } from './link-service';
 import { type MenuOptions, menuTemplate, terminalContextMenu } from './menu';
 import { openExternalFor } from './open-external';
 import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
-import { CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
+import { CONTENT_SECURITY_POLICY, GUIDE_CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
 import { sshConfigFilesFor, sshConfigHosts } from './ssh-config-hosts';
 import { trcHome } from './trc-home';
 import { isAppPage } from './trusted-sender';
 
 const rendererRoot = join(import.meta.dirname, '../renderer');
 const resources = app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources');
+const appRoots = { [APP_IDENTITY.appHost]: rendererRoot, [APP_IDENTITY.docsHost]: join(resources, 'docs') };
 const devServer = process.env['ELECTRON_RENDERER_URL'];
 let mainWindow: BrowserWindow | undefined;
 const background = isBackgroundLaunch({ seamEnabled: __TRC_TEST_SEAM__, env: process.env });
@@ -68,14 +70,13 @@ async function start(): Promise<void> {
         save: (mode) => config.update({ screenReaderMode: mode }),
     });
     const knownHosts = new KnownHosts(home);
-    const links = new LinkService(
-        home,
-        openExternalFor({
-            seamEnabled: __TRC_TEST_SEAM__,
-            env: process.env,
-            shellOpen: (url) => shell.openExternal(url),
-        }),
-    );
+    const openExternal = openExternalFor({
+        seamEnabled: __TRC_TEST_SEAM__,
+        env: process.env,
+        shellOpen: (url) => shell.openExternal(url),
+    });
+    const links = new LinkService(home, openExternal);
+    const guide = new GuideWindow({ icon: appIconPath(resources), openExternal, background });
     registerHandlers(
         ipcMain,
         {
@@ -105,6 +106,10 @@ async function start(): Promise<void> {
             'terminal:get-appearance': async () => (await config.read()).terminalAppearance,
             'terminal:set-zoom': async (zoom) => {
                 await config.update({ terminalZoom: zoom });
+                return undefined;
+            },
+            'help:open-guide': async (section) => {
+                guide.open(section);
                 return undefined;
             },
         },
@@ -199,7 +204,7 @@ function focusMainWindow(): void {
 }
 
 async function serveAppRequest(request: Request): Promise<Response> {
-    const file = resolveAppRequest(request.url, rendererRoot);
+    const file = resolveAppRequest(request.url, appRoots);
     if (file === undefined) {
         return new Response('Not found', { status: 404 });
     }
@@ -208,7 +213,7 @@ async function serveAppRequest(request: Request): Promise<Response> {
         return new Response('Not found', { status: 404 });
     }
     return new Response(body, {
-        headers: { 'content-type': contentTypeFor(file), 'content-security-policy': CONTENT_SECURITY_POLICY },
+        headers: { 'content-type': contentTypeFor(file), 'content-security-policy': policyFor(request.url) },
     });
 }
 
@@ -229,4 +234,8 @@ function createWindow(display: DisplayRelay, screenReader: ScreenReaderSetting):
     relayAccessibility(window, screenReader);
     void window.loadURL(devServer ?? `${APP_IDENTITY.appScheme}://${APP_IDENTITY.appHost}/index.html`);
     return window;
+}
+
+function policyFor(url: string): string {
+    return new URL(url).host === APP_IDENTITY.docsHost ? GUIDE_CONTENT_SECURITY_POLICY : CONTENT_SECURITY_POLICY;
 }

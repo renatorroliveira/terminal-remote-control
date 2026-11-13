@@ -11,6 +11,7 @@ what later releases add.
 
 - [Requirements](#requirements)
 - [Install](#install)
+- [Quick start with VoiceOver](#quick-start-with-voiceover)
 - [Add a host](#add-a-host)
 - [Connect](#connect)
 - [Sessions](#sessions)
@@ -56,6 +57,26 @@ your `known_hosts`. It never changes your SSH configuration or your keys. The on
     ```sh
     xattr -dr com.apple.quarantine "/Applications/Terminal Remote Control.app"
     ```
+
+## Quick start with VoiceOver
+
+VO below means the VoiceOver keys: Control-Option, or Caps Lock if you set VoiceOver to use it.
+
+1. Turn on VoiceOver with Command-F5, then open Terminal Remote Control. TRC notices VoiceOver, turns on
+   screen-reader mode and says so.
+2. Press Command-F6 until VoiceOver says "Sessions and hosts", then press Tab until it says "New host". Type a host
+   as you would after `ssh`, and press Return. TRC says each step of connecting.
+3. Press Command-T for a new session. Focus moves to its terminal, and VoiceOver says the session's name and host.
+4. Type commands as in any terminal. TRC speaks new output as it arrives and leaves out what you type, which
+   VoiceOver already echoes. Press Control to stop VoiceOver speaking; Shift-Command-A mutes the session's output.
+5. To read what is on the screen, press VO-L for the line at the cursor. For everything, press Option-F2: review
+   mode holds the whole scrollback as text that you read with the arrow keys and VoiceOver's usual commands.
+   Escape returns to the terminal.
+6. Select text in review mode with Shift and the arrow keys; VO-F6 reads the selection and Command-C copies it.
+7. Command-F6 moves between the sidebar, the terminal and the status bar. In the session list, Up and Down Arrow
+   move between sessions and Return opens one.
+8. Option-F1 lists the shortcuts for where you are. Help, then Terminal Remote Control Help, opens this guide
+   in its own window.
 
 ## Add a host
 
@@ -258,6 +279,11 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 - **Selection** in the terminal is real text selection, so Speak Selection, Look Up and Services work on it.
 - **Keyboard.** Every control works with the keyboard, with a visible focus ring, and the terminal never traps
   focus: Command-F6 always leaves it, and Tab focus mode lets Tab leave it too.
+- **Accessibility help.** Option-F1, or Help, then Accessibility Help, lists the shortcuts for where you are (the
+  terminal, review mode or the session list), then those that work everywhere, with the shortcut each command has
+  now. Its User guide button opens this guide.
+- **User guide.** Help, then Terminal Remote Control Help, opens this guide in a window of its own, as headings,
+  lists and tables that VoiceOver reads like any web page.
 - **Announcements.** Status changes, such as Tab focus mode or a host connecting, are spoken without moving focus.
 - **Spoken output.** In screen-reader mode, TRC speaks the open session's new output as it arrives, line after
   line, without moving focus:
@@ -328,8 +354,7 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 Later releases of Epic 1 add:
 
 - Changing shortcuts, and plain F6 to move between regions, in the settings page.
-- The settings page, accessibility help (Option-F1) and the in-app guide (the Help menu items do nothing
-  yet).
+- The settings page.
 
 Later epics add sessions that survive a host reboot, local sessions on the Mac, macOS hosts, and the Windows and
 Linux apps. [The PRD](docs/PRD.md) has the full plan.
