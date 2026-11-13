@@ -27,17 +27,24 @@ export interface Workspace {
     readonly failureNotice: string | undefined;
 }
 
-/** One row of the session tree. */
-export type TreeItem =
-    | (TreeItemBase & { readonly kind: 'host'; readonly host: HostEntry; readonly expanded: boolean })
-    | (TreeItemBase & { readonly kind: 'session'; readonly host: HostEntry; readonly session: SessionInfo });
-
-interface TreeItemBase {
-    readonly key: string;
-    readonly level: 1 | 2;
-    readonly posinset: number;
-    readonly setsize: number;
+/** One session in a host's list. */
+export interface SessionItem {
+    readonly key: SessionKey;
     readonly label: string;
+    readonly session: SessionInfo;
+}
+
+/** A host in the Sessions area, with its sessions; the sidebar hides them while the host is collapsed. */
+export interface HostGroup {
+    readonly host: HostEntry;
+    readonly expanded: boolean;
+    readonly sessions: readonly SessionItem[];
+}
+
+/** How a connection state change is reported. */
+export interface StateChangeOptions {
+    /** Whether a failure waits for the user to acknowledge it; not for connections the app started on its own. */
+    readonly notifyFailure: boolean;
 }
 
 /** A workspace with no hosts. */
@@ -70,11 +77,17 @@ export function hostAdded(workspace: Workspace, host: KnownHost): Workspace {
 
 /**
  * Records a host's new connection state. A failure waits for the user to acknowledge it, unless the user caused it
- * by rejecting the host key; a closed connection takes its sessions out of the sidebar.
+ * by rejecting the host key or the app started the connection on its own; a closed connection takes its sessions
+ * out of the sidebar.
  */
-export function hostStateChanged(workspace: Workspace, hostId: string, state: ConnectionState): Workspace {
+export function hostStateChanged(
+    workspace: Workspace,
+    hostId: string,
+    state: ConnectionState,
+    options: StateChangeOptions = { notifyFailure: true },
+): Workspace {
     const hosts = workspace.hosts.map((host) => (host.id === hostId ? { ...host, state } : host));
-    if (state.status === 'failed' && state.failure.kind !== 'host-key-rejected') {
+    if (state.status === 'failed' && options.notifyFailure && state.failure.kind !== 'host-key-rejected') {
         return { ...workspace, hosts, failureNotice: hostId };
     }
     if (state.status !== 'closed') {
@@ -135,43 +148,19 @@ export function hostToggled(workspace: Workspace, hostId: string): Workspace {
     return { ...workspace, collapsed };
 }
 
-/**
- * The visible rows of the session tree: each connected host or host with sessions, then its sessions unless it is
- * collapsed.
- */
-export function treeItems(workspace: Workspace): readonly TreeItem[] {
-    const shown = workspace.hosts.filter(
-        (host) => isConnected(host) || (workspace.sessions.get(host.id)?.length ?? 0) > 0,
-    );
-    const hostCount = shown.length;
-    return shown.flatMap((host, index) => {
-        const expanded = !workspace.collapsed.has(host.id);
-        const hostItem: TreeItem = {
-            kind: 'host',
-            key: host.id,
-            level: 1,
-            posinset: index + 1,
-            setsize: hostCount,
-            label: host.destination,
+/** The hosts the Sessions area shows: each connected host or host with sessions, in the order added. */
+export function hostGroups(workspace: Workspace): readonly HostGroup[] {
+    return workspace.hosts
+        .filter((host) => isConnected(host) || (workspace.sessions.get(host.id)?.length ?? 0) > 0)
+        .map((host) => ({
             host,
-            expanded,
-        };
-        return expanded ? [hostItem, ...sessionItems(workspace, host)] : [hostItem];
-    });
-}
-
-function sessionItems(workspace: Workspace, host: HostEntry): readonly TreeItem[] {
-    const sessions = workspace.sessions.get(host.id) ?? [];
-    return sessions.map((session, index) => ({
-        kind: 'session',
-        key: sessionKey(host.id, session.id),
-        level: 2,
-        posinset: index + 1,
-        setsize: sessions.length,
-        label: sessionName(session),
-        host,
-        session,
-    }));
+            expanded: !workspace.collapsed.has(host.id),
+            sessions: (workspace.sessions.get(host.id) ?? []).map((session) => ({
+                key: sessionKey(host.id, session.id),
+                label: sessionName(session),
+                session,
+            })),
+        }));
 }
 
 function withSessions(workspace: Workspace, hostId: string, sessions: readonly SessionInfo[]): Workspace {

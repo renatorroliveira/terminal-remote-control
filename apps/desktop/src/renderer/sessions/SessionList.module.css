@@ -1,12 +1,16 @@
 @layer components {
-    .tree {
+    .list {
         display: flex;
         flex-direction: column;
         gap: 2px;
+        padding-inline-start: 1.25rem;
+    }
+
+    .list[hidden] {
+        display: none;
     }
 
     .row {
-        position: relative;
         display: grid;
         grid-template-columns: 1.25rem 1fr;
         align-items: center;
@@ -15,17 +19,10 @@
         padding: 0.25rem 0.5rem;
         border: 1px solid transparent;
         border-radius: 4px;
-        cursor: default;
+        cursor: pointer;
     }
 
-    .row[data-kind='session'] {
-        padding-inline-start: 1.75rem;
-    }
-
-    .row[aria-selected='true'] {
-        border-color: var(--trc-color-border);
-    }
-
+    .row[aria-selected='true'],
     .row:hover {
         border-color: var(--trc-color-border);
     }

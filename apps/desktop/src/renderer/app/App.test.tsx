@@ -27,20 +27,36 @@ function installTokens(): () => void {
     };
 }
 
-function renderApp() {
+function renderApp(savedWidth = 400) {
     const client = new FakeWorkspaceClient([bashSession('a')]);
     const terminals = new FakeTerminalHost([bashSession('b')]);
     const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore());
+    const saved: number[] = [];
+    const sidebar = {
+        width: () => Promise.resolve(savedWidth),
+        setWidth: (width: number) => {
+            saved.push(width);
+            return Promise.resolve();
+        },
+    };
     return {
         client,
         terminals,
         workspace,
+        saved,
         rendered: render(
             <AppProviders locale="en">
-                <App workspace={workspace} terminals={terminals} />
+                <App workspace={workspace} terminals={terminals} sidebar={sidebar} />
             </AppProviders>,
         ),
     };
+}
+
+async function connectedHost(screen: Awaited<ReturnType<typeof renderApp>['rendered']>, client: FakeWorkspaceClient) {
+    await screen.getByRole('textbox', { name: 'New host' }).fill('devbox-1');
+    await userEvent.keyboard('{Enter}');
+    client.push('host-0', CONNECTED);
+    await expect.element(screen.getByRole('button', { name: 'New session on devbox-1' })).toBeVisible();
 }
 
 describe('App (US-1.6.1)', () => {
@@ -51,7 +67,7 @@ describe('App (US-1.6.1)', () => {
         await expect.element(screen.getByRole('main', { name: 'Term Remote Control' })).toBeVisible();
         await expect.element(screen.getByText('No session is open.')).toBeVisible();
         await expect.element(screen.getByText('No open sessions.')).toBeVisible();
-        await expect.element(screen.getByRole('button', { name: 'New session' })).toBeDisabled();
+        await expect.element(screen.getByRole('button', { name: /^New session/ })).not.toBeInTheDocument();
     });
 
     it('lists a connected host and its sessions, opens one, and creates new ones', async () => {
@@ -63,23 +79,25 @@ describe('App (US-1.6.1)', () => {
         await screen.getByRole('button', { name: 'Connect devbox-1' }).click();
         expect(client.calls).toEqual(['connect host-0 devbox-1']);
         client.push('host-0', CONNECTED);
-        await screen.getByRole('treeitem', { name: 'bash, Running' }).click();
+        const host = screen.getByRole('button', { name: 'devbox-1 Connected' });
+        await expect.element(host).toHaveAttribute('aria-expanded', 'true');
+        await screen.getByRole('option', { name: 'bash, Running' }).click();
         expect(terminals.shown).toEqual(['host-0/a']);
-        await expect.element(screen.getByRole('button', { name: /^devbox-1 Host$/ })).toBeVisible();
-        await screen.getByRole('button', { name: 'New session' }).click();
+        await screen.getByRole('button', { name: 'New session on devbox-1' }).click();
         await expect.poll(() => terminals.shown).toEqual(['host-0/a', 'host-0/b']);
+        await host.click();
+        await expect.element(host).toHaveAttribute('aria-expanded', 'false');
+        await expect.element(screen.getByRole('listbox', { name: 'Sessions on devbox-1' })).not.toBeInTheDocument();
     });
 
-    it('moves focus to New session when the focused session closes, so focus is never lost (A11Y-05)', async () => {
+    it('moves focus to a New session button when the focused session closes, so focus is never lost (A11Y-05)', async () => {
         await page.viewport(1400, 800);
         const { client, rendered } = renderApp();
         const screen = await rendered;
-        await screen.getByRole('textbox', { name: 'New host' }).fill('devbox-1');
-        await userEvent.keyboard('{Enter}');
-        client.push('host-0', CONNECTED);
-        await screen.getByRole('treeitem', { name: 'bash, Running' }).click();
+        await connectedHost(screen, client);
+        await screen.getByRole('option', { name: 'bash, Running' }).click();
         client.message('host-0', { type: 'sessionEvent', change: { kind: 'closed', sessionId: 'a' } });
-        await expect.element(screen.getByRole('button', { name: 'New session' })).toHaveFocus();
+        await expect.element(screen.getByRole('button', { name: 'New session on devbox-1' })).toHaveFocus();
     });
 });
 
@@ -105,6 +123,48 @@ describe('App: layout (US-1.6.1, A11Y-07.5)', () => {
         await expect.element(toggle).toHaveAttribute('aria-expanded', 'true');
         await expect.element(screen.getByRole('navigation', { name: 'Sessions and hosts' })).toBeVisible();
         expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
+    });
+});
+
+describe('App: sidebar splitter (US-1.6.3, A11Y-05)', () => {
+    const sidebarWidth = (screen: Awaited<ReturnType<typeof renderApp>['rendered']>) =>
+        screen.getByRole('navigation', { name: 'Sessions and hosts' }).element().getBoundingClientRect().width;
+
+    it('starts at the saved width and resizes from the keyboard between 300 and 800 px, saving each width', async () => {
+        await page.viewport(1400, 800);
+        const { saved, rendered } = renderApp(520);
+        const screen = await rendered;
+        const splitter = screen.getByRole('separator', { name: 'Sidebar width' });
+        await expect.element(splitter).toHaveAttribute('aria-valuenow', '520');
+        await expect.element(splitter).toHaveAttribute('aria-valuemin', '300');
+        await expect.element(splitter).toHaveAttribute('aria-valuemax', '800');
+        expect(sidebarWidth(screen)).toBe(520);
+        (splitter.element() as HTMLElement).focus();
+        await userEvent.keyboard('{ArrowLeft}');
+        expect(sidebarWidth(screen)).toBe(510);
+        await userEvent.keyboard('{End}');
+        await userEvent.keyboard('{ArrowRight}');
+        await userEvent.keyboard('{Home}');
+        await expect.element(splitter).toHaveAttribute('aria-valuetext', '300 pixels');
+        expect(saved).toEqual([510, 800, 800, 300]);
+    });
+
+    it('follows a pointer drag of the sidebar edge, and saves where the drag ends', async () => {
+        await page.viewport(1400, 800);
+        const { saved, rendered } = renderApp();
+        const screen = await rendered;
+        const splitter = screen.getByRole('separator', { name: 'Sidebar width' }).element();
+        const pointer = (type: string, clientX: number) =>
+            splitter.dispatchEvent(
+                new PointerEvent(type, { bubbles: true, button: 0, buttons: 1, clientX, pointerId: 1 }),
+            );
+        pointer('pointerdown', 400);
+        pointer('pointermove', 600);
+        await expect.poll(() => sidebarWidth(screen)).toBe(600);
+        pointer('pointermove', 950);
+        pointer('pointerup', 950);
+        await expect.poll(() => sidebarWidth(screen)).toBe(800);
+        expect(saved).toEqual([800]);
     });
 });
 
@@ -147,34 +207,38 @@ describe('App: failed connections (US-1.3)', () => {
 });
 
 describe('App: buttons (A11Y-07.1)', () => {
-    it('draws New session and Add host as primary buttons (Midnight: white on dark green)', async () => {
+    it('draws Add host as a primary button (Midnight: white on dark green)', async () => {
         await page.viewport(1400, 800);
         onTestFinished(installTokens());
         const screen = await renderApp().rendered;
-        for (const name of ['Add host', 'New session']) {
-            const style = getComputedStyle(screen.getByRole('button', { name }).element());
-            expect(style.borderColor).toBe('rgb(0, 173, 44)');
-        }
         const addHost = getComputedStyle(screen.getByRole('button', { name: 'Add host' }).element());
-        expect([addHost.backgroundColor, addHost.color]).toEqual(['rgb(0, 77, 26)', 'rgb(255, 255, 255)']);
+        expect([addHost.backgroundColor, addHost.color, addHost.borderColor]).toEqual([
+            'rgb(0, 77, 26)',
+            'rgb(255, 255, 255)',
+            'rgb(0, 173, 44)',
+        ]);
     });
 
-    it('draws other buttons light on dark gray, and shows the pointer over every enabled button', async () => {
+    it('draws other buttons light on dark gray, and shows the pointer over every button', async () => {
         await page.viewport(1400, 800);
         onTestFinished(installTokens());
-        const { client, workspace, rendered } = renderApp();
+        const { client, rendered } = renderApp();
         const screen = await rendered;
-        await workspace.addHost('devbox-1');
-        expect(getComputedStyle(screen.getByRole('button', { name: 'New session' }).element()).cursor).toBe('default');
-        client.push('host-0', CONNECTED);
-        await expect.element(screen.getByRole('button', { name: 'Disconnect devbox-1' })).toBeVisible();
-        const select = getComputedStyle(screen.getByRole('button', { name: /Host$/ }).element());
-        expect([select.backgroundColor, select.color, select.borderColor]).toEqual([
+        await connectedHost(screen, client);
+        client.push('host-0', {
+            status: 'host-key',
+            key: { host: 'devbox-1', type: 'ssh-ed25519', key: 'AAAA', fingerprint: 'SHA256:abc' },
+        });
+        await expect.element(screen.getByRole('button', { name: 'Trust' })).toBeVisible();
+        const trust = getComputedStyle(screen.getByRole('button', { name: 'Trust' }).element());
+        expect([trust.backgroundColor, trust.color, trust.borderColor]).toEqual([
             'rgb(51, 51, 51)',
             'rgb(210, 210, 210)',
             'rgb(140, 140, 140)',
         ]);
-        for (const name of ['Add host', 'Disconnect devbox-1', 'New session', /Host$/]) {
+        client.push('host-0', CONNECTED);
+        await expect.element(screen.getByRole('button', { name: 'Disconnect devbox-1' })).toBeVisible();
+        for (const name of ['Add host', 'Disconnect devbox-1', 'New session on devbox-1', 'devbox-1 Connected']) {
             expect(getComputedStyle(screen.getByRole('button', { name }).element()).cursor).toBe('pointer');
         }
     });

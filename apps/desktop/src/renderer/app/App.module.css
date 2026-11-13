@@ -1,7 +1,8 @@
 @layer components {
     .shell {
+        position: relative;
         display: grid;
-        grid-template-columns: 400px minmax(0, 1fr);
+        grid-template-columns: var(--trc-sidebar-width) minmax(0, 1fr);
         height: 100vh;
         overflow: hidden;
     }

@@ -168,7 +168,7 @@ describe('WorkspaceController: hosts (US-1.1, US-1.5)', () => {
 });
 
 describe('WorkspaceController: sessions (US-1.7, US-1.8)', () => {
-    it('opens a session, and creates one on the chosen or the open session host', async () => {
+    it('opens a session, and creates one on the host the user picked', async () => {
         const { client, terminals, workspace } = setup();
         const first = await workspace.addHost('devbox-1');
         const second = await workspace.addHost('devbox-2');
@@ -176,19 +176,46 @@ describe('WorkspaceController: sessions (US-1.7, US-1.8)', () => {
         client.states.get(second.id)?.(connected);
         await expect.poll(() => workspace.store.getState().sessions.get(second.id)?.length).toBe(2);
         workspace.open(sessionKey(second.id, 'b'));
-        expect(workspace.defaultHost(workspace.store.getState())).toBe(second.id);
-        await workspace.newSession();
         await workspace.newSession(first.id);
-        expect(terminals.created).toEqual([second.id, first.id]);
+        expect(terminals.created).toEqual([first.id]);
         expect(workspace.store.getState().open).toBe(sessionKey(first.id, 'c'));
     });
 
-    it('has nowhere to create a session until a host is connected', async () => {
+    it('creates no session on a host that is not connected', async () => {
         const { terminals, workspace } = setup();
-        await workspace.addHost('devbox-1');
-        expect(workspace.defaultHost(workspace.store.getState())).toBeUndefined();
-        await workspace.newSession();
+        const host = await workspace.addHost('devbox-1');
+        await workspace.newSession(host.id);
         expect(terminals.created).toEqual([]);
+    });
+});
+
+describe('WorkspaceController: connecting at launch', () => {
+    it('connects every known host, and a failure leaves it disconnected without a dialog', async () => {
+        const { client, hosts, workspace } = setup();
+        hosts.hosts.push(
+            { id: 'host-a', address: { destination: 'devbox-1' }, installRoot: '~/.trc' },
+            { id: 'host-b', address: { destination: 'devbox-2' }, installRoot: '~/.trc' },
+        );
+        await workspace.load();
+        workspace.connectAll();
+        expect(client.targets.map(([hostId]) => hostId)).toEqual(['host-a', 'host-b']);
+        client.states.get('host-a')?.({ status: 'connecting', step: 'connecting', touch: undefined });
+        client.states.get('host-a')?.({
+            status: 'failed',
+            failure: { kind: 'timeout', host: 'devbox-1', port: 22, details: '' },
+        });
+        expect(workspace.store.getState().failureNotice).toBeUndefined();
+        expect(workspace.store.getState().hosts[0]?.state.status).toBe('failed');
+    });
+
+    it('reports the failure of a connection the user started', async () => {
+        const { client, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        workspace.connectAll();
+        client.states.get(host.id)?.({ status: 'failed', failure: { kind: 'dns', host: 'devbox-1', details: '' } });
+        workspace.toggleConnection(host.id);
+        client.states.get(host.id)?.({ status: 'failed', failure: { kind: 'dns', host: 'devbox-1', details: '' } });
+        expect(workspace.store.getState().failureNotice).toBe(host.id);
     });
 });
 

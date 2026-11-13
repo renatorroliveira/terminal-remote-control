@@ -78,7 +78,7 @@ export async function openTerminal(window: Page, destination: string): Promise<L
     await window.getByRole('button', { name: 'Add host' }).click();
     await window.getByRole('button', { name: `Connect ${destination}` }).click();
     await window.getByRole('button', { name: `Disconnect ${destination}` }).waitFor({ timeout: 60_000 });
-    await window.getByRole('button', { name: 'New session' }).click();
+    await window.getByRole('button', { name: `New session on ${destination}` }).click();
     const terminal = window.getByRole('textbox', { name: new RegExp(`, ${destination}$`) });
     await terminal.waitFor({ timeout: 30_000 });
     return terminal;
