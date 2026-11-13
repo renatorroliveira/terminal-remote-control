@@ -1,10 +1,11 @@
 import type { SessionChange, SessionId, SessionInfo } from '@trc/protocol';
 import type { ConnectionState } from '../../shared/connection';
+import { formatHostAddress } from '../../shared/host-address';
+import type { KnownHost } from '../../shared/hosts';
 
-/** A host in the sidebar. */
-export interface HostEntry {
-    readonly id: string;
-    /** What the user typed or picked: an SSH config alias or `[user@]host`. */
+/** A known host and its connection state. */
+export interface HostEntry extends KnownHost {
+    /** The address as the user typed it, which names the host in the UI. */
     readonly destination: string;
     readonly state: ConnectionState;
 }
@@ -55,23 +56,30 @@ export function sessionName(session: SessionInfo): string {
     return session.customName ?? session.title ?? session.profile.name;
 }
 
-/** Adds a host that is not connected yet; adding a known host keeps it. */
-export function hostAdded(
-    workspace: Workspace,
-    host: { readonly id: string; readonly destination: string },
-): Workspace {
+/** Adds a known host, not connected yet; adding a host already there keeps it. */
+export function hostAdded(workspace: Workspace, host: KnownHost): Workspace {
     if (workspace.hosts.some((entry) => entry.id === host.id)) {
         return workspace;
     }
-    return { ...workspace, hosts: [...workspace.hosts, { ...host, state: { status: 'idle' } }] };
+    const entry: HostEntry = { ...host, destination: formatHostAddress(host.address), state: { status: 'idle' } };
+    return { ...workspace, hosts: [...workspace.hosts, entry] };
 }
 
-/** Records a host's new connection state. */
+/** Records a host's new connection state; a closed connection takes its sessions out of the sidebar. */
 export function hostStateChanged(workspace: Workspace, hostId: string, state: ConnectionState): Workspace {
-    return {
-        ...workspace,
-        hosts: workspace.hosts.map((host) => (host.id === hostId ? { ...host, state } : host)),
-    };
+    const hosts = workspace.hosts.map((host) => (host.id === hostId ? { ...host, state } : host));
+    if (state.status !== 'closed') {
+        return { ...workspace, hosts };
+    }
+    const sessions = new Map(workspace.sessions);
+    sessions.delete(hostId);
+    const open = workspace.open?.startsWith(`${hostId}/`) === true ? undefined : workspace.open;
+    return { ...workspace, hosts, sessions, open };
+}
+
+/** Whether a host has a working connection. */
+export function isConnected(host: HostEntry): boolean {
+    return host.state.status === 'connected';
 }
 
 /** Replaces a host's sessions with the daemon's list. */
@@ -111,10 +119,16 @@ export function hostToggled(workspace: Workspace, hostId: string): Workspace {
     return { ...workspace, collapsed };
 }
 
-/** The visible rows of the session tree: each host, then its sessions unless it is collapsed. */
+/**
+ * The visible rows of the session tree: each connected host or host with sessions, then its sessions unless it is
+ * collapsed.
+ */
 export function treeItems(workspace: Workspace): readonly TreeItem[] {
-    const hostCount = workspace.hosts.length;
-    return workspace.hosts.flatMap((host, index) => {
+    const shown = workspace.hosts.filter(
+        (host) => isConnected(host) || (workspace.sessions.get(host.id)?.length ?? 0) > 0,
+    );
+    const hostCount = shown.length;
+    return shown.flatMap((host, index) => {
         const expanded = !workspace.collapsed.has(host.id);
         const hostItem: TreeItem = {
             kind: 'host',

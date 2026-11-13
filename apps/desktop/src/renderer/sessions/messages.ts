@@ -4,8 +4,68 @@ import { defineMessage, defineMessages } from 'react-intl';
 export const sidebarMessages = defineMessages({
     region: {
         id: 'sidebar.region',
+        defaultMessage: 'Sessions and hosts',
+        description: 'Name of the sidebar region.',
+    },
+    sessions: {
+        id: 'sidebar.sessions',
         defaultMessage: 'Sessions',
-        description: 'Name of the sidebar region and its heading.',
+        description: 'Heading of the sidebar area that lists open sessions.',
+    },
+    hosts: {
+        id: 'sidebar.hosts',
+        defaultMessage: 'Hosts',
+        description: 'Heading of the sidebar area that lists known hosts.',
+    },
+    newSessionHost: {
+        id: 'sidebar.newSessionHost',
+        defaultMessage: 'Host',
+        description: 'Label of the select box choosing the connected host a new session starts on.',
+    },
+    noConnectedHost: {
+        id: 'sidebar.noConnectedHost',
+        defaultMessage: 'No host connected',
+        description: 'Shown in the host select box while no host is connected.',
+    },
+    noSessions: {
+        id: 'sidebar.noSessions',
+        defaultMessage: 'No open sessions.',
+        description: 'Shown in the sessions area while no session is open.',
+    },
+    knownHosts: {
+        id: 'sidebar.knownHosts',
+        defaultMessage: 'Known hosts',
+        description: 'Accessible name of the list of known hosts.',
+    },
+    newHost: {
+        id: 'sidebar.newHost',
+        defaultMessage: 'New host',
+        description: 'Label of the field where the user types a host to add.',
+    },
+    newHostHint: {
+        id: 'sidebar.newHostHint',
+        defaultMessage: 'An SSH alias, or user@host:port.',
+        description: 'Help text under the new host field.',
+    },
+    addHost: {
+        id: 'sidebar.addHost',
+        defaultMessage: 'Add host',
+        description: 'Button that adds the typed host to the known hosts.',
+    },
+    badAddress: {
+        id: 'sidebar.badAddress',
+        defaultMessage: 'Not a host address. Type an SSH alias, or user@host:port.',
+        description: 'Error shown when the typed host cannot be used.',
+    },
+    trust: {
+        id: 'sidebar.trust',
+        defaultMessage: 'Trust',
+        description: 'Button that trusts a presented host key.',
+    },
+    reject: {
+        id: 'sidebar.reject',
+        defaultMessage: 'Reject',
+        description: 'Button that refuses a presented host key.',
     },
     tree: {
         id: 'sidebar.tree',
@@ -19,13 +79,13 @@ export const sidebarMessages = defineMessages({
     },
     toggle: {
         id: 'sidebar.toggle',
-        defaultMessage: 'Sessions',
+        defaultMessage: 'Sessions and hosts',
         description: 'Button that shows or hides the sidebar when the window is narrow.',
     },
     empty: {
         id: 'sidebar.empty',
         defaultMessage: 'No hosts yet.',
-        description: 'Shown in the sidebar before any host is added.',
+        description: 'Shown in the hosts area before any host is added.',
     },
 });
 
@@ -89,4 +149,42 @@ export const terminalLabelMessage = defineMessage<{ session: string; host: strin
     id: 'terminal.label',
     defaultMessage: '{session}, {host}',
     description: 'Accessible name of a terminal: the session name, then its host.',
+});
+
+/** What a host's connection button does, as its accessible name (US-1.5). */
+export const connectionActionMessages = {
+    connect: defineMessage<{ host: string }>({
+        id: 'host.action.connect',
+        defaultMessage: 'Connect {host}',
+        description: 'Accessible name of the connection button of a disconnected host.',
+    }),
+    disconnect: defineMessage<{ host: string }>({
+        id: 'host.action.disconnect',
+        defaultMessage: 'Disconnect {host}',
+        description: 'Accessible name of the connection button of a connected host.',
+    }),
+    cancel: defineMessage<{ host: string }>({
+        id: 'host.action.cancel',
+        defaultMessage: 'Cancel connecting to {host}',
+        description: 'Accessible name of the connection button while the host connects.',
+    }),
+    'review-key': defineMessage<{ host: string }>({
+        id: 'host.action.reviewKey',
+        defaultMessage: 'Review the host key of {host}',
+        description: 'Accessible name of the connection button while a host key waits for the user.',
+    }),
+};
+
+/** A host's connection state with its failure, as the connection button's description. */
+export const hostFailureMessage = defineMessage<{ details: string }>({
+    id: 'host.failedDetails',
+    defaultMessage: 'Connection failed: {details}',
+    description: 'Description of a host whose connection failed, with what ssh or the host reported.',
+});
+
+/** The host-key question (US-1.2). */
+export const hostKeyMessage = defineMessage<{ host: string; type: string; fingerprint: string }>({
+    id: 'host.keyQuestion',
+    defaultMessage: '{host} presented an unknown {type} host key, {fingerprint}. Trust it?',
+    description: 'Question shown when a host presents a key the user has not trusted yet.',
 });

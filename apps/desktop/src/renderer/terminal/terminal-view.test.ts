@@ -294,6 +294,18 @@ describe('TerminalView: output (US-1.11, SEC-06, D-19)', () => {
         expect(view.terminal.options.cursorInactiveStyle).toBe('outline');
     });
 
+    it('keeps 20 px between the terminal border, where the focus ring is drawn, and the text', async () => {
+        const { view } = mount();
+        await view.ready;
+        const bordered = view.surface.parentElement?.getBoundingClientRect();
+        const grid = view.surface.getBoundingClientRect();
+        const screen = view.terminal.element?.querySelector('.xterm-screen')?.getBoundingClientRect();
+        expect(grid.top - (bordered?.top ?? 0)).toBe(20);
+        expect(grid.left - (bordered?.left ?? 0)).toBe(20);
+        expect((screen?.left ?? 0) - (bordered?.left ?? 0)).toBe(20);
+        expect((bordered?.right ?? 0) - grid.right).toBeGreaterThanOrEqual(20);
+    });
+
     it('caps the grid at 120 columns, centered in a wide frame, and drops columns in a narrow one (A11Y-07.5)', async () => {
         const { view, host, sizes } = mount();
         host.style.width = '1800px';

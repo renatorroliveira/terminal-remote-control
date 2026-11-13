@@ -436,8 +436,9 @@ A11Y-06.1–5, A11Y-09.3–4, US-1.11.3, SEC-06)
   the S3a scheduler and `SessionLink` (create, attach, input, credit, resize). `renderer/connection/host-client.ts`
   correlates daemon requests over the MessagePort. AT detection is an IPC pair over
   `app.isAccessibilitySupportEnabled()`. Edit carries Look Up (Ctrl+Cmd+D) and Speech.
-- The test host panel (`renderer/dev/`) stands in for ST-12 and ST-13; only test builds (`build:test`, which
-  `test:e2e` and `test:ax` run) compile it. Tab focus mode is Ctrl+Shift+M and "send next key" is armed through
+- The test host panel (`renderer/dev/`) stood in for ST-12 and ST-13 until the second M1 round replaced it with
+  the known-hosts list; test builds (`build:test`, which `test:e2e` and `test:ax` run) still ask for the install
+  location. Tab focus mode is Ctrl+Shift+M and "send next key" is armed through
   `sendNextKey()`; ST-11's keymap binds both for good.
 - While a program tracks the mouse, the ATS lets the pointer through to xterm; otherwise the wheel scrolls the
   buffer. xterm's helper textarea is out of the tab order and hands focus to the ATS, which sends the DECSET 1004
@@ -467,6 +468,24 @@ A11Y-06.1–5, A11Y-09.3–4, US-1.11.3, SEC-06)
     - Embedded fonts at 14 px (D-24).
 - Test builds open behind the focused app (D-27); e2e and AX runs install under a scratch location on the test
   host and remove it afterwards.
+
+**ST-10 follow-up: the owner’s second M1 test round** (US-1.1.1, US-1.2, US-1.5, US-1.7.1, A11Y-06, A11Y-07, NFR-02)
+
+- Layout: 20 px between the terminal's border, where its focus ring is drawn, and its text; the sidebar is 400 px
+  and collapses under 800 px.
+- Typing latency review, measured from keydown to the ATS update against a local test host:
+    - Two fixes (D-28): output now posts with a leading edge (arrival 9.4 → 7.4 ms p50), and the echo of typing
+      skips the AT cadence (AT on: 111.7 → 17.6 ms p50, and every keystroke now updates).
+    - The exec channel stays: a raw TTY measured about 10 ms slower, and there are no Nagle stalls at 50 ms RTT.
+- The sidebar has two areas:
+    - At the top, the open sessions by host, then the connected host a new session starts on and New session.
+    - At the bottom, the known hosts, each with an icon-only connection button: green connected, red disconnected
+      or failed, amber while connecting or waiting on a host key. Its name says what pressing it does (connect,
+      disconnect, cancel, review the host key) and its description gives the state, with a failure's details.
+    - Below the list, a field adds a host as an SSH alias or `[user@]host[:port]` (US-1.1.1, first part). Known
+      hosts persist in `hosts.json` (P-18). The ST-12 dialog, `~/.ssh/config` suggestions, Test connection and
+      Forget host are still to come.
+    - The unknown host-key question sits under the list, and its badge moves focus to it (US-1.2).
 
 ### Phase 5 — Features
 

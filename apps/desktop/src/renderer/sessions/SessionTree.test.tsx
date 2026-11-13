@@ -34,9 +34,11 @@ const session = (id: string, name: string, order: number, state: SessionInfo['st
 });
 
 function workspace(): Workspace {
-    let next = hostAdded(EMPTY_WORKSPACE, { id: 'h1', destination: 'devbox-1' });
-    next = hostAdded(next, { id: 'h2', destination: 'devbox-2' });
-    next = hostStateChanged(next, 'h1', { status: 'connected', daemon: { version: '0.1.0', sha256: 'ab', proto: 1 } });
+    const connected = { status: 'connected', daemon: { version: '0.1.0', sha256: 'ab', proto: 1 } } as const;
+    let next = hostAdded(EMPTY_WORKSPACE, { id: 'h1', address: { destination: 'devbox-1' }, installRoot: '~/.trc' });
+    next = hostAdded(next, { id: 'h2', address: { destination: 'devbox-2' }, installRoot: '~/.trc' });
+    next = hostStateChanged(next, 'h1', connected);
+    next = hostStateChanged(next, 'h2', connected);
     return sessionsListed(next, 'h1', [session('a', 'build', 0), session('b', 'logs', 1, 'exited')]);
 }
 
@@ -66,7 +68,7 @@ describe('SessionTree (US-1.6.4, US-1.8.1, US-1.9.3)', () => {
         await expect.element(logs).toHaveAttribute('aria-level', '2');
         await expect.element(logs).toHaveAttribute('aria-posinset', '2');
         await expect.element(logs).toHaveAttribute('aria-selected', 'true');
-        await expect.element(screen.getByRole('treeitem', { name: 'devbox-2, Not connected' })).toBeVisible();
+        await expect.element(screen.getByRole('treeitem', { name: 'devbox-2, Connected' })).toBeVisible();
     });
 
     it('moves focus with the arrow keys, Home and End, without opening anything', async () => {
@@ -79,7 +81,7 @@ describe('SessionTree (US-1.6.4, US-1.8.1, US-1.9.3)', () => {
         await userEvent.keyboard('{ArrowLeft}');
         await expect.element(screen.getByRole('treeitem', { name: 'devbox-1, Connected' })).toHaveFocus();
         await userEvent.keyboard('{End}');
-        await expect.element(screen.getByRole('treeitem', { name: 'devbox-2, Not connected' })).toHaveFocus();
+        await expect.element(screen.getByRole('treeitem', { name: 'devbox-2, Connected' })).toHaveFocus();
         await userEvent.keyboard('{Home}');
         await expect.element(screen.getByRole('treeitem', { name: 'devbox-1, Connected' })).toHaveFocus();
         expect(opened).toEqual([]);

@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { Button } from 'react-aria-components';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useStore } from 'zustand';
@@ -18,17 +18,17 @@ export interface TerminalArea {
 export interface AppProps {
     readonly workspace: WorkspaceController;
     readonly terminals: TerminalArea;
-    /** Test builds pass the test host form, shown at the top of the sidebar. */
-    readonly testHost?: ReactNode;
+    /** Test builds also ask where the daemon installs (P-14). */
+    readonly askInstallLocation?: boolean;
 }
 
 const SIDEBAR_ID = 'trc-sidebar';
 
 /**
- * The application shell (US-1.6.1): the sessions sidebar, 350 px wide and scrolling on its own, beside the terminal
+ * The application shell (US-1.6.1): the sidebar, 400 px wide and scrolling on its own, beside the terminal
  * area. In a narrow window the sidebar becomes a panel the Sessions button shows and hides (A11Y-07.5).
  */
-export function App({ workspace, terminals, testHost }: AppProps) {
+export function App({ workspace, terminals, askInstallLocation = false }: AppProps) {
     const intl = useIntl();
     const [panelOpen, setPanelOpen] = useState(false);
     const open = useStore(workspace.store, (state) => state.open);
@@ -41,7 +41,7 @@ export function App({ workspace, terminals, testHost }: AppProps) {
                 className={styles['sidebar'] ?? ''}
                 workspace={workspace}
                 onOpened={() => setPanelOpen(false)}
-                testHost={testHost}
+                askInstallLocation={askInstallLocation}
             />
             <main aria-label={APP_IDENTITY.productName} className={styles['content'] ?? ''}>
                 <Button

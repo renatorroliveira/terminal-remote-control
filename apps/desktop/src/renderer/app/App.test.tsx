@@ -1,76 +1,23 @@
-import type { ServerMessage, SessionInfo } from '@trc/protocol';
 import axe from 'axe-core';
 import { describe, expect, it } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
-import type { ConnectionState } from '../../shared/connection';
-import { type TerminalHost, type WorkspaceClient, WorkspaceController } from '../sessions/workspace-controller';
+import { WorkspaceController } from '../sessions/workspace-controller';
+import {
+    bashSession,
+    FakeKnownHostStore,
+    FakeTerminalHost,
+    FakeWorkspaceClient,
+} from '../sessions/workspace-test-doubles';
 import { App } from './App';
 import { AppProviders } from './AppProviders';
 
-const bash = (id: string): SessionInfo => ({
-    id,
-    order: 0,
-    state: 'running',
-    profile: {
-        id: 'login',
-        name: 'bash',
-        origin: 'login',
-        kind: 'bash',
-        path: '/bin/bash',
-        args: [],
-        login: true,
-        env: {},
-        integration: 'off',
-    },
-    size: { cols: 120, rows: 40 },
-});
-
-class FakeClient implements WorkspaceClient {
-    state: (state: ConnectionState) => void = () => undefined;
-
-    connect(): void {
-        return;
-    }
-
-    acceptHostKey(): void {
-        return;
-    }
-
-    onState(_hostId: string, listener: (state: ConnectionState) => void): () => void {
-        this.state = listener;
-        return () => undefined;
-    }
-
-    onMessage(): () => void {
-        return () => undefined;
-    }
-
-    request(): Promise<ServerMessage> {
-        return Promise.resolve({ type: 'sessions', requestId: 1, sessions: [bash('a')] });
-    }
-}
-
-class FakeTerminals implements TerminalHost {
-    readonly shown: string[] = [];
-
-    attach(): void {
-        return;
-    }
-
-    show(key: string): void {
-        this.shown.push(key);
-    }
-
-    create(): Promise<SessionInfo> {
-        return Promise.resolve(bash('b'));
-    }
-}
+const CONNECTED = { status: 'connected', daemon: { version: '0.1.0', sha256: 'ab', proto: 1 } } as const;
 
 function renderApp() {
-    const client = new FakeClient();
-    const terminals = new FakeTerminals();
-    const workspace = new WorkspaceController(client, terminals);
+    const client = new FakeWorkspaceClient([bashSession('a')]);
+    const terminals = new FakeTerminalHost([bashSession('b')]);
+    const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore());
     return {
         client,
         terminals,
@@ -87,9 +34,10 @@ describe('App (US-1.6.1)', () => {
     it('has a sessions sidebar and the named main region, with nothing open yet', async () => {
         await page.viewport(1400, 800);
         const screen = await renderApp().rendered;
-        await expect.element(screen.getByRole('navigation', { name: 'Sessions' })).toBeVisible();
+        await expect.element(screen.getByRole('navigation', { name: 'Sessions and hosts' })).toBeVisible();
         await expect.element(screen.getByRole('main', { name: 'Term Remote Control' })).toBeVisible();
         await expect.element(screen.getByText('No session is open.')).toBeVisible();
+        await expect.element(screen.getByText('No open sessions.')).toBeVisible();
         await expect.element(screen.getByRole('button', { name: 'New session' })).toBeDisabled();
     });
 
@@ -97,31 +45,38 @@ describe('App (US-1.6.1)', () => {
         await page.viewport(1400, 800);
         const { client, terminals, workspace, rendered } = renderApp();
         const screen = await rendered;
-        workspace.connect('devbox-1');
-        client.state({ status: 'connected', daemon: { version: '0.1.0', sha256: 'ab', proto: 1 } });
+        await screen.getByRole('textbox', { name: 'New host' }).fill('devbox-1');
+        await userEvent.keyboard('{Enter}');
+        await screen.getByRole('button', { name: 'Connect devbox-1' }).click();
+        expect(client.calls).toEqual(['connect host-0 devbox-1']);
+        client.push('host-0', CONNECTED);
         await screen.getByRole('treeitem', { name: 'bash, Running' }).click();
-        expect(terminals.shown).toEqual(['host-devbox-1/a']);
+        expect(terminals.shown).toEqual(['host-0/a']);
+        await expect.element(screen.getByRole('button', { name: /^devbox-1 Host$/ })).toBeVisible();
         await screen.getByRole('button', { name: 'New session' }).click();
-        await expect.poll(() => terminals.shown).toEqual(['host-devbox-1/a', 'host-devbox-1/b']);
+        await expect.poll(() => terminals.shown).toEqual(['host-0/a', 'host-0/b']);
     });
 
-    it('keeps the sidebar 350 px wide beside the terminal area', async () => {
+    it('keeps the sidebar 400 px wide beside the terminal area', async () => {
         await page.viewport(1400, 800);
         const screen = await renderApp().rendered;
-        const sidebar = screen.getByRole('navigation', { name: 'Sessions' }).element().getBoundingClientRect();
-        expect(sidebar.width).toBe(350);
-        await expect.element(screen.getByRole('button', { name: 'Sessions' })).not.toBeInTheDocument();
+        const sidebar = screen
+            .getByRole('navigation', { name: 'Sessions and hosts' })
+            .element()
+            .getBoundingClientRect();
+        expect(sidebar.width).toBe(400);
+        await expect.element(screen.getByRole('button', { name: 'Sessions and hosts' })).not.toBeInTheDocument();
     });
 
     it('collapses the sidebar into a toggled panel in a narrow window (A11Y-07.5)', async () => {
         await page.viewport(320, 640);
         const screen = await renderApp().rendered;
-        const toggle = screen.getByRole('button', { name: 'Sessions' });
+        const toggle = screen.getByRole('button', { name: 'Sessions and hosts' });
         await expect.element(toggle).toHaveAttribute('aria-expanded', 'false');
-        await expect.element(screen.getByRole('navigation', { name: 'Sessions' })).not.toBeInTheDocument();
+        await expect.element(screen.getByRole('navigation', { name: 'Sessions and hosts' })).not.toBeInTheDocument();
         await toggle.click();
         await expect.element(toggle).toHaveAttribute('aria-expanded', 'true');
-        await expect.element(screen.getByRole('navigation', { name: 'Sessions' })).toBeVisible();
+        await expect.element(screen.getByRole('navigation', { name: 'Sessions and hosts' })).toBeVisible();
         expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
     });
 

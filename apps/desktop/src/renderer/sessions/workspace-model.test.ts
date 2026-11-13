@@ -35,10 +35,17 @@ function session(id: string, overrides: Partial<SessionInfo> = {}): SessionInfo 
 
 const connected = { status: 'connected', daemon: { version: '0.1.0', sha256: 'ab', proto: 1 } } as const;
 
+const known = (id: string, destination: string, port?: number) => ({
+    id,
+    address: port === undefined ? { destination } : { destination, port },
+    installRoot: '~/.trc',
+});
+
 function workspaceWithTwoHosts(): Workspace {
-    let workspace = hostAdded(EMPTY_WORKSPACE, { id: 'h1', destination: 'devbox-1' });
-    workspace = hostAdded(workspace, { id: 'h2', destination: 'devbox-2' });
+    let workspace = hostAdded(EMPTY_WORKSPACE, known('h1', 'devbox-1'));
+    workspace = hostAdded(workspace, known('h2', 'devbox-2', 2222));
     workspace = hostStateChanged(workspace, 'h1', connected);
+    workspace = hostStateChanged(workspace, 'h2', connected);
     return sessionsListed(workspace, 'h1', [session('b', { order: 1 }), session('a', { order: 0 })]);
 }
 
@@ -49,9 +56,23 @@ describe('the workspace model (US-1.6, US-1.9)', () => {
             ['host', 1, 1, 2, 'devbox-1'],
             ['session', 2, 1, 2, 'bash'],
             ['session', 2, 2, 2, 'bash'],
-            ['host', 1, 2, 2, 'devbox-2'],
+            ['host', 1, 2, 2, 'devbox-2:2222'],
         ]);
         expect(items[1]?.key).toBe(sessionKey('h1', 'a'));
+    });
+
+    it('shows only hosts that are connected or have sessions, and drops a closed host and its sessions', () => {
+        let workspace: Workspace = { ...workspaceWithTwoHosts(), open: sessionKey('h1', 'a') };
+        workspace = hostStateChanged(workspace, 'h2', { status: 'idle' });
+        expect(
+            treeItems(workspace)
+                .filter((item) => item.kind === 'host')
+                .map((item) => item.label),
+        ).toEqual(['devbox-1']);
+        workspace = hostStateChanged(workspace, 'h1', { status: 'closed' });
+        expect(treeItems(workspace)).toEqual([]);
+        expect(workspace.open).toBeUndefined();
+        expect(workspace.hosts).toHaveLength(2);
     });
 
     it('hides the sessions of a collapsed host', () => {

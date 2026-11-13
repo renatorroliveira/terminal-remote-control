@@ -1,4 +1,20 @@
 {
+  "host.action.cancel": {
+    "defaultMessage": "Cancel connecting to {host}",
+    "description": "Accessible name of the connection button while the host connects."
+  },
+  "host.action.connect": {
+    "defaultMessage": "Connect {host}",
+    "description": "Accessible name of the connection button of a disconnected host."
+  },
+  "host.action.disconnect": {
+    "defaultMessage": "Disconnect {host}",
+    "description": "Accessible name of the connection button of a connected host."
+  },
+  "host.action.reviewKey": {
+    "defaultMessage": "Review the host key of {host}",
+    "description": "Accessible name of the connection button while a host key waits for the user."
+  },
   "host.closed": {
     "defaultMessage": "Closed",
     "description": "Host connection state."
@@ -19,6 +35,10 @@
     "defaultMessage": "Connection failed",
     "description": "Host connection state."
   },
+  "host.failedDetails": {
+    "defaultMessage": "Connection failed: {details}",
+    "description": "Description of a host whose connection failed, with what ssh or the host reported."
+  },
   "host.hostKey": {
     "defaultMessage": "Host key needs confirmation",
     "description": "Host connection state while an unknown host key waits for the user."
@@ -26,6 +46,10 @@
   "host.idle": {
     "defaultMessage": "Not connected",
     "description": "Host connection state."
+  },
+  "host.keyQuestion": {
+    "defaultMessage": "{host} presented an unknown {type} host key, {fingerprint}. Trust it?",
+    "description": "Question shown when a host presents a key the user has not trusted yet."
   },
   "session.exited": {
     "defaultMessage": "Exited",
@@ -63,29 +87,77 @@
     "defaultMessage": "No session is open.",
     "description": "Shown in the terminal area while no session is open."
   },
+  "sidebar.addHost": {
+    "defaultMessage": "Add host",
+    "description": "Button that adds the typed host to the known hosts."
+  },
+  "sidebar.badAddress": {
+    "defaultMessage": "Not a host address. Type an SSH alias, or user@host:port.",
+    "description": "Error shown when the typed host cannot be used."
+  },
   "sidebar.empty": {
     "defaultMessage": "No hosts yet.",
-    "description": "Shown in the sidebar before any host is added."
+    "description": "Shown in the hosts area before any host is added."
+  },
+  "sidebar.hosts": {
+    "defaultMessage": "Hosts",
+    "description": "Heading of the sidebar area that lists known hosts."
   },
   "sidebar.item": {
     "defaultMessage": "{name}, {state}",
     "description": "Accessible name of a host or session row: its name, then its state."
   },
+  "sidebar.knownHosts": {
+    "defaultMessage": "Known hosts",
+    "description": "Accessible name of the list of known hosts."
+  },
+  "sidebar.newHost": {
+    "defaultMessage": "New host",
+    "description": "Label of the field where the user types a host to add."
+  },
+  "sidebar.newHostHint": {
+    "defaultMessage": "An SSH alias, or user@host:port.",
+    "description": "Help text under the new host field."
+  },
   "sidebar.newSession": {
     "defaultMessage": "New session",
     "description": "Button that creates a session on the current host."
   },
+  "sidebar.newSessionHost": {
+    "defaultMessage": "Host",
+    "description": "Label of the select box choosing the connected host a new session starts on."
+  },
+  "sidebar.noConnectedHost": {
+    "defaultMessage": "No host connected",
+    "description": "Shown in the host select box while no host is connected."
+  },
+  "sidebar.noSessions": {
+    "defaultMessage": "No open sessions.",
+    "description": "Shown in the sessions area while no session is open."
+  },
   "sidebar.region": {
+    "defaultMessage": "Sessions and hosts",
+    "description": "Name of the sidebar region."
+  },
+  "sidebar.reject": {
+    "defaultMessage": "Reject",
+    "description": "Button that refuses a presented host key."
+  },
+  "sidebar.sessions": {
     "defaultMessage": "Sessions",
-    "description": "Name of the sidebar region and its heading."
+    "description": "Heading of the sidebar area that lists open sessions."
   },
   "sidebar.toggle": {
-    "defaultMessage": "Sessions",
+    "defaultMessage": "Sessions and hosts",
     "description": "Button that shows or hides the sidebar when the window is narrow."
   },
   "sidebar.tree": {
     "defaultMessage": "Hosts and sessions",
     "description": "Accessible name of the tree of hosts and their sessions."
+  },
+  "sidebar.trust": {
+    "defaultMessage": "Trust",
+    "description": "Button that trusts a presented host key."
   },
   "terminal.hint": {
     "defaultMessage": "Option F1: accessibility help.",

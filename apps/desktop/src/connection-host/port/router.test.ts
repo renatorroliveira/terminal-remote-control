@@ -117,7 +117,7 @@ describe('ConnectionRouter events', () => {
         vi.useRealTimers();
     });
 
-    it('posts states and messages at once and batches output, flushing it before control messages', () => {
+    it('posts states, messages and idle output at once, flushing batched output before control messages', () => {
         const { router, created, posted } = setup();
         router.handle({ type: 'connect', hostId: 'h1', target });
         const listener = created[0]?.listener;
@@ -128,7 +128,8 @@ describe('ConnectionRouter events', () => {
         listener?.message({ type: 'done', requestId: 4 });
         expect(posted).toEqual([
             { type: 'state', hostId: 'h1', state },
-            { type: 'output', hostId: 'h1', stream: 1, data: Buffer.from('hi') },
+            { type: 'output', hostId: 'h1', stream: 1, data: new Uint8Array([104]) },
+            { type: 'output', hostId: 'h1', stream: 1, data: new Uint8Array([105]) },
             { type: 'message', hostId: 'h1', message: { type: 'done', requestId: 4 } },
         ]);
     });

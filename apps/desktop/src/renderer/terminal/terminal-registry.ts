@@ -74,6 +74,16 @@ export class TerminalRegistry implements TerminalHost {
         return session;
     }
 
+    /** Detaches and removes the terminals of a host whose connection closed. */
+    closeHost(hostId: string): void {
+        for (const [key, entry] of this.#entries) {
+            if (key.startsWith(`${hostId}/`)) {
+                this.#dispose(entry);
+                this.#entries.delete(key);
+            }
+        }
+    }
+
     /** Applies a theme's terminal colors to every terminal. */
     setPalette(palette: TerminalPalette): void {
         this.#palette = palette;

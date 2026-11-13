@@ -1,7 +1,7 @@
 @layer components {
     .shell {
         display: grid;
-        grid-template-columns: 350px minmax(0, 1fr);
+        grid-template-columns: 400px minmax(0, 1fr);
         height: 100vh;
         overflow: hidden;
     }
@@ -50,7 +50,7 @@
         display: none;
     }
 
-    @media (max-width: 720px) {
+    @media (max-width: 800px) {
         .shell {
             grid-template-columns: minmax(0, 1fr);
         }
@@ -65,7 +65,7 @@
             inset-inline-start: 0;
             z-index: 2;
             display: block;
-            width: min(350px, 100%);
+            width: min(400px, 100%);
         }
 
         .toggle {

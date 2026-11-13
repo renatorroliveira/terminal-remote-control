@@ -252,6 +252,7 @@ export class TerminalView {
     #inputSink() {
         return {
             send: (text: string): void => {
+                this.#scheduler.input();
                 this.terminal.clearSelection();
                 this.terminal.scrollToBottom();
                 this.#ats.placeCaret();

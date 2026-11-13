@@ -1,4 +1,44 @@
 {
+  "host.action.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel connecting to "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "host.action.connect": [
+    {
+      "type": 0,
+      "value": "Connect "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "host.action.disconnect": [
+    {
+      "type": 0,
+      "value": "Disconnect "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "host.action.reviewKey": [
+    {
+      "type": 0,
+      "value": "Review the host key of "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
   "host.closed": [
     {
       "type": 0,
@@ -29,6 +69,16 @@
       "value": "Connection failed"
     }
   ],
+  "host.failedDetails": [
+    {
+      "type": 0,
+      "value": "Connection failed: "
+    },
+    {
+      "type": 1,
+      "value": "details"
+    }
+  ],
   "host.hostKey": [
     {
       "type": 0,
@@ -39,6 +89,32 @@
     {
       "type": 0,
       "value": "Not connected"
+    }
+  ],
+  "host.keyQuestion": [
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " presented an unknown "
+    },
+    {
+      "type": 1,
+      "value": "type"
+    },
+    {
+      "type": 0,
+      "value": " host key, "
+    },
+    {
+      "type": 1,
+      "value": "fingerprint"
+    },
+    {
+      "type": 0,
+      "value": ". Trust it?"
     }
   ],
   "session.exited": [
@@ -103,10 +179,28 @@
       "value": "No session is open."
     }
   ],
+  "sidebar.addHost": [
+    {
+      "type": 0,
+      "value": "Add host"
+    }
+  ],
+  "sidebar.badAddress": [
+    {
+      "type": 0,
+      "value": "Not a host address. Type an SSH alias, or user@host:port."
+    }
+  ],
   "sidebar.empty": [
     {
       "type": 0,
       "value": "No hosts yet."
+    }
+  ],
+  "sidebar.hosts": [
+    {
+      "type": 0,
+      "value": "Hosts"
     }
   ],
   "sidebar.item": [
@@ -123,13 +217,61 @@
       "value": "state"
     }
   ],
+  "sidebar.knownHosts": [
+    {
+      "type": 0,
+      "value": "Known hosts"
+    }
+  ],
+  "sidebar.newHost": [
+    {
+      "type": 0,
+      "value": "New host"
+    }
+  ],
+  "sidebar.newHostHint": [
+    {
+      "type": 0,
+      "value": "An SSH alias, or user@host:port."
+    }
+  ],
   "sidebar.newSession": [
     {
       "type": 0,
       "value": "New session"
     }
   ],
+  "sidebar.newSessionHost": [
+    {
+      "type": 0,
+      "value": "Host"
+    }
+  ],
+  "sidebar.noConnectedHost": [
+    {
+      "type": 0,
+      "value": "No host connected"
+    }
+  ],
+  "sidebar.noSessions": [
+    {
+      "type": 0,
+      "value": "No open sessions."
+    }
+  ],
   "sidebar.region": [
+    {
+      "type": 0,
+      "value": "Sessions and hosts"
+    }
+  ],
+  "sidebar.reject": [
+    {
+      "type": 0,
+      "value": "Reject"
+    }
+  ],
+  "sidebar.sessions": [
     {
       "type": 0,
       "value": "Sessions"
@@ -138,13 +280,19 @@
   "sidebar.toggle": [
     {
       "type": 0,
-      "value": "Sessions"
+      "value": "Sessions and hosts"
     }
   ],
   "sidebar.tree": [
     {
       "type": 0,
       "value": "Hosts and sessions"
+    }
+  ],
+  "sidebar.trust": [
+    {
+      "type": 0,
+      "value": "Trust"
     }
   ],
   "terminal.hint": [

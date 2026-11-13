@@ -1,3 +1,5 @@
+import { DESTINATION_PATTERN } from '../../shared/host-address';
+
 /** The helper programs ssh runs for host keys and askpass. */
 export interface SshHelpers {
     /** The `SSH_ASKPASS` helper. */
@@ -35,7 +37,6 @@ export interface WrapperConfigOptions {
     readonly seam?: TestSeam | undefined;
 }
 
-const DESTINATION_PATTERN = /^[^\s\p{Cc}-][^\s\p{Cc}]*$/u;
 const UNQUOTABLE = /["\n\r\0]/;
 const MAX_PORT = 65_535;
 

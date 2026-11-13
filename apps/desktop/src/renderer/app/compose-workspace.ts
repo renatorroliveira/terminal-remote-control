@@ -3,7 +3,7 @@ import { createIntl } from 'react-intl';
 import type { HostClient } from '../connection/host-client';
 import { DEFAULT_LOCALE, messagesFor } from '../i18n/locale';
 import { terminalLabelMessage, terminalMessages } from '../sessions/messages';
-import { WorkspaceController } from '../sessions/workspace-controller';
+import { type KnownHostStore, WorkspaceController } from '../sessions/workspace-controller';
 import { sessionName } from '../sessions/workspace-model';
 import { TerminalRegistry } from '../terminal/terminal-registry';
 import type { TerminalPalette } from '../ui/themes';
@@ -20,6 +20,8 @@ export interface WorkspaceSources {
     readonly isMac: boolean;
     readonly assistiveTechnology: () => boolean;
     readonly palette: TerminalPalette;
+    /** Where known hosts are kept (P-18). */
+    readonly hosts: KnownHostStore;
 }
 
 /** Builds the workspace over a connection-host client, naming each terminal after its session and host. */
@@ -41,6 +43,6 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
             hint: intl.formatMessage(terminalMessages.hint),
         }),
     });
-    workspace = new WorkspaceController(sources.client, terminals);
+    workspace = new WorkspaceController(sources.client, terminals, sources.hosts);
     return { workspace, terminals };
 }

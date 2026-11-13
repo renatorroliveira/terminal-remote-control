@@ -8,6 +8,7 @@ import {
     type TrcBridge,
 } from '../shared/contract';
 import type { DisplaySettings } from '../shared/display';
+import type { KnownHost } from '../shared/hosts';
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
     const handler = (_event: IpcRendererEvent, value: T): void => listener(value);
@@ -24,6 +25,10 @@ const bridge: TrcBridge = {
     accessibility: {
         get: () => ipcRenderer.invoke('accessibility:get') as Promise<boolean>,
         onChanged: (listener) => subscribe<boolean>(ACCESSIBILITY_CHANGED_CHANNEL, listener),
+    },
+    hosts: {
+        list: () => ipcRenderer.invoke('hosts:list') as Promise<readonly KnownHost[]>,
+        add: (address, installRoot) => ipcRenderer.invoke('hosts:add', address, installRoot) as Promise<KnownHost>,
     },
     commands: {
         onCommand: (listener) => subscribe<AppCommand>(APP_COMMAND_CHANNEL, listener),

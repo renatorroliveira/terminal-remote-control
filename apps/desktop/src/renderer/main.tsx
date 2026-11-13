@@ -9,7 +9,6 @@ import { type ComposedWorkspace, composeWorkspace } from './app/compose-workspac
 import { applyDisplaySettings, applyLocale } from './app/display';
 import { receiveConnectionPorts } from './connection/connection-port';
 import { HostClient } from './connection/host-client';
-import { TestHostForm } from './dev/TestHostForm';
 import { DEFAULT_LOCALE } from './i18n/locale';
 import { type TerminalPalette, THEMES, themeStyleSheet } from './ui/themes';
 import './ui/fonts.css';
@@ -43,16 +42,14 @@ if (container !== null) {
             isMac: window.trc.platform === 'darwin',
             assistiveTechnology: () => assistiveTechnology.active,
             palette,
+            hosts: window.trc.hosts,
         });
         const { workspace, terminals } = composed;
+        void workspace.load();
         reactRoot.render(
             <StrictMode>
                 <AppProviders locale={DEFAULT_LOCALE}>
-                    <App
-                        workspace={workspace}
-                        terminals={terminals}
-                        testHost={__TRC_TEST_SEAM__ ? <TestHostForm workspace={workspace} /> : undefined}
-                    />
+                    <App workspace={workspace} terminals={terminals} askInstallLocation={__TRC_TEST_SEAM__} />
                 </AppProviders>
             </StrictMode>,
         );

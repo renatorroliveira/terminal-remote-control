@@ -131,4 +131,14 @@ describe('TerminalRegistry (US-1.8)', () => {
         expect(Math.min(...resizes)).toBeGreaterThan(100);
         expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(2);
     });
+
+    it('removes the terminals of a host whose connection closed, and only those', () => {
+        const { area, registry } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        registry.show('h2/b', 'h2', info('b'));
+        registry.closeHost('h1');
+        expect(
+            [...area.querySelectorAll('[role="textbox"]')].map((surface) => surface.getAttribute('aria-label')),
+        ).toEqual(['bash, h2']);
+    });
 });

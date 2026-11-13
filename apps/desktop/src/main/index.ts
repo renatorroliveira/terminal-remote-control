@@ -10,6 +10,7 @@ import { isBackgroundLaunch } from './background-launch';
 import { startConnectionHost } from './connection-host';
 import { DisplayRelay } from './display-relay';
 import { registerHandlers } from './ipc';
+import { KnownHosts } from './known-hosts';
 import { menuTemplate } from './menu';
 import { CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
 import { isAppPage } from './trusted-sender';
@@ -40,11 +41,14 @@ async function start(): Promise<void> {
     const store = appSettingsStore(app.getPath('userData'));
     let settings: AppSettings = await store.read();
     const display = new DisplayRelay(settings.theme);
+    const knownHosts = new KnownHosts(app.getPath('userData'));
     registerHandlers(
         ipcMain,
         {
             'display:get': async () => display.current(),
             'accessibility:get': async () => app.isAccessibilitySupportEnabled(),
+            'hosts:list': () => knownHosts.list(),
+            'hosts:add': (address, installRoot) => knownHosts.add(address, installRoot),
         },
         (event) => isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
     );

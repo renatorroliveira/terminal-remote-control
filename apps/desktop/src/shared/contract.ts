@@ -1,9 +1,15 @@
 import type { DisplaySettings } from './display';
+import type { KnownHost } from './hosts';
 
 /** Requests the renderer makes of the main process with `ipcRenderer.invoke`: arguments and result per channel. */
 export interface InvokeContract {
     readonly 'display:get': { readonly args: readonly []; readonly result: DisplaySettings };
     readonly 'accessibility:get': { readonly args: readonly []; readonly result: boolean };
+    readonly 'hosts:list': { readonly args: readonly []; readonly result: readonly KnownHost[] };
+    readonly 'hosts:add': {
+        readonly args: readonly [address: string, installRoot: string];
+        readonly result: KnownHost;
+    };
 }
 
 /** One invoke channel. */
@@ -35,6 +41,12 @@ export interface TrcBridge {
         get(): Promise<boolean>;
         /** Calls `listener` whenever that changes; returns a function that stops listening. */
         onChanged(listener: (active: boolean) => void): () => void;
+    };
+    readonly hosts: {
+        /** The hosts the user added, in order. */
+        list(): Promise<readonly KnownHost[]>;
+        /** Adds a host from what the user typed; rejects an address ssh could not use. */
+        add(address: string, installRoot: string): Promise<KnownHost>;
     };
     readonly commands: {
         /** Calls `listener` with each menu command; returns a function that stops listening. */

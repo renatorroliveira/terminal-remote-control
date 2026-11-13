@@ -68,14 +68,15 @@ export function removeInstall(alias: string, root: string): void {
 }
 
 /**
- * Connects `destination` from the test host form, installing under `installRoot`, creates a session, and returns
- * its text surface once it opens.
+ * Adds `destination` as a known host installing under `installRoot`, connects it from its badge, creates a session,
+ * and returns the session's text surface once it opens.
  */
 export async function openTerminal(window: Page, destination: string, installRoot: string): Promise<Locator> {
-    await window.getByLabel('Destination').fill(destination);
-    await window.getByLabel('Install location').fill(installRoot);
-    await window.getByRole('button', { name: 'Connect' }).click();
-    await window.getByRole('treeitem', { name: `${destination}, Connected` }).waitFor({ timeout: 60_000 });
+    await window.getByRole('textbox', { name: 'New host' }).fill(destination);
+    await window.getByRole('textbox', { name: 'Install location' }).fill(installRoot);
+    await window.getByRole('button', { name: 'Add host' }).click();
+    await window.getByRole('button', { name: `Connect ${destination}` }).click();
+    await window.getByRole('button', { name: `Disconnect ${destination}` }).waitFor({ timeout: 60_000 });
     await window.getByRole('button', { name: 'New session' }).click();
     const terminal = window.getByRole('textbox', { name: new RegExp(`, ${destination}$`) });
     await terminal.waitFor({ timeout: 30_000 });

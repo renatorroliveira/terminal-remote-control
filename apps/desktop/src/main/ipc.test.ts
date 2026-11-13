@@ -14,6 +14,12 @@ function handlers(display: unknown = {}): InvokeHandlers {
     return {
         'display:get': async () => display as never,
         'accessibility:get': async () => true,
+        'hosts:list': async () => [],
+        'hosts:add': async () => ({
+            id: 'host-0000000000000000',
+            address: { destination: 'x' },
+            installRoot: '~/.trc',
+        }),
     };
 }
 
@@ -32,6 +38,7 @@ describe('registerHandlers (zod at the renderer boundary)', () => {
             /invalid arguments/,
         );
         await expect(async () => registered.get('accessibility:get')?.({}, 1)).rejects.toThrow(/invalid arguments/);
+        await expect(async () => registered.get('hosts:add')?.({}, 'devbox-1')).rejects.toThrow(/invalid arguments/);
     });
 
     it('rejects requests from a page that is not the app', async () => {

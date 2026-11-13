@@ -68,7 +68,7 @@ export class TerminalGeometry {
         if (grid === undefined) {
             return;
         }
-        this.#elements.host.style.width = `${grid.width}px`;
+        this.#elements.host.style.width = `${grid.width + padding(this.#elements.host).width}px`;
         if (grid.cols !== this.#terminal.cols || grid.rows !== this.#terminal.rows) {
             this.#terminal.resize(grid.cols, grid.rows);
         }
@@ -102,7 +102,9 @@ export class TerminalGeometry {
 
     #grid(): GridFit | undefined {
         const cell = this.#cell();
-        const space = contentBox(this.#elements.frame);
+        const frame = contentBox(this.#elements.frame);
+        const inner = padding(this.#elements.host);
+        const space = { width: frame.width - inner.width, height: frame.height - inner.height };
         if (cell === undefined || space.width <= 0 || space.height <= 0) {
             return undefined;
         }
@@ -124,9 +126,20 @@ export class TerminalGeometry {
     }
 }
 
-function contentBox(element: HTMLElement): { readonly width: number; readonly height: number } {
+interface Size {
+    readonly width: number;
+    readonly height: number;
+}
+
+function contentBox(element: HTMLElement): Size {
+    const inner = padding(element);
+    return { width: element.clientWidth - inner.width, height: element.clientHeight - inner.height };
+}
+
+function padding(element: HTMLElement): Size {
     const style = getComputedStyle(element);
-    const horizontal = Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
-    const vertical = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
-    return { width: element.clientWidth - horizontal, height: element.clientHeight - vertical };
+    return {
+        width: Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight),
+        height: Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom),
+    };
 }

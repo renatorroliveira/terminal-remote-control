@@ -1,14 +1,15 @@
 import type { SessionInfo } from '@trc/protocol';
 import { createStore, type StoreApi } from 'zustand/vanilla';
+import type { TrcBridge } from '../../shared/contract';
+import type { KnownHost } from '../../shared/hosts';
 import type { HostClient } from '../connection/host-client';
-
-export type { SessionKey } from './workspace-model';
-
 import {
     EMPTY_WORKSPACE,
+    type HostEntry,
     hostAdded,
     hostStateChanged,
     hostToggled,
+    isConnected,
     type SessionKey,
     sessionChanged,
     sessionKey,
@@ -17,8 +18,16 @@ import {
     type Workspace,
 } from './workspace-model';
 
+export type { SessionKey } from './workspace-model';
+
 /** The host client operations the workspace uses. */
-export type WorkspaceClient = Pick<HostClient, 'connect' | 'acceptHostKey' | 'onState' | 'onMessage' | 'request'>;
+export type WorkspaceClient = Pick<
+    HostClient,
+    'connect' | 'disconnect' | 'acceptHostKey' | 'rejectHostKey' | 'onState' | 'onMessage' | 'request'
+>;
+
+/** Where known hosts are kept: the main process's `hosts.json` (P-18). */
+export type KnownHostStore = TrcBridge['hosts'];
 
 /** Where sessions are shown: one terminal per session, kept alive while hidden. */
 export interface TerminalHost {
@@ -26,42 +35,85 @@ export interface TerminalHost {
     show(key: SessionKey, hostId: string, session: SessionInfo): void;
     /** Creates a session on a host at the terminal area's size. */
     create(hostId: string): Promise<SessionInfo>;
+    /** Removes the terminals of a host whose connection closed. */
+    closeHost(hostId: string): void;
 }
+
+/** What pressing a host's connection button does now. */
+export type ConnectionAction = 'connect' | 'disconnect' | 'cancel' | 'review-key';
 
 /** Where the daemon installs on a host unless the user picks another place (US-1.4.3). */
 export const DEFAULT_INSTALL_ROOT = '~/.trc';
 
 /**
- * Keeps the workspace read model current from the connection host, and carries out what the sidebar asks: connect
- * a host, open a session, create a session, collapse a host group (US-1.6, US-1.7, US-1.8).
+ * Keeps the workspace read model current from the connection host, and carries out what the sidebar asks: add,
+ * connect and disconnect hosts, open and create sessions, collapse host groups (US-1.1, US-1.6, US-1.7, US-1.8).
  */
 export class WorkspaceController {
     /** The read model the UI subscribes to. */
     readonly store: StoreApi<Workspace>;
     readonly #client: WorkspaceClient;
     readonly #terminals: TerminalHost;
+    readonly #hosts: KnownHostStore;
 
     /** Creates an empty workspace. */
-    constructor(client: WorkspaceClient, terminals: TerminalHost) {
+    constructor(client: WorkspaceClient, terminals: TerminalHost, hosts: KnownHostStore) {
         this.#client = client;
         this.#terminals = terminals;
+        this.#hosts = hosts;
         this.store = createStore<Workspace>(() => EMPTY_WORKSPACE);
     }
 
-    /** Adds a host and connects it, installing the daemon under `installRoot` (US-1.4.3). */
-    connect(destination: string, installRoot = DEFAULT_INSTALL_ROOT): void {
-        const hostId = `host-${destination}`;
-        const known = this.store.getState().hosts.some((host) => host.id === hostId);
-        this.#update((workspace) => hostAdded(workspace, { id: hostId, destination }));
-        if (!known) {
-            this.#follow(hostId);
+    /** Loads the known hosts, none of them connected yet. */
+    async load(): Promise<void> {
+        for (const host of await this.#hosts.list()) {
+            this.#add(host);
         }
-        this.#client.connect(hostId, { destination, installRoot });
+    }
+
+    /** Adds a host from what the user typed; rejects an address ssh could not use (US-1.1.1). */
+    async addHost(address: string, installRoot = DEFAULT_INSTALL_ROOT): Promise<KnownHost> {
+        const host = await this.#hosts.add(address, installRoot);
+        this.#add(host);
+        return host;
+    }
+
+    /** What pressing the host's connection button does in its current state. */
+    connectionAction(host: HostEntry): ConnectionAction {
+        switch (host.state.status) {
+            case 'connected':
+                return 'disconnect';
+            case 'connecting':
+                return 'cancel';
+            case 'host-key':
+                return 'review-key';
+            default:
+                return 'connect';
+        }
+    }
+
+    /** Connects a disconnected host, or disconnects or cancels a connected or connecting one. */
+    toggleConnection(hostId: string): void {
+        const host = this.#host(hostId);
+        if (host === undefined) {
+            return;
+        }
+        const action = this.connectionAction(host);
+        if (action === 'connect') {
+            this.#client.connect(host.id, { ...host.address, installRoot: host.installRoot });
+        } else if (action !== 'review-key') {
+            this.#client.disconnect(host.id);
+        }
     }
 
     /** Trusts the host key the user confirmed (US-1.2). */
     acceptHostKey(hostId: string, fingerprint: string): void {
         this.#client.acceptHostKey(hostId, fingerprint);
+    }
+
+    /** Refuses the presented host key. */
+    rejectHostKey(hostId: string): void {
+        this.#client.rejectHostKey(hostId);
     }
 
     /** Shows a session in the terminal area and moves focus to it (US-1.8.1, US-1.8.3). */
@@ -79,20 +131,30 @@ export class WorkspaceController {
         this.#update((workspace) => hostToggled(workspace, hostId));
     }
 
-    /** Whether a session can be created now: some host is connected. */
-    canCreate(workspace: Workspace): boolean {
-        return this.#targetHost(workspace) !== undefined;
+    /** The host a new session goes to by default: the open session's host, or the first connected host. */
+    defaultHost(workspace: Workspace): string | undefined {
+        const open = workspace.open === undefined ? undefined : this.#find(workspace.open);
+        const connected = workspace.hosts.filter(isConnected);
+        return connected.find((host) => host.id === open?.hostId)?.id ?? connected[0]?.id;
     }
 
-    /** Creates a session on the open session's host, or the first connected host, and opens it (US-1.7.1). */
-    async newSession(): Promise<void> {
-        const hostId = this.#targetHost(this.store.getState());
-        if (hostId === undefined) {
+    /** Creates a session on a connected host and opens it (US-1.7.1). */
+    async newSession(hostId = this.defaultHost(this.store.getState())): Promise<void> {
+        const host = hostId === undefined ? undefined : this.#host(hostId);
+        if (host === undefined || !isConnected(host)) {
             return;
         }
-        const session = await this.#terminals.create(hostId);
-        this.#update((workspace) => sessionChanged(workspace, hostId, { kind: 'created', session }));
-        this.open(sessionKey(hostId, session.id));
+        const session = await this.#terminals.create(host.id);
+        this.#update((workspace) => sessionChanged(workspace, host.id, { kind: 'created', session }));
+        this.open(sessionKey(host.id, session.id));
+    }
+
+    #add(host: KnownHost): void {
+        const known = this.#host(host.id) !== undefined;
+        this.#update((workspace) => hostAdded(workspace, host));
+        if (!known) {
+            this.#follow(host.id);
+        }
     }
 
     #follow(hostId: string): void {
@@ -100,6 +162,8 @@ export class WorkspaceController {
             this.#update((workspace) => hostStateChanged(workspace, hostId, state));
             if (state.status === 'connected') {
                 void this.#listSessions(hostId);
+            } else if (state.status === 'closed') {
+                this.#terminals.closeHost(hostId);
             }
         });
         this.#client.onMessage(hostId, (message) => {
@@ -116,10 +180,8 @@ export class WorkspaceController {
         }
     }
 
-    #targetHost(workspace: Workspace): string | undefined {
-        const open = workspace.open === undefined ? undefined : this.#find(workspace.open);
-        const connected = workspace.hosts.filter((host) => host.state.status === 'connected');
-        return connected.find((host) => host.id === open?.hostId)?.id ?? connected[0]?.id;
+    #host(hostId: string): HostEntry | undefined {
+        return this.store.getState().hosts.find((host) => host.id === hostId);
     }
 
     #find(key: SessionKey): { readonly hostId: string; readonly session: SessionInfo } | undefined {

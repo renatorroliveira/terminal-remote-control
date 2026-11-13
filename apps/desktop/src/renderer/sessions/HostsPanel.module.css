@@ -1,0 +1,122 @@
+@layer components {
+    .panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .heading {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        min-height: 32px;
+        padding-inline: 0.5rem;
+    }
+
+    .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .badge {
+        display: inline-grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        background: transparent;
+    }
+
+    .badge[data-hovered] {
+        border-color: var(--trc-color-border);
+    }
+
+    .badge[data-badge='connected'] {
+        color: var(--trc-color-success);
+    }
+
+    .badge[data-badge='disconnected'] {
+        color: var(--trc-color-danger);
+    }
+
+    .badge[data-badge='busy'] {
+        color: var(--trc-color-warning);
+    }
+
+    .question {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 0;
+        padding: 0.5rem;
+        border: 1px solid var(--trc-color-border);
+        border-radius: 4px;
+    }
+
+    .legend {
+        float: left;
+        width: 100%;
+        padding: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .input,
+    .button {
+        min-height: 28px;
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--trc-color-border);
+        border-radius: 4px;
+        background: var(--trc-color-background);
+        color: var(--trc-color-text);
+        font: inherit;
+    }
+
+    .button {
+        align-self: start;
+    }
+
+    .hint {
+        color: var(--trc-color-text-muted);
+        font-size: 0.875rem;
+    }
+
+    .error {
+        color: var(--trc-color-danger);
+        font-size: 0.875rem;
+    }
+
+    .empty {
+        margin: 0;
+        color: var(--trc-color-text-muted);
+    }
+}
