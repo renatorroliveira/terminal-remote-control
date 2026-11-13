@@ -64,7 +64,7 @@ describe('App (US-1.6.1)', () => {
         await page.viewport(1400, 800);
         const screen = await renderApp().rendered;
         await expect.element(screen.getByRole('navigation', { name: 'Sessions and hosts' })).toBeVisible();
-        await expect.element(screen.getByRole('main', { name: 'Term Remote Control' })).toBeVisible();
+        await expect.element(screen.getByRole('main', { name: 'Terminal Remote Control' })).toBeVisible();
         await expect.element(screen.getByText('No session is open.')).toBeVisible();
         await expect.element(screen.getByText('No open sessions.')).toBeVisible();
         await expect.element(screen.getByRole('button', { name: /^New session/ })).not.toBeInTheDocument();

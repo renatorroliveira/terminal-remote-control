@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { connectionHostInit } from './connection-host-init';
 
 const base = {
-    userData: '/data/app support/Term Remote Control',
+    userData: '/data/app support/Terminal Remote Control',
     resources: '/App/Resources',
     appVersion: '0.1.0',
 };

@@ -17,4 +17,4 @@ export interface ConnectionHostInit {
 }
 
 /** The name the connection host's utility process carries in process listings and metrics. */
-export const CONNECTION_HOST_NAME = 'Term Remote Control connection host';
+export const CONNECTION_HOST_NAME = 'Terminal Remote Control connection host';

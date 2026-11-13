@@ -1,4 +1,4 @@
-# Term Remote Control — Product Requirements Document
+# Terminal Remote Control — Product Requirements Document
 
 | Field        | Value                                        |
 | ------------ | -------------------------------------------- |
@@ -6,7 +6,7 @@
 | Owner        | Renato Oliveira                              |
 | Last updated | 2026-11-12                                   |
 | Scope        | P0 (first release), delivered in seven epics |
-| Working name | Term Remote Control (final name TBD)         |
+| Name         | Terminal Remote Control (TRC)                |
 
 The keywords MUST, MUST NOT, SHOULD, SHOULD NOT and MAY follow
 [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Targets marked
@@ -16,7 +16,7 @@ The keywords MUST, MUST NOT, SHOULD, SHOULD NOT and MAY follow
 
 ## 1. Summary
 
-Term Remote Control is a desktop application for running and managing many
+Terminal Remote Control is a desktop application for running and managing many
 terminal sessions on the local computer and on remote hosts. A sidebar on the
 left lists every session, grouped by host. The selected session's terminal fills
 the center.
@@ -1538,7 +1538,7 @@ WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
 | OQ-2 | Which language and runtime produce the daemon as a small, self-contained binary for every target OS and architecture? (Design decision.) | Rust: static musl binaries on Linux, universal2 on macOS, MSVC on Windows. [TECH_STACK.md](TECH_STACK.md) D-01.                                                                                                                                                |
 | OQ-3 | What are the distribution channels and update mechanism for the desktop app on each OS?                                                  | macOS: signed downloads from GitHub Releases in E1–E2; automatic updates through Electron's built-in updater from E3 (US-3.4). Windows (E6) and Linux (E7) mechanisms are chosen in those epics within SEC-01 and SEC-07. [TECH_STACK.md](TECH_STACK.md) D-06. |
 | OQ-4 | Does the product collect any telemetry? If yes, it must be opt-in and exclude terminal content.                                          | No telemetry and no crash uploads in P0. [TECH_STACK.md](TECH_STACK.md) D-09.                                                                                                                                                                                  |
-| OQ-5 | What is the final product name?                                                                                                          | Open.                                                                                                                                                                                                                                                          |
+| OQ-5 | What is the final product name?                                                                                                          | Resolved: Terminal Remote Control, TRC for short (owner, M1).                                                                                                                                                                                                  |
 | OQ-6 | Which shell integration sequences beyond OSC 133 (for example VS Code's OSC 633) should the app read?                                    | Open. OSC 133 and OSC 7 are read in any case.                                                                                                                                                                                                                  |
 
 ## 15. References

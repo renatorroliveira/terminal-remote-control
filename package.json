@@ -1,5 +1,5 @@
 {
-    "name": "term-remote-control",
+    "name": "terminal-remote-control",
     "private": true,
     "type": "module",
     "packageManager": "pnpm@12.18.0",

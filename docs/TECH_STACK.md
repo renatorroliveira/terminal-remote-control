@@ -1,4 +1,4 @@
-# Term Remote Control — Tech Stack
+# Terminal Remote Control — Tech Stack
 
 | Field        | Value                                                                   |
 | ------------ | ----------------------------------------------------------------------- |
@@ -13,8 +13,8 @@ The rule throughout: **one choice per need, and a fallback only where a spike
 may force a switch.** Requirement IDs (`A11Y-*`, `SEC-*`, `NFR-*`, `US-*`,
 `R*`, `OQ-*`) refer to the PRD.
 
-`trcd` (the daemon binary) and `~/.trc/` (the per-user data directory) are
-working names until the product is named (OQ-5).
+The product is Terminal Remote Control, TRC for short (OQ-5): `trcd` is the
+daemon binary and `~/.trc/` the per-user data directory.
 
 ---
 
