@@ -30,6 +30,11 @@ Host trc-noexec
 Host trc-jump
     Port 2225
 
+Host trc-latency
+    Port 2226
+
+@SCALE_HOSTS@
+
 Host trc-behind trc-badjump
     HostName behind
     Port 22
@@ -50,7 +55,7 @@ Host trc-timeout
     HostName 10.255.255.1
     ConnectTimeout 3
 
-Host trc-ubuntu trc-ubuntu-nss trc-alpine trc-rocky trc-noexec trc-jump trc-behind trc-badjump trc-unreachable trc-dns trc-timeout
+Host trc-ubuntu trc-ubuntu-nss trc-alpine trc-rocky trc-noexec trc-latency trc-scale-* trc-jump trc-behind trc-badjump trc-unreachable trc-dns trc-timeout
     IdentityFile @RUN@/id_ed25519
 
 Host trc-*

@@ -14,7 +14,7 @@ export default defineConfig({
                         'packages/*/test/**/*.test.ts',
                         'apps/desktop/src/{main,preload,connection-host,shared}/**/*.test.ts',
                     ],
-                    exclude: ['**/node_modules/**', '**/*.integration.test.ts', '**/*.ax.test.ts'],
+                    exclude: ['**/node_modules/**', '**/*.integration.test.ts', '**/*.ax.test.ts', '**/*.nfr.test.ts'],
                 },
             },
             {
@@ -39,6 +39,17 @@ export default defineConfig({
                     include: ['**/*.integration.test.ts'],
                     exclude: ['**/node_modules/**'],
                     testTimeout: 120_000,
+                    fileParallelism: false,
+                },
+            },
+            {
+                test: {
+                    name: 'nfr',
+                    environment: 'node',
+                    include: ['apps/desktop/test/nfr/**/*.nfr.test.ts'],
+                    exclude: ['**/node_modules/**'],
+                    testTimeout: 300_000,
+                    hookTimeout: 120_000,
                     fileParallelism: false,
                 },
             },

@@ -28,9 +28,17 @@ cat "$run/id_ed25519.pub" "$run/id_ed25519_pass.pub" > "$run/keys-public/authori
 cp "$run/ca.pub" "$run/keys-public/ca.pub"
 : > "$run/known_hosts"
 
-sed "s|@RUN@|$run|g" "$here/ssh_config.in" > "$run/ssh_config"
+while IFS= read -r line; do
+    if [ "$line" = @SCALE_HOSTS@ ]; then
+        for n in $(seq -w 1 25); do
+            printf 'Host trc-scale-%s\n    Port 2227\n    User u%s\n\n' "$n" "$n"
+        done
+    else
+        printf '%s\n' "$line" | sed "s|@RUN@|$run|g"
+    fi
+done < "$here/ssh_config.in" > "$run/ssh_config"
 
-docker compose -f "$here/compose.yaml" up -d --build --wait >/dev/null 2>"$run/compose.log" || {
+docker compose -f "$here/compose.yaml" up -d --build --wait --force-recreate >/dev/null 2>"$run/compose.log" || {
     cat "$run/compose.log" >&2
     exit 1
 }
@@ -49,7 +57,7 @@ smoke_check() {
     fi
 }
 
-for alias in trc-ubuntu trc-ubuntu-nss trc-alpine trc-rocky trc-noexec trc-jump trc-behind; do
+for alias in trc-ubuntu trc-ubuntu-nss trc-alpine trc-rocky trc-noexec trc-latency trc-scale-01 trc-scale-25 trc-jump trc-behind; do
     attempt=0
     until smoke_check "$alias"; do
         attempt=$((attempt + 1))
