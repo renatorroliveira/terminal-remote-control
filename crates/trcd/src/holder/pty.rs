@@ -13,6 +13,8 @@ use std::os::fd::{BorrowedFd, OwnedFd};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc as std_mpsc;
 
 use rustix::process::{Pid, Signal, ioctl_tiocsctty, kill_process, kill_process_group, setsid};
@@ -79,8 +81,20 @@ pub struct PtyOutput {
 /// A process running in a pseudo-terminal.
 pub struct Pty {
     master: OwnedFd,
-    input: std_mpsc::Sender<Vec<u8>>,
+    input: std_mpsc::Sender<Input>,
+    replies: Arc<AtomicUsize>,
     pid: u32,
+}
+
+/// The most reply bytes that may wait for the program, such as answers to cursor-position queries, so output full
+/// of queries cannot grow the holder while the program reads no input (SEC-06, NFR-09). Replies over it are dropped,
+/// as a terminal may.
+pub const REPLY_BUDGET: usize = 64 * 1024;
+
+/// Bytes for the program: what the user typed, or the emulator's reply to a query.
+enum Input {
+    Typed(Vec<u8>),
+    Reply(Vec<u8>),
 }
 
 impl Pty {
@@ -100,8 +114,10 @@ impl Pty {
         let (chunks_tx, chunks) = mpsc::channel(2);
         let (exit_tx, exit) = oneshot::channel();
         let (input, input_rx) = std_mpsc::channel();
+        let replies = Arc::new(AtomicUsize::new(0));
+        let queued = Arc::clone(&replies);
         std::thread::spawn(move || read_output(reader, &chunks_tx));
-        std::thread::spawn(move || write_input(writer, &input_rx));
+        std::thread::spawn(move || write_input(writer, &input_rx, &queued));
         std::thread::spawn(move || {
             let status = child.wait().map_or(
                 ExitStatus {
@@ -112,12 +128,34 @@ impl Pty {
             );
             let _ = exit_tx.send(status);
         });
-        Ok((Self { master, input, pid }, PtyOutput { chunks, exit }))
+        Ok((
+            Self {
+                master,
+                input,
+                replies,
+                pid,
+            },
+            PtyOutput { chunks, exit },
+        ))
     }
 
     /// Queues input for the process. Input never waits behind output.
     pub fn write(&self, bytes: Vec<u8>) {
-        let _ = self.input.send(bytes);
+        let _ = self.input.send(Input::Typed(bytes));
+    }
+
+    /// Queues the emulator's reply to a query, or drops it when [`REPLY_BUDGET`] bytes already wait.
+    pub fn reply(&self, bytes: Vec<u8>) {
+        if self.replies.load(Ordering::Acquire) + bytes.len() > REPLY_BUDGET {
+            return;
+        }
+        self.replies.fetch_add(bytes.len(), Ordering::AcqRel);
+        let _ = self.input.send(Input::Reply(bytes));
+    }
+
+    /// Reply bytes queued and not yet written to the program.
+    pub fn queued_reply_bytes(&self) -> usize {
+        self.replies.load(Ordering::Acquire)
     }
 
     /// Resizes the PTY, which sends `SIGWINCH` to the foreground process group (US-1.11.3).
@@ -264,9 +302,15 @@ fn read_output(mut reader: File, chunks: &mpsc::Sender<Vec<u8>>) {
     }
 }
 
-fn write_input(mut writer: File, input: &std_mpsc::Receiver<Vec<u8>>) {
-    while let Ok(bytes) = input.recv() {
-        if writer.write_all(&bytes).and_then(|()| writer.flush()).is_err() {
+fn write_input(mut writer: File, input: &std_mpsc::Receiver<Input>, replies: &AtomicUsize) {
+    while let Ok(next) = input.recv() {
+        let written = match &next {
+            Input::Typed(bytes) | Input::Reply(bytes) => writer.write_all(bytes).and_then(|()| writer.flush()),
+        };
+        if let Input::Reply(bytes) = &next {
+            replies.fetch_sub(bytes.len(), Ordering::AcqRel);
+        }
+        if written.is_err() {
             break;
         }
     }
@@ -308,6 +352,21 @@ mod tests {
         }
         let status = (&mut pty_output.exit).await.unwrap();
         (String::from_utf8_lossy(&text).into_owned(), status)
+    }
+
+    #[tokio::test]
+    async fn keeps_replies_within_their_budget_while_the_program_reads_nothing() {
+        let (pty, _output) = Pty::spawn(&spec("stty raw -echo; sleep 3")).unwrap();
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        for _ in 0..10_000 {
+            pty.reply(vec![b'r'; 1_024]);
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        assert!(
+            pty.queued_reply_bytes() <= REPLY_BUDGET,
+            "{} bytes queued",
+            pty.queued_reply_bytes()
+        );
     }
 
     #[tokio::test]

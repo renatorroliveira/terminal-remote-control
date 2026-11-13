@@ -367,10 +367,14 @@ impl Holder {
 
     fn on_terminal_event(&mut self, event: TerminalEvent) {
         match event {
-            TerminalEvent::Reply(bytes) => self.on_input(bytes),
+            TerminalEvent::Reply(bytes) => {
+                if let Some(pty) = &self.pty {
+                    pty.reply(bytes);
+                }
+            }
             TerminalEvent::Title(title) => {
                 self.status.title = Some(title);
-                self.send_status();
+                self.status_dirty = true;
             }
             TerminalEvent::WorkingDirectory(url) => {
                 self.status.cwd = path_from_file_url(&url).or(self.status.cwd.take());
