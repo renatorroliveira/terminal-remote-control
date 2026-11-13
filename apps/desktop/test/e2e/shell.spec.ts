@@ -69,6 +69,8 @@ test('puts the commands in the View and Terminal menus with their Command shortc
             'Send Next Key to Terminal Shift+Command+K',
             'Mute Output Announcements Shift+Command+A',
             'List Links… Shift+Command+O',
+            'Review Mode',
+            'Find… Command+F',
             '',
             'Bigger Text Command+=',
             'Smaller Text Command+-',

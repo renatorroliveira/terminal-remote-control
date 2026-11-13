@@ -2,7 +2,7 @@ import type { SessionInfo } from '@trc/protocol';
 import { createIntl } from 'react-intl';
 import type { HostClient } from '../connection/host-client';
 import { DEFAULT_LOCALE, messagesFor } from '../i18n/locale';
-import { terminalLabelMessage, terminalMessages } from '../sessions/messages';
+import { terminalLabelMessage, terminalMessages, terminalReviewMessage } from '../sessions/messages';
 import { type KnownHostStore, type SessionKey, WorkspaceController } from '../sessions/workspace-controller';
 import { sessionName } from '../sessions/workspace-model';
 import type { TerminalLink } from '../terminal/hyperlinks';
@@ -68,6 +68,10 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
             }),
             hint: intl.formatMessage(terminalMessages.hint),
             outputBelow: intl.formatMessage(terminalMessages.outputBelow),
+            review: intl.formatMessage(terminalReviewMessage, {
+                session: sessionName(session),
+                host: destination(hostId),
+            }),
         }),
         onActivity: (key) => workspace?.recordActivity(key),
         speech: sessionSpeech(sources.speech, (lines) => intl.formatMessage(floodMessage, { lines })),

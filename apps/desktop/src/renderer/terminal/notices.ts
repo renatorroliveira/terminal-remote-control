@@ -7,4 +7,6 @@ export type TerminalNotice =
     /** The program rang the bell (A11Y-08.2). */
     | { readonly kind: 'bell' }
     /** Output arrived below a viewport the user scrolled back (A11Y-08.4). */
-    | { readonly kind: 'output-below' };
+    | { readonly kind: 'output-below' }
+    /** Output arrived while review mode was open (A11Y-03.5). */
+    | { readonly kind: 'review-output' };

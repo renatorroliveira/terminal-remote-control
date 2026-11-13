@@ -43,6 +43,36 @@
       "value": "."
     }
   ],
+  "announce.findMatch": [
+    {
+      "type": 0,
+      "value": "Match "
+    },
+    {
+      "type": 2,
+      "value": "index",
+      "style": null
+    },
+    {
+      "type": 0,
+      "value": " of "
+    },
+    {
+      "type": 2,
+      "value": "count",
+      "style": null
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.findNone": [
+    {
+      "type": 0,
+      "value": "No matches."
+    }
+  ],
   "announce.hostConnected": [
     {
       "type": 1,
@@ -173,6 +203,12 @@
     {
       "type": 0,
       "value": "New output below."
+    }
+  ],
+  "announce.reviewOutput": [
+    {
+      "type": 0,
+      "value": "New output. Command-Down Arrow goes to the end."
     }
   ],
   "announce.screenReaderOff": [
@@ -371,6 +407,12 @@
       "value": "Previous region"
     }
   ],
+  "command.reviewToggle": [
+    {
+      "type": 0,
+      "value": "Review mode"
+    }
+  ],
   "command.sessionNew": [
     {
       "type": 0,
@@ -399,6 +441,12 @@
     {
       "type": 0,
       "value": "Show or hide the sidebar"
+    }
+  ],
+  "command.terminalFind": [
+    {
+      "type": 0,
+      "value": "Find…"
     }
   ],
   "command.terminalListLinks": [
@@ -1009,6 +1057,82 @@
     {
       "type": 0,
       "value": "Update the app, then connect again."
+    }
+  ],
+  "find.close": [
+    {
+      "type": 0,
+      "value": "Close find"
+    }
+  ],
+  "find.count": [
+    {
+      "type": 2,
+      "value": "index",
+      "style": null
+    },
+    {
+      "type": 0,
+      "value": " of "
+    },
+    {
+      "type": 2,
+      "value": "count",
+      "style": null
+    }
+  ],
+  "find.field": [
+    {
+      "type": 0,
+      "value": "Find"
+    }
+  ],
+  "find.hint": [
+    {
+      "type": 0,
+      "value": "Return finds the previous match, Shift-Return the next, Escape closes."
+    }
+  ],
+  "find.invalid": [
+    {
+      "type": 0,
+      "value": "Not a valid regular expression."
+    }
+  ],
+  "find.matchCase": [
+    {
+      "type": 0,
+      "value": "Match case"
+    }
+  ],
+  "find.next": [
+    {
+      "type": 0,
+      "value": "Next match"
+    }
+  ],
+  "find.none": [
+    {
+      "type": 0,
+      "value": "No matches"
+    }
+  ],
+  "find.previous": [
+    {
+      "type": 0,
+      "value": "Previous match"
+    }
+  ],
+  "find.regex": [
+    {
+      "type": 0,
+      "value": "Regular expression"
+    }
+  ],
+  "find.region": [
+    {
+      "type": 0,
+      "value": "Find in terminal"
     }
   ],
   "forget.body": [
@@ -2195,6 +2319,24 @@
     {
       "type": 0,
       "value": "New output below"
+    }
+  ],
+  "terminal.review": [
+    {
+      "type": 0,
+      "value": "Review "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": ", "
+    },
+    {
+      "type": 1,
+      "value": "host"
     }
   ],
   "tree.bell": [

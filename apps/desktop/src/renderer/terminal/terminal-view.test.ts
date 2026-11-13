@@ -40,7 +40,12 @@ function mount(overrides: Partial<TerminalViewOptions> = {}): Harness {
         ...overrides,
     });
     view.mount(host);
-    view.setLabel('build, devbox-1', 'Option F1: accessibility help.', 'New output below');
+    view.setLabel({
+        name: 'build, devbox-1',
+        hint: 'Option F1: accessibility help.',
+        outputBelow: 'New output below',
+        review: 'Review build, devbox-1',
+    });
     views.push(view);
     return { view, host, inputs, credits, sizes };
 }
@@ -701,5 +706,48 @@ describe('TerminalView: bell and pinned viewport (A11Y-08.2, A11Y-08.4)', () => 
         await frames();
         expect(view.terminal.buffer.active.viewportY).toBe(view.terminal.buffer.active.baseY);
         expect(indicator?.hidden).toBe(true);
+    });
+});
+
+describe('TerminalView: review mode and find (A11Y-03, US-1.13)', () => {
+    it('opens review mode over the terminal and returns to it, sending nothing to the process (A11Y-03.1)', async () => {
+        const notices: unknown[] = [];
+        const { view, inputs } = mount({ onNotice: (notice) => notices.push(notice) });
+        await written(view, 'first\r\nsecond\r\n$ ');
+        view.toggleReview();
+        const review = document.activeElement as HTMLTextAreaElement;
+        expect(review.getAttribute('aria-label')).toBe('Review build, devbox-1');
+        expect(review.value.startsWith('first\nsecond\n$')).toBe(true);
+        await written(view, 'later');
+        expect(notices).toEqual([{ kind: 'review-output' }]);
+        view.focus();
+        expect(document.activeElement).toBe(review);
+        view.toggleReview();
+        expect(document.activeElement).toBe(view.surface);
+        expect(review.isConnected).toBe(false);
+        expect(inputs).toEqual([]);
+    });
+
+    it('finds matches from the most recent, selects the match, and steps with wrap-around (US-1.13)', async () => {
+        const { view } = mount();
+        await written(view, 'error one\r\nfine\r\nerror two');
+        expect(view.find('error', { caseSensitive: false, regex: false })).toEqual({ index: 1, count: 2 });
+        expect(view.terminal.getSelection()).toBe('error');
+        expect(view.terminal.getSelectionPosition()?.start.y).toBe(2);
+        expect(view.findStep('previous')).toEqual({ index: 0, count: 2 });
+        expect(view.terminal.getSelectionPosition()?.start.y).toBe(0);
+        expect(view.findStep('previous')).toEqual({ index: 1, count: 2 });
+        expect(view.find('(', { caseSensitive: false, regex: true })).toBe('invalid');
+        view.endFind();
+        expect(view.terminal.hasSelection()).toBe(false);
+    });
+
+    it('moves the review caret to the match in review mode (A11Y-03.6)', async () => {
+        const { view } = mount();
+        await written(view, 'alpha\r\nbeta\r\ngamma');
+        view.toggleReview();
+        view.find('beta', { caseSensitive: false, regex: false });
+        const review = document.activeElement as HTMLTextAreaElement;
+        expect(review.value.slice(review.selectionStart, review.selectionEnd)).toBe('beta');
     });
 });

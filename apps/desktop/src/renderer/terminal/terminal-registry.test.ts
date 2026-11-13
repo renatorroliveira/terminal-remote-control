@@ -122,6 +122,7 @@ function setup() {
             name: `${session.profile.name}, ${hostId}`,
             hint: 'Option F1: accessibility help.',
             outputBelow: 'New output below',
+            review: `Review ${session.profile.name}, ${hostId}`,
         }),
         speech,
     });

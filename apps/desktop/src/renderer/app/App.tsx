@@ -15,6 +15,7 @@ import type { WorkspaceController } from '../sessions/workspace-controller';
 import { BUTTON } from '../ui/buttons';
 import styles from './App.module.css';
 import { CommandPalette } from './CommandPalette';
+import { FindBar } from './FindBar';
 import { LinkDialogs } from './LinkDialogs';
 import { NotificationsDialog } from './NotificationsDialog';
 import { PasteDialog } from './PasteDialog';
@@ -114,6 +115,7 @@ function TerminalRegion({ workspace, terminals, shell }: AppProps) {
             >
                 {intl.formatMessage(sidebarMessages.toggle)}
             </Button>
+            <FindBar shell={shell} />
             <div ref={attach} className={styles['terminals'] ?? ''} />
             {open === undefined && (
                 <p className={styles['empty'] ?? ''}>

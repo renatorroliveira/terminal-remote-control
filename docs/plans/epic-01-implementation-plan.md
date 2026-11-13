@@ -734,6 +734,18 @@ As built (links first, by the owner's request on 2026-11-13):
     - in review mode, the review caret moves to the match;
     - Escape returns focus.
 
+As built:
+
+- Option+F2 opens a read-only `<textarea>` over the terminal (D-40), named "Review <session>, <host>", with the caret
+  on the cursor's line and a 500-line page that re-pages within 50 lines of an edge. Command+Up and Command+Down
+  (Control+Home and End) reach the buffer's start and end; the end reloads new output. Output while it is open
+  never moves it and is announced once until the user goes to the end. Option+F2 or Escape returns to the terminal.
+- Command+F opens a find bar above the terminal: it searches the logical lines from the most recent match, Return
+  steps to older matches and Shift+Return to newer ones, with Match case and Regular expression toggles. The match
+  is selected in the terminal (the selection colors meet A11Y-04) or in review mode, and "Match 3 of 17" is shown
+  and announced. Escape returns focus to the terminal or review mode.
+- Braille output and routing come with the native text field; the owner checks them in ST-21's manual passes.
+
 **ST-17 Connection loss** (US-1.14, US-1.5.5, A11Y-12.2, NFR-07)
 
 - Disconnected state for every session on the host, announced.
@@ -862,7 +874,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-13 | Done        | —      |
 | ST-14 | Done        | —      |
 | ST-15 | Done        | —      |
-| ST-16 | Not started | —      |
+| ST-16 | Done        | —      |
 | ST-17 | Not started | —      |
 | ST-18 | Not started | —      |
 | ST-19 | Not started | —      |

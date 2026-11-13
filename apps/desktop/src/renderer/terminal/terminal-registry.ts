@@ -2,20 +2,16 @@ import type { SessionInfo } from '@trc/protocol';
 import { DEFAULT_TERMINAL_APPEARANCE, type TerminalAppearance } from '../../shared/terminal-appearance';
 import type { SessionKey, SessionOptions, TerminalHost } from '../sessions/workspace-controller';
 import type { TerminalPalette } from '../ui/themes';
+import type { FindOptions, FindResult } from './find';
 import type { TerminalLink } from './hyperlinks';
 import type { TerminalNotice } from './notices';
 import type { OutputSpeech } from './output-announcer';
 import { SessionLink, type SessionTransport } from './session-link';
 import styles from './terminal-registry.module.css';
-import { TERMINAL_FONT_SIZE, TerminalView } from './terminal-view';
+import { TERMINAL_FONT_SIZE, type TerminalLabel, TerminalView } from './terminal-view';
 
-/** A terminal's accessible name and shortcut hint (A11Y-01.1, A11Y-01.2). */
-export interface TerminalLabel {
-    readonly name: string;
-    readonly hint: string;
-    /** The text of the indicator on a scrolled-back terminal while new output arrives (A11Y-08.4). */
-    readonly outputBelow: string;
-}
+/** A terminal's accessible names and texts. */
+export type { TerminalLabel } from './terminal-view';
 
 /** How sessions' output is spoken (A11Y-02); the registry adds that only the open session speaks. */
 export interface SessionSpeech {
@@ -101,7 +97,7 @@ export class TerminalRegistry implements TerminalHost {
             other.frame.hidden = other !== entry;
         }
         const label = this.#options.labelFor(hostId, session);
-        entry.view.setLabel(label.name, label.hint, label.outputBelow);
+        entry.view.setLabel(label);
         if (this.#open !== undefined && this.#open !== key) {
             this.#options.speech?.cancel(this.#open);
         }
@@ -135,6 +131,28 @@ export class TerminalRegistry implements TerminalHost {
     /** Whether the open terminal waits for a key to pass to its process. */
     passingNextKey(): boolean {
         return this.#openEntry()?.view.passingNextKey ?? false;
+    }
+
+    /** Opens or closes the open terminal's review mode; false when no session is open (A11Y-03.1). */
+    toggleReview(): boolean {
+        const entry = this.#openEntry();
+        entry?.view.toggleReview();
+        return entry !== undefined;
+    }
+
+    /** Searches the open terminal; undefined when no session is open (US-1.13). */
+    find(query: string, options: FindOptions): FindResult | undefined {
+        return this.#openEntry()?.view.find(query, options);
+    }
+
+    /** Selects the open terminal's next or previous match. */
+    findStep(direction: 'next' | 'previous'): FindResult | undefined {
+        return this.#openEntry()?.view.findStep(direction);
+    }
+
+    /** Ends the open terminal's search. */
+    endFind(): void {
+        this.#openEntry()?.view.endFind();
     }
 
     /** Sets every terminal's text size, in percent of the default (A11Y-07.4). */

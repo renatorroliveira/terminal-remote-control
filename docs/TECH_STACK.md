@@ -305,13 +305,17 @@ of each terminal. Spike S2 verified it on macOS ([S2](spikes/S2.md)).
   `screenReaderMode` in `config.json` (set from the command palette until the
   ST-18 settings page) or `--screen-reader-mode=on|off|auto` forces it. A
   change is announced.
-- **Review mode** (A11Y-03, D-07).
-    - The same ATS in read-only mode, holding a page of about 500 logical lines
-      around the review caret. It re-pages when the caret crosses an edge, like
-      VS Code's Accessible View.
-    - The page grows to cover a selection, up to the same cap.
+- **Review mode** (A11Y-03, D-07, D-40).
+    - A read-only `<textarea>` over the terminal (D-40), holding a page of 500
+      logical lines around the review caret. It re-pages when the caret comes
+      within 50 lines of an edge, like VS Code's Accessible View, and
+      Command+Up and Command+Down reach the start and end of the whole buffer.
+    - Selection and copy are the text field's own; a page stays under the
+      selection cap.
     - Screen readers navigate it with caret commands in focus mode. NVDA switches
       to focus mode on its own for read-only editable text.
+    - Find (Command+F) searches the logical lines, selects the match in the
+      terminal or moves the review caret to it, and announces "Match 3 of 17".
     - The page is bounded because a prototype that put the whole buffer into one
       `contenteditable` froze NVDA for 15–60 s (xterm.js #4340).
 - **Update cadence** (R2). Chromium re-serializes every changed accessibility
@@ -1369,6 +1373,7 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | D-37 | Spoken output reads xterm.js's buffer once output settles: the logical lines since a marker at the cursor's line, without the shell echo of typed text, floods over 20 lines a second summarized after a 500 ms pause, and the cursor line in the alternate screen. Screen-reader mode follows Chromium's accessibility support unless `config.json` or `--screen-reader-mode` forces it                                              | Reading the final buffer collapses redraws and overwrites to the final text (A11Y-02.2) with one code path for every screen reader; xterm.js's own screen-reader mode speaks each printed character and adds a second accessibility tree beside the ATS                            | xterm.js `screenReaderMode`; announcing each write as it arrives                                      |
 | D-38 | Links of any scheme open with the OS, always behind a confirmation that shows the full target, unless the target starts with a trusted prefix in `accept_urls.json` in the TRC home; the confirmation can trust a link's `scheme://host`, and a prefix matches only up to `/`, `?` or `#`. Test builds write opened links to `TRC_TEST_OPENED_LINKS` instead (P-14)                                                                   | Owner's choice (2026-11-13): every scheme the OS handles, with a dialog and an allow list; Electron warns that `shell.openExternal` with untrusted text can run local handlers, so nothing opens without the user's click and either the confirmation or a prefix the user trusted | http and https only; opening at once when the text is the target                                      |
 | D-39 | pnpm patches on `@xterm/xterm` 6.0.0 and `@xterm/addon-webgl` 0.19.0 hold dim (SGR 2) text to the full minimum contrast ratio in both renderers; `tools/xterm-patches` checks the installed bundles                                                                                                                                                                                                                                   | xterm.js divides the floor by 2 for dim cells, which fails A11Y-07's 4.5:1; there is no option for it                                                                                                                                                                              | Dropping SGR 2 in a parser hook, which loses dim text's look entirely; waiting for an upstream option |
+| D-40 | Review mode is a read-only `<textarea>` laid over the terminal, holding 500 logical lines around its caret, rather than the ATS in read-only mode                                                                                                                                                                                                                                                                                     | A native text field gives every screen reader, braille routing, selection and copy without custom code, and keeps the ATS one job: the live grid                                                                                                                                   | The ATS `contenteditable` in read-only mode                                                           |
 
 ## 13. Versions (verified 2026-11-11)
 

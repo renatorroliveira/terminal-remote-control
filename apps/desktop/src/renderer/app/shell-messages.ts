@@ -73,6 +73,12 @@ export const commandMessages = defineMessages<CommandId>({
         defaultMessage: 'Default terminal text size',
         description: 'Command name.',
     },
+    'review.toggle': {
+        id: 'command.reviewToggle',
+        defaultMessage: 'Review mode',
+        description: 'Command name: opens or closes review mode, a read-only text field with the whole buffer.',
+    },
+    'terminal.find': { id: 'command.terminalFind', defaultMessage: 'Find…', description: 'Command name.' },
     'terminal.listLinks': {
         id: 'command.terminalListLinks',
         defaultMessage: 'List links…',
@@ -141,6 +147,21 @@ export const terminalAnnouncements = {
         id: 'announce.outputBelow',
         defaultMessage: 'New output below.',
         description: 'Announced once when output arrives while the user has scrolled the terminal back.',
+    }),
+};
+
+/** Find and review mode (US-1.13, A11Y-03). */
+export const findAnnouncements = {
+    match: defineMessage<{ index: number; count: number }>({
+        id: 'announce.findMatch',
+        defaultMessage: 'Match {index, number} of {count, number}.',
+        description: 'Announced as find selects a match.',
+    }),
+    none: defineMessage({ id: 'announce.findNone', defaultMessage: 'No matches.', description: 'Announcement.' }),
+    reviewOutput: defineMessage({
+        id: 'announce.reviewOutput',
+        defaultMessage: 'New output. Command-Down Arrow goes to the end.',
+        description: 'Announced once when output arrives while review mode is open.',
     }),
 };
 

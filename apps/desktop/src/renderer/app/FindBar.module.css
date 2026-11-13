@@ -1,0 +1,44 @@
+@layer components {
+    .bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--trc-color-border);
+        background: var(--trc-color-surface);
+        color: var(--trc-color-text);
+    }
+
+    .field {
+        display: flex;
+        flex: 1 1 14rem;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0;
+    }
+
+    .input {
+        min-height: 32px;
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--trc-color-secondary-border);
+        border-radius: 4px;
+        background: var(--trc-color-background);
+        color: var(--trc-color-text);
+        font-family: var(--trc-font-terminal);
+    }
+
+    .hint {
+        color: var(--trc-color-text-muted);
+        font-size: 0.875rem;
+    }
+
+    .error {
+        color: var(--trc-color-danger);
+    }
+
+    .count {
+        min-width: 6rem;
+        align-self: center;
+    }
+}

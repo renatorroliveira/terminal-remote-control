@@ -3,6 +3,7 @@ import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import { parseHostAddress } from '../../shared/host-address';
 import { DEFAULT_INSTALL_ROOT, isInstallRoot, type KnownHost } from '../../shared/hosts';
 import type { ClientRequest } from '../connection/host-client';
+import type { FindResult } from '../terminal/find';
 import type { TerminalLink } from '../terminal/hyperlinks';
 import type { KnownHostStore, SessionOptions, TerminalHost, WorkspaceClient } from './workspace-controller';
 
@@ -170,6 +171,46 @@ export class FakeTerminalHost implements TerminalHost {
     /** Returns the links set in {@link FakeTerminalHost.links}. */
     visibleLinks(): readonly TerminalLink[] {
         return this.links;
+    }
+
+    /** Whether review mode is open, and the searches asked for. */
+    reviewOpen = false;
+    readonly searches: string[] = [];
+    /** How many matches the next search finds. */
+    matches = 0;
+    #index = -1;
+
+    /** Toggles review mode when a session is shown. */
+    toggleReview(): boolean {
+        this.reviewOpen = this.shown.length > 0 && !this.reviewOpen;
+        return this.shown.length > 0;
+    }
+
+    /** Records the search; a `(` query is an invalid expression. */
+    find(query: string, options: { readonly regex: boolean }): FindResult | undefined {
+        this.searches.push(query);
+        if (this.shown.length === 0) {
+            return undefined;
+        }
+        if (options.regex && query === '(') {
+            return 'invalid';
+        }
+        this.#index = this.matches - 1;
+        return { index: this.#index, count: this.matches };
+    }
+
+    /** Steps through the prepared matches. */
+    findStep(direction: 'next' | 'previous'): FindResult | undefined {
+        if (this.matches === 0) {
+            return { index: -1, count: 0 };
+        }
+        this.#index = (this.#index + (direction === 'next' ? 1 : -1) + this.matches) % this.matches;
+        return { index: this.#index, count: this.matches };
+    }
+
+    /** Records that the search ended. */
+    endFind(): void {
+        this.searches.push('<end>');
     }
 
     /** The terminal text size, in percent. */

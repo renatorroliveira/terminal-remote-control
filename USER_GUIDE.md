@@ -173,6 +173,18 @@ When you scroll back, the terminal stays where you are while output arrives, and
 The bell never flashes: the status bar shows "Bell" for a few seconds and TRC says it. A session in the background
 gets a "bell" badge in the session list instead, until you open it.
 
+### Review mode and Find
+
+Option-F2 opens review mode: the whole scrollback and screen as a read-only text field over the terminal, with the
+caret on the cursor's line. VoiceOver reads it by character, word, line and paragraph, a braille display follows
+the caret, and Shift with the arrow keys selects text for Command-C. Command-Up and Command-Down go to the start
+and the end; output that arrives meanwhile doesn't move you, TRC says "New output" once, and Command-Down brings it
+in. Option-F2 or Escape returns to the terminal; review mode never sends keys to the program.
+
+Command-F opens Find above the terminal. Type to search, from the most recent output back; Return finds the
+previous match and Shift-Return the next. Match case and Regular expression narrow it. TRC selects each match, says
+"Match 3 of 17", and in review mode moves the caret to it. Escape closes Find and returns where you were.
+
 ### Links
 
 Command-click a web address in the terminal, or a link a program prints (such as `ls --hyperlink`), to open it
@@ -199,6 +211,8 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 | Mute output announcements for this session   | Shift-Command-A                                       |
 | Notifications                                | Shift-Command-N                                       |
 | List the links on the screen                 | Shift-Command-O                                       |
+| Review mode, the whole buffer as text        | Option-F2                                             |
+| Find in the terminal                         | Command-F                                             |
 | Actions for the focused session or host      | Shift-F10, the Menu key, Control-click or right-click |
 
 - **Regions.** Moving to a region puts you back where you were in it. A hidden sidebar is skipped.
@@ -308,7 +322,6 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 Later releases of Epic 1 add:
 
 - Changing shortcuts, and plain F6 to move between regions, in the settings page.
-- A review mode to read the scrollback, and Find.
 - Paste confirmation, the settings page, accessibility help (Option-F1) and the in-app guide (the Help
   menu items do nothing yet).
 - Reconnecting after a network loss with a single action.
