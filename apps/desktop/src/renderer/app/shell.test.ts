@@ -1,5 +1,6 @@
 import { createIntl } from 'react-intl';
 import { describe, expect, it, onTestFinished } from 'vitest';
+import type { ScreenReaderMode } from '../../shared/accessibility';
 import { resolveKeymap } from '../../shared/keymap';
 import { messagesFor } from '../i18n/locale';
 import { WorkspaceController } from '../sessions/workspace-controller';
@@ -11,7 +12,46 @@ import {
 } from '../sessions/workspace-test-doubles';
 import type { AnnounceOptions } from './announcer';
 import { NotificationCenter } from './notifications';
-import { Shell } from './shell';
+import { type ScreenReaderControls, Shell } from './shell';
+import { paletteActions } from './workspace-actions';
+
+/** Screen-reader mode as the main process would keep it. */
+class FakeScreenReader implements ScreenReaderControls {
+    mode: ScreenReaderMode = 'auto';
+    detected = false;
+    readonly #listeners = new Set<(on: boolean) => void>();
+
+    get screenReader(): boolean {
+        return this.mode === 'auto' ? this.detected : this.mode === 'on';
+    }
+
+    async setMode(mode: ScreenReaderMode): Promise<void> {
+        this.#change(() => {
+            this.mode = mode;
+        });
+    }
+
+    detect(detected: boolean): void {
+        this.#change(() => {
+            this.detected = detected;
+        });
+    }
+
+    onScreenReaderChanged(listener: (on: boolean) => void): () => void {
+        this.#listeners.add(listener);
+        return () => this.#listeners.delete(listener);
+    }
+
+    #change(apply: () => void): void {
+        const was = this.screenReader;
+        apply();
+        if (this.screenReader !== was) {
+            for (const listener of this.#listeners) {
+                listener(this.screenReader);
+            }
+        }
+    }
+}
 
 const CONNECTED = { status: 'connected', daemon: { version: '0.2.0', sha256: 'ab', proto: 1 } } as const;
 
@@ -21,6 +61,8 @@ async function setup(narrow = false) {
     const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore());
     const spoken: string[] = [];
     const saved: boolean[] = [];
+    const screenReader = new FakeScreenReader();
+    const intl = createIntl({ locale: 'en', messages: messagesFor('en') });
     const shell = new Shell({
         workspace,
         terminals,
@@ -39,13 +81,14 @@ async function setup(narrow = false) {
         },
         notifications: new NotificationCenter(() => 0),
         keymap: resolveKeymap({}),
-        intl: createIntl({ locale: 'en', messages: messagesFor('en') }),
+        intl,
         document,
         isNarrow: () => narrow,
+        screenReader,
     });
     onTestFinished(shell.start());
     await workspace.addHost('devbox-1');
-    return { client, terminals, workspace, shell, spoken, saved };
+    return { client, terminals, workspace, shell, spoken, saved, screenReader, intl };
 }
 
 describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
@@ -95,6 +138,41 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'Output announcements off for bash.',
             'Output announcements on for bash.',
         ]);
+    });
+});
+
+describe('Shell screen-reader mode (A11Y-10.2)', () => {
+    it('announces when screen-reader mode turns on or off', async () => {
+        const { screenReader, spoken } = await setup();
+        screenReader.detect(true);
+        screenReader.detect(false);
+        expect(spoken).toEqual(['Screen reader mode on.', 'Screen reader mode off.']);
+    });
+
+    it('sets the mode the user picks, and confirms it when the mode was already in effect', async () => {
+        const { shell, screenReader, spoken } = await setup();
+        screenReader.detect(true);
+        await shell.setScreenReaderMode('off');
+        await shell.setScreenReaderMode('auto');
+        await shell.setScreenReaderMode('on');
+        expect(screenReader.mode).toBe('on');
+        expect(spoken).toEqual([
+            'Screen reader mode on.',
+            'Screen reader mode off.',
+            'Screen reader mode on.',
+            'Screen reader mode on.',
+        ]);
+    });
+
+    it('offers the other screen-reader modes in the command palette', async () => {
+        const { shell, workspace, screenReader, intl } = await setup();
+        const labels = (): string[] =>
+            paletteActions(intl, shell, workspace)
+                .map((action) => action.label)
+                .filter((label) => label.startsWith('Screen reader'));
+        expect(labels()).toEqual(['Screen reader mode: on', 'Screen reader mode: off']);
+        await screenReader.setMode('off');
+        expect(labels()).toEqual(['Screen reader mode: automatic', 'Screen reader mode: on']);
     });
 });
 

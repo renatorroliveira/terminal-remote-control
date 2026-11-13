@@ -6,6 +6,7 @@ import { attachInput, type InputModes } from './ats-input';
 import { AtsSurface } from './ats-surface';
 import { CreditTracker } from './credit-tracker';
 import { KittyKeyboard } from './kitty-keyboard';
+import { OutputAnnouncer, type OutputSpeech } from './output-announcer';
 import { registerQueryFilters } from './query-filter';
 import { SCROLLBAR_WIDTH, TerminalGeometry } from './terminal-geometry';
 import { xtermTheme } from './terminal-theme';
@@ -30,6 +31,8 @@ export interface TerminalViewOptions {
     readonly onResize: (size: { readonly cols: number; readonly rows: number }) => void;
     /** The widest the grid gets; narrower spaces get fewer columns (A11Y-07.5). */
     readonly maxColumns?: number;
+    /** Where new output is spoken (A11Y-02); without it, output is not spoken. */
+    readonly speech?: OutputSpeech;
 }
 
 /** The terminal font, embedded in the app. */
@@ -59,6 +62,7 @@ export class TerminalView {
     readonly #scheduler: UpdateScheduler;
     readonly #credit: CreditTracker;
     readonly #measurer: HTMLElement;
+    readonly #announcer: OutputAnnouncer | undefined;
     readonly #modes: InputModes = { tabFocusMode: false, sendNextKey: false };
     readonly #cleanups: (() => void)[] = [];
     #geometry: TerminalGeometry | undefined;
@@ -87,6 +91,7 @@ export class TerminalView {
         this.#ats = new AtsSurface(this.terminal, this.surface);
         this.#scheduler = new UpdateScheduler(() => this.#ats.update(), options.assistiveTechnology);
         this.#credit = new CreditTracker(options.onCredit);
+        this.#announcer = options.speech === undefined ? undefined : new OutputAnnouncer(this.terminal, options.speech);
     }
 
     /**
@@ -169,6 +174,7 @@ export class TerminalView {
     /** Releases the terminal and its listeners. */
     dispose(): void {
         this.#disposed = true;
+        this.#announcer?.dispose();
         this.#geometry?.dispose();
         for (const cleanup of this.#cleanups.splice(0)) {
             cleanup();
@@ -253,6 +259,13 @@ export class TerminalView {
         );
         this.#listenFocus(request);
         this.#listenWheel();
+        this.#listenInterrupt();
+    }
+
+    #listenInterrupt(): void {
+        const interrupt = (): void => this.#announcer?.interrupt();
+        this.surface.addEventListener('keydown', interrupt, { capture: true });
+        this.#cleanups.push(() => this.surface.removeEventListener('keydown', interrupt, { capture: true }));
     }
 
     #syncPointerMode(): void {
@@ -269,6 +282,7 @@ export class TerminalView {
         return {
             send: (text: string): void => {
                 this.#scheduler.input();
+                this.#announcer?.input(text);
                 this.terminal.clearSelection();
                 this.terminal.scrollToBottom();
                 this.#ats.placeCaret();

@@ -1,4 +1,5 @@
 import type { IntlShape, MessageDescriptor } from 'react-intl';
+import { SCREEN_READER_MODES } from '../../shared/accessibility';
 import { formatChord } from '../../shared/keymap';
 import { hostActionMessages } from '../sessions/host-messages';
 import { connectionActionMessages, hostSessionsMessages } from '../sessions/messages';
@@ -6,7 +7,7 @@ import { paletteSessionMessages, sessionActionMessages } from '../sessions/sessi
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import { type HostEntry, hostGroups, isConnected, type SessionItem } from '../sessions/workspace-model';
 import type { Shell } from './shell';
-import { paletteMessages } from './shell-messages';
+import { paletteMessages, screenReaderModeMessages } from './shell-messages';
 
 /** One thing the user can do, in a context menu or the command palette (A11Y-11.11). */
 export interface WorkspaceAction {
@@ -127,7 +128,13 @@ export function paletteActions(
             run: () => workspace.open(item.key),
         })),
     );
-    return [...commands, ...openSessionActions(intl, shell, workspace), ...hosts, ...sessions];
+    return [
+        ...commands,
+        ...screenReaderActions(intl, shell),
+        ...openSessionActions(intl, shell, workspace),
+        ...hosts,
+        ...sessions,
+    ];
 }
 
 type Labelled = (id: Exclude<keyof typeof sessionActionMessages, 'open'>, run: () => void) => WorkspaceAction;
@@ -179,4 +186,16 @@ function openSessionActions(intl: IntlShape, shell: Shell, workspace: WorkspaceC
         }
     }
     return [];
+}
+
+function screenReaderActions(intl: IntlShape, shell: Shell): readonly WorkspaceAction[] {
+    const current = shell.screenReaderMode;
+    if (current === undefined) {
+        return [];
+    }
+    return SCREEN_READER_MODES.filter((mode) => mode !== current).map((mode) => ({
+        id: `screen-reader:${mode}`,
+        label: intl.formatMessage(screenReaderModeMessages[mode]),
+        run: () => void shell.setScreenReaderMode(mode),
+    }));
 }

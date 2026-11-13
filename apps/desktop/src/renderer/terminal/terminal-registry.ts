@@ -1,6 +1,7 @@
 import type { SessionInfo } from '@trc/protocol';
 import type { SessionKey, SessionOptions, TerminalHost } from '../sessions/workspace-controller';
 import type { TerminalPalette } from '../ui/themes';
+import type { OutputSpeech } from './output-announcer';
 import { SessionLink, type SessionTransport } from './session-link';
 import styles from './terminal-registry.module.css';
 import { TerminalView } from './terminal-view';
@@ -9,6 +10,19 @@ import { TerminalView } from './terminal-view';
 export interface TerminalLabel {
     readonly name: string;
     readonly hint: string;
+}
+
+/** How sessions' output is spoken (A11Y-02); the registry adds that only the open session speaks. */
+export interface SessionSpeech {
+    /** Whether a session's output may be spoken: screen-reader mode is on and the user has not muted it. */
+    allowed(key: SessionKey): boolean;
+    speak(key: SessionKey, text: string): void;
+    /** Drops a session's output speech still waiting to go. */
+    cancel(key: SessionKey): void;
+    /** Lines a second above which output is summarized (A11Y-02.3). */
+    floodThreshold(): number;
+    /** The summary of a flood of `lines` lines. */
+    summary(lines: number): string;
 }
 
 /** What the registry needs to build terminals. */
@@ -20,6 +34,8 @@ export interface TerminalRegistryOptions {
     readonly labelFor: (hostId: string, session: SessionInfo) => TerminalLabel;
     /** Output arrived for a session, open or not (US-1.8.3). */
     readonly onActivity?: (key: SessionKey) => void;
+    /** Where the open session's output is spoken; without it, no output is spoken. */
+    readonly speech?: SessionSpeech;
 }
 
 interface Entry {
@@ -66,6 +82,9 @@ export class TerminalRegistry implements TerminalHost {
         }
         const label = this.#options.labelFor(hostId, session);
         entry.view.setLabel(label.name, label.hint);
+        if (this.#open !== undefined && this.#open !== key) {
+            this.#options.speech?.cancel(this.#open);
+        }
         this.#open = key;
         entry.view.focus();
     }
@@ -148,12 +167,37 @@ export class TerminalRegistry implements TerminalHost {
     }
 
     #activity(link: SessionLink): void {
+        const key = this.#keyOf(link);
+        if (key !== undefined) {
+            this.#options.onActivity?.(key);
+        }
+    }
+
+    #keyOf(link: SessionLink): SessionKey | undefined {
         for (const [key, entry] of this.#entries) {
             if (entry.link === link) {
-                this.#options.onActivity?.(key);
-                return;
+                return key;
             }
         }
+        return undefined;
+    }
+
+    #speechFor(link: () => SessionLink): OutputSpeech | undefined {
+        const speech = this.#options.speech;
+        if (speech === undefined) {
+            return undefined;
+        }
+        const key = (): SessionKey | undefined => this.#keyOf(link());
+        return {
+            enabled: () => {
+                const open = key();
+                return open !== undefined && open === this.#open && speech.allowed(open);
+            },
+            speak: (text) => withKey(key(), (found) => speech.speak(found, text)),
+            cancel: () => withKey(key(), (found) => speech.cancel(found)),
+            floodThreshold: () => speech.floodThreshold(),
+            summary: (lines) => speech.summary(lines),
+        };
     }
 
     #openEntry(): Entry | undefined {
@@ -176,6 +220,7 @@ export class TerminalRegistry implements TerminalHost {
             void view?.write(data);
             this.#activity(link);
         });
+        const speech = this.#speechFor(() => link);
         view = new TerminalView({
             palette: this.#palette,
             isMac: this.#options.isMac,
@@ -183,6 +228,7 @@ export class TerminalRegistry implements TerminalHost {
             onInput: (text) => link.input(text),
             onCredit: (bytes) => link.credit(bytes),
             onResize: (size) => link.resize(size),
+            ...(speech === undefined ? {} : { speech }),
         });
         view.mount(frame);
         view.setTabFocusMode(this.#tabFocusMode);
@@ -193,5 +239,11 @@ export class TerminalRegistry implements TerminalHost {
         entry.link.dispose();
         entry.view.dispose();
         entry.frame.remove();
+    }
+}
+
+function withKey(key: SessionKey | undefined, run: (key: SessionKey) => void): void {
+    if (key !== undefined) {
+        run(key);
     }
 }

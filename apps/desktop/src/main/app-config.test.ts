@@ -12,45 +12,47 @@ describe('AppConfigFile: config.json in the TRC home (P-18)', () => {
     it('defaults to Midnight and a 400 px sidebar, and keeps what the user changes', async () => {
         const directory = home();
         const config = new AppConfigFile(directory);
-        expect(await config.read()).toEqual({ theme: 'midnight', sidebarWidth: 400, sidebarCollapsed: false });
-        expect(DEFAULT_APP_CONFIG).toEqual({ theme: 'midnight', sidebarWidth: 400, sidebarCollapsed: false });
+        const defaults = { theme: 'midnight', sidebarWidth: 400, sidebarCollapsed: false, screenReaderMode: 'auto' };
+        expect(await config.read()).toEqual(defaults);
+        expect(DEFAULT_APP_CONFIG).toEqual(defaults);
         await config.update({ theme: 'system' });
         await config.update({ sidebarWidth: 520 });
         await config.update({ sidebarCollapsed: true });
-        expect(await new AppConfigFile(directory).read()).toEqual({
-            theme: 'system',
-            sidebarWidth: 520,
-            sidebarCollapsed: true,
-        });
-        expect(JSON.parse(readFileSync(join(directory, 'config.json'), 'utf8'))).toEqual({
-            theme: 'system',
-            sidebarWidth: 520,
-            sidebarCollapsed: true,
-        });
+        await config.update({ screenReaderMode: 'on' });
+        const changed = { theme: 'system', sidebarWidth: 520, sidebarCollapsed: true, screenReaderMode: 'on' };
+        expect(await new AppConfigFile(directory).read()).toEqual(changed);
+        expect(JSON.parse(readFileSync(join(directory, 'config.json'), 'utf8'))).toEqual(changed);
     });
 
     it('falls back to the default of each field it cannot use, and keeps the others', async () => {
         const directory = home();
         writeFileSync(
             join(directory, 'config.json'),
-            JSON.stringify({ theme: 'neon', sidebarWidth: 640, sidebarCollapsed: 'yes' }),
+            JSON.stringify({ theme: 'neon', sidebarWidth: 640, sidebarCollapsed: 'yes', screenReaderMode: 'loud' }),
         );
         expect(await new AppConfigFile(directory).read()).toEqual({
             theme: 'midnight',
             sidebarWidth: 640,
             sidebarCollapsed: false,
+            screenReaderMode: 'auto',
         });
         writeFileSync(join(directory, 'config.json'), JSON.stringify({ theme: 'dark', sidebarWidth: 9000 }));
         expect(await new AppConfigFile(directory).read()).toEqual({
             theme: 'dark',
             sidebarWidth: 400,
             sidebarCollapsed: false,
+            screenReaderMode: 'auto',
         });
     });
 
     it('applies concurrent updates one after the other', async () => {
         const config = new AppConfigFile(home());
         await Promise.all([config.update({ theme: 'light' }), config.update({ sidebarWidth: 300 })]);
-        expect(await config.read()).toEqual({ theme: 'light', sidebarWidth: 300, sidebarCollapsed: false });
+        expect(await config.read()).toEqual({
+            theme: 'light',
+            sidebarWidth: 300,
+            sidebarCollapsed: false,
+            screenReaderMode: 'auto',
+        });
     });
 });

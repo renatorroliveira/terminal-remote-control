@@ -648,6 +648,24 @@ As built:
 - AT detection through `app.isAccessibilitySupportEnabled()` and its change event, plus a setting and a
   command-line flag. The change is announced.
 
+As built:
+
+- Each terminal has an output announcer (D-37). Once output settles (100 ms, at most 250 ms after it starts), it
+  reads the logical lines from a marker at the cursor's line, removes the shell echo of what was typed, and speaks
+  them in the session's announcer group, which joins waiting output line after line.
+- More than 20 lines in a second starts a flood; the summary is spoken once output pauses for 500 ms. ST-18's
+  settings page makes the threshold a setting.
+- In the alternate screen the announcer reads the cursor line when the cursor moves or the line changes, and
+  nothing while the program hides the cursor (DECTCEM).
+- Only the open, unmuted session speaks, and only in screen-reader mode. Output from other times is never spoken
+  later, nor is the screen a session restores on attach. Any key press drops output still waiting to be spoken.
+- Screen-reader mode is `auto`, `on` or `off`: `screenReaderMode` in `config.json`, set from three palette entries
+  until ST-18, or `--screen-reader-mode=` for one launch. `auto` follows Chromium's accessibility support. The
+  terminal keeps the slower AT cadence whenever Chromium serves assistive technology, even with the mode forced
+  off.
+- The live e2e test speaks `echo` output without its echo. R9 still needs the owner's VoiceOver check (S3a), with
+  the other manual passes in ST-21.
+
 **ST-15 Terminal I/O features** (US-1.12, A11Y-04.6–7, A11Y-07.2/4/6/8, A11Y-08.1/2/4, SEC-06.1/2/4)
 
 - Exact copy with logical lines; over the cap, an announcement.
@@ -809,7 +827,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-11 | Done        | —      |
 | ST-12 | Done        | —      |
 | ST-13 | Done        | —      |
-| ST-14 | Not started | —      |
+| ST-14 | Done        | —      |
 | ST-15 | Not started | —      |
 | ST-16 | Not started | —      |
 | ST-17 | Not started | —      |

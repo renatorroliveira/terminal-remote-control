@@ -45,7 +45,9 @@ describe('SessionTree: the session list is a tree (US-1.6.4)', () => {
         });
         expect(results.violations).toEqual([]);
     });
+});
 
+describe('SessionTree: keys, badges and dragging (US-1.8, US-1.10.6)', () => {
     it('moves with the arrows and type-ahead without opening, and opens on Enter (US-1.8.1)', async () => {
         const { screen, terminals } = await renderTree();
         const host = screen.getByRole('treeitem', { name: 'devbox-1, Connected' });

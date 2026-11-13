@@ -205,6 +205,24 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 - **Keyboard.** Every control works with the keyboard, with a visible focus ring, and the terminal never traps
   focus: Command-F6 always leaves it, and Tab focus mode lets Tab leave it too.
 - **Announcements.** Status changes, such as Tab focus mode or a host connecting, are spoken without moving focus.
+- **Spoken output.** In screen-reader mode, TRC speaks the open session's new output as it arrives, line after
+  line, without moving focus:
+    - It doesn't repeat what you type, which VoiceOver already echoes.
+    - Sessions in the background stay silent. Shift-Command-A mutes and unmutes the open session.
+    - When more than 20 lines arrive in a second, TRC stops reading line by line and, once the output pauses, says
+      how many lines arrived, such as "312 lines of output".
+    - In full-screen programs such as vim, less and htop, it reads the line at the cursor when the cursor moves to
+      another line or that line changes.
+    - Pressing any key drops the output still waiting to be spoken.
+- **Screen-reader mode** turns on by itself when VoiceOver or other assistive technology starts using the app, and
+  TRC says so. To force it, choose "Screen reader mode: on", "Screen reader mode: off" or "Screen reader mode:
+  automatic" in the command palette (Shift-Command-P); TRC remembers the choice. For one launch, start the app
+  with the flag:
+
+    ```sh
+    open -a "Terminal Remote Control" --args --screen-reader-mode=on
+    ```
+
 - **Voice Control** can choose every button by its name, for example "Click New session on devbox".
 - **Fonts.** TRC embeds Atkinson Hyperlegible Next for the interface and Intel One Mono for the terminal.
 
@@ -212,10 +230,10 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 
 On your Mac, TRC keeps its settings in the TRC home, `~/.trc`:
 
-| File          | Holds                                                                                                    |
-| ------------- | -------------------------------------------------------------------------------------------------------- |
-| `config.json` | `theme` (`midnight`, `system`, `light`, `dark`, `hc-light` or `hc-dark`) and `sidebarWidth` (300 to 800) |
-| `hosts.json`  | The known hosts                                                                                          |
+| File          | Holds                                                                                                                                                                                        |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config.json` | `theme` (`midnight`, `system`, `light`, `dark`, `hc-light` or `hc-dark`), `sidebarWidth` (300 to 800), `sidebarCollapsed` (`true` or `false`) and `screenReaderMode` (`auto`, `on` or `off`) |
+| `hosts.json`  | The known hosts                                                                                                                                                                              |
 
 Both files are readable only by you. Edit `config.json` while the app is closed; a value TRC can't use falls back
 to its default.
@@ -255,8 +273,7 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 Later releases of Epic 1 add:
 
 - Changing shortcuts, and plain F6 to move between regions, in the settings page.
-- Spoken announcements of new output (the mute button is ready for them), a review mode to read the scrollback,
-  and Find.
+- A review mode to read the scrollback, and Find.
 - Links, paste confirmation, the settings page, accessibility help (Option-F1) and the in-app guide (the Help
   menu items do nothing yet).
 - Reconnecting after a network loss with a single action.
