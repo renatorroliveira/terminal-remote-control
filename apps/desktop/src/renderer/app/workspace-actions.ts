@@ -1,5 +1,6 @@
-import type { IntlShape } from 'react-intl';
+import type { IntlShape, MessageDescriptor } from 'react-intl';
 import { formatChord } from '../../shared/keymap';
+import { hostActionMessages } from '../sessions/host-messages';
 import { connectionActionMessages, hostSessionsMessages } from '../sessions/messages';
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import { type HostEntry, hostGroups, isConnected, type SessionItem } from '../sessions/workspace-model';
@@ -15,33 +16,44 @@ export interface WorkspaceAction {
     run(): void;
 }
 
-/** A host's actions: connect, disconnect or cancel, and a new session while it is connected. */
+/**
+ * A host's actions: a new session while it is connected; connect, disconnect or cancel; and, with the shell, test
+ * the connection, move the install location and forget the host (US-1.1.5, US-1.4.3, A11Y-11.9).
+ */
 export function hostActions(
     intl: IntlShape,
     workspace: WorkspaceController,
     host: HostEntry,
+    shell?: Shell,
 ): readonly WorkspaceAction[] {
     const action = workspace.connectionAction(host);
-    const connection: readonly WorkspaceAction[] =
+    const named = (id: string, message: MessageDescriptor, run: () => void): WorkspaceAction => ({
+        id: `${host.id}:${id}`,
+        label: intl.formatMessage(message, { host: host.destination }),
+        run,
+    });
+    const create = isConnected(host)
+        ? [named('new-session', hostSessionsMessages.newSession, () => void workspace.newSession(host.id))]
+        : [];
+    const connection =
         action === 'review-key'
             ? []
+            : [named(action, connectionActionMessages[action], () => workspace.toggleConnection(host.id))];
+    const managed =
+        shell === undefined
+            ? []
             : [
-                  {
-                      id: `${host.id}:${action}`,
-                      label: intl.formatMessage(connectionActionMessages[action], { host: host.destination }),
-                      run: () => workspace.toggleConnection(host.id),
-                  },
+                  ...(action === 'connect'
+                      ? [named('test', hostActionMessages.test, () => void shell.testConnection(host.id))]
+                      : []),
+                  named('install-root', hostActionMessages.installRoot, () =>
+                      shell.setHostDialog({ kind: 'install-root', hostId: host.id }),
+                  ),
+                  named('forget', hostActionMessages.forget, () =>
+                      shell.setHostDialog({ kind: 'forget', hostId: host.id }),
+                  ),
               ];
-    const create: readonly WorkspaceAction[] = isConnected(host)
-        ? [
-              {
-                  id: `${host.id}:new-session`,
-                  label: intl.formatMessage(hostSessionsMessages.newSession, { host: host.destination }),
-                  run: () => void workspace.newSession(host.id),
-              },
-          ]
-        : [];
-    return [...create, ...connection];
+    return [...create, ...connection, ...managed];
 }
 
 /** A session's actions in its context menu; ST-13 adds rename, stop, restart and close. */
@@ -78,7 +90,7 @@ export function paletteActions(
         };
     });
     const groups = hostGroups(workspace.store.getState());
-    const hosts = groups.flatMap((group) => hostActions(intl, workspace, group.host));
+    const hosts = workspace.store.getState().hosts.flatMap((host) => hostActions(intl, workspace, host, shell));
     const sessions = groups.flatMap((group) =>
         group.sessions.map((item) => ({
             id: `${item.key}:open`,

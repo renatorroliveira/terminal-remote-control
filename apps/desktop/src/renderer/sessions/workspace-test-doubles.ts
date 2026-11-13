@@ -1,7 +1,7 @@
 import type { ServerMessage, SessionInfo } from '@trc/protocol';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import { parseHostAddress } from '../../shared/host-address';
-import { DEFAULT_INSTALL_ROOT, type KnownHost } from '../../shared/hosts';
+import { DEFAULT_INSTALL_ROOT, isInstallRoot, type KnownHost } from '../../shared/hosts';
 import type { KnownHostStore, TerminalHost, WorkspaceClient } from './workspace-controller';
 
 /** A login bash session for tests. */
@@ -170,5 +170,32 @@ export class FakeKnownHostStore implements KnownHostStore {
         };
         this.#hosts.push(host);
         return Promise.resolve(host);
+    }
+
+    /** Offers what `suggested` holds. */
+    suggested: readonly string[] = [];
+    suggestions(): Promise<readonly string[]> {
+        return Promise.resolve(this.suggested);
+    }
+
+    /** Forgets a host. */
+    remove(id: string): Promise<void> {
+        const index = this.#hosts.findIndex((host) => host.id === id);
+        if (index >= 0) {
+            this.#hosts.splice(index, 1);
+        }
+        return Promise.resolve();
+    }
+
+    /** Moves a host's install location, refusing a relative one. */
+    setInstallRoot(id: string, installRoot: string): Promise<KnownHost> {
+        const index = this.#hosts.findIndex((host) => host.id === id);
+        const host = this.#hosts[index];
+        if (host === undefined || !isInstallRoot(installRoot)) {
+            return Promise.reject(new Error('not an install location'));
+        }
+        const moved = { ...host, installRoot };
+        this.#hosts[index] = moved;
+        return Promise.resolve(moved);
     }
 }

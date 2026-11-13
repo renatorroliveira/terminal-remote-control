@@ -20,6 +20,13 @@ function handlers(display: unknown = {}): InvokeHandlers {
             address: { destination: 'x' },
             installRoot: '~/.trc',
         }),
+        'hosts:suggestions': async () => ['build'],
+        'hosts:remove': async () => undefined,
+        'hosts:set-install-root': async () => ({
+            id: 'host-0000000000000000',
+            address: { destination: 'x' },
+            installRoot: '/scratch/trc',
+        }),
         'sidebar:get-width': async () => 400,
         'sidebar:set-width': async () => undefined,
         'sidebar:get-collapsed': async () => false,
@@ -45,6 +52,10 @@ describe('registerHandlers (zod at the renderer boundary)', () => {
         await expect(async () => registered.get('hosts:add')?.({}, 'devbox-1', '~/.trc')).rejects.toThrow(
             /invalid arguments/,
         );
+        await expect(async () => registered.get('hosts:remove')?.({}, '../hosts')).rejects.toThrow(/invalid arguments/);
+        await expect(async () =>
+            registered.get('hosts:set-install-root')?.({}, 'host-0000000000000000'),
+        ).rejects.toThrow(/invalid arguments/);
         await expect(async () => registered.get('sidebar:set-collapsed')?.({}, 'yes')).rejects.toThrow(
             /invalid arguments/,
         );

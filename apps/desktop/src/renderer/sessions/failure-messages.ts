@@ -16,6 +16,7 @@ export function failureMessage(intl: IntlShape, name: string, failure: Connectio
 
 type FailureKey =
     | Exclude<ConnectionFailure['kind'], 'authentication' | 'jump-failed' | 'unsupported'>
+    | 'noexec'
     | `authentication-${AuthenticationCause}`
     | `jump-failed-${NetworkCause}`
     | `unsupported-${Extract<ConnectionFailure, { kind: 'unsupported' }>['missing']}`;
@@ -295,6 +296,19 @@ const FAILURE_MESSAGES: Readonly<
             description: 'How to fix a failed connection.',
         }),
     },
+    noexec: {
+        problem: defineMessage<FailureValues>({
+            id: 'failure.noexec.problem',
+            defaultMessage: 'The install location on {name} doesn’t allow running programs; it is mounted noexec.',
+            description: 'What went wrong when a connection failed.',
+        }),
+        remedy: defineMessage<FailureValues>({
+            id: 'failure.noexec.remedy',
+            defaultMessage:
+                'Choose another install location for {name} from its actions (Shift+F10), such as a folder on another disk, then connect again.',
+            description: 'How to fix a failed connection.',
+        }),
+    },
     install: {
         problem: defineMessage<FailureValues>({
             id: 'failure.install.problem',
@@ -342,6 +356,8 @@ function failureKey(failure: ConnectionFailure): FailureKey {
             return `jump-failed-${failure.cause}`;
         case 'unsupported':
             return `unsupported-${failure.missing}`;
+        case 'install':
+            return failure.code === 'noexec' ? 'noexec' : 'install';
         default:
             return failure.kind;
     }

@@ -35,7 +35,7 @@ export function CommandPalette({ shell, workspace }: CommandPaletteProps) {
         <ModalOverlay
             isOpen={open}
             isDismissable
-            onOpenChange={(isOpen) => shell.setPaletteOpen(isOpen)}
+            onOpenChange={(isOpen) => isOpen || shell.closePalette()}
             className={styles['overlay'] ?? ''}
         >
             <Modal className={styles['modal'] ?? ''}>
@@ -49,10 +49,7 @@ function PaletteContent({ shell, workspace }: CommandPaletteProps) {
     const intl = useIntl();
     const { contains } = useFilter({ sensitivity: 'base' });
     const actions = useRef(paletteActions(intl, shell, workspace)).current;
-    const choose = (action: WorkspaceAction): void => {
-        shell.setPaletteOpen(false);
-        setTimeout(() => action.run(), 0);
-    };
+    const choose = (action: WorkspaceAction): void => shell.closePalette(() => action.run());
     return (
         <Dialog aria-label={intl.formatMessage(paletteMessages.title)} className={styles['dialog'] ?? ''}>
             <Autocomplete filter={contains}>

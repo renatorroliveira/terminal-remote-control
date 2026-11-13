@@ -38,6 +38,7 @@ const FAILURES: readonly ConnectionFailure[] = [
     })),
     { kind: 'update-app', installedVersion: '9.0.0', details: '' },
     { kind: 'install', code: 'noexec', details: '' },
+    { kind: 'install', code: 'upload', details: '' },
     { kind: 'incompatible', minProto: 3, maxProto: 4, details: '' },
     { kind: 'other', details: '' },
 ];
@@ -68,5 +69,11 @@ describe('connection failure messages (US-1.3.1, WCAG 3.3.3)', () => {
         });
         expect(problem).toBe('devbox-1 didn’t answer on port 22 within 15 seconds.');
         expect(remedy).toContain('VPN or proxy');
+    });
+
+    it('tells a noexec home to move the install location (US-1.4.3)', () => {
+        const { problem, remedy } = failureMessage(intl, 'devbox-1', { kind: 'install', code: 'noexec', details: '' });
+        expect(problem).toContain('mounted noexec');
+        expect(remedy).toContain('Choose another install location for devbox-1');
     });
 });

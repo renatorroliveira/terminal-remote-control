@@ -112,6 +112,26 @@ describe('Shell sidebar and dialogs (US-1.6.3)', () => {
         shell.run('palette.show');
         shell.run('notifications.show');
         expect(shell.state.getState()).toMatchObject({ paletteOpen: true, notificationsOpen: true });
+        let ran = false;
+        shell.closePalette(() => {
+            ran = true;
+        });
+        expect(shell.state.getState().paletteOpen).toBe(false);
+        await expect.poll(() => ran).toBe(true);
+    });
+});
+
+describe('Shell connection progress (US-1.4.5, US-1.3.2)', () => {
+    it('announces each step politely and a security-key touch assertively', async () => {
+        const { client, spoken } = await setup();
+        client.push('host-0', { status: 'connecting', step: 'connecting', touch: undefined });
+        client.push('host-0', { status: 'connecting', step: 'connecting', touch: 'Confirm user presence' });
+        client.push('host-0', { status: 'connecting', step: 'uploading', touch: undefined });
+        expect(spoken).toEqual([
+            'devbox-1: Connecting.',
+            '! Touch your security key for devbox-1',
+            'devbox-1: Uploading the daemon.',
+        ]);
     });
 });
 
@@ -135,7 +155,7 @@ describe('Shell host reports (A11Y-12.1, A11Y-12.2)', () => {
         workspace.toggleConnection('host-0');
         client.push('host-0', { status: 'connecting', step: 'connecting' } as never);
         client.push('host-0', { status: 'failed', failure });
-        expect(spoken).toHaveLength(1);
+        expect(spoken).toEqual(['Couldn’t connect to devbox-1. devbox-1 couldn’t be found.', 'devbox-1: Connecting.']);
         expect(shell.notifications.store.getState().items).toHaveLength(2);
     });
 });

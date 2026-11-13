@@ -590,6 +590,20 @@ As built:
 - Upgrade confirmation when sessions are running. A "newer daemon, update the app" message.
 - Forget host, with a confirmation that names what it deletes.
 
+As built:
+
+- Add host is a combobox that offers recent addresses, then the `Host` names of `~/.ssh/config` and its `Include`s
+  (read in the main process, the P-14 seam file first), with an optional user field (`autocomplete="username"`)
+  below. Add host stays to the right of the field. While the suggestions are open, the combobox hides the rest of the
+  window from assistive technology, as the APG combobox does.
+- The host key question is a modal alert dialog with the fingerprint in a read-only, selectable field; Escape
+  rejects. Each connection step and a security-key touch show in the host's state and are announced.
+- Host actions (context menu and palette): test the connection, change the install location (US-1.4.3; the add
+  flow still installs to `~/.trc` without asking, as the owner chose at M1) and Forget, which confirms and names
+  what it removes and what stays. A `noexec` home gets its own failure message pointing at the install location.
+- US-1.4.7 needs no confirmation in E1: an upload installs the new version beside the old one, and the running core
+  keeps serving, with its sessions, until it stops. The status bar shows the version that runs.
+
 **ST-13 Session tree and lifecycle** (US-1.6.2/4, US-1.7, US-1.8, US-1.9.3–4, US-1.10, A11Y-09.1–2, A11Y-11.9)
 
 - The in-house `role=tree`:
@@ -780,7 +794,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-9  | Done        | —      |
 | ST-10 | Done        | —      |
 | ST-11 | Done        | —      |
-| ST-12 | Not started | —      |
+| ST-12 | Done        | —      |
 | ST-13 | Not started | —      |
 | ST-14 | Not started | —      |
 | ST-15 | Not started | —      |

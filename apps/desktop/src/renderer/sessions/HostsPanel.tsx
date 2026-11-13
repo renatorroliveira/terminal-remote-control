@@ -1,20 +1,29 @@
-import { type FormEvent, useRef, useState } from 'react';
-import { Button, FieldError, Input, Label, Text, TextField } from 'react-aria-components';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
+import {
+    Button,
+    ComboBox,
+    FieldError,
+    Input,
+    Label,
+    ListBox,
+    ListBoxItem,
+    Popover,
+    Text,
+    TextField,
+} from 'react-aria-components';
 import { type IntlShape, useIntl } from 'react-intl';
 import { useStore } from 'zustand';
+import { useShell } from '../app/shell-context';
 import { contextMenuMessages } from '../app/shell-messages';
 import { hostActions } from '../app/workspace-actions';
 import { BUTTON, PRIMARY_BUTTON } from '../ui/buttons';
 import { useContextMenu } from '../ui/context-menu';
 import { BusyIcon, ConnectedIcon, DisconnectedIcon } from '../ui/icons';
+import { ADD_HOST_ATTRIBUTE } from './HostDialogs';
 import styles from './HostsPanel.module.css';
-import {
-    connectionActionMessages,
-    hostFailureMessage,
-    hostKeyMessage,
-    hostStateMessages,
-    sidebarMessages,
-} from './messages';
+import { addHostMessages } from './host-messages';
+import { hostStateText } from './host-state-text';
+import { connectionActionMessages, hostFailureMessage, hostStateMessages, sidebarMessages } from './messages';
 import type { WorkspaceController } from './workspace-controller';
 import type { HostEntry } from './workspace-model';
 
@@ -46,11 +55,6 @@ export function HostsPanel({ workspace }: HostsPanelProps) {
                     ))}
                 </ul>
             )}
-            {hosts.map((host) =>
-                host.state.status === 'host-key' ? (
-                    <HostKeyQuestion key={host.id} host={host} workspace={workspace} />
-                ) : null,
-            )}
             <AddHostForm workspace={workspace} />
         </section>
     );
@@ -61,14 +65,13 @@ function HostRow({ host, workspace }: { readonly host: HostEntry; readonly works
     const action = workspace.connectionAction(host);
     const badge = badgeOf(host);
     const descriptionId = `${host.id}-state`;
+    const shell = useShell();
     const { triggerProps, menu } = useContextMenu(() => ({
         label: intl.formatMessage(contextMenuMessages.label, { target: host.destination }),
-        items: hostActions(intl, workspace, host),
+        items: hostActions(intl, workspace, host, shell),
     }));
     const press = (): void => {
-        if (action === 'review-key') {
-            document.getElementById(`${host.id}-trust`)?.focus();
-        } else {
+        if (action !== 'review-key') {
             workspace.toggleConnection(host.id);
         }
     };
@@ -92,66 +95,52 @@ function HostRow({ host, workspace }: { readonly host: HostEntry; readonly works
     );
 }
 
-function HostKeyQuestion({ host, workspace }: { readonly host: HostEntry; readonly workspace: WorkspaceController }) {
-    const intl = useIntl();
-    if (host.state.status !== 'host-key') {
-        return null;
-    }
-    const { key } = host.state;
-    return (
-        <fieldset className={styles['question']}>
-            <legend className={styles['legend']}>
-                {intl.formatMessage(hostKeyMessage, {
-                    host: host.destination,
-                    type: key.type,
-                    fingerprint: key.fingerprint,
-                })}
-            </legend>
-            <Button
-                id={`${host.id}-trust`}
-                className={BUTTON}
-                onPress={() => workspace.acceptHostKey(host.id, key.fingerprint)}
-            >
-                {intl.formatMessage(sidebarMessages.trust)}
-            </Button>
-            <Button className={BUTTON} onPress={() => workspace.rejectHostKey(host.id)}>
-                {intl.formatMessage(sidebarMessages.reject)}
-            </Button>
-        </fieldset>
-    );
-}
-
 function AddHostForm({ workspace }: HostsPanelProps) {
     const intl = useIntl();
     const [address, setAddress] = useState('');
-    const [invalid, setInvalid] = useState(false);
+    const [user, setUser] = useState('');
+    const [problem, setProblem] = useState<'address' | 'two-users' | undefined>();
+    const suggestions = useSuggestions(workspace);
     const shown = useRef(address);
     shown.current = address;
     const submit = (event: FormEvent): void => {
         event.preventDefault();
-        const submitted = address;
-        const stillShown = (): boolean => shown.current === submitted;
+        const typed = address.trim();
+        if (user.trim() !== '' && typed.includes('@')) {
+            setProblem('two-users');
+            return;
+        }
+        const submitted = user.trim() === '' ? typed : `${user.trim()}@${typed}`;
+        const stillShown = (): boolean => shown.current === address;
         workspace.addHost(submitted).then(
-            () => stillShown() && setAddress(''),
-            () => stillShown() && setInvalid(true),
+            () => {
+                if (stillShown()) {
+                    setAddress('');
+                    setUser('');
+                }
+            },
+            () => stillShown() && setProblem('address'),
         );
     };
+    const edited = (): void => setProblem(undefined);
     return (
         <form className={styles['form']} onSubmit={submit}>
-            <TextField
-                value={address}
-                onChange={(value) => {
+            <ComboBox
+                inputValue={address}
+                onInputChange={(value) => {
                     setAddress(value);
-                    setInvalid(false);
+                    edited();
                 }}
+                allowsCustomValue
                 isRequired
-                isInvalid={invalid}
-                className={styles['field'] ?? ''}
+                isInvalid={problem === 'address'}
+                items={suggestions.map((suggestion) => ({ id: suggestion }))}
+                className={styles['combo'] ?? ''}
             >
                 <Label>{intl.formatMessage(sidebarMessages.newHost)}</Label>
                 <div className={styles['entry']}>
-                    <Input className={styles['input'] ?? ''} />
-                    <Button type="submit" className={PRIMARY_BUTTON}>
+                    <Input {...{ [ADD_HOST_ATTRIBUTE]: '' }} className={styles['input'] ?? ''} />
+                    <Button slot={null} type="submit" className={PRIMARY_BUTTON}>
                         {intl.formatMessage(sidebarMessages.addHost)}
                     </Button>
                 </div>
@@ -161,9 +150,50 @@ function AddHostForm({ workspace }: HostsPanelProps) {
                 <FieldError className={styles['error'] ?? ''}>
                     {intl.formatMessage(sidebarMessages.badAddress)}
                 </FieldError>
+                <Popover className={styles['popover'] ?? ''}>
+                    <ListBox className={styles['suggestions'] ?? ''}>
+                        {(item: { readonly id: string }) => (
+                            <ListBoxItem id={item.id} className={styles['suggestion'] ?? ''}>
+                                {item.id}
+                            </ListBoxItem>
+                        )}
+                    </ListBox>
+                </Popover>
+            </ComboBox>
+            <TextField
+                value={user}
+                onChange={(value) => {
+                    setUser(value);
+                    edited();
+                }}
+                isInvalid={problem === 'two-users'}
+                className={styles['user'] ?? ''}
+            >
+                <Label>{intl.formatMessage(addHostMessages.user)}</Label>
+                <Input autoComplete="username" className={styles['input'] ?? ''} />
+                <FieldError className={styles['error'] ?? ''}>
+                    {intl.formatMessage(addHostMessages.twoUsers)}
+                </FieldError>
             </TextField>
         </form>
     );
+}
+
+function useSuggestions(workspace: WorkspaceController): readonly string[] {
+    const [suggestions, setSuggestions] = useState<readonly string[]>([]);
+    const hosts = useStore(workspace.store, (state) => state.hosts);
+    useEffect(() => {
+        let current = true;
+        const added = new Set(hosts.map((host) => host.destination));
+        void workspace.suggestions().then(
+            (found) => current && setSuggestions(found.filter((address) => !added.has(address))),
+            () => undefined,
+        );
+        return () => {
+            current = false;
+        };
+    }, [workspace, hosts]);
+    return suggestions;
 }
 
 function badgeOf(host: HostEntry): Badge {
@@ -183,5 +213,5 @@ function hostDescription(intl: IntlShape, host: HostEntry): string {
     if (state.status === 'failed') {
         return intl.formatMessage(hostFailureMessage, { details: state.failure.details || state.failure.kind });
     }
-    return intl.formatMessage(hostStateMessages[state.status === 'host-key' ? 'hostKey' : state.status]);
+    return hostStateText(intl, host);
 }

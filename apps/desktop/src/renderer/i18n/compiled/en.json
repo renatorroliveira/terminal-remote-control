@@ -1,4 +1,34 @@
 {
+  "addHost.twoUsers": [
+    {
+      "type": 0,
+      "value": "Give the user either in the host field or here, not both."
+    }
+  ],
+  "addHost.user": [
+    {
+      "type": 0,
+      "value": "User (optional)"
+    }
+  ],
+  "announce.connectStep": [
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ": "
+    },
+    {
+      "type": 1,
+      "value": "step"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "announce.hostConnected": [
     {
       "type": 1,
@@ -475,6 +505,34 @@
       "value": "Check that the jump host is running and reachable, then connect again."
     }
   ],
+  "failure.noexec.problem": [
+    {
+      "type": 0,
+      "value": "The install location on "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " doesn’t allow running programs; it is mounted noexec."
+    }
+  ],
+  "failure.noexec.remedy": [
+    {
+      "type": 0,
+      "value": "Choose another install location for "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " from its actions (Shift+F10), such as a folder on another disk, then connect again."
+    }
+  ],
   "failure.ok": [
     {
       "type": 0,
@@ -687,6 +745,46 @@
       "value": "Update the app, then connect again."
     }
   ],
+  "forget.body": [
+    {
+      "type": 0,
+      "value": "TRC removes "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " from your hosts and closes its connection. Its sessions keep running on the host, and adding it again shows them."
+    }
+  ],
+  "forget.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "forget.confirm": [
+    {
+      "type": 0,
+      "value": "Forget"
+    }
+  ],
+  "forget.title": [
+    {
+      "type": 0,
+      "value": "Forget "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "?"
+    }
+  ],
   "host.action.cancel": [
     {
       "type": 0,
@@ -717,10 +815,48 @@
       "value": "host"
     }
   ],
+  "host.action.forget": [
+    {
+      "type": 0,
+      "value": "Forget "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "…"
+    }
+  ],
+  "host.action.installRoot": [
+    {
+      "type": 0,
+      "value": "Change install location of "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "…"
+    }
+  ],
   "host.action.reviewKey": [
     {
       "type": 0,
       "value": "Review the host key of "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "host.action.test": [
+    {
+      "type": 0,
+      "value": "Test connection to "
     },
     {
       "type": 1,
@@ -803,6 +939,108 @@
     {
       "type": 0,
       "value": ". Trust it?"
+    }
+  ],
+  "host.testPassed": [
+    {
+      "type": 0,
+      "value": "The connection to "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " works."
+    }
+  ],
+  "host.touch": [
+    {
+      "type": 0,
+      "value": "Touch your security key for "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "hostKey.explanation": [
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " presented a "
+    },
+    {
+      "type": 1,
+      "value": "type"
+    },
+    {
+      "type": 0,
+      "value": " key that your known_hosts file doesn’t have. Compare its fingerprint with one from the host’s administrator before you trust it."
+    }
+  ],
+  "hostKey.fingerprint": [
+    {
+      "type": 0,
+      "value": "SHA-256 fingerprint"
+    }
+  ],
+  "hostKey.title": [
+    {
+      "type": 0,
+      "value": "Trust the host key of "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "?"
+    }
+  ],
+  "installRoot.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "installRoot.hint": [
+    {
+      "type": 0,
+      "value": "A folder on the host where TRC may run programs, such as ~/.trc or /scratch/you/trc. The next connection uses it."
+    }
+  ],
+  "installRoot.invalid": [
+    {
+      "type": 0,
+      "value": "Type a path that starts with / or ~/."
+    }
+  ],
+  "installRoot.label": [
+    {
+      "type": 0,
+      "value": "Install location"
+    }
+  ],
+  "installRoot.save": [
+    {
+      "type": 0,
+      "value": "Save"
+    }
+  ],
+  "installRoot.title": [
+    {
+      "type": 0,
+      "value": "Install location of "
+    },
+    {
+      "type": 1,
+      "value": "host"
     }
   ],
   "notifications.clear": [
@@ -1167,6 +1405,42 @@
     {
       "type": 0,
       "value": "Tab moves focus"
+    }
+  ],
+  "step.checking": [
+    {
+      "type": 0,
+      "value": "Checking the daemon"
+    }
+  ],
+  "step.connecting": [
+    {
+      "type": 0,
+      "value": "Connecting"
+    }
+  ],
+  "step.handshake": [
+    {
+      "type": 0,
+      "value": "Greeting the daemon"
+    }
+  ],
+  "step.starting": [
+    {
+      "type": 0,
+      "value": "Starting the daemon"
+    }
+  ],
+  "step.uploading": [
+    {
+      "type": 0,
+      "value": "Uploading the daemon"
+    }
+  ],
+  "step.verifying": [
+    {
+      "type": 0,
+      "value": "Verifying the daemon"
     }
   ],
   "terminal.hint": [

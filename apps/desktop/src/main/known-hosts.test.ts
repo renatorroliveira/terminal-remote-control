@@ -33,3 +33,29 @@ describe('KnownHosts (US-1.1.1, P-18)', () => {
         expect(await hosts.list()).toEqual([]);
     });
 });
+
+describe('KnownHosts: forgetting, install locations and recent hosts (US-1.1.1, US-1.4.3, A11Y-11.9)', () => {
+    it('forgets a host but keeps offering its address again, newest first and without repeats', async () => {
+        const home = directory();
+        const hosts = new KnownHosts(home);
+        const first = await hosts.add('devbox-1', '~/.trc');
+        await hosts.add('me@build:2222', '~/.trc');
+        await hosts.add('devbox-1', '~/.trc');
+        expect(await hosts.recent()).toEqual(['devbox-1', 'me@build:2222']);
+        await hosts.remove(first.id);
+        expect((await new KnownHosts(home).list()).map((host) => host.address.destination)).toEqual(['me@build']);
+        expect(await new KnownHosts(home).recent()).toEqual(['devbox-1', 'me@build:2222']);
+    });
+
+    it('moves a host’s install location, and refuses one the bootstrap would not accept', async () => {
+        const hosts = new KnownHosts(directory());
+        const host = await hosts.add('devbox-1', '~/.trc');
+        expect(await hosts.setInstallRoot(host.id, '/scratch/me/trc')).toEqual({
+            ...host,
+            installRoot: '/scratch/me/trc',
+        });
+        await expect(hosts.setInstallRoot(host.id, 'relative/path')).rejects.toThrow(/install location/);
+        await expect(hosts.setInstallRoot('host-0000000000000000', '~/x')).rejects.toThrow(/no host/);
+        expect((await hosts.list())[0]?.installRoot).toBe('/scratch/me/trc');
+    });
+});

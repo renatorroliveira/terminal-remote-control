@@ -2,12 +2,17 @@ import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { DESTINATION_PATTERN, formatHostAddress, parseHostAddress } from '../shared/host-address';
-import type { KnownHost } from '../shared/hosts';
+import { isInstallRoot, type KnownHost } from '../shared/hosts';
 import { JsonStore } from './json-store';
 
 interface HostsFile {
     readonly hosts: readonly KnownHost[];
+    /** Addresses the user added, newest first, offered again even after the host is forgotten (US-1.1.1). */
+    readonly recent?: readonly string[];
 }
+
+/** How many recent addresses `hosts.json` keeps. */
+const RECENT_LIMIT = 20;
 
 const HOST_SCHEMA: z.ZodType<KnownHost> = z
     .object({
@@ -22,7 +27,12 @@ const HOST_SCHEMA: z.ZodType<KnownHost> = z
     })
     .strict();
 
-const FILE_SCHEMA: z.ZodType<HostsFile> = z.object({ hosts: z.array(HOST_SCHEMA).max(1000) }).strict();
+const FILE_SCHEMA: z.ZodType<HostsFile> = z
+    .object({
+        hosts: z.array(HOST_SCHEMA).max(1000),
+        recent: z.array(z.string().max(1024)).max(RECENT_LIMIT).exactOptional(),
+    })
+    .strict();
 
 /** The hosts the user added, in the order added, kept in the TRC home's `hosts.json` (US-1.1.1, P-18). */
 export class KnownHosts {
@@ -39,11 +49,45 @@ export class KnownHosts {
         return (await this.#store.read()).hosts;
     }
 
+    /** Addresses the user added, newest first, including forgotten hosts (US-1.1.1). */
+    async recent(): Promise<readonly string[]> {
+        return (await this.#store.read()).recent ?? [];
+    }
+
     /** Adds the host at `addressText`, or returns the known one with the same address and install location. */
     add(addressText: string, installRoot: string): Promise<KnownHost> {
-        const added = this.#last.then(() => this.#add(addressText, installRoot));
-        this.#last = added.catch(() => undefined);
-        return added;
+        return this.#serially(() => this.#add(addressText, installRoot));
+    }
+
+    /** Forgets a host; its address stays among the recent ones (A11Y-11.9). */
+    remove(id: string): Promise<void> {
+        return this.#serially(async () => {
+            const file = await this.#store.read();
+            await this.#store.write({ ...file, hosts: file.hosts.filter((host) => host.id !== id) });
+        });
+    }
+
+    /** Moves a host's install location, for a home directory that cannot run programs (US-1.4.3). */
+    setInstallRoot(id: string, installRoot: string): Promise<KnownHost> {
+        return this.#serially(async () => {
+            if (!isInstallRoot(installRoot)) {
+                throw new Error(`not an install location: ${JSON.stringify(installRoot)}`);
+            }
+            const file = await this.#store.read();
+            const host = file.hosts.find((entry) => entry.id === id);
+            if (host === undefined) {
+                throw new Error(`no host ${id}`);
+            }
+            const moved: KnownHost = { ...host, installRoot };
+            await this.#store.write({ ...file, hosts: file.hosts.map((entry) => (entry.id === id ? moved : entry)) });
+            return moved;
+        });
+    }
+
+    #serially<T>(change: () => Promise<T>): Promise<T> {
+        const next = this.#last.then(change);
+        this.#last = next.catch(() => undefined);
+        return next;
     }
 
     async #add(addressText: string, installRoot: string): Promise<KnownHost> {
@@ -51,14 +95,14 @@ export class KnownHosts {
         if (address === undefined) {
             throw new Error(`not a host address: ${JSON.stringify(addressText)}`);
         }
-        const { hosts } = await this.#store.read();
+        const file = await this.#store.read();
         const key = formatHostAddress(address);
-        const known = hosts.find((host) => formatHostAddress(host.address) === key && host.installRoot === installRoot);
-        if (known !== undefined) {
-            return known;
-        }
-        const host: KnownHost = { id: `host-${randomBytes(8).toString('hex')}`, address, installRoot };
-        await this.#store.write({ hosts: [...hosts, host] });
+        const recent = [key, ...(file.recent ?? []).filter((entry) => entry !== key)].slice(0, RECENT_LIMIT);
+        const known = file.hosts.find(
+            (host) => formatHostAddress(host.address) === key && host.installRoot === installRoot,
+        );
+        const host: KnownHost = known ?? { id: `host-${randomBytes(8).toString('hex')}`, address, installRoot };
+        await this.#store.write({ hosts: known === undefined ? [...file.hosts, host] : file.hosts, recent });
         return host;
     }
 }

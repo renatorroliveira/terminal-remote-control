@@ -6,6 +6,7 @@ import { APP_IDENTITY } from '../../shared/app-identity';
 import { SIDEBAR_WIDTH } from '../../shared/layout';
 import { shellMessages } from '../i18n/messages';
 import { ConnectionFailureDialog } from '../sessions/ConnectionFailureDialog';
+import { HostDialogs } from '../sessions/HostDialogs';
 import { NEW_SESSION_ATTRIBUTE } from '../sessions/HostSessions';
 import { sidebarMessages } from '../sessions/messages';
 import { Sidebar } from '../sessions/Sidebar';
@@ -18,6 +19,7 @@ import { REGION_ATTRIBUTE } from './regions';
 import { SidebarSplitter } from './SidebarSplitter';
 import { StatusBar } from './StatusBar';
 import type { Shell } from './shell';
+import { ShellContext } from './shell-context';
 
 /** Where the terminal area hands its element. */
 export interface TerminalArea {
@@ -43,14 +45,17 @@ export function App({ workspace, terminals, shell }: AppProps) {
     useEffect(() => shell.start(), [shell]);
     useFocusRescue(workspace);
     return (
-        <div className={styles['shell'] ?? ''}>
-            <h1 className={styles['title'] ?? ''}>{APP_IDENTITY.productName}</h1>
-            <WorkspaceArea workspace={workspace} terminals={terminals} shell={shell} />
-            <StatusBar workspace={workspace} shell={shell} />
-            <ConnectionFailureDialog workspace={workspace} />
-            <CommandPalette shell={shell} workspace={workspace} />
-            <NotificationsDialog shell={shell} />
-        </div>
+        <ShellContext.Provider value={shell}>
+            <div className={styles['shell'] ?? ''}>
+                <h1 className={styles['title'] ?? ''}>{APP_IDENTITY.productName}</h1>
+                <WorkspaceArea workspace={workspace} terminals={terminals} shell={shell} />
+                <StatusBar workspace={workspace} shell={shell} />
+                <ConnectionFailureDialog workspace={workspace} />
+                <HostDialogs workspace={workspace} shell={shell} />
+                <CommandPalette shell={shell} workspace={workspace} />
+                <NotificationsDialog shell={shell} />
+            </div>
+        </ShellContext.Provider>
     );
 }
 

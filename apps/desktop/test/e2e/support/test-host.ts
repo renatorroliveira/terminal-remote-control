@@ -74,7 +74,8 @@ export function removeInstall(alias: string, root: string): void {
  * surface once it opens.
  */
 export async function openTerminal(window: Page, destination: string): Promise<Locator> {
-    await window.getByRole('textbox', { name: 'New host' }).fill(destination);
+    await window.getByRole('combobox', { name: 'New host' }).fill(destination);
+    await window.keyboard.press('Tab');
     await window.getByRole('button', { name: 'Add host' }).click();
     await window.getByRole('button', { name: `Connect ${destination}` }).click();
     await window.getByRole('button', { name: `Disconnect ${destination}` }).waitFor({ timeout: 60_000 });

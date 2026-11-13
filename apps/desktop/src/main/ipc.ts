@@ -12,11 +12,16 @@ export type InvokeHandlers = {
     readonly [C in InvokeChannel]: (...args: InvokeContract[C]['args']) => Promise<InvokeContract[C]['result']>;
 };
 
+const HOST_ID = z.string().regex(/^host-[0-9a-f]{16}$/);
+
 const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['args']> } = {
     'display:get': z.tuple([]),
     'accessibility:get': z.tuple([]),
     'hosts:list': z.tuple([]),
     'hosts:add': z.tuple([z.string().min(1).max(1024)]),
+    'hosts:suggestions': z.tuple([]),
+    'hosts:remove': z.tuple([HOST_ID]),
+    'hosts:set-install-root': z.tuple([HOST_ID, z.string().min(1).max(4096)]),
     'sidebar:get-width': z.tuple([]),
     'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),
     'sidebar:get-collapsed': z.tuple([]),

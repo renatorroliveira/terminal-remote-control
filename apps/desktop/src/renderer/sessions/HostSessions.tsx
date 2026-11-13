@@ -1,5 +1,6 @@
 import { Button, Heading } from 'react-aria-components';
 import { useIntl } from 'react-intl';
+import { useShell } from '../app/shell-context';
 import { contextMenuMessages } from '../app/shell-messages';
 import { hostActions, sessionActions } from '../app/workspace-actions';
 import { useContextMenu } from '../ui/context-menu';
@@ -33,13 +34,14 @@ export function HostSessions({ group, workspace, open, onOpened }: HostSessionsP
     const intl = useIntl();
     const { host, expanded } = group;
     const listId = `${host.id}-sessions`;
+    const shell = useShell();
     const { triggerProps, menu } = useContextMenu((origin) => {
         const key = origin.closest<HTMLElement>('[data-session-key]')?.dataset['sessionKey'];
         const item = group.sessions.find((entry) => entry.key === key);
         return item === undefined
             ? {
                   label: intl.formatMessage(contextMenuMessages.label, { target: host.destination }),
-                  items: hostActions(intl, workspace, host),
+                  items: hostActions(intl, workspace, host, shell),
               }
             : {
                   label: intl.formatMessage(contextMenuMessages.label, { target: item.label }),
