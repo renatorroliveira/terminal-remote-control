@@ -24,12 +24,15 @@ export interface TestHostApp {
     readonly window: Page;
 }
 
-/** Launches the test build with the test hosts' ssh config and known hosts; hosts it adds install under `installRoot`. */
-export async function launchWithTestHosts(installRoot?: string): Promise<TestHostApp> {
+/**
+ * Launches the test build with the test hosts' ssh config and known hosts and any extra command-line `args`; hosts
+ * it adds install under `installRoot`.
+ */
+export async function launchWithTestHosts(installRoot?: string, args: readonly string[] = []): Promise<TestHostApp> {
     const scratch = mkdtempSync(join(tmpdir(), 'trc-e2e-'));
     const knownHosts = join(scratch, 'known_hosts');
     copyFileSync(join(run, 'known_hosts.smoke'), knownHosts);
-    const app = await launchApp([`--user-data-dir=${join(scratch, 'user-data')}`], {
+    const app = await launchApp([`--user-data-dir=${join(scratch, 'user-data')}`, ...args], {
         TRC_TEST_SSH_CONFIG: join(run, 'ssh_config'),
         TRC_TEST_KNOWN_HOSTS: knownHosts,
         TRC_HOME: join(scratch, 'home'),
@@ -88,4 +91,37 @@ export async function openTerminal(window: Page, destination: string): Promise<L
 /** The text of every row the terminal's text surface exposes. */
 export function rowTexts(terminal: Locator): Promise<string[]> {
     return terminal.locator('[data-row]').allTextContents();
+}
+
+interface SpeechWindow {
+    __trcSpoken?: string[];
+}
+
+/** Records everything the page speaks, through `ariaNotify` or a live region, for {@link spokenTexts}. */
+export function recordSpeech(window: Page): Promise<void> {
+    return window.evaluate(() => {
+        const spoken: string[] = [];
+        (globalThis as SpeechWindow).__trcSpoken = spoken;
+        const page = document as Document & { ariaNotify?: (text: string, options?: unknown) => void };
+        const notify = page.ariaNotify?.bind(page);
+        if (notify !== undefined) {
+            page.ariaNotify = (text, options) => {
+                spoken.push(text);
+                notify(text, options);
+            };
+        }
+        new MutationObserver((records) => {
+            for (const record of records) {
+                const region = record.target.parentElement?.closest('[aria-live]') ?? record.target;
+                if (region instanceof HTMLElement && region.hasAttribute('aria-live')) {
+                    spoken.push(region.textContent ?? '');
+                }
+            }
+        }).observe(document.body, { subtree: true, childList: true, characterData: true });
+    });
+}
+
+/** What the page spoke since {@link recordSpeech}. */
+export function spokenTexts(window: Page): Promise<string[]> {
+    return window.evaluate(() => [...((globalThis as SpeechWindow).__trcSpoken ?? [])]);
 }

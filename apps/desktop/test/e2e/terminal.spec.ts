@@ -2,9 +2,11 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
     launchWithTestHosts,
     openTerminal,
+    recordSpeech,
     removeInstall,
     rowTexts,
     scratchInstallRoot,
+    spokenTexts,
     testHostsMissing,
 } from './support/test-host';
 
@@ -62,6 +64,10 @@ function recordCanvasFonts(): void {
     });
 }
 
+async function spokenWith(window: Page, part: string): Promise<string[]> {
+    return (await spokenTexts(window)).filter((text) => text.includes(part));
+}
+
 function domSelection(window: Page): Promise<string> {
     return window.evaluate(() => getSelection()?.toString() ?? '');
 }
@@ -92,6 +98,24 @@ test.describe('a live terminal on a Linux host (M1)', () => {
         await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('hi');
         await expect(terminal).toBeFocused();
         await expect(window.locator('.xterm')).toHaveAttribute('aria-hidden', 'true');
+        await app.close();
+    });
+});
+
+test.describe('a live terminal on a Linux host: spoken output (A11Y-02, A11Y-10.2)', () => {
+    const install = liveHost();
+
+    test('speaks a command’s output in screen-reader mode, but not the echo of what was typed (A11Y-01.4)', async () => {
+        const { app, window } = await launchWithTestHosts(install.root, ['--screen-reader-mode=on']);
+        await recordSpeech(window);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
+        await terminal.focus();
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await window.waitForTimeout(500);
+        await window.keyboard.type('echo trc""spoken');
+        await window.keyboard.press('Enter');
+        await expect.poll(() => spokenWith(window, 'trcspoken'), { timeout: 15_000 }).not.toEqual([]);
+        expect(await spokenWith(window, 'echo')).toEqual([]);
         await app.close();
     });
 });

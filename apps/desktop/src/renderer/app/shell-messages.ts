@@ -1,4 +1,5 @@
 import { defineMessage, defineMessages } from 'react-intl';
+import type { ScreenReaderMode } from '../../shared/accessibility';
 import type { CommandId } from '../../shared/keymap';
 
 /** Each command's name in the palette and in accessibility help (docs/design/keymap.md). */
@@ -88,6 +89,39 @@ export const shellAnnouncements = defineMessages({
         description: 'Announced when a new session needs a connected host.',
     },
     sidebarShown: { id: 'announce.sidebarShown', defaultMessage: 'Sidebar shown.', description: 'Announcement.' },
+});
+
+/** Screen-reader mode turning on or off (A11Y-10.2). */
+export const screenReaderAnnouncements = defineMessages({
+    on: {
+        id: 'announce.screenReaderOn',
+        defaultMessage: 'Screen reader mode on.',
+        description: 'Announced when screen-reader mode turns on: the open session’s output is spoken.',
+    },
+    off: {
+        id: 'announce.screenReaderOff',
+        defaultMessage: 'Screen reader mode off.',
+        description: 'Announced when screen-reader mode turns off.',
+    },
+});
+
+/** The palette entries that pick a screen-reader mode (A11Y-10.2). */
+export const screenReaderModeMessages = defineMessages<ScreenReaderMode>({
+    auto: {
+        id: 'palette.screenReaderAuto',
+        defaultMessage: 'Screen reader mode: automatic',
+        description: 'Palette entry: screen-reader mode follows whether assistive technology is detected.',
+    },
+    on: {
+        id: 'palette.screenReaderOn',
+        defaultMessage: 'Screen reader mode: on',
+        description: 'Palette entry: forces screen-reader mode on.',
+    },
+    off: {
+        id: 'palette.screenReaderOff',
+        defaultMessage: 'Screen reader mode: off',
+        description: 'Palette entry: forces screen-reader mode off.',
+    },
 });
 
 /** Mute state announcements, naming the session. */

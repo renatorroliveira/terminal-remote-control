@@ -54,6 +54,26 @@ describe('Announcer: status messages that never move focus (A11Y-12.1, A11Y-12.3
         expect(sink.spoken).toEqual(['polite: first', 'polite: connected']);
     });
 
+    it('joins output still waiting in an appending group, line after line (A11Y-02.1)', () => {
+        const { sink, clock, announcer: speaker } = announcer();
+        speaker.announce('connected', { group: 'host-a' });
+        speaker.announce('line one', { group: 'output', append: true });
+        speaker.announce('line two', { group: 'output', append: true });
+        clock.advance(500);
+        expect(sink.spoken).toEqual(['polite: connected', 'polite: line one\nline two']);
+    });
+
+    it('drops a group’s waiting message when it is cancelled, so stopped speech is not queued again (A11Y-02.6)', () => {
+        const { sink, clock, announcer: speaker } = announcer();
+        speaker.announce('connected', { group: 'host-a' });
+        speaker.announce('old output', { group: 'output', append: true });
+        speaker.announce('build connected', { group: 'host-b' });
+        speaker.cancel('output');
+        clock.advance(500);
+        clock.advance(500);
+        expect(sink.spoken).toEqual(['polite: connected', 'polite: build connected']);
+    });
+
     it('speaks an assertive message ahead of waiting polite ones', () => {
         const { sink, clock, announcer: speaker } = announcer();
         speaker.announce('one');

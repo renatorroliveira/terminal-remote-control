@@ -3,10 +3,13 @@ import { createIntl } from 'react-intl';
 import type { HostClient } from '../connection/host-client';
 import { DEFAULT_LOCALE, messagesFor } from '../i18n/locale';
 import { terminalLabelMessage, terminalMessages } from '../sessions/messages';
-import { type KnownHostStore, WorkspaceController } from '../sessions/workspace-controller';
+import { type KnownHostStore, type SessionKey, WorkspaceController } from '../sessions/workspace-controller';
 import { sessionName } from '../sessions/workspace-model';
-import { TerminalRegistry } from '../terminal/terminal-registry';
+import { DEFAULT_FLOOD_THRESHOLD } from '../terminal/output-announcer';
+import { floodMessage } from '../terminal/output-messages';
+import { type SessionSpeech, TerminalRegistry } from '../terminal/terminal-registry';
 import type { TerminalPalette } from '../ui/themes';
+import type { Announcer } from './announcer';
 
 /** The live workspace: the read model and its controller, and the terminals it shows. */
 export interface ComposedWorkspace {
@@ -22,6 +25,17 @@ export interface WorkspaceSources {
     readonly palette: TerminalPalette;
     /** Where known hosts are kept (P-18). */
     readonly hosts: KnownHostStore;
+    /** Where the open session's output is spoken, and when (A11Y-02). */
+    readonly speech: SpeechSources;
+}
+
+/** What speaking output needs. */
+export interface SpeechSources {
+    readonly announcer: Pick<Announcer, 'announce' | 'cancel'>;
+    /** Whether screen-reader mode is on (A11Y-10.2). */
+    readonly screenReader: () => boolean;
+    /** Whether the user muted a session's output (A11Y-02.4). */
+    readonly isMuted: (key: SessionKey) => boolean;
 }
 
 /** Builds the workspace over a connection-host client, naming each terminal after its session and host. */
@@ -43,7 +57,20 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
             hint: intl.formatMessage(terminalMessages.hint),
         }),
         onActivity: (key) => workspace?.recordActivity(key),
+        speech: sessionSpeech(sources.speech, (lines) => intl.formatMessage(floodMessage, { lines })),
     });
     workspace = new WorkspaceController(sources.client, terminals, sources.hosts);
     return { workspace, terminals };
+}
+
+/** Speaks each session's output through the announcer, one appending group per session (A11Y-02.1). */
+function sessionSpeech(sources: SpeechSources, summary: (lines: number) => string): SessionSpeech {
+    const group = (key: SessionKey): string => `output:${key}`;
+    return {
+        allowed: (key) => sources.screenReader() && !sources.isMuted(key),
+        speak: (key, text) => sources.announcer.announce(text, { group: group(key), append: true }),
+        cancel: (key) => sources.announcer.cancel(group(key)),
+        floodThreshold: () => DEFAULT_FLOOD_THRESHOLD,
+        summary,
+    };
 }

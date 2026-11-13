@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { ClientRequest } from '../connection/host-client';
 import { THEMES } from '../ui/themes';
 import type { SessionTransport } from './session-link';
-import { TerminalRegistry } from './terminal-registry';
+import { type SessionSpeech, TerminalRegistry } from './terminal-registry';
 
 const info = (id: string): SessionInfo => ({
     id,
@@ -25,7 +25,18 @@ const info = (id: string): SessionInfo => ({
 
 class FakeTransport implements SessionTransport {
     readonly requests: ClientRequest[] = [];
+    readonly #outputs = new Map<number, (data: Uint8Array) => void>();
     #stream = 0;
+
+    /** Sends output on the stream the session attached with. */
+    output(stream: number, text: string): void {
+        this.#outputs.get(stream)?.(new TextEncoder().encode(text));
+    }
+
+    /** Whether a stream is attached. */
+    attached(stream: number): boolean {
+        return this.#outputs.has(stream);
+    }
 
     request(_hostId: string, request: ClientRequest): Promise<ServerMessage> {
         this.requests.push(request);
@@ -53,8 +64,9 @@ class FakeTransport implements SessionTransport {
         return;
     }
 
-    onOutput(): () => void {
-        return () => undefined;
+    onOutput(_hostId: string, stream: number, listener: (data: Uint8Array) => void): () => void {
+        this.#outputs.set(stream, listener);
+        return () => this.#outputs.delete(stream);
     }
 }
 
@@ -67,7 +79,34 @@ afterEach(() => {
     document.body.replaceChildren();
 });
 
+class FakeSpeech implements SessionSpeech {
+    readonly spoken: string[] = [];
+    readonly cancelled: string[] = [];
+    readonly muted = new Set<string>();
+
+    allowed(key: string): boolean {
+        return !this.muted.has(key);
+    }
+
+    speak(key: string, text: string): void {
+        this.spoken.push(`${key}: ${text}`);
+    }
+
+    cancel(key: string): void {
+        this.cancelled.push(key);
+    }
+
+    floodThreshold(): number {
+        return 20;
+    }
+
+    summary(lines: number): string {
+        return `${lines} lines of output`;
+    }
+}
+
 function setup() {
+    const speech = new FakeSpeech();
     const area = document.createElement('div');
     area.style.width = '1200px';
     area.style.height = '500px';
@@ -83,10 +122,11 @@ function setup() {
             name: `${session.profile.name}, ${hostId}`,
             hint: 'Option F1: accessibility help.',
         }),
+        speech,
     });
     registry.attach(area);
     registries.push(registry);
-    return { area, transport, registry };
+    return { area, transport, registry, speech };
 }
 
 function requestsOf(transport: FakeTransport, type: ClientRequest['type']): number {
@@ -178,5 +218,36 @@ describe('TerminalRegistry controls (A11Y-05.3, A11Y-05.4)', () => {
         expect(document.activeElement).toBe(surface);
         registry.attach(area);
         expect(document.activeElement).toBe(surface);
+    });
+});
+
+describe('TerminalRegistry output speech (A11Y-02.1, A11Y-02.4, A11Y-02.7)', () => {
+    const settled = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 300));
+
+    it('speaks the open session’s new output, and not the screen it restores on attach', async () => {
+        const { transport, registry, speech } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(1)).toBe(true);
+        transport.output(1, 'restored\r\n$ ');
+        await settled();
+        transport.output(1, 'hello\r\n$ ');
+        await expect.poll(() => speech.spoken).toEqual(['h1/a: hello\n$']);
+    });
+
+    it('stays silent for background and muted sessions, and drops what the session left behind had waiting', async () => {
+        const { transport, registry, speech } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        registry.show('h1/b', 'h1', info('b'));
+        await expect.poll(() => transport.attached(2)).toBe(true);
+        expect(speech.cancelled).toEqual(['h1/a']);
+        for (const stream of [1, 2]) {
+            transport.output(stream, 'restored\r\n');
+        }
+        await settled();
+        speech.muted.add('h1/b');
+        transport.output(1, 'in the background\r\n');
+        transport.output(2, 'muted\r\n');
+        await settled();
+        expect(speech.spoken).toEqual([]);
     });
 });

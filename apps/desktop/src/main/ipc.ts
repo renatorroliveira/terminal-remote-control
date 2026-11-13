@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SCREEN_READER_MODES } from '../shared/accessibility';
 import type { InvokeChannel, InvokeContract } from '../shared/contract';
 import { SIDEBAR_WIDTH } from '../shared/layout';
 
@@ -17,6 +18,7 @@ const HOST_ID = z.string().regex(/^host-[0-9a-f]{16}$/);
 const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['args']> } = {
     'display:get': z.tuple([]),
     'accessibility:get': z.tuple([]),
+    'accessibility:set-mode': z.tuple([z.enum(SCREEN_READER_MODES)]),
     'hosts:list': z.tuple([]),
     'hosts:add': z.tuple([z.string().min(1).max(1024)]),
     'hosts:suggestions': z.tuple([]),

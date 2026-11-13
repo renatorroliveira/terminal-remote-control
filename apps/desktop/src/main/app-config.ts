@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { z } from 'zod';
+import { SCREEN_READER_MODES, type ScreenReaderMode } from '../shared/accessibility';
 import { DEFAULT_THEME_PREFERENCE, type ThemePreference } from '../shared/display';
 import { SIDEBAR_WIDTH } from '../shared/layout';
 import { JsonStore } from './json-store';
@@ -11,6 +12,8 @@ export interface AppConfig {
     readonly sidebarWidth: number;
     /** Whether the user hid the sidebar (US-1.6.3). */
     readonly sidebarCollapsed: boolean;
+    /** Whether screen-reader mode follows Chromium's detection or is forced on or off (A11Y-10.2). */
+    readonly screenReaderMode: ScreenReaderMode;
 }
 
 /** The configuration of a new install. */
@@ -18,6 +21,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
     theme: DEFAULT_THEME_PREFERENCE,
     sidebarWidth: SIDEBAR_WIDTH.initial,
     sidebarCollapsed: false,
+    screenReaderMode: 'auto',
 };
 
 const THEME_PREFERENCES = ['midnight', 'system', 'light', 'dark', 'hc-light', 'hc-dark'] as const;
@@ -27,6 +31,7 @@ const CONFIG_SCHEMA: z.ZodType<AppConfig> = z.object({
     theme: THEME_SCHEMA.catch(DEFAULT_APP_CONFIG.theme),
     sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max).catch(DEFAULT_APP_CONFIG.sidebarWidth),
     sidebarCollapsed: z.boolean().catch(DEFAULT_APP_CONFIG.sidebarCollapsed),
+    screenReaderMode: z.enum(SCREEN_READER_MODES).catch(DEFAULT_APP_CONFIG.screenReaderMode),
 });
 
 /** The theme preference in `value`, when it names one. */

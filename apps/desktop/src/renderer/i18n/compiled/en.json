@@ -155,6 +155,18 @@
       "value": ", new output."
     }
   ],
+  "announce.screenReaderOff": [
+    {
+      "type": 0,
+      "value": "Screen reader mode off."
+    }
+  ],
+  "announce.screenReaderOn": [
+    {
+      "type": 0,
+      "value": "Screen reader mode on."
+    }
+  ],
   "announce.sidebarHidden": [
     {
       "type": 0,
@@ -1285,6 +1297,42 @@
       "value": "Notifications"
     }
   ],
+  "output.flood": [
+    {
+      "type": 6,
+      "value": "lines",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " line"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " lines"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " of output"
+    }
+  ],
   "palette.empty": [
     {
       "type": 0,
@@ -1317,6 +1365,24 @@
     {
       "type": 1,
       "value": "host"
+    }
+  ],
+  "palette.screenReaderAuto": [
+    {
+      "type": 0,
+      "value": "Screen reader mode: automatic"
+    }
+  ],
+  "palette.screenReaderOff": [
+    {
+      "type": 0,
+      "value": "Screen reader mode: off"
+    }
+  ],
+  "palette.screenReaderOn": [
+    {
+      "type": 0,
+      "value": "Screen reader mode: on"
     }
   ],
   "palette.search": [

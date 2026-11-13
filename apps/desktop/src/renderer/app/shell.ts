@@ -1,5 +1,6 @@
 import type { IntlShape, MessageDescriptor } from 'react-intl';
 import { createStore, type StoreApi } from 'zustand/vanilla';
+import type { ScreenReaderMode } from '../../shared/accessibility';
 import type { CommandId, Keymap } from '../../shared/keymap';
 import { CommandRegistry } from '../commands/command-registry';
 import { installShortcuts } from '../commands/shortcuts';
@@ -21,6 +22,7 @@ import {
     hostAnnouncements,
     muteAnnouncements,
     openAnnouncements,
+    screenReaderAnnouncements,
     shellAnnouncements,
 } from './shell-messages';
 
@@ -30,6 +32,17 @@ export interface TerminalControls {
     setTabFocusMode(on: boolean): void;
     sendNextKey(): boolean;
     passingNextKey(): boolean;
+}
+
+/** What the shell asks of screen-reader mode (A11Y-10.2). */
+export interface ScreenReaderControls {
+    /** The mode the user picked, or automatic. */
+    readonly mode: ScreenReaderMode;
+    /** Whether screen-reader mode is on now. */
+    readonly screenReader: boolean;
+    setMode(mode: ScreenReaderMode): Promise<void>;
+    /** Calls `listener` whenever screen-reader mode turns on or off; returns a function that stops it. */
+    onScreenReaderChanged(listener: (on: boolean) => void): () => void;
 }
 
 /** Where the sidebar's width and visibility are kept: `config.json` in the TRC home. */
@@ -81,6 +94,8 @@ export interface ShellOptions {
     readonly document: Document;
     /** Whether the window is narrow enough that the sidebar is a panel. */
     readonly isNarrow: () => boolean;
+    /** Screen-reader mode, when the app can change it. */
+    readonly screenReader?: ScreenReaderControls;
 }
 
 const INITIAL_STATE: ShellState = {
@@ -136,11 +151,15 @@ export class Shell {
                   });
         const stopRegions = this.#regions.start();
         const stopHosts = this.#watchHosts();
+        const stopScreenReader =
+            this.#options.screenReader?.onScreenReaderChanged((on) => this.#announceScreenReader(on)) ??
+            (() => undefined);
         void this.#options.sidebar.collapsed().then((sidebarCollapsed) => this.state.setState({ sidebarCollapsed }));
         return () => {
             stopShortcuts();
             stopRegions();
             stopHosts();
+            stopScreenReader();
         };
     }
 
@@ -152,6 +171,24 @@ export class Shell {
     /** Whether output announcements are muted for a session (A11Y-02.4). */
     isMuted(key: SessionKey): boolean {
         return this.state.getState().muted.has(key);
+    }
+
+    /** The screen-reader mode the user picked, when the app can change it. */
+    get screenReaderMode(): ScreenReaderMode | undefined {
+        return this.#options.screenReader?.mode;
+    }
+
+    /** Sets and keeps a screen-reader mode, and confirms the result when it was already in effect (A11Y-10.2). */
+    async setScreenReaderMode(mode: ScreenReaderMode): Promise<void> {
+        const controls = this.#options.screenReader;
+        if (controls === undefined) {
+            return;
+        }
+        const before = controls.screenReader;
+        await controls.setMode(mode);
+        if (controls.screenReader === before) {
+            this.#announceScreenReader(before);
+        }
     }
 
     /** Opens the command palette, remembering where focus was. */
@@ -280,6 +317,10 @@ export class Shell {
     #sendNextKey(): void {
         const armed = this.#options.terminals.sendNextKey();
         this.#announce(armed ? shellAnnouncements.nextKey : shellAnnouncements.noSession);
+    }
+
+    #announceScreenReader(on: boolean): void {
+        this.#announce(on ? screenReaderAnnouncements.on : screenReaderAnnouncements.off);
     }
 
     #announce(message: MessageDescriptor): void {

@@ -57,6 +57,11 @@ if (container !== null) {
             assistiveTechnology: () => assistiveTechnology.active,
             palette,
             hosts: window.trc.hosts,
+            speech: {
+                announcer,
+                screenReader: () => assistiveTechnology.screenReader,
+                isMuted: (key) => shell?.isMuted(key) ?? false,
+            },
         });
         const { workspace, terminals } = composed;
         shell = new Shell({
@@ -69,6 +74,7 @@ if (container !== null) {
             intl,
             document,
             isNarrow: () => narrow.matches,
+            screenReader: assistiveTechnology,
         });
         void workspace.load().then(() => workspace.connectAll());
         reactRoot.render(

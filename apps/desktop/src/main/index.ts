@@ -6,7 +6,7 @@ import { APP_COMMAND_CHANNEL } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
 import { resolveKeymap } from '../shared/keymap';
 import { aboutPanelOptions } from './about-panel';
-import { relayAccessibilitySupport } from './accessibility-relay';
+import { relayAccessibility } from './accessibility-relay';
 import { AppConfigFile } from './app-config';
 import { appIconPath } from './app-icon';
 import { contentTypeFor, resolveAppRequest } from './app-protocol';
@@ -19,6 +19,7 @@ import { type InvokeHandlers, registerHandlers } from './ipc';
 import { KnownHosts } from './known-hosts';
 import { migrateLegacyState } from './legacy-state';
 import { menuTemplate } from './menu';
+import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
 import { sshConfigFilesFor, sshConfigHosts } from './ssh-config-hosts';
 import { trcHome } from './trc-home';
@@ -56,21 +57,31 @@ async function start(): Promise<void> {
     const home = trcHome(process.env, app.getPath('home'));
     await migrateLegacyState({ appData: app.getPath('appData'), home });
     const config = new AppConfigFile(home);
-    const { theme } = await config.read();
+    const { theme, screenReaderMode } = await config.read();
     const display = new DisplayRelay(theme);
+    const screenReader = new ScreenReaderSetting({
+        stored: screenReaderMode,
+        flag: screenReaderFlag(process.argv),
+        supportEnabled: () => app.isAccessibilitySupportEnabled(),
+        save: (mode) => config.update({ screenReaderMode: mode }),
+    });
     const knownHosts = new KnownHosts(home);
     registerHandlers(
         ipcMain,
         {
             'display:get': async () => display.current(),
-            'accessibility:get': async () => app.isAccessibilitySupportEnabled(),
+            'accessibility:get': async () => screenReader.current(),
+            'accessibility:set-mode': async (mode) => {
+                await screenReader.setMode(mode);
+                return undefined;
+            },
             ...hostHandlers(knownHosts),
             ...sidebarHandlers(config),
         },
         (event) => isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
     );
     installMenu(display, config, theme);
-    mainWindow = createWindow(display);
+    mainWindow = createWindow(display, screenReader);
 }
 
 type HostHandlers = Pick<
@@ -165,7 +176,7 @@ async function serveAppRequest(request: Request): Promise<Response> {
     });
 }
 
-function createWindow(display: DisplayRelay): BrowserWindow {
+function createWindow(display: DisplayRelay, screenReader: ScreenReaderSetting): BrowserWindow {
     const window = new BrowserWindow({
         width: 1200,
         height: 800,
@@ -179,7 +190,7 @@ function createWindow(display: DisplayRelay): BrowserWindow {
     }
     startConnectionHost(window, resources);
     display.attach(window);
-    relayAccessibilitySupport(window);
+    relayAccessibility(window, screenReader);
     void window.loadURL(devServer ?? `${APP_IDENTITY.appScheme}://${APP_IDENTITY.appHost}/index.html`);
     return window;
 }

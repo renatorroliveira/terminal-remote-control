@@ -47,6 +47,14 @@
     "defaultMessage": "{session} on {host}: {state}, new output.",
     "description": "Announced politely when a session with unseen output opens."
   },
+  "announce.screenReaderOff": {
+    "defaultMessage": "Screen reader mode off.",
+    "description": "Announced when screen-reader mode turns off."
+  },
+  "announce.screenReaderOn": {
+    "defaultMessage": "Screen reader mode on.",
+    "description": "Announced when screen-reader mode turns on: the open session’s output is spoken."
+  },
   "announce.sidebarHidden": {
     "defaultMessage": "Sidebar hidden.",
     "description": "Announcement."
@@ -547,6 +555,10 @@
     "defaultMessage": "Notifications",
     "description": "Dialog name."
   },
+  "output.flood": {
+    "defaultMessage": "{lines, plural, one {# line} other {# lines}} of output",
+    "description": "Spoken once a flood of output pauses; the full text stays in review mode."
+  },
   "palette.empty": {
     "defaultMessage": "No matching command.",
     "description": "Empty list."
@@ -558,6 +570,18 @@
   "palette.openSession": {
     "defaultMessage": "Open {session} on {host}",
     "description": "Palette entry."
+  },
+  "palette.screenReaderAuto": {
+    "defaultMessage": "Screen reader mode: automatic",
+    "description": "Palette entry: screen-reader mode follows whether assistive technology is detected."
+  },
+  "palette.screenReaderOff": {
+    "defaultMessage": "Screen reader mode: off",
+    "description": "Palette entry: forces screen-reader mode off."
+  },
+  "palette.screenReaderOn": {
+    "defaultMessage": "Screen reader mode: on",
+    "description": "Palette entry: forces screen-reader mode on."
   },
   "palette.search": {
     "defaultMessage": "Command",

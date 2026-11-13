@@ -13,7 +13,8 @@ const trusted = () => true;
 function handlers(display: unknown = {}): InvokeHandlers {
     return {
         'display:get': async () => display as never,
-        'accessibility:get': async () => true,
+        'accessibility:get': async () => ({ supportEnabled: true, mode: 'auto' }),
+        'accessibility:set-mode': async () => undefined,
         'hosts:list': async () => [],
         'hosts:add': async () => ({
             id: 'host-0000000000000000',
@@ -39,7 +40,8 @@ describe('registerHandlers (zod at the renderer boundary)', () => {
         const { handlers: registered, ipc } = fakeIpc();
         registerHandlers(ipc, handlers({ colorScheme: 'dark' }), trusted);
         expect(await registered.get('display:get')?.({})).toEqual({ colorScheme: 'dark' });
-        expect(await registered.get('accessibility:get')?.({})).toBe(true);
+        expect(await registered.get('accessibility:get')?.({})).toEqual({ supportEnabled: true, mode: 'auto' });
+        await expect(registered.get('accessibility:set-mode')?.({}, 'on')).resolves.toBeUndefined();
     });
 
     it('rejects requests with arguments the contract does not allow', async () => {
@@ -49,6 +51,9 @@ describe('registerHandlers (zod at the renderer boundary)', () => {
             /invalid arguments/,
         );
         await expect(async () => registered.get('accessibility:get')?.({}, 1)).rejects.toThrow(/invalid arguments/);
+        await expect(async () => registered.get('accessibility:set-mode')?.({}, 'loud')).rejects.toThrow(
+            /invalid arguments/,
+        );
         await expect(async () => registered.get('hosts:add')?.({}, 'devbox-1', '~/.trc')).rejects.toThrow(
             /invalid arguments/,
         );

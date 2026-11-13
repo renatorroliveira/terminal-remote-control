@@ -11,6 +11,8 @@ export interface AnnounceOptions {
     readonly politeness?: Politeness;
     /** A burst in one group, such as one host or one session, merges to its latest message (A11Y-12.3). */
     readonly group?: string;
+    /** Joins the message to one still waiting in its group, line after line, instead of replacing it (A11Y-02.1). */
+    readonly append?: boolean;
 }
 
 /** The time source the announcer paces itself by. */
@@ -47,13 +49,20 @@ export class Announcer {
         this.#clock = clock;
     }
 
-    /** Queues a message; a newer message in the same group replaces one still waiting. */
+    /** Queues a message; a newer message in the same group replaces one still waiting, or joins it when appending. */
     announce(text: string, options: AnnounceOptions = {}): void {
         const group = options.group ?? `message-${this.#anonymous++}`;
-        const message: Pending = { text, politeness: options.politeness ?? 'polite', group };
+        const waiting = options.append === true ? this.#pending.find((pending) => pending.group === group) : undefined;
+        const joined = waiting === undefined ? text : `${waiting.text}\n${text}`;
+        const message: Pending = { text: joined, politeness: options.politeness ?? 'polite', group };
         const others = this.#pending.filter((pending) => pending.group !== group);
         this.#pending = message.politeness === 'assertive' ? [message, ...others] : [...others, message];
         this.#flush();
+    }
+
+    /** Drops a group's message still waiting, so speech the user stopped is never queued again (A11Y-02.6). */
+    cancel(group: string): void {
+        this.#pending = this.#pending.filter((pending) => pending.group !== group);
     }
 
     #flush(): void {

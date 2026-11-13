@@ -1,4 +1,5 @@
 import { contextBridge, type IpcRendererEvent, ipcRenderer } from 'electron';
+import type { AccessibilityState } from '../shared/accessibility';
 import { CONNECTION_PORT_CHANNEL, CONNECTION_PORT_MESSAGE } from '../shared/connection-port';
 import {
     ACCESSIBILITY_CHANGED_CHANNEL,
@@ -23,8 +24,9 @@ const bridge: TrcBridge = {
         onChanged: (listener) => subscribe<DisplaySettings>(DISPLAY_CHANGED_CHANNEL, listener),
     },
     accessibility: {
-        get: () => ipcRenderer.invoke('accessibility:get') as Promise<boolean>,
-        onChanged: (listener) => subscribe<boolean>(ACCESSIBILITY_CHANGED_CHANNEL, listener),
+        get: () => ipcRenderer.invoke('accessibility:get') as Promise<AccessibilityState>,
+        setMode: (mode) => ipcRenderer.invoke('accessibility:set-mode', mode) as Promise<void>,
+        onChanged: (listener) => subscribe<AccessibilityState>(ACCESSIBILITY_CHANGED_CHANNEL, listener),
     },
     hosts: {
         list: () => ipcRenderer.invoke('hosts:list') as Promise<readonly KnownHost[]>,
