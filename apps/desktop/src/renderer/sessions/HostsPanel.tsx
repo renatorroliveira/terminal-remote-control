@@ -10,6 +10,7 @@ import {
     Popover,
     Text,
     TextField,
+    useFilter,
 } from 'react-aria-components';
 import { type IntlShape, useIntl } from 'react-intl';
 import { useStore } from 'zustand';
@@ -101,6 +102,7 @@ function AddHostForm({ workspace }: HostsPanelProps) {
     const [user, setUser] = useState('');
     const [problem, setProblem] = useState<'address' | 'two-users' | undefined>();
     const suggestions = useSuggestions(workspace);
+    const { contains } = useFilter({ sensitivity: 'base' });
     const shown = useRef(address);
     shown.current = address;
     const submit = (event: FormEvent): void => {
@@ -134,7 +136,7 @@ function AddHostForm({ workspace }: HostsPanelProps) {
                 allowsCustomValue
                 isRequired
                 isInvalid={problem === 'address'}
-                items={suggestions.map((suggestion) => ({ id: suggestion }))}
+                items={suggestions.filter((suggestion) => contains(suggestion, address)).map((id) => ({ id }))}
                 className={styles['combo'] ?? ''}
             >
                 <Label>{intl.formatMessage(sidebarMessages.newHost)}</Label>
