@@ -59,24 +59,25 @@ async function marker(name: string): Promise<string> {
     return text;
 }
 
-test.describe.serial('the program matrix on a Linux host (US-1.11.5)', () => {
-    test.skip(missing !== undefined, missing);
+test.describe.configure({ mode: 'serial' });
+test.skip(missing !== undefined, missing);
 
-    test.beforeAll(async () => {
-        shared.root = scratchInstallRoot();
-        shared.launched = await launchWithTestHosts(shared.root);
-        shared.terminal = await openTerminal(shared.launched.window, 'trc-ubuntu');
-        await shared.terminal.focus();
-        await shows(/[$#] *$/m, 30_000);
-        await run(`PS1='${PROMPT} '`);
-        await freshPrompt();
-    });
+test.beforeAll(async () => {
+    shared.root = scratchInstallRoot();
+    shared.launched = await launchWithTestHosts(shared.root);
+    shared.terminal = await openTerminal(shared.launched.window, 'trc-ubuntu');
+    await shared.terminal.focus();
+    await shows(/[$#] *$/m, 30_000);
+    await run(`PS1='${PROMPT} '`);
+    await freshPrompt();
+});
 
-    test.afterAll(async () => {
-        await shared.launched?.app.close();
-        removeInstall('trc-ubuntu', shared.root);
-    });
+test.afterAll(async () => {
+    await shared.launched?.app.close();
+    removeInstall('trc-ubuntu', shared.root);
+});
 
+test.describe('the program matrix on a Linux host: full-screen programs (US-1.11.5)', () => {
     test('vim edits a file in the alternate screen and restores the shell screen', async () => {
         const before = await marker('vim');
         await run('rm -f /tmp/trc-vim.txt; vim -u NONE -N /tmp/trc-vim.txt');
@@ -131,7 +132,9 @@ test.describe.serial('the program matrix on a Linux host (US-1.11.5)', () => {
         await window().keyboard.press('q');
         await freshPrompt();
     });
+});
 
+test.describe('the program matrix on a Linux host: nested programs and REPLs (US-1.11.5)', () => {
     test('tmux runs inside tmux, each with its own status line', async () => {
         await run('tmux -L trc-inner kill-server; tmux -L trc-outer kill-server; clear');
         await run('tmux -L trc-outer new-session -s outer');

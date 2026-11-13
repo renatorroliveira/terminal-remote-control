@@ -24,6 +24,7 @@ import type { TerminalLink } from '../terminal/hyperlinks';
 import type { TerminalNotice } from '../terminal/notices';
 import { pastedLines } from '../terminal/paste';
 import type { Announcer } from './announcer';
+import { reportActionFailures } from './failure-reporter';
 import { type HelpContext, helpContext } from './help/help-context';
 import { linkAnnouncements } from './link-messages';
 import type { NotificationCenter } from './notifications';
@@ -247,6 +248,13 @@ export class Shell {
                   });
         const stopRegions = this.#regions.start();
         const stopHosts = this.#watchHosts();
+        const stopFailures = reportActionFailures({
+            store: this.#options.workspace.store,
+            intl: this.#options.intl,
+            announcer: this.#options.announcer,
+            notifications: this.#options.notifications,
+            playCue: (cue) => this.playCue(cue),
+        });
         const stopScreenReader =
             this.#options.screenReader?.onScreenReaderChanged((on) => this.#announceScreenReader(on)) ??
             (() => undefined);
@@ -256,6 +264,7 @@ export class Shell {
             stopShortcuts();
             stopRegions();
             stopHosts();
+            stopFailures();
             stopScreenReader();
             stopSettings();
         };

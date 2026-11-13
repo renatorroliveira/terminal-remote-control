@@ -234,7 +234,23 @@ async function interruptRound(window: Page, round: number, offset: number): Prom
     return { delay: delivered - pressed, gaps };
 }
 
-test.describe('UI responsiveness on live hosts (NFR-02, NFR-03, NFR-04)', () => {
+/** Runs `rounds` idle commands and returns, for each, the time from Return to the announcement of its output. */
+async function speechDelays(window: Page, rounds: number): Promise<number[]> {
+    const delays: number[] = [];
+    for (let round = 0; round < rounds; round += 1) {
+        await window.keyboard.type(`echo trc-said-""${round}`);
+        await window.waitForTimeout(600);
+        const pressed = await window.evaluate(() => performance.now());
+        await window.keyboard.press('Enter');
+        const word = `trc-said-${round}`;
+        await expect.poll(() => spokenAt(window, word), { timeout: 10_000 }).not.toBeUndefined();
+        delays.push(((await spokenAt(window, word)) ?? 0) - pressed);
+        await window.waitForTimeout(800);
+    }
+    return delays;
+}
+
+test.describe('UI echo latency on live hosts (NFR-02)', () => {
     test.skip(missing !== undefined, missing);
     test.setTimeout(240_000);
 
@@ -270,6 +286,11 @@ test.describe('UI responsiveness on live hosts (NFR-02, NFR-03, NFR-04)', () => 
             }
         });
     }
+});
+
+test.describe('UI responsiveness under a flood on a live host (NFR-03)', () => {
+    test.skip(missing !== undefined, missing);
+    test.setTimeout(240_000);
 
     test('delivers Ctrl+C typed in the app to a flooding program within 100 ms, p95, and stays interactive (NFR-03)', async () => {
         const root = scratchInstallRoot();
@@ -309,6 +330,11 @@ test.describe('UI responsiveness on live hosts (NFR-02, NFR-03, NFR-04)', () => 
             removeInstall('trc-ubuntu', root);
         }
     });
+});
+
+test.describe('Speech of new output on a live host (NFR-04)', () => {
+    test.skip(missing !== undefined, missing);
+    test.setTimeout(240_000);
 
     test('starts speaking new output within 500 ms when idle, p95 (NFR-04)', async () => {
         const root = scratchInstallRoot();
@@ -317,18 +343,7 @@ test.describe('UI responsiveness on live hosts (NFR-02, NFR-03, NFR-04)', () => 
             const terminal = await openTerminal(window, 'trc-ubuntu');
             await ready(window, terminal);
             await recordTimedSpeech(window);
-            const delays: number[] = [];
-            for (let round = 0; round < 15; round += 1) {
-                await window.keyboard.type(`echo trc-said-""${round}`);
-                await window.waitForTimeout(600);
-                const pressed = await window.evaluate(() => performance.now());
-                await window.keyboard.press('Enter');
-                const word = `trc-said-${round}`;
-                await expect.poll(() => spokenAt(window, word), { timeout: 10_000 }).not.toBeUndefined();
-                delays.push(((await spokenAt(window, word)) ?? 0) - pressed);
-                await window.waitForTimeout(800);
-            }
-            const p95 = percentile(delays, 95);
+            const p95 = percentile(await speechDelays(window, 15), 95);
             record({
                 id: 'NFR-04',
                 what: 'trc-ubuntu, screen-reader mode: Return to the announcement of the output, p95',

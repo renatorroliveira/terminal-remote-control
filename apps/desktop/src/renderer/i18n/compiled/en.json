@@ -11,6 +11,20 @@
       "value": "User (optional)"
     }
   ],
+  "announce.actionFailed": [
+    {
+      "type": 1,
+      "value": "action"
+    },
+    {
+      "type": 0,
+      "value": " "
+    },
+    {
+      "type": 1,
+      "value": "reason"
+    }
+  ],
   "announce.bell": [
     {
       "type": 0,
@@ -637,6 +651,34 @@
       "value": "Add the key to your SSH agent with ssh-add, which asks for the PIN, then connect again."
     }
   ],
+  "failure.close": [
+    {
+      "type": 0,
+      "value": "Couldn’t close the session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "failure.create": [
+    {
+      "type": 0,
+      "value": "Couldn’t create a session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "failure.details": [
     {
       "type": 0,
@@ -657,6 +699,20 @@
     {
       "type": 0,
       "value": "Check the host name, your network and your DNS, then connect again."
+    }
+  ],
+  "failure.forget": [
+    {
+      "type": 0,
+      "value": "Couldn’t forget "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
     }
   ],
   "failure.hostKeyChanged.problem": [
@@ -831,6 +887,20 @@
       "value": "Check that the jump host is running and reachable, then connect again."
     }
   ],
+  "failure.move": [
+    {
+      "type": 0,
+      "value": "Couldn’t move the session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "failure.noexec.problem": [
     {
       "type": 0,
@@ -885,6 +955,96 @@
       "value": "Read the details, then connect again."
     }
   ],
+  "failure.reason.badRequest": [
+    {
+      "type": 0,
+      "value": "The host refused the request."
+    }
+  ],
+  "failure.reason.disconnected": [
+    {
+      "type": 0,
+      "value": "The host isn’t connected."
+    }
+  ],
+  "failure.reason.internal": [
+    {
+      "type": 0,
+      "value": "The host’s daemon hit an internal error."
+    }
+  ],
+  "failure.reason.spawnFailed": [
+    {
+      "type": 0,
+      "value": "The shell couldn’t start."
+    }
+  ],
+  "failure.reason.unknown": [
+    {
+      "type": 0,
+      "value": "Try again."
+    }
+  ],
+  "failure.reason.unknownSession": [
+    {
+      "type": 0,
+      "value": "The session no longer exists."
+    }
+  ],
+  "failure.reason.unspecified": [
+    {
+      "type": 0,
+      "value": "The host gave no reason."
+    }
+  ],
+  "failure.reason.unsupported": [
+    {
+      "type": 0,
+      "value": "The host’s daemon doesn’t support it."
+    }
+  ],
+  "failure.reattach": [
+    {
+      "type": 0,
+      "value": "Couldn’t reattach every session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "; they take no input."
+    }
+  ],
+  "failure.rename": [
+    {
+      "type": 0,
+      "value": "Couldn’t rename the session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "failure.restart": [
+    {
+      "type": 0,
+      "value": "Couldn’t restart the session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "failure.sshMissing.problem": [
     {
       "type": 0,
@@ -915,6 +1075,20 @@
     {
       "type": 0,
       "value": "Update OpenSSH, then connect again."
+    }
+  ],
+  "failure.stop": [
+    {
+      "type": 0,
+      "value": "Couldn’t stop the session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
     }
   ],
   "failure.timeout.problem": [

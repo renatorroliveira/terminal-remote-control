@@ -1,5 +1,5 @@
 import { createIntl } from 'react-intl';
-import { describe, expect, it, onTestFinished } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { ScreenReaderMode } from '../../shared/accessibility';
 import { formatChord, resolveKeymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
@@ -487,6 +487,32 @@ describe('Shell sound cues (A11Y-12.4)', () => {
         client.push('host-0', { status: 'failed', failure: { kind: 'dns', host: 'devbox-1', details: '' } });
         shell.terminalNotice('host-0/a', { kind: 'input-refused' });
         expect(cues).toEqual(['connected', 'disconnected', 'failed', 'input-refused']);
+    });
+});
+
+describe('Shell action failures (US-1.10, US-1.14.3, WCAG 3.3.1)', () => {
+    it('announces assertively, lists and cues an action the daemon refuses, with its reason', async () => {
+        const { shell, client, workspace, spoken, cues } = await setup();
+        client.push('host-0', CONNECTED);
+        await vi.waitFor(() => expect(workspace.store.getState().sessions.get('host-0')).toHaveLength(1));
+        client.refused.set('close', 'unknownSession');
+        await workspace.closeSession('host-0/a');
+        const text = 'Couldn’t close the session on devbox-1. The session no longer exists.';
+        expect(spoken).toContain(`! ${text}`);
+        expect(shell.notifications.store.getState().items.map((item) => [item.text, item.level])).toEqual([
+            [text, 'error'],
+        ]);
+        expect(cues).toContain('failed');
+    });
+
+    it('reports the same failure each time it happens, and a failure without a known reason', async () => {
+        const { client, workspace, spoken } = await setup();
+        client.push('host-0', CONNECTED);
+        await vi.waitFor(() => expect(workspace.store.getState().sessions.get('host-0')).toHaveLength(1));
+        await workspace.newSession('host-0');
+        await workspace.newSession('host-0');
+        const text = '! Couldn’t create a session on devbox-1. Try again.';
+        expect(spoken.filter((entry) => entry === text)).toHaveLength(2);
     });
 });
 

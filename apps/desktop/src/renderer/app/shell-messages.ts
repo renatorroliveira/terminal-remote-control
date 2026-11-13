@@ -1,6 +1,7 @@
 import { defineMessage, defineMessages } from 'react-intl';
 import type { ScreenReaderMode } from '../../shared/accessibility';
 import type { CommandId } from '../../shared/keymap';
+import type { ActionFailureCode, FailedAction } from '../sessions/workspace-model';
 
 /** Each command's name in the palette and in accessibility help (docs/design/keymap.md). */
 export const commandMessages = defineMessages<CommandId>({
@@ -250,6 +251,101 @@ export const hostAnnouncements = {
         description: 'Announced and listed when a connection fails.',
     }),
 };
+
+/** What failed, for an action failure's report (US-1.10, WCAG 3.3.1). */
+export const failedActionMessages = defineMessages<FailedAction>({
+    create: {
+        id: 'failure.create',
+        defaultMessage: 'Couldn’t create a session on {host}.',
+        description: 'Reported when a new session fails.',
+    },
+    rename: {
+        id: 'failure.rename',
+        defaultMessage: 'Couldn’t rename the session on {host}.',
+        description: 'Reported when a rename fails.',
+    },
+    stop: {
+        id: 'failure.stop',
+        defaultMessage: 'Couldn’t stop the session on {host}.',
+        description: 'Reported when a stop fails.',
+    },
+    restart: {
+        id: 'failure.restart',
+        defaultMessage: 'Couldn’t restart the session on {host}.',
+        description: 'Reported when a restart fails.',
+    },
+    close: {
+        id: 'failure.close',
+        defaultMessage: 'Couldn’t close the session on {host}.',
+        description: 'Reported when closing a session fails.',
+    },
+    move: {
+        id: 'failure.move',
+        defaultMessage: 'Couldn’t move the session on {host}.',
+        description: 'Reported when moving a session fails.',
+    },
+    forget: {
+        id: 'failure.forget',
+        defaultMessage: 'Couldn’t forget {host}.',
+        description: 'Reported when forgetting a host fails.',
+    },
+    reattach: {
+        id: 'failure.reattach',
+        defaultMessage: 'Couldn’t reattach every session on {host}; they take no input.',
+        description: 'Reported when sessions fail to reattach after a reconnect.',
+    },
+});
+
+/** Why an action failed, after what failed (US-1.10, WCAG 3.3.1). */
+export const failureReasonMessages = defineMessages<ActionFailureCode>({
+    disconnected: {
+        id: 'failure.reason.disconnected',
+        defaultMessage: 'The host isn’t connected.',
+        description: 'The action failed because the connection is gone.',
+    },
+    unknownSession: {
+        id: 'failure.reason.unknownSession',
+        defaultMessage: 'The session no longer exists.',
+        description: 'The daemon no longer knows the session.',
+    },
+    spawnFailed: {
+        id: 'failure.reason.spawnFailed',
+        defaultMessage: 'The shell couldn’t start.',
+        description: 'The daemon could not start the session’s program.',
+    },
+    badRequest: {
+        id: 'failure.reason.badRequest',
+        defaultMessage: 'The host refused the request.',
+        description: 'The daemon found the request malformed.',
+    },
+    unsupported: {
+        id: 'failure.reason.unsupported',
+        defaultMessage: 'The host’s daemon doesn’t support it.',
+        description: 'The daemon does not support the request.',
+    },
+    internal: {
+        id: 'failure.reason.internal',
+        defaultMessage: 'The host’s daemon hit an internal error.',
+        description: 'The daemon failed internally.',
+    },
+    unspecified: {
+        id: 'failure.reason.unspecified',
+        defaultMessage: 'The host gave no reason.',
+        description: 'The daemon refused without a code.',
+    },
+    unknown: {
+        id: 'failure.reason.unknown',
+        defaultMessage: 'Try again.',
+        description: 'Nothing says why the action failed.',
+    },
+});
+
+/** An action failure's report: what failed, then why (WCAG 3.3.1). */
+export const actionFailedMessage = defineMessage<{ action: string; reason: string }>({
+    id: 'announce.actionFailed',
+    defaultMessage: '{action} {reason}',
+    description: 'Announced and listed when a session or host action fails.',
+});
 
 /** The status bar (US-1.6.1). */
 export const statusMessages = {

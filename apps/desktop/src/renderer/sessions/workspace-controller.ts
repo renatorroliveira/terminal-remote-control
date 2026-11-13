@@ -4,9 +4,10 @@ import type { ConnectionState } from '../../shared/connection';
 import type { TrcBridge } from '../../shared/contract';
 import type { KnownHost } from '../../shared/hosts';
 import type { Settings } from '../../shared/settings';
-import type { ClientRequest, HostClient } from '../connection/host-client';
+import { type ClientRequest, type HostClient, HostRequestError } from '../connection/host-client';
 import {
     EMPTY_WORKSPACE,
+    type FailedAction,
     failureAcknowledged,
     type HostEntry,
     hostAdded,
@@ -45,8 +46,11 @@ export interface TerminalHost {
     create(hostId: string, options?: SessionOptions): Promise<SessionInfo>;
     /** Lets a host's terminals send input, or refuses it while the host is disconnected (US-1.14.2). */
     setHostConnected(hostId: string, connected: boolean): void;
-    /** Attaches a reconnected host's terminals to their sessions again (US-1.14.3). */
-    reattachHost(hostId: string): void;
+    /**
+     * Attaches a reconnected host's terminals to their sessions again; each takes input once attached, and the
+     * sessions that could not attach are returned (US-1.14.2, US-1.14.3).
+     */
+    reattachHost(hostId: string): Promise<readonly SessionKey[]>;
     /** Removes the terminals of a host whose connection closed. */
     closeHost(hostId: string): void;
     /** Removes the terminal of a session the daemon closed. */
@@ -167,7 +171,7 @@ export class WorkspaceController {
         this.#forgotten.add(hostId);
         this.#terminals.closeHost(hostId);
         this.#update((workspace) => hostRemoved(workspace, hostId));
-        await this.#hosts.remove(hostId);
+        await this.#attempt('forget', hostId, () => this.#hosts.remove(hostId));
     }
 
     /** Moves a host's install location; the next connection uses it (US-1.4.3). */
@@ -266,9 +270,11 @@ export class WorkspaceController {
         if (host === undefined || !isConnected(host)) {
             return;
         }
-        const session = await this.#terminals.create(host.id, options);
-        this.#update((workspace) => sessionChanged(workspace, host.id, { kind: 'created', session }));
-        this.open(sessionKey(host.id, session.id));
+        await this.#attempt('create', host.id, async () => {
+            const session = await this.#terminals.create(host.id, options);
+            this.#update((workspace) => sessionChanged(workspace, host.id, { kind: 'created', session }));
+            this.open(sessionKey(host.id, session.id));
+        });
     }
 
     /** Creates a session with the options the New session dialog chose (US-1.7.2). */
@@ -307,7 +313,7 @@ export class WorkspaceController {
     /** Renames a session; an empty name gives the program's title back (US-1.10.1). */
     async renameSession(key: SessionKey, name: string): Promise<void> {
         const trimmed = name.trim();
-        await this.#sessionRequest(key, (session) => ({
+        await this.#sessionRequest(key, 'rename', (session) => ({
             type: 'rename',
             session,
             ...(trimmed === '' ? {} : { name: trimmed }),
@@ -317,7 +323,7 @@ export class WorkspaceController {
     /** Stops a session: SIGHUP, then SIGTERM, then SIGKILL after the daemon's grace period (US-1.10.2). */
     stopSession(key: SessionKey): Promise<void> {
         const grace = this.#preferences?.().stopGraceSeconds;
-        return this.#sessionRequest(key, (session) => ({
+        return this.#sessionRequest(key, 'stop', (session) => ({
             type: 'stop',
             session,
             ...(grace === undefined ? {} : { graceMs: grace * 1_000 }),
@@ -326,17 +332,17 @@ export class WorkspaceController {
 
     /** Restarts a session with its shell, directory and environment, keeping its scrollback (US-1.10.3). */
     restartSession(key: SessionKey): Promise<void> {
-        return this.#sessionRequest(key, (session) => ({ type: 'restart', session }));
+        return this.#sessionRequest(key, 'restart', (session) => ({ type: 'restart', session }));
     }
 
     /** Stops a session if it runs, then removes it and its scrollback (US-1.10.4). */
     closeSession(key: SessionKey): Promise<void> {
-        return this.#sessionRequest(key, (session) => ({ type: 'close', session }));
+        return this.#sessionRequest(key, 'close', (session) => ({ type: 'close', session }));
     }
 
     /** Moves a session to `index` among its host's sessions (US-1.10.6). */
     moveSession(key: SessionKey, index: number): Promise<void> {
-        return this.#sessionRequest(key, (session) => ({ type: 'reorder', session, index }));
+        return this.#sessionRequest(key, 'move', (session) => ({ type: 'reorder', session, index }));
     }
 
     /** Opens a new session on the same host with the same shell and working directory (US-1.10.5). */
@@ -348,10 +354,40 @@ export class WorkspaceController {
         }
     }
 
-    async #sessionRequest(key: SessionKey, request: (session: string) => ClientRequest): Promise<void> {
+    async #sessionRequest(
+        key: SessionKey,
+        action: FailedAction,
+        request: (session: string) => ClientRequest,
+    ): Promise<void> {
         const found = this.#find(key);
         if (found !== undefined) {
-            await this.#client.request(found.hostId, request(found.session.id));
+            await this.#attempt(action, found.hostId, () =>
+                this.#client.request(found.hostId, request(found.session.id)),
+            );
+        }
+    }
+
+    /** Runs an action; a failure becomes the workspace's latest action failure instead of an unhandled rejection. */
+    async #attempt(action: FailedAction, hostId: string, work: () => Promise<unknown>): Promise<void> {
+        try {
+            await work();
+        } catch (error) {
+            this.#failed(action, hostId, error);
+        }
+    }
+
+    #failed(action: FailedAction, hostId: string, error?: unknown): void {
+        const code = error instanceof HostRequestError ? error.code : 'unknown';
+        this.#update((workspace) => ({
+            ...workspace,
+            actionFailure: { id: (workspace.actionFailure?.id ?? 0) + 1, action, hostId, code },
+        }));
+    }
+
+    async #reattach(hostId: string): Promise<void> {
+        const failed = await this.#terminals.reattachHost(hostId);
+        if (failed.length > 0) {
+            this.#failed('reattach', hostId);
         }
     }
 
@@ -392,8 +428,7 @@ export class WorkspaceController {
     #followTerminals(hostId: string, state: ConnectionState): void {
         switch (state.status) {
             case 'connected':
-                this.#terminals.setHostConnected(hostId, true);
-                this.#terminals.reattachHost(hostId);
+                void this.#reattach(hostId);
                 void this.#listSessions(hostId);
                 break;
             case 'disconnected':

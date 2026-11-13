@@ -59,7 +59,9 @@ describe('classifyFailure on the S4 corpus (US-1.3.1)', () => {
             expect(classifyFailure(stderrOf(name), 'n0nce', direct)).toMatchObject({ kind: 'authentication' });
         }
     });
+});
 
+describe('classifyFailure on the S4 corpus: network and fallbacks (US-1.3.1)', () => {
     it('tells DNS failures, refused connections and timeouts apart', () => {
         const dns = { ...direct, hostname: 'no-such-host.invalid', port: 22 };
         expect(classifyFailure(stderrOf('dns-failure'), 'n0nce', dns)).toMatchObject({

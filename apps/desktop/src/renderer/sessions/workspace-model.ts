@@ -1,4 +1,4 @@
-import type { SessionChange, SessionId, SessionInfo } from '@trc/protocol';
+import type { ErrorCode, SessionChange, SessionId, SessionInfo } from '@trc/protocol';
 import type { ConnectionState } from '../../shared/connection';
 import { formatHostAddress } from '../../shared/host-address';
 import type { KnownHost } from '../../shared/hosts';
@@ -30,7 +30,24 @@ export interface Workspace {
     readonly unread: ReadonlySet<SessionKey>;
     /** Background sessions whose bell rang since they were last open (A11Y-08.2). */
     readonly bells: ReadonlySet<SessionKey>;
+    /** The last session or host action that failed, for the shell to show and announce (WCAG 3.3.1). */
+    readonly actionFailure: ActionFailure | undefined;
 }
+
+/** The actions whose failure the shell reports. */
+export type FailedAction = 'create' | 'rename' | 'stop' | 'restart' | 'close' | 'move' | 'forget' | 'reattach';
+
+/** An action the daemon, the connection or the app refused (US-1.10, US-1.14.3). */
+export interface ActionFailure {
+    /** Goes up with each failure, so the same failure twice is reported twice. */
+    readonly id: number;
+    readonly action: FailedAction;
+    readonly hostId: string;
+    readonly code: ActionFailureCode;
+}
+
+/** Why an action failed: the daemon's error code, `disconnected`, or `unknown` when nothing says why. */
+export type ActionFailureCode = ErrorCode | 'disconnected' | 'unknown';
 
 /** One session in a host's list. */
 export interface SessionItem {
@@ -67,6 +84,7 @@ export const EMPTY_WORKSPACE: Workspace = {
     failureNotice: undefined,
     unread: new Set(),
     bells: new Set(),
+    actionFailure: undefined,
 };
 
 /** The key of a host's session. */

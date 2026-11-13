@@ -1,8 +1,8 @@
-import type { ServerMessage, SessionInfo } from '@trc/protocol';
+import type { ErrorCode, ServerMessage, SessionInfo } from '@trc/protocol';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import { parseHostAddress } from '../../shared/host-address';
 import { DEFAULT_INSTALL_ROOT, isInstallRoot, type KnownHost } from '../../shared/hosts';
-import type { ClientRequest } from '../connection/host-client';
+import { type ClientRequest, HostRequestError } from '../connection/host-client';
 import type { FindResult } from '../terminal/find';
 import type { TerminalLink } from '../terminal/hyperlinks';
 import type { KnownHostStore, SessionOptions, TerminalHost, WorkspaceClient } from './workspace-controller';
@@ -85,8 +85,15 @@ export class FakeWorkspaceClient implements WorkspaceClient {
     /** Every request but the session list, in order. */
     readonly requests: ClientRequest[] = [];
 
-    /** Answers the session list and profile requests, and acknowledges the rest. */
+    /** Request types the daemon refuses, with the code it refuses them with. */
+    readonly refused = new Map<ClientRequest['type'], ErrorCode | 'disconnected'>();
+
+    /** Answers the session list and profile requests, refuses the `refused` ones and acknowledges the rest. */
     request(_hostId: string, request: ClientRequest): Promise<ServerMessage> {
+        const refusal = this.refused.get(request.type);
+        if (refusal !== undefined) {
+            return Promise.reject(new HostRequestError(refusal, `${request.type} refused`));
+        }
         if (request.type === 'listSessions') {
             return Promise.resolve({ type: 'sessions', requestId: 1, sessions: [...this.#sessions] });
         }
@@ -186,9 +193,10 @@ export class FakeTerminalHost implements TerminalHost {
         }
     }
 
-    /** Records the re-attach. */
-    reattachHost(hostId: string): void {
+    /** Records the re-attach; every terminal attaches again. */
+    reattachHost(hostId: string): Promise<readonly string[]> {
         this.reattached.push(hostId);
+        return Promise.resolve([]);
     }
 
     /** Whether review mode is open, and the searches asked for. */

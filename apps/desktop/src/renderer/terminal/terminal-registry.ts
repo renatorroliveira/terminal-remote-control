@@ -242,12 +242,16 @@ export class TerminalRegistry implements TerminalHost {
         }
     }
 
-    /** Attaches a reconnected host's terminals to their sessions again, each on a fresh screen (US-1.14.3). */
-    reattachHost(hostId: string): void {
-        for (const entry of this.#entriesOf(hostId)) {
-            entry.view.restart();
-            entry.link.reattach().catch(() => undefined);
-        }
+    /**
+     * Attaches a reconnected host's terminals to their sessions again, each on a fresh screen (US-1.14.3). Each keeps
+     * refusing typing until its attach answers (US-1.14.2); returns the sessions that could not attach, whose terminals
+     * stay refusing.
+     */
+    async reattachHost(hostId: string): Promise<readonly SessionKey[]> {
+        this.#offline.delete(hostId);
+        const keys = [...this.#entries.keys()].filter((key) => key.startsWith(`${hostId}/`));
+        const failed = await Promise.all(keys.map((key) => this.#reattach(key)));
+        return failed.filter((key): key is SessionKey => key !== undefined);
     }
 
     /** Detaches and removes the terminals of a host whose connection closed. */
@@ -285,6 +289,21 @@ export class TerminalRegistry implements TerminalHost {
             this.#dispose(entry);
         }
         this.#entries.clear();
+    }
+
+    async #reattach(key: SessionKey): Promise<SessionKey | undefined> {
+        const entry = this.#entries.get(key);
+        if (entry === undefined) {
+            return undefined;
+        }
+        entry.view.restart();
+        try {
+            await entry.link.reattach();
+            entry.view.setConnected(true);
+            return undefined;
+        } catch {
+            return key;
+        }
     }
 
     #entriesOf(hostId: string): readonly Entry[] {

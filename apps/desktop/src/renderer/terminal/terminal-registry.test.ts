@@ -25,6 +25,10 @@ const info = (id: string): SessionInfo => ({
 
 class FakeTransport implements SessionTransport {
     readonly requests: ClientRequest[] = [];
+    /** Sessions whose next attach the daemon refuses. */
+    readonly refuse = new Set<string>();
+    /** While set, attach replies wait for it. */
+    hold: Promise<void> | undefined;
     readonly #outputs = new Map<number, (data: Uint8Array) => void>();
     #stream = 0;
 
@@ -42,6 +46,13 @@ class FakeTransport implements SessionTransport {
         this.requests.push(request);
         if (request.type === 'create') {
             return Promise.resolve({ type: 'created', requestId: 1, session: info('new') });
+        }
+        if (request.type === 'attach' && this.refuse.has(request.session)) {
+            return Promise.reject(new Error('unknownSession'));
+        }
+        if (request.type === 'attach' && this.hold !== undefined) {
+            const hold = this.hold;
+            return hold.then(() => this.request(_hostId, { ...request }));
         }
         if (request.type === 'attach') {
             this.#stream += 1;
@@ -214,8 +225,7 @@ describe('TerminalRegistry: closing and losing hosts (US-1.8, US-1.14)', () => {
         expect(
             [...area.querySelectorAll('[role="textbox"]')].map((surface) => surface.getAttribute('aria-label')),
         ).toEqual(['bash, h1, disconnected', 'bash, h2', 'bash, h1, disconnected']);
-        registry.setHostConnected('h1', true);
-        registry.reattachHost('h1');
+        await registry.reattachHost('h1');
         await expect.poll(() => requestsOf(transport, 'attach')).toBe(5);
         expect(transport.attached(1)).toBe(false);
         expect(transport.attached(2)).toBe(true);
@@ -224,6 +234,30 @@ describe('TerminalRegistry: closing and losing hosts (US-1.8, US-1.14)', () => {
         await expect.poll(() => first?.textContent).toContain('restored');
         expect(first?.textContent).not.toContain('old screen');
         expect(first?.getAttribute('aria-label')).toBe('bash, h1');
+    });
+});
+
+describe('TerminalRegistry: reconnecting hosts (US-1.14.2)', () => {
+    it('refuses typing until a reconnected terminal has attached, and reports one that cannot attach (US-1.14.2)', async () => {
+        const { area, transport, registry } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        registry.show('h1/b', 'h1', info('b'));
+        await expect.poll(() => requestsOf(transport, 'attach')).toBe(2);
+        registry.setHostConnected('h1', false);
+        let release = (): void => undefined;
+        transport.hold = new Promise((done) => {
+            release = done;
+        });
+        transport.refuse.add('b');
+        const reattached = registry.reattachHost('h1');
+        const labels = (): (string | null)[] =>
+            [...area.querySelectorAll('[role="textbox"]')].map((surface) => surface.getAttribute('aria-label'));
+        await expect.poll(() => requestsOf(transport, 'attach')).toBe(4);
+        expect(labels()).toEqual(['bash, h1, disconnected', 'bash, h1, disconnected']);
+        transport.hold = undefined;
+        release();
+        expect(await reattached).toEqual(['h1/b']);
+        expect(labels()).toEqual(['bash, h1', 'bash, h1, disconnected']);
     });
 
     it('removes the terminal of a session the daemon closed', () => {
