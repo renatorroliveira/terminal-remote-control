@@ -17,16 +17,6 @@ export const sidebarMessages = defineMessages({
         defaultMessage: 'Hosts',
         description: 'Heading of the sidebar area that lists known hosts.',
     },
-    newSessionHost: {
-        id: 'sidebar.newSessionHost',
-        defaultMessage: 'Host',
-        description: 'Label of the select box choosing the connected host a new session starts on.',
-    },
-    noConnectedHost: {
-        id: 'sidebar.noConnectedHost',
-        defaultMessage: 'No host connected',
-        description: 'Shown in the host select box while no host is connected.',
-    },
     noSessions: {
         id: 'sidebar.noSessions',
         defaultMessage: 'No open sessions.',
@@ -66,16 +56,6 @@ export const sidebarMessages = defineMessages({
         id: 'sidebar.reject',
         defaultMessage: 'Reject',
         description: 'Button that refuses a presented host key.',
-    },
-    tree: {
-        id: 'sidebar.tree',
-        defaultMessage: 'Hosts and sessions',
-        description: 'Accessible name of the tree of hosts and their sessions.',
-    },
-    newSession: {
-        id: 'sidebar.newSession',
-        defaultMessage: 'New session',
-        description: 'Button that creates a session on the current host.',
     },
     toggle: {
         id: 'sidebar.toggle',
@@ -124,11 +104,41 @@ export const terminalMessages = defineMessages({
 });
 
 /** A host or session row's accessible name. */
-export const treeItemMessage = defineMessage<{ name: string; state: string }>({
+export const sessionRowMessage = defineMessage<{ name: string; state: string }>({
     id: 'sidebar.item',
     defaultMessage: '{name}, {state}',
-    description: 'Accessible name of a host or session row: its name, then its state.',
+    description: 'Accessible name of a session row: its name, then its state.',
 });
+
+/** Per-host names in the Sessions area. */
+export const hostSessionsMessages = {
+    newSession: defineMessage<{ host: string }>({
+        id: 'sidebar.newSessionOn',
+        defaultMessage: 'New session on {host}',
+        description: 'Accessible name of the + button that starts a session on a connected host.',
+    }),
+    sessions: defineMessage<{ host: string }>({
+        id: 'sidebar.sessionsOn',
+        defaultMessage: 'Sessions on {host}',
+        description: 'Accessible name of the list of a host’s sessions.',
+    }),
+};
+
+/** The splitter between the sidebar and the terminal area (US-1.6.3). */
+export const splitterMessages = {
+    ...defineMessages({
+        label: {
+            id: 'sidebar.splitter',
+            defaultMessage: 'Sidebar width',
+            description: 'Accessible name of the handle that resizes the sidebar.',
+        },
+    }),
+    value: defineMessage<{ width: number }>({
+        id: 'sidebar.splitterValue',
+        defaultMessage: '{width} pixels',
+        description: 'The sidebar width the splitter reports.',
+    }),
+};
 
 /** A session state after the shell exited with a status code. */
 export const exitedCodeMessage = defineMessage<{ code: number }>({

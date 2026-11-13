@@ -34,3 +34,12 @@ export function BusyIcon({ className }: IconProps) {
         </svg>
     );
 }
+
+/** A plus sign, for buttons that create something. */
+export function PlusIcon({ className }: IconProps) {
+    return (
+        <svg aria-hidden="true" focusable="false" width={SIZE} height={SIZE} viewBox="0 0 20 20" className={className}>
+            <path d="M10 4V16M4 10H16" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round" />
+        </svg>
+    );
+}

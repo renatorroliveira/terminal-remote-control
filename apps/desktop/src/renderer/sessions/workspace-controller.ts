@@ -56,6 +56,8 @@ export class WorkspaceController {
     readonly #client: WorkspaceClient;
     readonly #terminals: TerminalHost;
     readonly #hosts: KnownHostStore;
+    /** Hosts the app is connecting on its own, whose failures raise no dialog. */
+    readonly #automatic = new Set<string>();
 
     /** Creates an empty workspace. */
     constructor(client: WorkspaceClient, terminals: TerminalHost, hosts: KnownHostStore) {
@@ -93,12 +95,23 @@ export class WorkspaceController {
         }
     }
 
+    /** Connects every host that is not connected or connecting, as at launch; failures leave them disconnected. */
+    connectAll(): void {
+        for (const host of this.store.getState().hosts) {
+            if (this.connectionAction(host) === 'connect') {
+                this.#automatic.add(host.id);
+                this.#client.connect(host.id, { ...host.address, installRoot: host.installRoot });
+            }
+        }
+    }
+
     /** Connects a disconnected host, or disconnects or cancels a connected or connecting one. */
     toggleConnection(hostId: string): void {
         const host = this.#host(hostId);
         if (host === undefined) {
             return;
         }
+        this.#automatic.delete(hostId);
         const action = this.connectionAction(host);
         if (action === 'connect') {
             this.#client.connect(host.id, { ...host.address, installRoot: host.installRoot });
@@ -137,16 +150,9 @@ export class WorkspaceController {
         this.#update((workspace) => hostToggled(workspace, hostId));
     }
 
-    /** The host a new session goes to by default: the open session's host, or the first connected host. */
-    defaultHost(workspace: Workspace): string | undefined {
-        const open = workspace.open === undefined ? undefined : this.#find(workspace.open);
-        const connected = workspace.hosts.filter(isConnected);
-        return connected.find((host) => host.id === open?.hostId)?.id ?? connected[0]?.id;
-    }
-
     /** Creates a session on a connected host and opens it (US-1.7.1). */
-    async newSession(hostId = this.defaultHost(this.store.getState())): Promise<void> {
-        const host = hostId === undefined ? undefined : this.#host(hostId);
+    async newSession(hostId: string): Promise<void> {
+        const host = this.#host(hostId);
         if (host === undefined || !isConnected(host)) {
             return;
         }
@@ -165,7 +171,11 @@ export class WorkspaceController {
 
     #follow(hostId: string): void {
         this.#client.onState(hostId, (state) => {
-            this.#update((workspace) => hostStateChanged(workspace, hostId, state));
+            const notifyFailure = !this.#automatic.has(hostId);
+            if (state.status !== 'connecting' && state.status !== 'host-key') {
+                this.#automatic.delete(hostId);
+            }
+            this.#update((workspace) => hostStateChanged(workspace, hostId, state, { notifyFailure }));
             if (state.status === 'connected') {
                 void this.#listSessions(hostId);
             } else if (state.status === 'closed') {

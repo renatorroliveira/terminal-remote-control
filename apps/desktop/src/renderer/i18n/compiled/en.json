@@ -741,22 +741,14 @@
       "value": "An SSH alias, or user@host:port."
     }
   ],
-  "sidebar.newSession": [
+  "sidebar.newSessionOn": [
     {
       "type": 0,
-      "value": "New session"
-    }
-  ],
-  "sidebar.newSessionHost": [
+      "value": "New session on "
+    },
     {
-      "type": 0,
-      "value": "Host"
-    }
-  ],
-  "sidebar.noConnectedHost": [
-    {
-      "type": 0,
-      "value": "No host connected"
+      "type": 1,
+      "value": "host"
     }
   ],
   "sidebar.noSessions": [
@@ -783,16 +775,36 @@
       "value": "Sessions"
     }
   ],
+  "sidebar.sessionsOn": [
+    {
+      "type": 0,
+      "value": "Sessions on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "sidebar.splitter": [
+    {
+      "type": 0,
+      "value": "Sidebar width"
+    }
+  ],
+  "sidebar.splitterValue": [
+    {
+      "type": 1,
+      "value": "width"
+    },
+    {
+      "type": 0,
+      "value": " pixels"
+    }
+  ],
   "sidebar.toggle": [
     {
       "type": 0,
       "value": "Sessions and hosts"
-    }
-  ],
-  "sidebar.tree": [
-    {
-      "type": 0,
-      "value": "Hosts and sessions"
     }
   ],
   "sidebar.trust": [

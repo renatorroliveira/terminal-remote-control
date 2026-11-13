@@ -5,12 +5,12 @@ import {
     EMPTY_WORKSPACE,
     failureAcknowledged,
     hostAdded,
+    hostGroups,
     hostStateChanged,
     sessionChanged,
     sessionKey,
     sessionName,
     sessionsListed,
-    treeItems,
     type Workspace,
 } from './workspace-model';
 
@@ -52,27 +52,24 @@ function workspaceWithTwoHosts(): Workspace {
 }
 
 describe('the workspace model (US-1.6, US-1.9)', () => {
-    it('lists hosts in the order they were added, each with its sessions in daemon order', () => {
-        const items = treeItems(workspaceWithTwoHosts());
-        expect(items.map((item) => [item.kind, item.level, item.posinset, item.setsize, item.label])).toEqual([
-            ['host', 1, 1, 2, 'devbox-1'],
-            ['session', 2, 1, 2, 'bash'],
-            ['session', 2, 2, 2, 'bash'],
-            ['host', 1, 2, 2, 'devbox-2:2222'],
+    it('groups sessions by host, hosts in the order added and sessions in daemon order', () => {
+        const groups = hostGroups(workspaceWithTwoHosts());
+        expect(groups.map((group) => [group.host.destination, group.expanded, group.sessions.length])).toEqual([
+            ['devbox-1', true, 2],
+            ['devbox-2:2222', true, 0],
         ]);
-        expect(items[1]?.key).toBe(sessionKey('h1', 'a'));
+        expect(groups[0]?.sessions.map((item) => [item.key, item.label])).toEqual([
+            [sessionKey('h1', 'a'), 'bash'],
+            [sessionKey('h1', 'b'), 'bash'],
+        ]);
     });
 
     it('shows only hosts that are connected or have sessions, and drops a closed host and its sessions', () => {
         let workspace: Workspace = { ...workspaceWithTwoHosts(), open: sessionKey('h1', 'a') };
         workspace = hostStateChanged(workspace, 'h2', { status: 'idle' });
-        expect(
-            treeItems(workspace)
-                .filter((item) => item.kind === 'host')
-                .map((item) => item.label),
-        ).toEqual(['devbox-1']);
+        expect(hostGroups(workspace).map((group) => group.host.destination)).toEqual(['devbox-1']);
         workspace = hostStateChanged(workspace, 'h1', { status: 'closed' });
-        expect(treeItems(workspace)).toEqual([]);
+        expect(hostGroups(workspace)).toEqual([]);
         expect(workspace.open).toBeUndefined();
         expect(workspace.hosts).toHaveLength(2);
     });
@@ -96,6 +93,17 @@ describe('the workspace model: notices and closed sessions (US-1.3, US-1.10)', (
         expect(failureAcknowledged(failed).failureNotice).toBeUndefined();
     });
 
+    it('raises no notice for a connection the app started on its own', () => {
+        const failed = hostStateChanged(
+            workspaceWithTwoHosts(),
+            'h2',
+            { status: 'failed', failure: { kind: 'timeout', host: 'devbox-2', port: 2222, details: '' } },
+            { notifyFailure: false },
+        );
+        expect(failed.failureNotice).toBeUndefined();
+        expect(failed.hosts[1]?.state.status).toBe('failed');
+    });
+
     it('raises no notice when the user rejected the host key themselves', () => {
         const rejected = hostStateChanged(workspaceWithTwoHosts(), 'h2', {
             status: 'failed',
@@ -106,9 +114,9 @@ describe('the workspace model: notices and closed sessions (US-1.3, US-1.10)', (
 });
 
 describe('the workspace model: changes and names (US-1.6, US-1.10)', () => {
-    it('hides the sessions of a collapsed host', () => {
+    it('marks a collapsed host, whose sessions the sidebar then hides', () => {
         const workspace = { ...workspaceWithTwoHosts(), collapsed: new Set(['h1']) };
-        expect(treeItems(workspace).map((item) => item.kind)).toEqual(['host', 'host']);
+        expect(hostGroups(workspace).map((group) => group.expanded)).toEqual([false, true]);
     });
 
     it('applies created, updated, closed and reordered changes', () => {

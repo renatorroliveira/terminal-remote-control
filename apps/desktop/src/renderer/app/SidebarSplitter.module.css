@@ -1,0 +1,33 @@
+@layer components {
+    .splitter {
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: calc(var(--trc-sidebar-width) - 4px);
+        z-index: 1;
+        width: 8px;
+        cursor: col-resize;
+        touch-action: none;
+    }
+
+    .splitter:hover,
+    .splitter:focus-visible {
+        background: linear-gradient(
+            to right,
+            transparent 3px,
+            var(--trc-color-border) 3px,
+            var(--trc-color-border) 5px,
+            transparent 5px
+        );
+    }
+
+    .splitter:focus-visible {
+        outline: var(--trc-focus-ring-width) solid var(--trc-color-focus-ring);
+        outline-offset: 0;
+    }
+
+    @media (max-width: 800px) {
+        .splitter {
+            display: none;
+        }
+    }
+}

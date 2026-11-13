@@ -45,11 +45,11 @@ if (container !== null) {
             hosts: window.trc.hosts,
         });
         const { workspace, terminals } = composed;
-        void workspace.load();
+        void workspace.load().then(() => workspace.connectAll());
         reactRoot.render(
             <StrictMode>
                 <AppProviders locale={DEFAULT_LOCALE}>
-                    <App workspace={workspace} terminals={terminals} />
+                    <App workspace={workspace} terminals={terminals} sidebar={window.trc.sidebar} />
                 </AppProviders>
             </StrictMode>,
         );
