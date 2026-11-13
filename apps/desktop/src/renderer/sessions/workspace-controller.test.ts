@@ -2,7 +2,7 @@ import type { ExitStatus, ServerMessage, SessionInfo } from '@trc/protocol';
 import { describe, expect, it } from 'vitest';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import type { KnownHost } from '../../shared/hosts';
-import type { ClientRequest } from '../connection/host-client';
+import { type ClientRequest, HostRequestError } from '../connection/host-client';
 import {
     type SessionPreferences,
     type TerminalHost,
@@ -64,9 +64,14 @@ class FakeClient implements WorkspaceClient {
     }
 
     listed: readonly SessionInfo[] = [info('a'), info('b', 1)];
+    /** Request types the daemon answers with an error. */
+    readonly refused = new Set<string>();
 
     request(_hostId: string, request: ClientRequest): Promise<ServerMessage> {
         this.requests.push(request);
+        if (this.refused.has(request.type)) {
+            return Promise.reject(new HostRequestError('internal', 'refused'));
+        }
         return Promise.resolve({ type: 'sessions', requestId: 1, sessions: [...this.listed] });
     }
 }
@@ -79,8 +84,14 @@ class FakeTerminals implements TerminalHost {
         this.reachable.push(`${hostId}:${connected}`);
     }
 
-    reattachHost(hostId: string): void {
+    /** Sessions whose re-attach fails. */
+    unattachable: string[] = [];
+    /** Whether creating a session fails. */
+    failCreate = false;
+
+    reattachHost(hostId: string): Promise<readonly string[]> {
         this.reattached.push(hostId);
+        return Promise.resolve(this.unattachable);
     }
 
     readonly shown: string[] = [];
@@ -94,6 +105,9 @@ class FakeTerminals implements TerminalHost {
     readonly specs: unknown[] = [];
 
     create(hostId: string, spec?: unknown): Promise<SessionInfo> {
+        if (this.failCreate) {
+            return Promise.reject(new HostRequestError('spawnFailed', 'no shell'));
+        }
         this.created.push(hostId);
         this.specs.push(spec);
         return Promise.resolve(info('c', 2));
@@ -180,9 +194,8 @@ describe('WorkspaceController: connection loss (US-1.14)', () => {
         client.states.get(host.id)?.({ status: 'disconnected', reason: 'ping-timeout' });
         expect(workspace.store.getState().sessions.get(host.id)).toHaveLength(2);
         expect(terminals.closed).toEqual([]);
-        expect(terminals.reachable).toEqual([`${host.id}:true`, `${host.id}:false`]);
+        expect(terminals.reachable).toEqual([`${host.id}:false`]);
         client.states.get(host.id)?.(connected);
-        expect(terminals.reachable.at(-1)).toBe(`${host.id}:true`);
         expect(terminals.reattached).toEqual([host.id, host.id]);
     });
 });
@@ -381,6 +394,41 @@ describe('WorkspaceController: managing sessions (US-1.10)', () => {
         await workspace.duplicateSession(`${host.id}/a`);
         expect(terminals.specs.at(-1)).toEqual({ profileId: 'login', cwd: '/srv/app' });
         expect(terminals.shown.at(-1)).toBe(`${host.id}/c`);
+    });
+});
+
+describe('WorkspaceController: failed actions (US-1.10, US-1.14.3, WCAG 3.3.1)', () => {
+    it('reports a session action the daemon refuses, once per failure, and keeps working', async () => {
+        const { client, host, workspace } = await connectedSetup();
+        client.refused.add('close');
+        await workspace.closeSession(`${host.id}/a`);
+        expect(workspace.store.getState().actionFailure).toEqual({
+            id: 1,
+            action: 'close',
+            hostId: host.id,
+            code: 'internal',
+        });
+        await workspace.closeSession(`${host.id}/a`);
+        expect(workspace.store.getState().actionFailure?.id).toBe(2);
+        await workspace.renameSession(`${host.id}/a`, 'logs');
+        expect(workspace.store.getState().actionFailure?.id).toBe(2);
+    });
+
+    it('reports a session it could not create', async () => {
+        const { terminals, host, workspace } = await connectedSetup();
+        terminals.failCreate = true;
+        await workspace.newSession(host.id);
+        expect(workspace.store.getState().actionFailure).toMatchObject({ action: 'create', code: 'spawnFailed' });
+    });
+
+    it('reports each terminal that could not attach again after a reconnect', async () => {
+        const { client, terminals, host, workspace } = await connectedSetup();
+        terminals.unattachable = [`${host.id}/b`];
+        client.states.get(host.id)?.({ status: 'disconnected', reason: 'ping-timeout' });
+        client.states.get(host.id)?.(connected);
+        await expect
+            .poll(() => workspace.store.getState().actionFailure)
+            .toMatchObject({ action: 'reattach', hostId: host.id });
     });
 });
 

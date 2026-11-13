@@ -7,6 +7,10 @@
     "defaultMessage": "User (optional)",
     "description": "Field label."
   },
+  "announce.actionFailed": {
+    "defaultMessage": "{action} {reason}",
+    "description": "Announced and listed when a session or host action fails."
+  },
   "announce.bell": {
     "defaultMessage": "Bell in {session}.",
     "description": "Announced when the open session rings its bell."
@@ -275,6 +279,14 @@
     "defaultMessage": "Add the key to your SSH agent with ssh-add, which asks for the PIN, then connect again.",
     "description": "How to fix a failed connection."
   },
+  "failure.close": {
+    "defaultMessage": "Couldn’t close the session on {host}.",
+    "description": "Reported when closing a session fails."
+  },
+  "failure.create": {
+    "defaultMessage": "Couldn’t create a session on {host}.",
+    "description": "Reported when a new session fails."
+  },
   "failure.details": {
     "defaultMessage": "Details",
     "description": "Label of the read-only field with what ssh or the host reported."
@@ -286,6 +298,10 @@
   "failure.dns.remedy": {
     "defaultMessage": "Check the host name, your network and your DNS, then connect again.",
     "description": "How to fix a failed connection."
+  },
+  "failure.forget": {
+    "defaultMessage": "Couldn’t forget {host}.",
+    "description": "Reported when forgetting a host fails."
   },
   "failure.hostKeyChanged.problem": {
     "defaultMessage": "The host key of {name} has changed. Someone may be intercepting the connection, or the host was reinstalled.",
@@ -343,6 +359,10 @@
     "defaultMessage": "Check that the jump host is running and reachable, then connect again.",
     "description": "How to fix a failed connection."
   },
+  "failure.move": {
+    "defaultMessage": "Couldn’t move the session on {host}.",
+    "description": "Reported when moving a session fails."
+  },
   "failure.noexec.problem": {
     "defaultMessage": "The install location on {name} doesn’t allow running programs; it is mounted noexec.",
     "description": "What went wrong when a connection failed."
@@ -363,6 +383,50 @@
     "defaultMessage": "Read the details, then connect again.",
     "description": "How to fix a failed connection."
   },
+  "failure.reason.badRequest": {
+    "defaultMessage": "The host refused the request.",
+    "description": "The daemon found the request malformed."
+  },
+  "failure.reason.disconnected": {
+    "defaultMessage": "The host isn’t connected.",
+    "description": "The action failed because the connection is gone."
+  },
+  "failure.reason.internal": {
+    "defaultMessage": "The host’s daemon hit an internal error.",
+    "description": "The daemon failed internally."
+  },
+  "failure.reason.spawnFailed": {
+    "defaultMessage": "The shell couldn’t start.",
+    "description": "The daemon could not start the session’s program."
+  },
+  "failure.reason.unknown": {
+    "defaultMessage": "Try again.",
+    "description": "Nothing says why the action failed."
+  },
+  "failure.reason.unknownSession": {
+    "defaultMessage": "The session no longer exists.",
+    "description": "The daemon no longer knows the session."
+  },
+  "failure.reason.unspecified": {
+    "defaultMessage": "The host gave no reason.",
+    "description": "The daemon refused without a code."
+  },
+  "failure.reason.unsupported": {
+    "defaultMessage": "The host’s daemon doesn’t support it.",
+    "description": "The daemon does not support the request."
+  },
+  "failure.reattach": {
+    "defaultMessage": "Couldn’t reattach every session on {host}; they take no input.",
+    "description": "Reported when sessions fail to reattach after a reconnect."
+  },
+  "failure.rename": {
+    "defaultMessage": "Couldn’t rename the session on {host}.",
+    "description": "Reported when a rename fails."
+  },
+  "failure.restart": {
+    "defaultMessage": "Couldn’t restart the session on {host}.",
+    "description": "Reported when a restart fails."
+  },
   "failure.sshMissing.problem": {
     "defaultMessage": "This Mac has no OpenSSH client.",
     "description": "What went wrong when a connection failed."
@@ -378,6 +442,10 @@
   "failure.sshTooOld.remedy": {
     "defaultMessage": "Update OpenSSH, then connect again.",
     "description": "How to fix a failed connection."
+  },
+  "failure.stop": {
+    "defaultMessage": "Couldn’t stop the session on {host}.",
+    "description": "Reported when a stop fails."
   },
   "failure.timeout.problem": {
     "defaultMessage": "{name} didn’t answer on port {port} within 15 seconds.",
