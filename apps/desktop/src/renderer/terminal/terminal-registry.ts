@@ -1,4 +1,5 @@
 import type { SessionInfo } from '@trc/protocol';
+import { DEFAULT_TERMINAL_APPEARANCE, type TerminalAppearance } from '../../shared/terminal-appearance';
 import type { SessionKey, SessionOptions, TerminalHost } from '../sessions/workspace-controller';
 import type { TerminalPalette } from '../ui/themes';
 import type { TerminalLink } from './hyperlinks';
@@ -71,6 +72,8 @@ export class TerminalRegistry implements TerminalHost {
     #open: SessionKey | undefined;
     #tabFocusMode = false;
     #fontSize = TERMINAL_FONT_SIZE;
+    #appearance: TerminalAppearance = DEFAULT_TERMINAL_APPEARANCE;
+    #reducedMotion = false;
 
     /** Creates an empty registry. */
     constructor(options: TerminalRegistryOptions) {
@@ -137,6 +140,22 @@ export class TerminalRegistry implements TerminalHost {
         this.#fontSize = Math.round((TERMINAL_FONT_SIZE * zoom) / 100);
         for (const entry of this.#entries.values()) {
             entry.view.setFontSize(this.#fontSize);
+        }
+    }
+
+    /** Sets every terminal's line height, letter spacing and cursor (A11Y-07.6, A11Y-07.8). */
+    setAppearance(appearance: TerminalAppearance): void {
+        this.#appearance = appearance;
+        for (const entry of this.#entries.values()) {
+            entry.view.setAppearance(appearance);
+        }
+    }
+
+    /** Stops every cursor blinking while the OS reduces motion (A11Y-08.1). */
+    setReducedMotion(reducedMotion: boolean): void {
+        this.#reducedMotion = reducedMotion;
+        for (const entry of this.#entries.values()) {
+            entry.view.setReducedMotion(reducedMotion);
         }
     }
 
@@ -275,6 +294,9 @@ export class TerminalRegistry implements TerminalHost {
         });
         view.mount(frame);
         view.setTabFocusMode(this.#tabFocusMode);
+        view.setReducedMotion(this.#reducedMotion);
+        const appearance = this.#appearance;
+        void view.ready.then(() => view.setAppearance(appearance));
         return { frame, view, link };
     }
 

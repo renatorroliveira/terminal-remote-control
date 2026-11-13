@@ -657,3 +657,22 @@ describe('TerminalView: text size (A11Y-07.4, US-1.11.3)', () => {
         expect(sizes.at(-1)?.cols).toBe(view.terminal.cols);
     });
 });
+
+describe('TerminalView: appearance (A11Y-07.6, A11Y-07.8)', () => {
+    it('applies line height, extra letter spacing, cursor shape and bar width', async () => {
+        const { view } = mount();
+        await written(view, 'hello');
+        const spacing = view.terminal.options.letterSpacing ?? 0;
+        view.setAppearance({
+            lineHeight: 1.5,
+            letterSpacing: 2,
+            cursorStyle: 'bar',
+            cursorWidth: 3,
+            cursorBlink: false,
+        });
+        expect(view.terminal.options.lineHeight).toBe(1.5);
+        expect(view.terminal.options.letterSpacing).toBe(spacing + 2);
+        expect(view.terminal.options.cursorStyle).toBe('bar');
+        expect(view.terminal.options.cursorWidth).toBe(3);
+    });
+});

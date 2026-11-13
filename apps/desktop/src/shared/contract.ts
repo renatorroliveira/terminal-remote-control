@@ -3,6 +3,7 @@ import type { DisplaySettings } from './display';
 import type { KnownHost } from './hosts';
 import type { CommandId } from './keymap';
 import type { LinkCheck } from './links';
+import type { TerminalAppearance } from './terminal-appearance';
 
 /** Requests the renderer makes of the main process with `ipcRenderer.invoke`: arguments and result per channel. */
 export interface InvokeContract {
@@ -25,6 +26,7 @@ export interface InvokeContract {
     readonly 'menus:terminal': { readonly args: readonly [canCopy: boolean]; readonly result: undefined };
     readonly 'clipboard:write': { readonly args: readonly [text: string]; readonly result: undefined };
     readonly 'terminal:get-zoom': { readonly args: readonly []; readonly result: number };
+    readonly 'terminal:get-appearance': { readonly args: readonly []; readonly result: TerminalAppearance };
     readonly 'terminal:set-zoom': { readonly args: readonly [zoom: number]; readonly result: undefined };
     readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
@@ -91,6 +93,8 @@ export interface TrcBridge {
         zoom(): Promise<number>;
         /** Keeps a terminal text size in `config.json`. */
         setZoom(zoom: number): Promise<void>;
+        /** How the terminal grid and cursor look (A11Y-07.6, A11Y-07.8). */
+        appearance(): Promise<TerminalAppearance>;
     };
     readonly menus: {
         /** Shows the terminal's context menu: Copy when `canCopy`, Paste, List Links and Look Up (A11Y-11.11). */

@@ -215,6 +215,10 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 - **Terminal text size.** Command-= makes the terminal text bigger, Command-- smaller and Command-0 returns it to
   the default, in steps of 10% from 50% to 200% (also in the Terminal menu). Every session follows, resizes to fit,
   and TRC says the new size and remembers it.
+- **Cursor and spacing.** The cursor is a block that doesn't blink. In `config.json`, `terminalAppearance` sets
+  `cursorStyle` (`block`, `bar` or `underline`), `cursorWidth` (a bar's thickness, 1 to 6 pixels), `cursorBlink`,
+  `lineHeight` (1 to 2) and `letterSpacing` (0 to 4 pixels); the settings page will have them too. A blinking
+  cursor stops after 5 seconds without typing, and never blinks while macOS Reduce motion is on.
 - **Window size.** View, then Zoom In (Control-Command-=), Zoom Out (Control-Command--) and Actual Size
   (Control-Command-0) scale the whole window, sidebar included. Option-Command-= and - stay macOS Zoom's.
 - **Sidebar width.** Drag the sidebar's right edge, between 300 and 800 pixels. Or focus the edge with Tab and use
@@ -254,11 +258,11 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 
 On your Mac, TRC keeps its settings in the TRC home, `~/.trc`:
 
-| File               | Holds                                                                                                                                                                                                                        |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config.json`      | `theme` (`midnight`, `system`, `light`, `dark`, `hc-light` or `hc-dark`), `sidebarWidth` (300 to 800), `sidebarCollapsed` (`true` or `false`) and `screenReaderMode` (`auto`, `on` or `off`), and `terminalZoom` (50 to 200) |
-| `hosts.json`       | The known hosts, and per host `allowClipboardWrites` (off unless `true`)                                                                                                                                                     |
-| `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example`                      |
+| File               | Holds                                                                                                                                                                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config.json`      | `theme` (`midnight`, `system`, `light`, `dark`, `hc-light` or `hc-dark`), `sidebarWidth` (300 to 800), `sidebarCollapsed` (`true` or `false`) and `screenReaderMode` (`auto`, `on` or `off`), `terminalZoom` (50 to 200) and `terminalAppearance` |
+| `hosts.json`       | The known hosts, and per host `allowClipboardWrites` (off unless `true`)                                                                                                                                                                          |
+| `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example`                                           |
 
 Both files are readable only by you. Edit `config.json` while the app is closed; a value TRC can't use falls back
 to its default.

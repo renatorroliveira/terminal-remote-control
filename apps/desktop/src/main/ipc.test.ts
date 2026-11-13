@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_TERMINAL_APPEARANCE } from '../shared/terminal-appearance';
 import { type InvokeHandlers, registerHandlers } from './ipc';
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown;
@@ -33,6 +34,7 @@ function handlers(display: unknown = {}): InvokeHandlers {
         'menus:terminal': async () => undefined,
         'clipboard:write': async () => undefined,
         'terminal:get-zoom': async () => 100,
+        'terminal:get-appearance': async () => DEFAULT_TERMINAL_APPEARANCE,
         'terminal:set-zoom': async () => undefined,
         'sidebar:get-width': async () => 400,
         'sidebar:set-width': async () => undefined,

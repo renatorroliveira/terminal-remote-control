@@ -11,6 +11,7 @@ import {
 import type { DisplaySettings } from '../shared/display';
 import type { KnownHost } from '../shared/hosts';
 import type { LinkCheck } from '../shared/links';
+import type { TerminalAppearance } from '../shared/terminal-appearance';
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
     const handler = (_event: IpcRendererEvent, value: T): void => listener(value);
@@ -47,6 +48,7 @@ const bridge: TrcBridge = {
     terminal: {
         zoom: () => ipcRenderer.invoke('terminal:get-zoom') as Promise<number>,
         setZoom: (zoom) => ipcRenderer.invoke('terminal:set-zoom', zoom) as Promise<void>,
+        appearance: () => ipcRenderer.invoke('terminal:get-appearance') as Promise<TerminalAppearance>,
     },
     menus: {
         terminal: (canCopy) => ipcRenderer.invoke('menus:terminal', canCopy) as Promise<void>,

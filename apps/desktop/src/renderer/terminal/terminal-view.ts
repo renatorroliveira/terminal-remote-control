@@ -1,11 +1,13 @@
 import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { type IDisposable, Terminal } from '@xterm/xterm';
+import type { TerminalAppearance } from '../../shared/terminal-appearance';
 import type { TerminalPalette } from '../ui/themes';
 import { attachInput, type InputModes } from './ats-input';
 import { AtsSurface, SELECTION_CAP } from './ats-surface';
 import { parseClipboardRequest } from './clipboard-write';
 import { CreditTracker } from './credit-tracker';
+import { CursorBlink } from './cursor-blink';
 import { type TerminalLink, TerminalLinks } from './hyperlinks';
 import { KittyKeyboard } from './kitty-keyboard';
 import type { TerminalNotice } from './notices';
@@ -82,6 +84,9 @@ export class TerminalView {
     readonly #measurer: HTMLElement;
     readonly #announcer: OutputAnnouncer | undefined;
     readonly #links: TerminalLinks;
+    readonly #blink: CursorBlink;
+    #wantsBlink = false;
+    #reducedMotion = false;
     readonly #modes: InputModes = { tabFocusMode: false, sendNextKey: false };
     readonly #cleanups: (() => void)[] = [];
     #geometry: TerminalGeometry | undefined;
@@ -111,6 +116,7 @@ export class TerminalView {
         this.#scheduler = new UpdateScheduler(() => this.#ats.update(), options.assistiveTechnology);
         this.#credit = new CreditTracker(options.onCredit);
         this.#announcer = options.speech === undefined ? undefined : new OutputAnnouncer(this.terminal, options.speech);
+        this.#blink = new CursorBlink(this.terminal.options);
         this.#links = new TerminalLinks(
             this.terminal,
             (link) => options.onLink?.(link),
@@ -195,6 +201,22 @@ export class TerminalView {
         return this.#links.visible();
     }
 
+    /** Applies line height, extra letter spacing, the cursor's shape and width, and blinking (A11Y-07.6, A11Y-07.8). */
+    setAppearance(appearance: TerminalAppearance): void {
+        this.terminal.options.lineHeight = appearance.lineHeight;
+        this.terminal.options.cursorStyle = appearance.cursorStyle;
+        this.terminal.options.cursorWidth = appearance.cursorWidth;
+        this.#wantsBlink = appearance.cursorBlink;
+        this.#blink.set({ wanted: this.#wantsBlink, reducedMotion: this.#reducedMotion });
+        this.#geometry?.setExtraSpacing(appearance.letterSpacing);
+    }
+
+    /** Stops the cursor blinking while the OS reduces motion (A11Y-08.1). */
+    setReducedMotion(reducedMotion: boolean): void {
+        this.#reducedMotion = reducedMotion;
+        this.#blink.set({ wanted: this.#wantsBlink, reducedMotion });
+    }
+
     /** Changes the terminal font size; the grid refits and the PTY follows (A11Y-07.4, US-1.11.3). */
     setFontSize(size: number): void {
         this.terminal.options.fontSize = size;
@@ -217,6 +239,7 @@ export class TerminalView {
     dispose(): void {
         this.#disposed = true;
         this.#announcer?.dispose();
+        this.#blink.dispose();
         this.#links.dispose();
         this.#geometry?.dispose();
         for (const cleanup of this.#cleanups.splice(0)) {
@@ -406,6 +429,7 @@ export class TerminalView {
 
     #send(text: string): void {
         this.#scheduler.input();
+        this.#blink.input();
         this.#announcer?.input(text);
         this.terminal.clearSelection();
         this.terminal.scrollToBottom();

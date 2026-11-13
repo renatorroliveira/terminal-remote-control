@@ -102,6 +102,7 @@ async function start(): Promise<void> {
             ...hostHandlers(knownHosts),
             ...sidebarHandlers(config),
             'terminal:get-zoom': async () => (await config.read()).terminalZoom,
+            'terminal:get-appearance': async () => (await config.read()).terminalAppearance,
             'terminal:set-zoom': async (zoom) => {
                 await config.update({ terminalZoom: zoom });
                 return undefined;
