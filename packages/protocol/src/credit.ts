@@ -1,5 +1,5 @@
 /** Output bytes a client may receive before it grants more (TECH_STACK §6). */
-export const CREDIT_WINDOW = 256 * 1024;
+export const CREDIT_WINDOW = 1024 * 1024;
 /** Rendered bytes are returned to the daemon once they reach this step. */
 export const CREDIT_STEP = 64 * 1024;
 

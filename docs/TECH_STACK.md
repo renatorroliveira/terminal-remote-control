@@ -783,7 +783,9 @@ needs Rust. Every request carries a `requestId`.
 
 ### Flow control (D-04: skip to latest)
 
-- **Credit.** Each attached stream gets a 256 KiB window. The renderer returns
+- **Credit.** Each attached stream gets a 1 MiB window (S3b: at 100 ms RTT a
+  256 KiB window held output to about 2 MiB/s, 1 MiB reaches about 8 MiB/s, and
+  OpenSSH's 2 MiB channel window bounds it beyond that). The renderer returns
   credit from xterm.js write callbacks in 64 KiB steps, as VS Code and the
   xterm.js flow-control guide do.
 - **No blocking.** The holder never stops reading the PTY. Programs never
