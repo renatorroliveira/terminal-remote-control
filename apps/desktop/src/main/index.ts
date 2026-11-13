@@ -12,12 +12,14 @@ import { contentTypeFor, resolveAppRequest } from './app-protocol';
 import { isBackgroundLaunch } from './background-launch';
 import { startConnectionHost } from './connection-host';
 import { DisplayRelay } from './display-relay';
+import { suggestedAddresses } from './host-suggestions';
 import { installRootFor } from './install-root';
 import { registerHandlers } from './ipc';
 import { KnownHosts } from './known-hosts';
 import { migrateLegacyState } from './legacy-state';
 import { menuTemplate } from './menu';
 import { CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
+import { sshConfigFilesFor, sshConfigHosts } from './ssh-config-hosts';
 import { trcHome } from './trc-home';
 import { isAppPage } from './trusted-sender';
 
@@ -57,6 +59,11 @@ async function start(): Promise<void> {
     const display = new DisplayRelay(theme);
     const knownHosts = new KnownHosts(home);
     const installRoot = installRootFor({ seamEnabled: __TRC_TEST_SEAM__, env: process.env });
+    const sshConfigFiles = sshConfigFilesFor({
+        seamEnabled: __TRC_TEST_SEAM__,
+        env: process.env,
+        home: app.getPath('home'),
+    });
     registerHandlers(
         ipcMain,
         {
@@ -64,6 +71,17 @@ async function start(): Promise<void> {
             'accessibility:get': async () => app.isAccessibilitySupportEnabled(),
             'hosts:list': () => knownHosts.list(),
             'hosts:add': (address) => knownHosts.add(address, installRoot),
+            'hosts:suggestions': async () =>
+                suggestedAddresses(
+                    await knownHosts.recent(),
+                    await sshConfigHosts(sshConfigFiles, app.getPath('home')),
+                    await knownHosts.list(),
+                ),
+            'hosts:remove': async (id) => {
+                await knownHosts.remove(id);
+                return undefined;
+            },
+            'hosts:set-install-root': (id, root) => knownHosts.setInstallRoot(id, root),
             'sidebar:get-width': async () => (await config.read()).sidebarWidth,
             'sidebar:set-width': async (width) => {
                 await config.update({ sidebarWidth: width });

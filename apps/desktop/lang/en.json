@@ -1,4 +1,16 @@
 {
+  "addHost.twoUsers": {
+    "defaultMessage": "Give the user either in the host field or here, not both.",
+    "description": "Error when the host field has user@ and the user field is filled too."
+  },
+  "addHost.user": {
+    "defaultMessage": "User (optional)",
+    "description": "Field label."
+  },
+  "announce.connectStep": {
+    "defaultMessage": "{host}: {step}.",
+    "description": "Announced politely at each step of connecting."
+  },
   "announce.hostConnected": {
     "defaultMessage": "{host} connected.",
     "description": "Announced when a host connects."
@@ -207,6 +219,14 @@
     "defaultMessage": "Check that the jump host is running and reachable, then connect again.",
     "description": "How to fix a failed connection."
   },
+  "failure.noexec.problem": {
+    "defaultMessage": "The install location on {name} doesn’t allow running programs; it is mounted noexec.",
+    "description": "What went wrong when a connection failed."
+  },
+  "failure.noexec.remedy": {
+    "defaultMessage": "Choose another install location for {name} from its actions (Shift+F10), such as a folder on another disk, then connect again.",
+    "description": "How to fix a failed connection."
+  },
   "failure.ok": {
     "defaultMessage": "OK",
     "description": "Button that closes the failed-connection dialog."
@@ -287,6 +307,22 @@
     "defaultMessage": "Update the app, then connect again.",
     "description": "How to fix a failed connection."
   },
+  "forget.body": {
+    "defaultMessage": "TRC removes {host} from your hosts and closes its connection. Its sessions keep running on the host, and adding it again shows them.",
+    "description": "Says what forgetting deletes and what it keeps."
+  },
+  "forget.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button."
+  },
+  "forget.confirm": {
+    "defaultMessage": "Forget",
+    "description": "Button."
+  },
+  "forget.title": {
+    "defaultMessage": "Forget {host}?",
+    "description": "Confirmation title."
+  },
   "host.action.cancel": {
     "defaultMessage": "Cancel connecting to {host}",
     "description": "Accessible name of the connection button while the host connects."
@@ -299,9 +335,21 @@
     "defaultMessage": "Disconnect {host}",
     "description": "Accessible name of the connection button of a connected host."
   },
+  "host.action.forget": {
+    "defaultMessage": "Forget {host}…",
+    "description": "Host action that asks for confirmation."
+  },
+  "host.action.installRoot": {
+    "defaultMessage": "Change install location of {host}…",
+    "description": "Host action that opens a dialog."
+  },
   "host.action.reviewKey": {
     "defaultMessage": "Review the host key of {host}",
     "description": "Accessible name of the connection button while a host key waits for the user."
+  },
+  "host.action.test": {
+    "defaultMessage": "Test connection to {host}",
+    "description": "Host action."
   },
   "host.closed": {
     "defaultMessage": "Closed",
@@ -338,6 +386,50 @@
   "host.keyQuestion": {
     "defaultMessage": "{host} presented an unknown {type} host key, {fingerprint}. Trust it?",
     "description": "Question shown when a host presents a key the user has not trusted yet."
+  },
+  "host.testPassed": {
+    "defaultMessage": "The connection to {host} works.",
+    "description": "Announced when a connection test succeeds."
+  },
+  "host.touch": {
+    "defaultMessage": "Touch your security key for {host}",
+    "description": "Shown and announced while ssh waits for a FIDO security key touch."
+  },
+  "hostKey.explanation": {
+    "defaultMessage": "{host} presented a {type} key that your known_hosts file doesn’t have. Compare its fingerprint with one from the host’s administrator before you trust it.",
+    "description": "Dialog text."
+  },
+  "hostKey.fingerprint": {
+    "defaultMessage": "SHA-256 fingerprint",
+    "description": "Label of the read-only field holding the fingerprint."
+  },
+  "hostKey.title": {
+    "defaultMessage": "Trust the host key of {host}?",
+    "description": "Dialog title."
+  },
+  "installRoot.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button."
+  },
+  "installRoot.hint": {
+    "defaultMessage": "A folder on the host where TRC may run programs, such as ~/.trc or /scratch/you/trc. The next connection uses it.",
+    "description": "Field instructions."
+  },
+  "installRoot.invalid": {
+    "defaultMessage": "Type a path that starts with / or ~/.",
+    "description": "Field error with its fix."
+  },
+  "installRoot.label": {
+    "defaultMessage": "Install location",
+    "description": "Field."
+  },
+  "installRoot.save": {
+    "defaultMessage": "Save",
+    "description": "Button."
+  },
+  "installRoot.title": {
+    "defaultMessage": "Install location of {host}",
+    "description": "Dialog title."
   },
   "notifications.clear": {
     "defaultMessage": "Clear all",
@@ -530,6 +622,30 @@
   "status.tabMovesFocus": {
     "defaultMessage": "Tab moves focus",
     "description": "Toggle button: whether Tab leaves the terminal."
+  },
+  "step.checking": {
+    "defaultMessage": "Checking the daemon",
+    "description": "Connection step."
+  },
+  "step.connecting": {
+    "defaultMessage": "Connecting",
+    "description": "Connection step."
+  },
+  "step.handshake": {
+    "defaultMessage": "Greeting the daemon",
+    "description": "Connection step: the app and the daemon agree on a protocol version."
+  },
+  "step.starting": {
+    "defaultMessage": "Starting the daemon",
+    "description": "Connection step."
+  },
+  "step.uploading": {
+    "defaultMessage": "Uploading the daemon",
+    "description": "Connection step."
+  },
+  "step.verifying": {
+    "defaultMessage": "Verifying the daemon",
+    "description": "Connection step."
   },
   "terminal.hint": {
     "defaultMessage": "Option F1: accessibility help.",

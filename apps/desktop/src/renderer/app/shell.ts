@@ -4,6 +4,12 @@ import type { CommandId, Keymap } from '../../shared/keymap';
 import { CommandRegistry } from '../commands/command-registry';
 import { installShortcuts } from '../commands/shortcuts';
 import { failureMessage } from '../sessions/failure-messages';
+import {
+    connectStepAnnouncement,
+    connectStepMessages,
+    hostActionMessages,
+    touchMessage,
+} from '../sessions/host-messages';
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import { type HostEntry, type SessionKey, sessionName } from '../sessions/workspace-model';
 import type { Announcer } from './announcer';
@@ -39,6 +45,14 @@ export interface ShellState {
     readonly sidebarCollapsed: boolean;
     /** Whether the sidebar panel shows in a narrow window (A11Y-07.5). */
     readonly panelOpen: boolean;
+    /** The host dialog open now: forgetting a host, or moving its install location. */
+    readonly hostDialog: HostDialog | undefined;
+}
+
+/** A dialog about one host. */
+export interface HostDialog {
+    readonly kind: 'forget' | 'install-root';
+    readonly hostId: string;
 }
 
 /** What the shell is built from. */
@@ -62,6 +76,7 @@ const INITIAL_STATE: ShellState = {
     notificationsOpen: false,
     sidebarCollapsed: false,
     panelOpen: false,
+    hostDialog: undefined,
 };
 
 /**
@@ -77,6 +92,7 @@ export class Shell {
     readonly sidebar: SidebarSettings;
     readonly #options: ShellOptions;
     readonly #regions: RegionCycler;
+    #paletteReturn: HTMLElement | undefined;
 
     /** Builds the shell and registers its commands. */
     constructor(options: ShellOptions) {
@@ -123,9 +139,24 @@ export class Shell {
         return this.state.getState().muted.has(key);
     }
 
-    /** Opens or closes the command palette. */
-    setPaletteOpen(paletteOpen: boolean): void {
-        this.state.setState({ paletteOpen });
+    /** Opens the command palette, remembering where focus was. */
+    openPalette(): void {
+        const active = this.#options.document.activeElement;
+        this.#paletteReturn = active instanceof HTMLElement ? active : undefined;
+        this.state.setState({ paletteOpen: true });
+    }
+
+    /** Closes the command palette, returns focus to where it was, then runs `then` (A11Y-05.8). */
+    closePalette(then?: () => void): void {
+        const returnTo = this.#paletteReturn;
+        this.#paletteReturn = undefined;
+        this.state.setState({ paletteOpen: false });
+        setTimeout(() => {
+            if (returnTo?.isConnected === true) {
+                returnTo.focus();
+            }
+            then?.();
+        }, 0);
     }
 
     /** Opens or closes the notification list. */
@@ -136,6 +167,22 @@ export class Shell {
     /** Shows or hides the sidebar panel of a narrow window. */
     setPanelOpen(panelOpen: boolean): void {
         this.state.setState({ panelOpen });
+    }
+
+    /** Opens a dialog about a host, or closes it. */
+    setHostDialog(hostDialog: HostDialog | undefined): void {
+        this.state.setState({ hostDialog });
+    }
+
+    /** Tests a host's connection and announces when it works; a failure shows the failure dialog (US-1.1.5). */
+    async testConnection(hostId: string): Promise<void> {
+        const host = this.#options.workspace.store.getState().hosts.find((entry) => entry.id === hostId);
+        if (host !== undefined && (await this.#options.workspace.testConnection(hostId))) {
+            this.#options.announcer.announce(
+                this.#options.intl.formatMessage(hostActionMessages.testPassed, { host: host.destination }),
+                { group: hostId },
+            );
+        }
     }
 
     /** Toggles Tab focus mode for every terminal and announces the new state (A11Y-05.4). */
@@ -185,7 +232,7 @@ export class Shell {
         const actions: Readonly<Partial<Record<CommandId, () => void>>> = {
             'region.next': () => this.#regions.next(),
             'region.previous': () => this.#regions.previous(),
-            'palette.show': () => this.setPaletteOpen(true),
+            'palette.show': () => this.openPalette(),
             'notifications.show': () => this.setNotificationsOpen(true),
             'sidebar.toggle': () => this.toggleSidebar(),
             'terminal.toggleTabFocus': () => this.toggleTabFocus(),
@@ -219,9 +266,33 @@ export class Shell {
                 if (before !== undefined && before.state.status !== host.state.status) {
                     this.#reportHost(host, state.failureNotice === host.id);
                 }
+                if (before !== undefined && before.state !== host.state) {
+                    this.#reportProgress(before, host);
+                }
             }
             previous = state.hosts;
         });
+    }
+
+    #reportProgress(before: HostEntry, host: HostEntry): void {
+        const { intl, announcer } = this.#options;
+        const was = before.state;
+        const now = host.state;
+        if (now.status !== 'connecting') {
+            return;
+        }
+        if (now.touch !== undefined && (was.status !== 'connecting' || was.touch === undefined)) {
+            announcer.announce(intl.formatMessage(touchMessage, { host: host.destination }), {
+                group: `${host.id}:touch`,
+                politeness: 'assertive',
+            });
+        }
+        if (was.status !== 'connecting' || was.step !== now.step) {
+            const step = intl.formatMessage(connectStepMessages[now.step]);
+            announcer.announce(intl.formatMessage(connectStepAnnouncement, { host: host.destination, step }), {
+                group: host.id,
+            });
+        }
     }
 
     #reportHost(host: HostEntry, inDialog: boolean): void {

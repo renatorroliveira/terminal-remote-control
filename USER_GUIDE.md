@@ -35,8 +35,8 @@ On each host:
 
 - Linux on x86_64 or arm64.
 - `sshd` that accepts your key, and a POSIX shell.
-- A few megabytes free in your home folder, which must allow running programs (not mounted `noexec`), and
-  `sha256sum` or `shasum`. The host needs no internet access, no root or sudo, and no packages.
+- A few megabytes free in your home folder, or in another folder you choose, that allows running programs (not
+  mounted `noexec`), and `sha256sum` or `shasum`. The host needs no internet access, no root or sudo, and no packages.
 
 TRC uses your own SSH setup: `~/.ssh/config` (aliases, `ProxyCommand`, `ProxyJump`, ports, users), your agent and
 your `known_hosts`. It never changes your SSH configuration or your keys. The one file it writes is
@@ -59,23 +59,38 @@ your `known_hosts`. It never changes your SSH configuration or your keys. The on
 
 ## Add a host
 
-The sidebar's Hosts section has one field and an Add host button to its right.
+The sidebar's Hosts section has the New host field, with Add host to its right, and an optional User field below.
 
 1. Type the host as you would after `ssh`: an alias from your SSH config (`devbox`), or `user@host`,
-   `host:port` or `user@host:port`.
-2. Press Return or choose Add host.
+   `host:port` or `user@host:port`. As you type, TRC offers hosts you added before and the `Host` entries of your
+   `~/.ssh/config` and the files it includes; press Down Arrow to pick one.
+2. To log in as another user, type it in User, or put it in the host as `user@host` (not both).
+3. Press Return or choose Add host.
 
 TRC connects to the new host at once. The first time, it installs the daemon under `~/.trc` on the host, which
-takes a few seconds.
+takes a few seconds; each step shows in the host's state and is announced.
 
 ### Trust a host key
 
-When your `known_hosts` doesn't know the host yet, the host's entry shows its key type and SHA-256 fingerprint and
-asks whether to trust it. Compare the fingerprint with one you got from the host's owner, then choose Trust, which
-adds the key to `~/.ssh/known_hosts`, or Reject. Take as long as you need: the question never times out.
+When your `known_hosts` doesn't know the host yet, a dialog shows the host, its key type and the SHA-256
+fingerprint in a field you can select and copy. Compare it with one you got from the host's owner, then choose
+Trust, which adds the key to `~/.ssh/known_hosts`, or Reject (or press Escape). Take as long as you need: the
+question never times out.
 
 TRC refuses a host whose key changed. If you expected the change, remove the old key yourself
 (`ssh-keygen -R <host>`) and connect again.
+
+### Host actions
+
+Open a host's actions with Shift-F10, the Menu key or Control-click on it in the Hosts list or the Sessions list, or
+find them in the command palette:
+
+- **New session**, **Connect**, **Disconnect** or **Cancel connecting**.
+- **Test connection**: connects, says whether it works, and disconnects again.
+- **Change install location**: for a host whose home folder can't run programs (mounted `noexec`), pick another
+  folder, such as one on another disk. The next connection uses it.
+- **Forget**: removes the host from TRC after you confirm. Its sessions keep running on the host, and adding the host
+  again shows them.
 
 ## Connect
 
@@ -83,6 +98,9 @@ When the app opens, it connects to every known host. A host that fails stays dis
 
 Each host in the Hosts section shows its state as an icon and as text: Not connected, Connecting, Connected,
 Connection failed or Disconnected. Its button connects, cancels or disconnects it.
+
+If your key is a security key, TRC shows and says "Touch your security key for <host>" while ssh waits for the
+touch.
 
 When a connection you started fails, a dialog names the host, explains the reason (for example, the agent has no
 key the host accepts, the host is unreachable, or the connection timed out) and offers the details ssh reported.
@@ -211,7 +229,8 @@ To remove TRC from a host, end its sessions, then delete `~/.trc` there.
 | The host couldn't be found, or didn't answer         | Check the name, your network or VPN, and any `ProxyCommand` or `ProxyJump` your config needs.  |
 | The host key has changed                             | Ask the host's administrator. Only if the new fingerprint matches, run `ssh-keygen -R <host>`. |
 | The host runs a newer daemon than this app           | Another Mac installed a newer TRC on this host. Update the app.                                |
-| The daemon couldn't be installed                     | Check free space and permissions in `~/.trc` on the host, and that home isn't `noexec`.        |
+| The install location doesn't allow running programs  | Choose another install location from the host's actions, then connect again.                   |
+| The daemon couldn't be installed                     | Check free space and permissions in the install location on the host.                          |
 
 If the app doesn't open after you download it, see [Install](#install), step 3.
 

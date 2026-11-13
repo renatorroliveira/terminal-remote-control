@@ -76,7 +76,7 @@ function renderApp(savedWidth = 400) {
 }
 
 async function connectedHost(screen: Awaited<ReturnType<typeof renderApp>['rendered']>, client: FakeWorkspaceClient) {
-    await screen.getByRole('textbox', { name: 'New host' }).fill('devbox-1');
+    await screen.getByRole('combobox', { name: 'New host' }).fill('devbox-1');
     await userEvent.keyboard('{Enter}');
     client.push('host-0', CONNECTED);
     await expect.element(screen.getByRole('button', { name: 'New session on devbox-1' })).toBeVisible();
@@ -97,7 +97,7 @@ describe('App (US-1.6.1)', () => {
         await page.viewport(1400, 800);
         const { client, terminals, rendered } = renderApp();
         const screen = await rendered;
-        await screen.getByRole('textbox', { name: 'New host' }).fill('devbox-1');
+        await screen.getByRole('combobox', { name: 'New host' }).fill('devbox-1');
         await userEvent.keyboard('{Enter}');
         await screen.getByRole('button', { name: 'Connect devbox-1' }).click();
         expect(client.calls).toEqual(['connect host-0 devbox-1']);
@@ -197,7 +197,7 @@ describe('App: failed connections (US-1.3)', () => {
         onTestFinished(installTokens());
         const { client, rendered } = renderApp();
         const screen = await rendered;
-        await screen.getByRole('textbox', { name: 'New host' }).fill('devbox-1');
+        await screen.getByRole('combobox', { name: 'New host' }).fill('devbox-1');
         await userEvent.keyboard('{Enter}');
         await screen.getByRole('button', { name: 'Connect devbox-1' }).click();
         client.push('host-0', {
@@ -252,9 +252,9 @@ describe('App: buttons (A11Y-07.1)', () => {
             status: 'host-key',
             key: { host: 'devbox-1', type: 'ssh-ed25519', key: 'AAAA', fingerprint: 'SHA256:abc' },
         });
-        await expect.element(screen.getByRole('button', { name: 'Trust' })).toBeVisible();
-        const trust = getComputedStyle(screen.getByRole('button', { name: 'Trust' }).element());
-        expect([trust.backgroundColor, trust.color, trust.borderColor]).toEqual([
+        await expect.element(screen.getByRole('button', { name: 'Reject' })).toBeVisible();
+        const reject = getComputedStyle(screen.getByRole('button', { name: 'Reject' }).element());
+        expect([reject.backgroundColor, reject.color, reject.borderColor]).toEqual([
             'rgb(51, 51, 51)',
             'rgb(210, 210, 210)',
             'rgb(140, 140, 140)',
@@ -309,7 +309,7 @@ describe('App: regions and commands (A11Y-05.2, A11Y-11.11)', () => {
     it('moves focus from region to region with Command+F6 and back with Shift+Command+F6', async () => {
         await page.viewport(1400, 800);
         const screen = await renderApp().rendered;
-        const field = screen.getByRole('textbox', { name: 'New host' });
+        const field = screen.getByRole('combobox', { name: 'New host' });
         await field.click();
         await userEvent.keyboard('{Meta>}{F6}{/Meta}');
         await expect.element(screen.getByRole('main', { name: 'Terminal Remote Control' })).toHaveFocus();
@@ -329,7 +329,7 @@ describe('App: command palette (A11Y-11.11)', () => {
         const { client, terminals, rendered } = renderApp();
         const screen = await rendered;
         await connectedHost(screen, client);
-        const field = screen.getByRole('textbox', { name: 'New host' });
+        const field = screen.getByRole('combobox', { name: 'New host' });
         await field.click();
         await userEvent.keyboard('{Shift>}{Meta>}P{/Meta}{/Shift}');
         const palette = screen.getByRole('dialog', { name: 'Command palette' });
@@ -355,7 +355,7 @@ describe('App: hiding the sidebar (US-1.6.3)', () => {
         await page.viewport(1400, 800);
         const { saved, rendered } = renderApp();
         const screen = await rendered;
-        await screen.getByRole('textbox', { name: 'New host' }).click();
+        await screen.getByRole('combobox', { name: 'New host' }).click();
         await userEvent.keyboard('{Control>}{Meta>}S{/Meta}{/Control}');
         await expect.element(screen.getByRole('navigation', { name: 'Sessions and hosts' })).not.toBeInTheDocument();
         await expect.element(screen.getByRole('main', { name: 'Terminal Remote Control' })).toHaveFocus();
@@ -374,7 +374,7 @@ describe('App: notifications and context menus (A11Y-11.11, A11Y-12)', () => {
         onTestFinished(installTokens());
         const { client, workspace, rendered } = renderApp();
         const screen = await rendered;
-        await screen.getByRole('textbox', { name: 'New host' }).fill('devbox-1');
+        await screen.getByRole('combobox', { name: 'New host' }).fill('devbox-1');
         await userEvent.keyboard('{Enter}');
         workspace.connectAll();
         client.push('host-0', { status: 'failed', failure: { kind: 'dns', host: 'devbox-1', details: '' } });
@@ -408,5 +408,93 @@ describe('App: notifications and context menus (A11Y-11.11, A11Y-12)', () => {
         await expect.element(hostMenu.getByRole('menuitem', { name: 'New session on devbox-1' })).toHaveFocus();
         await expect.element(hostMenu.getByRole('menuitem', { name: 'Disconnect devbox-1' })).toBeVisible();
         await userEvent.keyboard('{Escape}');
+    });
+});
+
+describe('App: host key dialog (US-1.2.1)', () => {
+    it('asks with the copyable fingerprint and no time limit; Trust accepts, Escape rejects', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await screen.getByRole('combobox', { name: 'New host' }).fill('devbox-1');
+        await userEvent.keyboard('{Enter}');
+        const hostKey = {
+            status: 'host-key',
+            key: { host: 'devbox-1', type: 'ssh-ed25519', key: 'AAAA', fingerprint: 'SHA256:abc' },
+        } as const;
+        client.push('host-0', hostKey);
+        const dialog = screen.getByRole('alertdialog', { name: 'Trust the host key of devbox-1?' });
+        const fingerprint = dialog.getByRole('textbox', { name: 'SHA-256 fingerprint' });
+        await expect.element(fingerprint).toHaveValue('SHA256:abc');
+        await expect.element(fingerprint).toHaveAttribute('readonly');
+        await expect.element(fingerprint).toHaveFocus();
+        await noViolations();
+        await dialog.getByRole('button', { name: 'Trust' }).click();
+        expect(client.calls).toContain('accept host-0 SHA256:abc');
+        client.push('host-0', { status: 'connecting', step: 'connecting', touch: undefined });
+        client.push('host-0', hostKey);
+        await expect.element(dialog).toBeVisible();
+        await userEvent.keyboard('{Escape}');
+        expect(client.calls).toContain('reject host-0');
+    });
+});
+
+describe('App: forgetting and moving hosts (A11Y-11.9, US-1.4.3, US-1.1.5)', () => {
+    async function hostMenu(screen: Awaited<ReturnType<typeof renderApp>['rendered']>, item: string) {
+        const row = screen.getByRole('list', { name: 'Known hosts' }).getByRole('button', { name: /devbox-1/ });
+        (row.element() as HTMLElement).focus();
+        await userEvent.keyboard('{Shift>}{F10}{/Shift}');
+        await screen.getByRole('menuitem', { name: item }).click();
+    }
+
+    it('forgets a host only after a confirmation that names what it removes', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const { rendered } = renderApp();
+        const screen = await rendered;
+        await screen.getByRole('combobox', { name: 'New host' }).fill('devbox-1');
+        await userEvent.keyboard('{Enter}');
+        await hostMenu(screen, 'Forget devbox-1…');
+        const confirm = screen.getByRole('alertdialog', { name: 'Forget devbox-1?' });
+        await expect.poll(() => confirm.element().textContent).toContain('Its sessions keep running on the host');
+        await expect.element(confirm.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+        await noViolations();
+        await confirm.getByRole('button', { name: 'Forget' }).click();
+        await expect.element(screen.getByText('No hosts yet.')).toBeVisible();
+        await expect.element(screen.getByRole('combobox', { name: 'New host' })).toHaveFocus();
+    });
+
+    it('moves the install location, refusing a relative path', async () => {
+        await page.viewport(1400, 800);
+        const { client, workspace, rendered } = renderApp();
+        const screen = await rendered;
+        await screen.getByRole('combobox', { name: 'New host' }).fill('devbox-1');
+        await userEvent.keyboard('{Enter}');
+        await hostMenu(screen, 'Change install location of devbox-1…');
+        const field = screen.getByRole('textbox', { name: 'Install location' });
+        await expect.element(field).toHaveValue('~/.trc');
+        await field.fill('scratch/trc');
+        await userEvent.keyboard('{Enter}');
+        await expect.element(screen.getByText('Type a path that starts with / or ~/.')).toBeVisible();
+        await field.fill('/scratch/trc');
+        await userEvent.keyboard('{Enter}');
+        await expect.element(field).not.toBeInTheDocument();
+        workspace.toggleConnection('host-0');
+        expect(client.calls.at(-1)).toBe('connect host-0 devbox-1');
+        expect(workspace.store.getState().hosts[0]?.installRoot).toBe('/scratch/trc');
+    });
+
+    it('tests a connection and says it works', async () => {
+        await page.viewport(1400, 800);
+        const { client, spoken, rendered } = renderApp();
+        const screen = await rendered;
+        await screen.getByRole('combobox', { name: 'New host' }).fill('devbox-1');
+        await userEvent.keyboard('{Enter}');
+        await hostMenu(screen, 'Test connection to devbox-1');
+        await expect.poll(() => client.calls).toContain('connect host-0 devbox-1');
+        client.push('host-0', CONNECTED);
+        await expect.poll(() => spoken).toContain('The connection to devbox-1 works.');
+        expect(client.calls).toContain('disconnect host-0');
     });
 });

@@ -1,5 +1,6 @@
 import type { SessionInfo } from '@trc/protocol';
 import { createStore, type StoreApi } from 'zustand/vanilla';
+import type { ConnectionState } from '../../shared/connection';
 import type { TrcBridge } from '../../shared/contract';
 import type { KnownHost } from '../../shared/hosts';
 import type { HostClient } from '../connection/host-client';
@@ -8,6 +9,8 @@ import {
     failureAcknowledged,
     type HostEntry,
     hostAdded,
+    hostMoved,
+    hostRemoved,
     hostStateChanged,
     hostToggled,
     isConnected,
@@ -58,6 +61,10 @@ export class WorkspaceController {
     readonly #hosts: KnownHostStore;
     /** Hosts the app is connecting on its own, whose failures raise no dialog. */
     readonly #automatic = new Set<string>();
+    /** Connection tests waiting for their host to connect or fail (US-1.1.5). */
+    readonly #tests = new Map<string, (passed: boolean) => void>();
+    /** Hosts the user forgot, whose late state changes are ignored. */
+    readonly #forgotten = new Set<string>();
 
     /** Creates an empty workspace. */
     constructor(client: WorkspaceClient, terminals: TerminalHost, hosts: KnownHostStore) {
@@ -120,6 +127,47 @@ export class WorkspaceController {
         }
     }
 
+    /** Addresses Add host offers: recent ones, then the user's SSH configuration (US-1.1.1). */
+    suggestions(): Promise<readonly string[]> {
+        return this.#hosts.suggestions();
+    }
+
+    /** Forgets a host: closes its connection and drops it and its sessions from the app (A11Y-11.9). */
+    async forgetHost(hostId: string): Promise<void> {
+        const host = this.#host(hostId);
+        if (host === undefined) {
+            return;
+        }
+        if (this.connectionAction(host) !== 'connect') {
+            this.#client.disconnect(hostId);
+        }
+        this.#forgotten.add(hostId);
+        this.#terminals.closeHost(hostId);
+        this.#update((workspace) => hostRemoved(workspace, hostId));
+        await this.#hosts.remove(hostId);
+    }
+
+    /** Moves a host's install location; the next connection uses it (US-1.4.3). */
+    async moveInstallRoot(hostId: string, installRoot: string): Promise<void> {
+        const moved = await this.#hosts.setInstallRoot(hostId, installRoot);
+        this.#update((workspace) => hostMoved(workspace, hostId, moved.installRoot));
+    }
+
+    /**
+     * Tests a host's connection (US-1.1.5): true at once when it is connected; otherwise it connects, and resolves
+     * true and disconnects again once connected, or false when the connection fails, which the failure dialog
+     * explains.
+     */
+    testConnection(hostId: string): Promise<boolean> {
+        const host = this.#host(hostId);
+        if (host === undefined || this.connectionAction(host) !== 'connect') {
+            return Promise.resolve(host !== undefined && isConnected(host));
+        }
+        const result = new Promise<boolean>((resolve) => this.#tests.set(hostId, resolve));
+        this.toggleConnection(hostId);
+        return result;
+    }
+
     /** Trusts the host key the user confirmed (US-1.2). */
     acceptHostKey(hostId: string, fingerprint: string): void {
         this.#client.acceptHostKey(hostId, fingerprint);
@@ -171,11 +219,15 @@ export class WorkspaceController {
 
     #follow(hostId: string): void {
         this.#client.onState(hostId, (state) => {
+            if (this.#forgotten.has(hostId)) {
+                return;
+            }
             const notifyFailure = !this.#automatic.has(hostId);
             if (state.status !== 'connecting' && state.status !== 'host-key') {
                 this.#automatic.delete(hostId);
             }
             this.#update((workspace) => hostStateChanged(workspace, hostId, state, { notifyFailure }));
+            this.#finishTest(hostId, state);
             if (state.status === 'connected') {
                 void this.#listSessions(hostId);
             } else if (state.status === 'closed') {
@@ -193,6 +245,18 @@ export class WorkspaceController {
                 this.#terminals.closeSession(sessionKey(hostId, message.change.sessionId));
             }
         });
+    }
+
+    #finishTest(hostId: string, state: ConnectionState): void {
+        const finish = this.#tests.get(hostId);
+        if (finish === undefined || state.status === 'connecting' || state.status === 'host-key') {
+            return;
+        }
+        this.#tests.delete(hostId);
+        finish(state.status === 'connected');
+        if (state.status === 'connected') {
+            this.#client.disconnect(hostId);
+        }
     }
 
     async #listSessions(hostId: string): Promise<void> {

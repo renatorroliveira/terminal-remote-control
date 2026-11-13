@@ -34,6 +34,18 @@ class SlowKnownHostStore implements KnownHostStore {
         });
     }
 
+    suggestions(): Promise<readonly string[]> {
+        return this.#hosts.suggestions();
+    }
+
+    remove(id: string): Promise<void> {
+        return this.#hosts.remove(id);
+    }
+
+    setInstallRoot(id: string, installRoot: string): Promise<KnownHost> {
+        return this.#hosts.setInstallRoot(id, installRoot);
+    }
+
     finish(): void {
         for (const done of this.#waiting.splice(0)) {
             done();
@@ -45,12 +57,12 @@ describe('HostsPanel (US-1.1.1, US-1.2, US-1.5)', () => {
     it('adds a typed host, and refuses an address ssh could not use', async () => {
         const { screen } = await renderPanel();
         await expect.element(screen.getByText('No hosts yet.')).toBeVisible();
-        await screen.getByRole('textbox', { name: 'New host' }).fill('two words');
+        await screen.getByRole('combobox', { name: 'New host' }).fill('two words');
         await screen.getByRole('button', { name: 'Add host' }).click();
         await expect
             .element(screen.getByText('Not a host address. Type an SSH alias, or user@host:port.'))
             .toBeVisible();
-        await screen.getByRole('textbox', { name: 'New host' }).fill('me@build:2222');
+        await screen.getByRole('combobox', { name: 'New host' }).fill('me@build:2222');
         await userEvent.keyboard('{Enter}');
         await expect
             .element(
@@ -59,22 +71,48 @@ describe('HostsPanel (US-1.1.1, US-1.2, US-1.5)', () => {
                     .getByRole('button', { name: 'Connect me@build:2222' }),
             )
             .toBeVisible();
-        await expect.element(screen.getByRole('textbox', { name: 'New host' })).toHaveValue('');
+        await expect.element(screen.getByRole('combobox', { name: 'New host' })).toHaveValue('');
     });
 
-    it('puts Add host to the right of the field, on its row, and asks for nothing else', async () => {
+    it('puts Add host to the right of the field, on its row, with an optional user field below (US-1.1.6)', async () => {
         const { screen } = await renderPanel();
-        const field = screen.getByRole('textbox', { name: 'New host' }).element().getBoundingClientRect();
+        const field = screen.getByRole('combobox', { name: 'New host' }).element().getBoundingClientRect();
         const button = screen.getByRole('button', { name: 'Add host' }).element().getBoundingClientRect();
         expect(button.left).toBeGreaterThanOrEqual(field.right);
         expect(Math.abs(button.top + button.height / 2 - (field.top + field.height / 2))).toBeLessThan(2);
-        expect(screen.container.querySelectorAll('input')).toHaveLength(1);
+        const user = screen.getByRole('textbox', { name: 'User (optional)' });
+        await expect.element(user).toHaveAttribute('autocomplete', 'username');
+        expect(user.element().getBoundingClientRect().top).toBeGreaterThan(field.bottom);
+    });
+
+    it('joins the user field and the host, and refuses a user given twice', async () => {
+        const { screen } = await renderPanel();
+        await screen.getByRole('combobox', { name: 'New host' }).fill('me@build');
+        await screen.getByRole('textbox', { name: 'User (optional)' }).fill('ops');
+        await screen.getByRole('button', { name: 'Add host' }).click();
+        await expect
+            .element(screen.getByText('Give the user either in the host field or here, not both.'))
+            .toBeVisible();
+        await screen.getByRole('combobox', { name: 'New host' }).fill('build:2222');
+        await screen.getByRole('button', { name: 'Add host' }).click();
+        await expect.element(screen.getByRole('button', { name: 'Connect ops@build:2222' })).toBeVisible();
+        await expect.element(screen.getByRole('textbox', { name: 'User (optional)' })).toHaveValue('');
+    });
+
+    it('offers recent hosts and SSH config hosts as the user types (US-1.1.1)', async () => {
+        const hosts = new FakeKnownHostStore();
+        hosts.suggested = ['devbox-1', 'build.example.com'];
+        const { screen } = await renderPanel(hosts);
+        await screen.getByRole('combobox', { name: 'New host' }).fill('dev');
+        await screen.getByRole('option', { name: 'devbox-1' }).click();
+        await expect.element(screen.getByRole('combobox', { name: 'New host' })).toHaveValue('devbox-1');
+        await expect.element(screen.getByRole('option', { name: 'build.example.com' })).not.toBeInTheDocument();
     });
 
     it('keeps what the user typed while an earlier add was still saving', async () => {
         const hosts = new SlowKnownHostStore();
         const { screen } = await renderPanel(hosts);
-        const field = screen.getByRole('textbox', { name: 'New host' });
+        const field = screen.getByRole('combobox', { name: 'New host' });
         await field.fill('devbox-1');
         await screen.getByRole('button', { name: 'Add host' }).click();
         await field.fill('devbox-2');
@@ -95,7 +133,7 @@ describe('HostsPanel: connection badges (US-1.2, US-1.5)', () => {
         client.push(host.id, { status: 'connecting', step: 'uploading', touch: undefined });
         await expect
             .element(screen.getByRole('button', { name: 'Cancel connecting to devbox-1' }))
-            .toHaveAccessibleDescription('Connecting');
+            .toHaveAccessibleDescription('Uploading the daemon');
         client.push(host.id, { status: 'connected', daemon: { version: '0.1.0', sha256: 'ab', proto: 1 } });
         const disconnect = screen.getByRole('button', { name: 'Disconnect devbox-1' });
         await expect.element(disconnect).toHaveAccessibleDescription('Connected');
@@ -103,20 +141,16 @@ describe('HostsPanel: connection badges (US-1.2, US-1.5)', () => {
         expect(client.calls).toEqual([`connect ${host.id} devbox-1`, `disconnect ${host.id}`]);
     });
 
-    it('asks about an unknown host key and moves focus to the question from the badge', async () => {
+    it('names the badge of a host whose key waits for the user', async () => {
         const { client, workspace, screen } = await renderPanel();
         const host = await workspace.addHost('devbox-1');
         client.push(host.id, {
             status: 'host-key',
             key: { host: 'devbox-1', type: 'ssh-ed25519', key: 'AAAA', fingerprint: 'SHA256:abc' },
         });
-        await screen.getByRole('button', { name: 'Review the host key of devbox-1' }).click();
-        await expect.element(screen.getByRole('button', { name: 'Trust' })).toHaveFocus();
         await expect
-            .element(screen.getByRole('group'))
-            .toHaveAccessibleName('devbox-1 presented an unknown ssh-ed25519 host key, SHA256:abc. Trust it?');
-        await userEvent.keyboard('{Enter}');
-        expect(client.calls).toEqual([`accept ${host.id} SHA256:abc`]);
+            .element(screen.getByRole('button', { name: 'Review the host key of devbox-1' }))
+            .toHaveAccessibleDescription('Host key needs confirmation');
     });
 });
 

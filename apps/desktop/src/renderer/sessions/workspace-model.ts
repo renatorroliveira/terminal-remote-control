@@ -99,6 +99,30 @@ export function hostStateChanged(
     return { ...workspace, hosts, sessions, open };
 }
 
+/** Drops a host the user forgot, with its sessions; nothing of it stays open or collapsed (A11Y-11.9). */
+export function hostRemoved(workspace: Workspace, hostId: string): Workspace {
+    const sessions = new Map(workspace.sessions);
+    sessions.delete(hostId);
+    const collapsed = new Set(workspace.collapsed);
+    collapsed.delete(hostId);
+    return {
+        ...workspace,
+        hosts: workspace.hosts.filter((host) => host.id !== hostId),
+        sessions,
+        collapsed,
+        open: workspace.open?.startsWith(`${hostId}/`) === true ? undefined : workspace.open,
+        failureNotice: workspace.failureNotice === hostId ? undefined : workspace.failureNotice,
+    };
+}
+
+/** Takes a host's new install location (US-1.4.3). */
+export function hostMoved(workspace: Workspace, hostId: string, installRoot: string): Workspace {
+    return {
+        ...workspace,
+        hosts: workspace.hosts.map((host) => (host.id === hostId ? { ...host, installRoot } : host)),
+    };
+}
+
 /** The user has read the failure notice. */
 export function failureAcknowledged(workspace: Workspace): Workspace {
     return { ...workspace, failureNotice: undefined };

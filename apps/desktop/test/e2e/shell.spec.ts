@@ -1,5 +1,8 @@
 import { spawn } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { APP_DIRECTORY, launchApp, scratchProfile, testEnvironment } from './support/launch';
 
@@ -39,7 +42,7 @@ test('a second launch focuses the running app and exits (US-1.6.5)', async () =>
 test('moves between the sidebar, terminal and status bar regions with Command+F6 (A11Y-05.2)', async () => {
     const app = await launchApp();
     const window = await app.firstWindow();
-    await window.getByRole('textbox', { name: 'New host' }).focus();
+    await window.getByRole('combobox', { name: 'New host' }).focus();
     await window.keyboard.press('Meta+F6');
     await expect(window.getByRole('main', { name: 'Terminal Remote Control' })).toBeFocused();
     await window.keyboard.press('Meta+F6');
@@ -67,5 +70,15 @@ test('puts the commands in the View and Terminal menus with their Command shortc
             'Mute Output Announcements Shift+Command+A',
         ],
     ]);
+    await app.close();
+});
+
+test('offers the SSH config hosts in Add host, read from the seam config ahead of ~/.ssh/config (US-1.1.1)', async () => {
+    const config = join(mkdtempSync(join(tmpdir(), 'trc-ssh-config-')), 'ssh_config');
+    writeFileSync(config, 'Host trc-suggested-host\n    HostName 127.0.0.1\n');
+    const app = await launchApp([], { TRC_TEST_SSH_CONFIG: config });
+    const window = await app.firstWindow();
+    await window.getByRole('combobox', { name: 'New host' }).fill('trc-sugg');
+    await expect(window.getByRole('option', { name: 'trc-suggested-host' })).toBeVisible();
     await app.close();
 });

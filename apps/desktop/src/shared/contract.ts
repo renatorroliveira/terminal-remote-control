@@ -8,6 +8,12 @@ export interface InvokeContract {
     readonly 'accessibility:get': { readonly args: readonly []; readonly result: boolean };
     readonly 'hosts:list': { readonly args: readonly []; readonly result: readonly KnownHost[] };
     readonly 'hosts:add': { readonly args: readonly [address: string]; readonly result: KnownHost };
+    readonly 'hosts:suggestions': { readonly args: readonly []; readonly result: readonly string[] };
+    readonly 'hosts:remove': { readonly args: readonly [id: string]; readonly result: undefined };
+    readonly 'hosts:set-install-root': {
+        readonly args: readonly [id: string, installRoot: string];
+        readonly result: KnownHost;
+    };
     readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
     readonly 'sidebar:get-collapsed': { readonly args: readonly []; readonly result: boolean };
@@ -49,6 +55,12 @@ export interface TrcBridge {
         list(): Promise<readonly KnownHost[]>;
         /** Adds a host from what the user typed; rejects an address ssh could not use. */
         add(address: string): Promise<KnownHost>;
+        /** Addresses to offer: recent ones, then the SSH configuration's `Host` names (US-1.1.1). */
+        suggestions(): Promise<readonly string[]>;
+        /** Forgets a host (A11Y-11.9). */
+        remove(id: string): Promise<void>;
+        /** Moves a host's install location (US-1.4.3). */
+        setInstallRoot(id: string, installRoot: string): Promise<KnownHost>;
     };
     readonly sidebar: {
         /** The sidebar width the user last chose, in CSS pixels. */

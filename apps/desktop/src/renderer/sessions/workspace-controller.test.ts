@@ -4,13 +4,9 @@ import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import { parseHostAddress } from '../../shared/host-address';
 import type { KnownHost } from '../../shared/hosts';
 import type { ClientRequest } from '../connection/host-client';
-import {
-    type KnownHostStore,
-    type TerminalHost,
-    type WorkspaceClient,
-    WorkspaceController,
-} from './workspace-controller';
+import { type TerminalHost, type WorkspaceClient, WorkspaceController } from './workspace-controller';
 import { sessionKey } from './workspace-model';
+import { FakeKnownHostStore } from './workspace-test-doubles';
 
 const info = (id: string, order = 0): SessionInfo => ({
     id,
@@ -96,21 +92,11 @@ class FakeTerminals implements TerminalHost {
     }
 }
 
-class FakeHosts implements KnownHostStore {
+class FakeHosts extends FakeKnownHostStore {
     readonly hosts: KnownHost[] = [];
 
-    list(): Promise<readonly KnownHost[]> {
+    override list(): Promise<readonly KnownHost[]> {
         return Promise.resolve(this.hosts);
-    }
-
-    add(address: string): Promise<KnownHost> {
-        const parsed = parseHostAddress(address);
-        if (parsed === undefined) {
-            return Promise.reject(new Error('not a host address'));
-        }
-        const host = { id: `host-${this.hosts.length}`, address: parsed, installRoot: '~/.trc' };
-        this.hosts.push(host);
-        return Promise.resolve(host);
     }
 }
 
@@ -250,5 +236,51 @@ describe('WorkspaceController: exited sessions (US-1.10.7)', () => {
         const host = await workspace.addHost('devbox-1');
         client.states.get(host.id)?.(connected);
         await expect.poll(() => closes(client)).toEqual([{ type: 'close', session: 'a' }]);
+    });
+});
+
+describe('WorkspaceController: forgetting, moving and testing hosts (US-1.1.5, US-1.4.3, A11Y-11.9)', () => {
+    it('forgets a host: disconnects it, drops it and its sessions, and keeps the change', async () => {
+        const { client, terminals, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        client.states.get(host.id)?.(connected);
+        await expect.poll(() => workspace.store.getState().sessions.get(host.id)?.length).toBe(2);
+        await workspace.forgetHost(host.id);
+        expect(client.calls).toContain(`disconnect ${host.id}`);
+        expect(workspace.store.getState().hosts).toEqual([]);
+        expect(workspace.store.getState().sessions.has(host.id)).toBe(false);
+        expect(terminals.closed).toContain(host.id);
+    });
+
+    it('moves a host’s install location for its next connection', async () => {
+        const { client, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        await workspace.moveInstallRoot(host.id, '/scratch/trc');
+        workspace.toggleConnection(host.id);
+        expect(client.targets.at(-1)).toEqual([host.id, { destination: 'devbox-1', installRoot: '/scratch/trc' }]);
+        await expect(workspace.moveInstallRoot(host.id, 'relative')).rejects.toThrow();
+    });
+
+    it('tests a connection: connects, reports success and disconnects again, or reports the failure', async () => {
+        const { client, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        const passed = workspace.testConnection(host.id);
+        client.states.get(host.id)?.({ status: 'connecting', step: 'connecting', touch: undefined });
+        client.states.get(host.id)?.(connected);
+        expect(await passed).toBe(true);
+        expect(client.calls).toContain(`disconnect ${host.id}`);
+        client.states.get(host.id)?.({ status: 'closed' });
+        const failed = workspace.testConnection(host.id);
+        client.states.get(host.id)?.({ status: 'failed', failure: { kind: 'dns', host: 'devbox-1', details: '' } });
+        expect(await failed).toBe(false);
+        expect(workspace.store.getState().failureNotice).toBe(host.id);
+    });
+
+    it('reports a test of a host that is already connected as passed, leaving it connected', async () => {
+        const { client, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        client.states.get(host.id)?.(connected);
+        expect(await workspace.testConnection(host.id)).toBe(true);
+        expect(client.calls).not.toContain(`disconnect ${host.id}`);
     });
 });
