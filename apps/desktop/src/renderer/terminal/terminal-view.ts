@@ -10,6 +10,7 @@ import { registerQueryFilters } from './query-filter';
 import { SCROLLBAR_WIDTH, TerminalGeometry } from './terminal-geometry';
 import { xtermTheme } from './terminal-theme';
 import { UpdateScheduler } from './update-scheduler';
+import { showCursor } from './xterm-cursor';
 import '@xterm/xterm/css/xterm.css';
 import '../ui/fonts.css';
 import styles from './terminal-view.module.css';
@@ -177,6 +178,7 @@ export class TerminalView {
         this.terminal.open(canvas);
         this.terminal.element?.setAttribute('aria-hidden', 'true');
         this.#loadAddons();
+        showCursor(this.terminal);
         this.#tameXtermFocus(canvas);
         const fitted = this.#geometry?.observe() ?? Promise.resolve();
         this.#scheduler.request();

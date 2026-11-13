@@ -74,9 +74,9 @@ export interface ContrastPair<P> {
 }
 
 /**
- * Midnight, the default theme: A11y Matrix Dark, a WCAG AAA high-contrast dark VS Code theme. Selection is inverted
- * (black on the theme's 7:1 border green), because the theme's selection fill is 1.96:1 against black, under the
- * 3:1 that selection needs (A11Y-04).
+ * Midnight, the default theme: A11y Matrix Dark, a WCAG AAA high-contrast dark VS Code theme. Selection is white on
+ * dark green (#006b24, 3.1:1 against black, the 3:1 that A11Y-04 needs; text 6.7:1), never inverted, and the cursor is
+ * a block in the border green (owner's choice, M1).
  */
 const MIDNIGHT: Theme = {
     ui: {
@@ -94,8 +94,8 @@ const MIDNIGHT: Theme = {
         secondaryText: '#d2d2d2',
         secondaryBorder: '#8c8c8c',
         focusRing: '#ffb000',
-        selectionBackground: '#00ad2c',
-        selectionText: '#000000',
+        selectionBackground: '#006b24',
+        selectionText: '#ffffff',
         danger: '#f48771',
         success: '#89d185',
         warning: '#ffcb58',
@@ -103,10 +103,10 @@ const MIDNIGHT: Theme = {
     terminal: {
         background: '#000000',
         foreground: '#d2d2d2',
-        cursor: '#d2d2d2',
+        cursor: '#00ad2c',
         cursorAccent: '#000000',
-        selectionBackground: '#00ad2c',
-        selectionForeground: '#000000',
+        selectionBackground: '#006b24',
+        selectionForeground: '#ffffff',
         ansi: {
             black: '#000000',
             red: '#ff6161',
