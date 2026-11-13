@@ -351,6 +351,12 @@ export class Shell {
             case 'review-output':
                 announcer.announce(intl.formatMessage(findAnnouncements.reviewOutput), { group: `review:${key}` });
                 break;
+            case 'input-refused':
+                announcer.announce(intl.formatMessage(terminalAnnouncements.inputRefused), {
+                    group: `refused:${key}`,
+                    politeness: 'assertive',
+                });
+                break;
         }
     }
 

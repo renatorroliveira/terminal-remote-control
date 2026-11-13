@@ -86,6 +86,13 @@ export class OutputAnnouncer {
         }
     }
 
+    /** Drops waiting output, and treats the next output as a restored screen, not spoken, as on the first attach. */
+    restart(): void {
+        this.#stopFlush();
+        this.#speech.cancel();
+        this.#primed = false;
+    }
+
     /** Stops speaking and tracking the terminal. */
     dispose(): void {
         this.#stopFlush();

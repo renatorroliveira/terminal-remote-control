@@ -41,6 +41,8 @@ export interface SessionItem {
     readonly unread: boolean;
     /** Whether its bell rang while it was in the background (A11Y-08.2). */
     readonly bell: boolean;
+    /** Whether its host is not connected, so it takes no input (US-1.14.1). */
+    readonly disconnected: boolean;
 }
 
 /** A host in the Sessions area, with its sessions; the sidebar hides them while the host is collapsed. */
@@ -217,6 +219,7 @@ export function hostGroups(workspace: Workspace): readonly HostGroup[] {
                 key: sessionKey(host.id, session.id),
                 unread: workspace.unread.has(sessionKey(host.id, session.id)),
                 bell: workspace.bells.has(sessionKey(host.id, session.id)),
+                disconnected: !isConnected(host),
                 label: sessionName(session),
                 session,
             })),

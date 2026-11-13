@@ -1,5 +1,6 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
     launchWithTestHosts,
@@ -222,6 +223,35 @@ test.describe('a live terminal on a Linux host: review mode and find (A11Y-03, U
         await expect(window.getByText(`${needles.length - 1} of ${needles.length}`)).toBeVisible();
         await window.keyboard.press('Escape');
         await expect(terminal).toBeFocused();
+        await app.close();
+    });
+});
+
+test.describe('a live terminal on a Linux host: connection loss (US-1.14, US-1.5.5)', () => {
+    const install = liveHost();
+
+    test('shows the lost connection, refuses typing, and re-attaches the session after Connect', async () => {
+        const { app, window, home } = await launchWithTestHosts(install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
+        await terminal.focus();
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await recordSpeech(window);
+        execFileSync('pkill', ['-f', `${dirname(home)}/known_hosts`]);
+        const lost = window.getByRole('textbox', { name: /, trc-ubuntu, disconnected$/ });
+        await expect(lost).toBeVisible({ timeout: 30_000 });
+        await expect(window.getByRole('treeitem', { name: /^bash.*, Disconnected$/ })).toBeVisible();
+        await lost.focus();
+        await window.keyboard.type('x');
+        await expect(window.getByText('Disconnected — input not sent', { exact: true })).toBeVisible();
+        await expect.poll(() => spokenWith(window, 'input not sent')).toHaveLength(1);
+        await window.getByRole('button', { name: 'Connect trc-ubuntu' }).click();
+        const restored = window.getByRole('textbox', { name: /, trc-ubuntu$/ });
+        await expect(restored).toBeVisible({ timeout: 60_000 });
+        await expect.poll(() => screenText(restored), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await restored.focus();
+        await window.keyboard.type('echo back-again');
+        await window.keyboard.press('Enter');
+        await expect.poll(() => rowTexts(restored), { timeout: 15_000 }).toContain('back-again');
         await app.close();
     });
 });

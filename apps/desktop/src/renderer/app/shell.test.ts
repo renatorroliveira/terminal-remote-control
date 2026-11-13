@@ -291,6 +291,12 @@ describe('Shell bell and new output below (A11Y-08.2, A11Y-08.4)', () => {
         await expect.poll(() => shell.state.getState().bell, { timeout: 5_000 }).toBe(false);
     });
 
+    it('announces refused input right away (US-1.14.2)', async () => {
+        const { shell, spoken } = await setup();
+        shell.terminalNotice('host-0/a', { kind: 'input-refused' });
+        expect(spoken).toEqual(['! Disconnected — input not sent.']);
+    });
+
     it('announces new output below a pinned viewport', async () => {
         const { shell, spoken } = await setup();
         shell.terminalNotice('host-0/a', { kind: 'output-below' });

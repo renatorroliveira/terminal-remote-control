@@ -9,4 +9,6 @@ export type TerminalNotice =
     /** Output arrived below a viewport the user scrolled back (A11Y-08.4). */
     | { readonly kind: 'output-below' }
     /** Output arrived while review mode was open (A11Y-03.5). */
-    | { readonly kind: 'review-output' };
+    | { readonly kind: 'review-output' }
+    /** The user typed while the host was disconnected; nothing was sent (US-1.14.2). */
+    | { readonly kind: 'input-refused' };

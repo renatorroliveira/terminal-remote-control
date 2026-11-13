@@ -19,6 +19,7 @@ export class SessionLink {
     readonly #hostId: string;
     readonly #onOutput: (data: Uint8Array) => void;
     #size: TerminalSize | undefined;
+    #session: SessionId | undefined;
     #attachment: Attachment | undefined;
 
     /** Creates a link for a host; `onOutput` receives the attached session's output. */
@@ -49,6 +50,7 @@ export class SessionLink {
 
     /** Attaches to a session's full output, then sends it the terminal's size. */
     async attach(session: SessionId): Promise<void> {
+        this.#session = session;
         const reply = await this.#transport.request(this.#hostId, { type: 'attach', session, mode: 'full' });
         if (reply.type !== 'attached') {
             throw new Error(`unexpected reply ${reply.type}`);
@@ -56,6 +58,18 @@ export class SessionLink {
         const stopOutput = this.#transport.onOutput(this.#hostId, reply.stream, this.#onOutput);
         this.#attachment = { session, stream: reply.stream, stopOutput };
         this.#sendSize();
+    }
+
+    /**
+     * Attaches again to the last session asked for, over a connection that replaced a lost one; the old stream's
+     * output stops at once (US-1.14.3).
+     */
+    async reattach(): Promise<void> {
+        this.#attachment?.stopOutput();
+        this.#attachment = undefined;
+        if (this.#session !== undefined) {
+            await this.attach(this.#session);
+        }
     }
 
     /** Sends typed text or key bytes to the session. */

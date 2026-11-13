@@ -123,6 +123,8 @@ function setup() {
             hint: 'Option F1: accessibility help.',
             outputBelow: 'New output below',
             review: `Review ${session.profile.name}, ${hostId}`,
+            disconnected: `${session.profile.name}, ${hostId}, disconnected`,
+            inputRefused: 'Disconnected — input not sent',
         }),
         speech,
     });
@@ -182,6 +184,30 @@ describe('TerminalRegistry (US-1.8)', () => {
         expect(
             [...area.querySelectorAll('[role="textbox"]')].map((surface) => surface.getAttribute('aria-label')),
         ).toEqual(['bash, h2']);
+    });
+
+    it('marks a lost host’s terminals disconnected, new ones too, and re-attaches them to a fresh screen (US-1.14)', async () => {
+        const { area, transport, registry } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        registry.show('h2/b', 'h2', info('b'));
+        await expect.poll(() => transport.attached(1) && transport.attached(2)).toBe(true);
+        transport.output(1, 'old screen');
+        registry.setHostConnected('h1', false);
+        registry.show('h1/c', 'h1', info('c'));
+        await expect.poll(() => requestsOf(transport, 'attach')).toBe(3);
+        expect(
+            [...area.querySelectorAll('[role="textbox"]')].map((surface) => surface.getAttribute('aria-label')),
+        ).toEqual(['bash, h1, disconnected', 'bash, h2', 'bash, h1, disconnected']);
+        registry.setHostConnected('h1', true);
+        registry.reattachHost('h1');
+        await expect.poll(() => requestsOf(transport, 'attach')).toBe(5);
+        expect(transport.attached(1)).toBe(false);
+        expect(transport.attached(2)).toBe(true);
+        transport.output(4, 'restored');
+        const first = area.querySelector<HTMLElement>('[role="textbox"]');
+        await expect.poll(() => first?.textContent).toContain('restored');
+        expect(first?.textContent).not.toContain('old screen');
+        expect(first?.getAttribute('aria-label')).toBe('bash, h1');
     });
 
     it('removes the terminal of a session the daemon closed', () => {

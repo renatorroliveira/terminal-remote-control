@@ -102,6 +102,12 @@ Connection failed or Disconnected. Its button connects, cancels or disconnects i
 If your key is a security key, TRC shows and says "Touch your security key for <host>" while ssh waits for the
 touch.
 
+When a working connection drops, TRC says "Connection to <host> lost" and lists it in the notifications. The
+host's sessions stay in the list, marked Disconnected, and their terminals take no input: a key press is not sent
+and not kept for later, and TRC shows and says "Disconnected — input not sent". Choose the host's Connect button
+to reconnect: the sessions still running on the host come back, and each open terminal attaches to its session
+again.
+
 When a connection you started fails, a dialog names the host, explains the reason (for example, the agent has no
 key the host accepts, the host is unreachable, or the connection timed out) and offers the details ssh reported.
 Choose OK to close it.
@@ -322,9 +328,8 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 Later releases of Epic 1 add:
 
 - Changing shortcuts, and plain F6 to move between regions, in the settings page.
-- Paste confirmation, the settings page, accessibility help (Option-F1) and the in-app guide (the Help
-  menu items do nothing yet).
-- Reconnecting after a network loss with a single action.
+- The settings page, accessibility help (Option-F1) and the in-app guide (the Help menu items do nothing
+  yet).
 
 Later epics add sessions that survive a host reboot, local sessions on the Mac, macOS hosts, and the Windows and
 Linux apps. [The PRD](docs/PRD.md) has the full plan.

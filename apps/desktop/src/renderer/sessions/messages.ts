@@ -94,6 +94,13 @@ export const sessionStateMessages = defineMessages({
     unspecified: { id: 'session.unspecified', defaultMessage: 'Unknown state', description: 'Session state.' },
 });
 
+/** A session whose host is not connected (US-1.14.1). */
+export const sessionDisconnectedMessage = defineMessage({
+    id: 'session.disconnected',
+    defaultMessage: 'Disconnected',
+    description: 'Session state while its host is not connected.',
+});
+
 /** The terminal's accessible name and hint (A11Y-01.1, A11Y-01.2). */
 export const terminalMessages = defineMessages({
     hint: {
@@ -105,6 +112,11 @@ export const terminalMessages = defineMessages({
         id: 'terminal.outputBelow',
         defaultMessage: 'New output below',
         description: 'Indicator on a terminal scrolled back while new output arrives; clicking it jumps to the end.',
+    },
+    inputRefused: {
+        id: 'terminal.inputRefused',
+        defaultMessage: 'Disconnected — input not sent',
+        description: 'Shown and announced when the user types while the host is disconnected; nothing was sent.',
     },
 });
 
@@ -229,6 +241,13 @@ export const failureDialogMessages = {
         },
     }),
 };
+
+/** A terminal's accessible name while its host is not connected (US-1.14.1). */
+export const terminalDisconnectedMessage = defineMessage<{ session: string; host: string }>({
+    id: 'terminal.labelDisconnected',
+    defaultMessage: '{session}, {host}, disconnected',
+    description: 'Accessible name of a terminal whose host is not connected.',
+});
 
 /** Review mode's accessible name, naming the session and host (A11Y-03). */
 export const terminalReviewMessage = defineMessage<{ session: string; host: string }>({

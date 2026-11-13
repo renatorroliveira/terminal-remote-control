@@ -89,4 +89,16 @@ describe('SessionLink', () => {
         expect(transport.listeners.size).toBe(0);
         expect(transport.requests.at(-1)).toEqual({ type: 'detach', session: session.id });
     });
+
+    it('attaches again to the same session over a new connection (US-1.14.3)', async () => {
+        const transport = new FakeTransport();
+        const output: Uint8Array[] = [];
+        const link = new SessionLink(transport, 'h1', (data) => output.push(data));
+        await link.attach(session.id);
+        await link.reattach();
+        expect(transport.requests.filter((request) => request.type === 'attach')).toHaveLength(2);
+        expect(transport.requests.some((request) => request.type === 'detach')).toBe(false);
+        transport.listeners.get(7)?.(new Uint8Array([33]));
+        expect(output).toEqual([new Uint8Array([33])]);
+    });
 });

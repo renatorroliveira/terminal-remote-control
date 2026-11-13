@@ -65,6 +65,8 @@ interface Entry {
 export class TerminalRegistry implements TerminalHost {
     readonly #options: TerminalRegistryOptions;
     readonly #entries = new Map<SessionKey, Entry>();
+    /** Hosts whose connection is lost, whose terminals refuse input (US-1.14.2). */
+    readonly #offline = new Set<string>();
     #area: HTMLElement | undefined;
     #palette: TerminalPalette;
     #open: SessionKey | undefined;
@@ -203,6 +205,26 @@ export class TerminalRegistry implements TerminalHost {
         return session;
     }
 
+    /** Lets a host's terminals send input again, or refuses it while the host is disconnected (US-1.14.2). */
+    setHostConnected(hostId: string, connected: boolean): void {
+        if (connected) {
+            this.#offline.delete(hostId);
+        } else {
+            this.#offline.add(hostId);
+        }
+        for (const entry of this.#entriesOf(hostId)) {
+            entry.view.setConnected(connected);
+        }
+    }
+
+    /** Attaches a reconnected host's terminals to their sessions again, each on a fresh screen (US-1.14.3). */
+    reattachHost(hostId: string): void {
+        for (const entry of this.#entriesOf(hostId)) {
+            entry.view.restart();
+            entry.link.reattach().catch(() => undefined);
+        }
+    }
+
     /** Detaches and removes the terminals of a host whose connection closed. */
     closeHost(hostId: string): void {
         for (const [key, entry] of this.#entries) {
@@ -238,6 +260,10 @@ export class TerminalRegistry implements TerminalHost {
             this.#dispose(entry);
         }
         this.#entries.clear();
+    }
+
+    #entriesOf(hostId: string): readonly Entry[] {
+        return [...this.#entries].filter(([key]) => key.startsWith(`${hostId}/`)).map(([, entry]) => entry);
     }
 
     #activity(link: SessionLink): void {
@@ -313,6 +339,7 @@ export class TerminalRegistry implements TerminalHost {
                 withKey(this.#keyOf(link), (key) => this.#options.onClipboardWrite?.(key, text)),
         });
         view.mount(frame);
+        view.setConnected(!this.#offline.has(hostId));
         view.setTabFocusMode(this.#tabFocusMode);
         view.setReducedMotion(this.#reducedMotion);
         const appearance = this.#appearance;

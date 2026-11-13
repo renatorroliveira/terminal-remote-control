@@ -67,6 +67,17 @@ class FakeClient implements WorkspaceClient {
 }
 
 class FakeTerminals implements TerminalHost {
+    readonly reachable: string[] = [];
+    readonly reattached: string[] = [];
+
+    setHostConnected(hostId: string, connected: boolean): void {
+        this.reachable.push(`${hostId}:${connected}`);
+    }
+
+    reattachHost(hostId: string): void {
+        this.reattached.push(hostId);
+    }
+
     readonly shown: string[] = [];
     readonly created: string[] = [];
     readonly closed: string[] = [];
@@ -152,6 +163,22 @@ describe('WorkspaceController: hosts (US-1.1, US-1.5)', () => {
         client.states.get(host.id)?.({ status: 'closed' });
         expect(workspace.store.getState().sessions.get(host.id)).toBeUndefined();
         expect(terminals.closed).toEqual([host.id]);
+    });
+});
+
+describe('WorkspaceController: connection loss (US-1.14)', () => {
+    it('keeps a lost host’s sessions, refuses their input, and re-attaches their terminals once it reconnects', async () => {
+        const { client, terminals, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        client.states.get(host.id)?.(connected);
+        await expect.poll(() => workspace.store.getState().sessions.get(host.id)?.length).toBe(2);
+        client.states.get(host.id)?.({ status: 'disconnected', reason: 'ping-timeout' });
+        expect(workspace.store.getState().sessions.get(host.id)).toHaveLength(2);
+        expect(terminals.closed).toEqual([]);
+        expect(terminals.reachable).toEqual([`${host.id}:true`, `${host.id}:false`]);
+        client.states.get(host.id)?.(connected);
+        expect(terminals.reachable.at(-1)).toBe(`${host.id}:true`);
+        expect(terminals.reattached).toEqual([host.id, host.id]);
     });
 });
 

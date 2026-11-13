@@ -45,6 +45,8 @@ function mount(overrides: Partial<TerminalViewOptions> = {}): Harness {
         hint: 'Option F1: accessibility help.',
         outputBelow: 'New output below',
         review: 'Review build, devbox-1',
+        disconnected: 'build, devbox-1, disconnected',
+        inputRefused: 'Disconnected — input not sent',
     });
     views.push(view);
     return { view, host, inputs, credits, sizes };
@@ -749,5 +751,28 @@ describe('TerminalView: review mode and find (A11Y-03, US-1.13)', () => {
         view.find('beta', { caseSensitive: false, regex: false });
         const review = document.activeElement as HTMLTextAreaElement;
         expect(review.value.slice(review.selectionStart, review.selectionEnd)).toBe('beta');
+    });
+});
+
+describe('TerminalView: a lost connection (US-1.14.2)', () => {
+    it('refuses input without buffering it, shows and reports why, and names itself disconnected', async () => {
+        const notices: unknown[] = [];
+        const { view, host, inputs } = mount({ onNotice: (notice) => notices.push(notice) });
+        await written(view, '$ ');
+        view.setConnected(false);
+        expect(view.surface.getAttribute('aria-label')).toBe('build, devbox-1, disconnected');
+        view.surface.focus();
+        beforeInput(view.surface, 'insertText', 'ls');
+        key(view.surface, { key: 'Enter', code: 'Enter' });
+        expect(inputs).toEqual([]);
+        const refused = host.querySelector<HTMLElement>('[data-input-refused]');
+        expect(refused?.hidden).toBe(false);
+        expect(refused?.textContent).toBe('Disconnected — input not sent');
+        expect(notices).toEqual([{ kind: 'input-refused' }, { kind: 'input-refused' }]);
+        view.setConnected(true);
+        expect(refused?.hidden).toBe(true);
+        expect(view.surface.getAttribute('aria-label')).toBe('build, devbox-1');
+        beforeInput(view.surface, 'insertText', 'ls');
+        expect(inputs).toEqual(['ls']);
     });
 });

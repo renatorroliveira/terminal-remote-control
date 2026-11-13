@@ -148,6 +148,11 @@ export const terminalAnnouncements = {
         defaultMessage: 'New output below.',
         description: 'Announced once when output arrives while the user has scrolled the terminal back.',
     }),
+    inputRefused: defineMessage({
+        id: 'announce.inputRefused',
+        defaultMessage: 'Disconnected — input not sent.',
+        description: 'Announced assertively when the user types while the host is disconnected.',
+    }),
 };
 
 /** Find and review mode (US-1.13, A11Y-03). */

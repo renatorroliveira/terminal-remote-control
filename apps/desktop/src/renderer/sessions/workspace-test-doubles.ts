@@ -173,6 +173,24 @@ export class FakeTerminalHost implements TerminalHost {
         return this.links;
     }
 
+    /** Hosts reported unreachable, and hosts whose terminals re-attached. */
+    readonly unreachable = new Set<string>();
+    readonly reattached: string[] = [];
+
+    /** Records whether a host's terminals may send input. */
+    setHostConnected(hostId: string, connected: boolean): void {
+        if (connected) {
+            this.unreachable.delete(hostId);
+        } else {
+            this.unreachable.add(hostId);
+        }
+    }
+
+    /** Records the re-attach. */
+    reattachHost(hostId: string): void {
+        this.reattached.push(hostId);
+    }
+
     /** Whether review mode is open, and the searches asked for. */
     reviewOpen = false;
     readonly searches: string[] = [];

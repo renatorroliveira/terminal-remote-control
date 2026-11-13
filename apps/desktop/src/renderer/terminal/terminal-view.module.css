@@ -96,6 +96,24 @@
         display: none;
     }
 
+    .inputRefused {
+        position: absolute;
+        top: var(--trc-terminal-padding);
+        left: 50%;
+        z-index: 2;
+        margin: 0;
+        padding: 0.25rem 0.75rem;
+        transform: translateX(-50%);
+        border: 2px solid var(--trc-color-danger);
+        border-radius: 4px;
+        background: var(--trc-color-surface);
+        color: var(--trc-color-text);
+    }
+
+    .inputRefused[hidden] {
+        display: none;
+    }
+
     .review {
         position: absolute;
         inset: var(--trc-terminal-padding);

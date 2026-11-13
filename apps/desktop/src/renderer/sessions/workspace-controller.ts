@@ -42,6 +42,10 @@ export interface TerminalHost {
     show(key: SessionKey, hostId: string, session: SessionInfo): void;
     /** Creates a session on a host at the terminal area's size, with the options given. */
     create(hostId: string, options?: SessionOptions): Promise<SessionInfo>;
+    /** Lets a host's terminals send input, or refuses it while the host is disconnected (US-1.14.2). */
+    setHostConnected(hostId: string, connected: boolean): void;
+    /** Attaches a reconnected host's terminals to their sessions again (US-1.14.3). */
+    reattachHost(hostId: string): void;
     /** Removes the terminals of a host whose connection closed. */
     closeHost(hostId: string): void;
     /** Removes the terminal of a session the daemon closed. */
@@ -341,11 +345,7 @@ export class WorkspaceController {
             }
             this.#update((workspace) => hostStateChanged(workspace, hostId, state, { notifyFailure }));
             this.#finishTest(hostId, state);
-            if (state.status === 'connected') {
-                void this.#listSessions(hostId);
-            } else if (state.status === 'closed') {
-                this.#terminals.closeHost(hostId);
-            }
+            this.#followTerminals(hostId, state);
         });
         this.#client.onMessage(hostId, (message) => {
             if (message.type !== 'sessionEvent') {
@@ -358,6 +358,25 @@ export class WorkspaceController {
                 this.#terminals.closeSession(sessionKey(hostId, message.change.sessionId));
             }
         });
+    }
+
+    #followTerminals(hostId: string, state: ConnectionState): void {
+        switch (state.status) {
+            case 'connected':
+                this.#terminals.setHostConnected(hostId, true);
+                this.#terminals.reattachHost(hostId);
+                void this.#listSessions(hostId);
+                break;
+            case 'disconnected':
+            case 'failed':
+                this.#terminals.setHostConnected(hostId, false);
+                break;
+            case 'closed':
+                this.#terminals.closeHost(hostId);
+                break;
+            default:
+                break;
+        }
     }
 
     #finishTest(hostId: string, state: ConnectionState): void {

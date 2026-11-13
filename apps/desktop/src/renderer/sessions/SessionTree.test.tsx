@@ -71,6 +71,13 @@ describe('SessionTree: keys, badges and dragging (US-1.8, US-1.10.6)', () => {
         await expect.element(host).toHaveAttribute('aria-expanded', 'true');
     });
 
+    it('says Disconnected for every session of a host whose connection was lost (US-1.14.1)', async () => {
+        const { client, screen } = await renderTree();
+        client.push('host-0', { status: 'disconnected', reason: 'ping-timeout' });
+        await expect.element(screen.getByRole('treeitem', { name: 'build, Disconnected' })).toBeVisible();
+        await expect.element(screen.getByRole('treeitem', { name: 'logs, Disconnected' })).toBeVisible();
+    });
+
     it('marks a background session whose bell rang, until it opens (A11Y-08.2)', async () => {
         const { screen, workspace } = await renderTree();
         workspace.recordActivity('host-0/a');
