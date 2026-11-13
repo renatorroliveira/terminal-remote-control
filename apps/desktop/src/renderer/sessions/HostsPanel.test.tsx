@@ -84,7 +84,9 @@ describe('HostsPanel (US-1.1.1, US-1.2, US-1.5)', () => {
         await expect.element(user).toHaveAttribute('autocomplete', 'username');
         expect(user.element().getBoundingClientRect().top).toBeGreaterThan(field.bottom);
     });
+});
 
+describe('HostsPanel: the add-host form (US-1.1.1, US-1.1.6)', () => {
     it('joins the user field and the host, and refuses a user given twice', async () => {
         const { screen } = await renderPanel();
         await screen.getByRole('combobox', { name: 'New host' }).fill('me@build');

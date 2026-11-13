@@ -624,6 +624,19 @@ As built:
 - Move up and Move down, plus drag.
 - Exited sessions are kept. Auto-close is off by default.
 
+As built:
+
+- The session list is one in-house `role="tree"` with flat `aria-level`, `aria-posinset` and `aria-setsize`
+  rows. A host row holds its + button with `tabindex="-1"`: pointer users click it, and keyboard users press
+  Command+T or use the row's context menu. Session rows describe their host and carry a "new output" badge for
+  output that arrived while they were hidden.
+- Command+T, Shift+Command+T, Shift+Command+] and [ are in the keymap and the new Session menu (D-36). New
+  session goes to the open session's host, then the last-used host, then the first connected one. It starts in the
+  home folder; the setting to start in the focused session's folder arrives with ST-18.
+- Rename, Stop, Restart, Duplicate, Move up and down, drag and Close (with a confirmation) go through the daemon's
+  requests. The New session dialog lists the host's profiles. Stop uses the daemon's grace period until ST-18 adds
+  the setting, and auto-close on clean exit stays on until ST-18's switch.
+
 **ST-14 Output announcements and screen-reader mode** (A11Y-01.4, A11Y-02.1–7, A11Y-10.2, R9, NFR-04)
 
 - Logical-line assembly from the xterm buffer.
@@ -795,7 +808,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-10 | Done        | —      |
 | ST-11 | Done        | —      |
 | ST-12 | Done        | —      |
-| ST-13 | Not started | —      |
+| ST-13 | Done        | —      |
 | ST-14 | Not started | —      |
 | ST-15 | Not started | —      |
 | ST-16 | Not started | —      |

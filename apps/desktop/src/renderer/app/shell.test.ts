@@ -60,6 +60,10 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'Tab moves focus',
             'Send next key to terminal',
             'Mute output announcements',
+            'New session',
+            'New session with options…',
+            'Next session',
+            'Previous session',
         ]);
     });
 

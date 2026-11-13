@@ -91,10 +91,68 @@
       "value": "The next key goes to the terminal."
     }
   ],
+  "announce.noHost": [
+    {
+      "type": 0,
+      "value": "No host is connected."
+    }
+  ],
   "announce.noSession": [
     {
       "type": 0,
       "value": "No session is open."
+    }
+  ],
+  "announce.opened": [
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": " on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ": "
+    },
+    {
+      "type": 1,
+      "value": "state"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.openedUnread": [
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": " on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ": "
+    },
+    {
+      "type": 1,
+      "value": "state"
+    },
+    {
+      "type": 0,
+      "value": ", new output."
     }
   ],
   "announce.sidebarHidden": [
@@ -133,6 +191,54 @@
     {
       "type": 0,
       "value": "."
+    }
+  ],
+  "close.body": [
+    {
+      "type": 0,
+      "value": "TRC stops "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": " on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " if it is running, then deletes the session and its scrollback. This can’t be undone."
+    }
+  ],
+  "close.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "close.confirm": [
+    {
+      "type": 0,
+      "value": "Close session"
+    }
+  ],
+  "close.title": [
+    {
+      "type": 0,
+      "value": "Close "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": "?"
     }
   ],
   "command.announcementsToggleMute": [
@@ -175,6 +281,30 @@
     {
       "type": 0,
       "value": "Previous region"
+    }
+  ],
+  "command.sessionNew": [
+    {
+      "type": 0,
+      "value": "New session"
+    }
+  ],
+  "command.sessionNewWithOptions": [
+    {
+      "type": 0,
+      "value": "New session with options…"
+    }
+  ],
+  "command.sessionNext": [
+    {
+      "type": 0,
+      "value": "Next session"
+    }
+  ],
+  "command.sessionPrevious": [
+    {
+      "type": 0,
+      "value": "Previous session"
     }
   ],
   "command.sidebarToggle": [
@@ -1043,6 +1173,78 @@
       "value": "host"
     }
   ],
+  "newSession.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "newSession.create": [
+    {
+      "type": 0,
+      "value": "Create"
+    }
+  ],
+  "newSession.cwd": [
+    {
+      "type": 0,
+      "value": "Working folder (optional)"
+    }
+  ],
+  "newSession.cwdHint": [
+    {
+      "type": 0,
+      "value": "Your home folder when empty."
+    }
+  ],
+  "newSession.env": [
+    {
+      "type": 0,
+      "value": "Environment (optional)"
+    }
+  ],
+  "newSession.envHint": [
+    {
+      "type": 0,
+      "value": "One NAME=value per line. NAME= with no value removes the variable."
+    }
+  ],
+  "newSession.envInvalid": [
+    {
+      "type": 0,
+      "value": "Write each line as NAME=value, where NAME has only letters, digits and underscores."
+    }
+  ],
+  "newSession.host": [
+    {
+      "type": 0,
+      "value": "Host"
+    }
+  ],
+  "newSession.name": [
+    {
+      "type": 0,
+      "value": "Name (optional)"
+    }
+  ],
+  "newSession.noHost": [
+    {
+      "type": 0,
+      "value": "Connect a host first."
+    }
+  ],
+  "newSession.profile": [
+    {
+      "type": 0,
+      "value": "Shell"
+    }
+  ],
+  "newSession.title": [
+    {
+      "type": 0,
+      "value": "New session"
+    }
+  ],
   "notifications.clear": [
     {
       "type": 0,
@@ -1123,10 +1325,178 @@
       "value": "Command"
     }
   ],
+  "palette.session.close": [
+    {
+      "type": 0,
+      "value": "Close "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": "…"
+    }
+  ],
+  "palette.session.duplicate": [
+    {
+      "type": 0,
+      "value": "Duplicate "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    }
+  ],
+  "palette.session.moveDown": [
+    {
+      "type": 0,
+      "value": "Move "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": " down"
+    }
+  ],
+  "palette.session.moveUp": [
+    {
+      "type": 0,
+      "value": "Move "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": " up"
+    }
+  ],
+  "palette.session.rename": [
+    {
+      "type": 0,
+      "value": "Rename "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": "…"
+    }
+  ],
+  "palette.session.restart": [
+    {
+      "type": 0,
+      "value": "Restart "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    }
+  ],
+  "palette.session.stop": [
+    {
+      "type": 0,
+      "value": "Stop "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    }
+  ],
   "palette.title": [
     {
       "type": 0,
       "value": "Command palette"
+    }
+  ],
+  "rename.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "rename.hint": [
+    {
+      "type": 0,
+      "value": "Leave it empty to show the title the program sets."
+    }
+  ],
+  "rename.label": [
+    {
+      "type": 0,
+      "value": "Name"
+    }
+  ],
+  "rename.save": [
+    {
+      "type": 0,
+      "value": "Rename"
+    }
+  ],
+  "rename.title": [
+    {
+      "type": 0,
+      "value": "Rename "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    }
+  ],
+  "session.action.close": [
+    {
+      "type": 0,
+      "value": "Close…"
+    }
+  ],
+  "session.action.duplicate": [
+    {
+      "type": 0,
+      "value": "Duplicate"
+    }
+  ],
+  "session.action.moveDown": [
+    {
+      "type": 0,
+      "value": "Move down"
+    }
+  ],
+  "session.action.moveUp": [
+    {
+      "type": 0,
+      "value": "Move up"
+    }
+  ],
+  "session.action.open": [
+    {
+      "type": 0,
+      "value": "Open"
+    }
+  ],
+  "session.action.rename": [
+    {
+      "type": 0,
+      "value": "Rename…"
+    }
+  ],
+  "session.action.restart": [
+    {
+      "type": 0,
+      "value": "Restart"
+    }
+  ],
+  "session.action.stop": [
+    {
+      "type": 0,
+      "value": "Stop"
     }
   ],
   "session.exited": [
@@ -1461,6 +1831,54 @@
     {
       "type": 1,
       "value": "host"
+    }
+  ],
+  "tree.hostRow": [
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ", "
+    },
+    {
+      "type": 1,
+      "value": "state"
+    }
+  ],
+  "tree.label": [
+    {
+      "type": 0,
+      "value": "Sessions"
+    }
+  ],
+  "tree.newOutput": [
+    {
+      "type": 0,
+      "value": "new output"
+    }
+  ],
+  "tree.sessionRowBadge": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": ", "
+    },
+    {
+      "type": 1,
+      "value": "state"
+    },
+    {
+      "type": 0,
+      "value": ", "
+    },
+    {
+      "type": 1,
+      "value": "badge"
     }
   ]
 }

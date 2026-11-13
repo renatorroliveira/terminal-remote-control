@@ -42,6 +42,10 @@ defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
 | Mute output announcements | Shift+Command+A   | Free in the app; Finder's Go to Applications applies only in Finder                |
 | Show notifications        | Shift+Command+N   | Free in the app                                                                    |
 | Accessibility help        | Option+F1         | The PRD's proposal (A11Y-10.1)                                                     |
+| New session               | Command+T         | Terminal's and every browser's new-tab shortcut                                    |
+| New session with options  | Shift+Command+T   | Beside Command+T                                                                   |
+| Next session              | Shift+Command+]   | The macOS next-tab shortcut                                                        |
+| Previous session          | Shift+Command+[   | The macOS previous-tab shortcut                                                    |
 
 Plain F6 for the next region, the Windows convention, becomes an option in settings (A11Y-05.2). It is off by
 default because htop and mc use F6.

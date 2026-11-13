@@ -42,6 +42,7 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
             }),
             hint: intl.formatMessage(terminalMessages.hint),
         }),
+        onActivity: (key) => workspace?.recordActivity(key),
     });
     workspace = new WorkspaceController(sources.client, terminals, sources.hosts);
     return { workspace, terminals };

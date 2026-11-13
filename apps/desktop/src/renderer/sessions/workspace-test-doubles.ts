@@ -2,7 +2,8 @@ import type { ServerMessage, SessionInfo } from '@trc/protocol';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import { parseHostAddress } from '../../shared/host-address';
 import { DEFAULT_INSTALL_ROOT, isInstallRoot, type KnownHost } from '../../shared/hosts';
-import type { KnownHostStore, TerminalHost, WorkspaceClient } from './workspace-controller';
+import type { ClientRequest } from '../connection/host-client';
+import type { KnownHostStore, SessionOptions, TerminalHost, WorkspaceClient } from './workspace-controller';
 
 /** A login bash session for tests. */
 export function bashSession(id: string): SessionInfo {
@@ -79,9 +80,20 @@ export class FakeWorkspaceClient implements WorkspaceClient {
         return () => this.#messages.delete(hostId);
     }
 
-    /** Answers every request with the session list. */
-    request(): Promise<ServerMessage> {
-        return Promise.resolve({ type: 'sessions', requestId: 1, sessions: [...this.#sessions] });
+    /** Every request but the session list, in order. */
+    readonly requests: ClientRequest[] = [];
+
+    /** Answers the session list and profile requests, and acknowledges the rest. */
+    request(_hostId: string, request: ClientRequest): Promise<ServerMessage> {
+        if (request.type === 'listSessions') {
+            return Promise.resolve({ type: 'sessions', requestId: 1, sessions: [...this.#sessions] });
+        }
+        this.requests.push(request);
+        if (request.type === 'listProfiles') {
+            const profiles = [bashSession('x').profile, { ...bashSession('x').profile, id: 'zsh', name: 'zsh' }];
+            return Promise.resolve({ type: 'profiles', requestId: 1, profiles });
+        }
+        return Promise.resolve({ type: 'done', requestId: 1 });
     }
 }
 
@@ -106,8 +118,12 @@ export class FakeTerminalHost implements TerminalHost {
         this.shown.push(key);
     }
 
+    /** The options of every create, in order. */
+    readonly options: (SessionOptions | undefined)[] = [];
+
     /** Returns the next prepared session. */
-    create(): Promise<SessionInfo> {
+    create(_hostId: string, options?: SessionOptions): Promise<SessionInfo> {
+        this.options.push(options);
         const next = this.#created.shift();
         return next === undefined ? Promise.reject(new Error('no session prepared')) : Promise.resolve(next);
     }

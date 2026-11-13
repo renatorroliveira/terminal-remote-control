@@ -30,7 +30,7 @@ const THEME_CHOICES: readonly (readonly [ThemePreference, string] | 'separator')
 ];
 
 /**
- * The menu bar: the standard macOS menus; Edit with Look Up and Speech; View with the command palette, notifications,
+ * The menu bar: the standard macOS menus; Session with new, next and previous session; Edit with Look Up and Speech; View with the command palette, notifications,
  * the sidebar, regions, the theme and zoom; Terminal with Tab focus mode, send next key and mute; and Help with the
  * user guide and accessibility help. Each command shows its Command shortcut and runs in the renderer.
  */
@@ -48,6 +48,16 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
                 { role: 'unhide' },
                 { type: 'separator' },
                 { role: 'quit' },
+            ],
+        },
+        {
+            label: MAIN_STRINGS.sessionMenu,
+            submenu: [
+                command(options, 'session.new', MAIN_STRINGS.newSession),
+                command(options, 'session.newWithOptions', MAIN_STRINGS.newSessionWithOptions),
+                { type: 'separator' },
+                command(options, 'session.next', MAIN_STRINGS.nextSession),
+                command(options, 'session.previous', MAIN_STRINGS.previousSession),
             ],
         },
         editMenu(options),

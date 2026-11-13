@@ -31,9 +31,21 @@
     "defaultMessage": "The next key goes to the terminal.",
     "description": "Announced after the send-next-key command."
   },
+  "announce.noHost": {
+    "defaultMessage": "No host is connected.",
+    "description": "Announced when a new session needs a connected host."
+  },
   "announce.noSession": {
     "defaultMessage": "No session is open.",
     "description": "Announced when a command needs an open session."
+  },
+  "announce.opened": {
+    "defaultMessage": "{session} on {host}: {state}.",
+    "description": "Announced politely when a session opens."
+  },
+  "announce.openedUnread": {
+    "defaultMessage": "{session} on {host}: {state}, new output.",
+    "description": "Announced politely when a session with unseen output opens."
   },
   "announce.sidebarHidden": {
     "defaultMessage": "Sidebar hidden.",
@@ -54,6 +66,22 @@
   "announce.unmuted": {
     "defaultMessage": "Output announcements on for {session}.",
     "description": "Announced when output announcements are unmuted for a session."
+  },
+  "close.body": {
+    "defaultMessage": "TRC stops {session} on {host} if it is running, then deletes the session and its scrollback. This can’t be undone.",
+    "description": "Says what closing deletes."
+  },
+  "close.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button."
+  },
+  "close.confirm": {
+    "defaultMessage": "Close session",
+    "description": "Button."
+  },
+  "close.title": {
+    "defaultMessage": "Close {session}?",
+    "description": "Confirmation title."
   },
   "command.announcementsToggleMute": {
     "defaultMessage": "Mute output announcements",
@@ -81,6 +109,22 @@
   },
   "command.regionPrevious": {
     "defaultMessage": "Previous region",
+    "description": "Command name."
+  },
+  "command.sessionNew": {
+    "defaultMessage": "New session",
+    "description": "Command name."
+  },
+  "command.sessionNewWithOptions": {
+    "defaultMessage": "New session with options…",
+    "description": "Command name: opens the New session dialog."
+  },
+  "command.sessionNext": {
+    "defaultMessage": "Next session",
+    "description": "Command name."
+  },
+  "command.sessionPrevious": {
+    "defaultMessage": "Previous session",
     "description": "Command name."
   },
   "command.sidebarToggle": {
@@ -431,6 +475,54 @@
     "defaultMessage": "Install location of {host}",
     "description": "Dialog title."
   },
+  "newSession.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button."
+  },
+  "newSession.create": {
+    "defaultMessage": "Create",
+    "description": "Button."
+  },
+  "newSession.cwd": {
+    "defaultMessage": "Working folder (optional)",
+    "description": "Field label."
+  },
+  "newSession.cwdHint": {
+    "defaultMessage": "Your home folder when empty.",
+    "description": "Field instructions."
+  },
+  "newSession.env": {
+    "defaultMessage": "Environment (optional)",
+    "description": "Field label."
+  },
+  "newSession.envHint": {
+    "defaultMessage": "One NAME=value per line. NAME= with no value removes the variable.",
+    "description": "Field instructions."
+  },
+  "newSession.envInvalid": {
+    "defaultMessage": "Write each line as NAME=value, where NAME has only letters, digits and underscores.",
+    "description": "Field error with its fix."
+  },
+  "newSession.host": {
+    "defaultMessage": "Host",
+    "description": "Field label."
+  },
+  "newSession.name": {
+    "defaultMessage": "Name (optional)",
+    "description": "Field label."
+  },
+  "newSession.noHost": {
+    "defaultMessage": "Connect a host first.",
+    "description": "Shown when no host is connected."
+  },
+  "newSession.profile": {
+    "defaultMessage": "Shell",
+    "description": "Field label."
+  },
+  "newSession.title": {
+    "defaultMessage": "New session",
+    "description": "Dialog title."
+  },
   "notifications.clear": {
     "defaultMessage": "Clear all",
     "description": "Button."
@@ -471,9 +563,89 @@
     "defaultMessage": "Command",
     "description": "Search field label."
   },
+  "palette.session.close": {
+    "defaultMessage": "Close {session}…",
+    "description": "Palette entry."
+  },
+  "palette.session.duplicate": {
+    "defaultMessage": "Duplicate {session}",
+    "description": "Palette entry."
+  },
+  "palette.session.moveDown": {
+    "defaultMessage": "Move {session} down",
+    "description": "Palette entry."
+  },
+  "palette.session.moveUp": {
+    "defaultMessage": "Move {session} up",
+    "description": "Palette entry."
+  },
+  "palette.session.rename": {
+    "defaultMessage": "Rename {session}…",
+    "description": "Palette entry."
+  },
+  "palette.session.restart": {
+    "defaultMessage": "Restart {session}",
+    "description": "Palette entry."
+  },
+  "palette.session.stop": {
+    "defaultMessage": "Stop {session}",
+    "description": "Palette entry."
+  },
   "palette.title": {
     "defaultMessage": "Command palette",
     "description": "Dialog name."
+  },
+  "rename.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button."
+  },
+  "rename.hint": {
+    "defaultMessage": "Leave it empty to show the title the program sets.",
+    "description": "Field instructions."
+  },
+  "rename.label": {
+    "defaultMessage": "Name",
+    "description": "Field label."
+  },
+  "rename.save": {
+    "defaultMessage": "Rename",
+    "description": "Button."
+  },
+  "rename.title": {
+    "defaultMessage": "Rename {session}",
+    "description": "Dialog title."
+  },
+  "session.action.close": {
+    "defaultMessage": "Close…",
+    "description": "Session action."
+  },
+  "session.action.duplicate": {
+    "defaultMessage": "Duplicate",
+    "description": "Session action."
+  },
+  "session.action.moveDown": {
+    "defaultMessage": "Move down",
+    "description": "Session action."
+  },
+  "session.action.moveUp": {
+    "defaultMessage": "Move up",
+    "description": "Session action."
+  },
+  "session.action.open": {
+    "defaultMessage": "Open",
+    "description": "Session action."
+  },
+  "session.action.rename": {
+    "defaultMessage": "Rename…",
+    "description": "Session action."
+  },
+  "session.action.restart": {
+    "defaultMessage": "Restart",
+    "description": "Session action."
+  },
+  "session.action.stop": {
+    "defaultMessage": "Stop",
+    "description": "Session action."
   },
   "session.exited": {
     "defaultMessage": "Exited",
@@ -654,5 +826,21 @@
   "terminal.label": {
     "defaultMessage": "{session}, {host}",
     "description": "Accessible name of a terminal: the session name, then its host."
+  },
+  "tree.hostRow": {
+    "defaultMessage": "{host}, {state}",
+    "description": "Accessible name of a host in the session tree."
+  },
+  "tree.label": {
+    "defaultMessage": "Sessions",
+    "description": "Accessible name of the session tree."
+  },
+  "tree.newOutput": {
+    "defaultMessage": "new output",
+    "description": "Badge of a session with output the user has not seen."
+  },
+  "tree.sessionRowBadge": {
+    "defaultMessage": "{name}, {state}, {badge}",
+    "description": "Accessible name of a session with a badge, such as new output."
   }
 }
