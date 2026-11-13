@@ -4,6 +4,7 @@ import { type IDisposable, Terminal } from '@xterm/xterm';
 import type { TerminalPalette } from '../ui/themes';
 import { attachInput, type InputModes } from './ats-input';
 import { AtsSurface, SELECTION_CAP } from './ats-surface';
+import { parseClipboardRequest } from './clipboard-write';
 import { CreditTracker } from './credit-tracker';
 import { type TerminalLink, TerminalLinks } from './hyperlinks';
 import { KittyKeyboard } from './kitty-keyboard';
@@ -44,6 +45,10 @@ export interface TerminalViewOptions {
     readonly onNotice?: (notice: TerminalNotice) => void;
     /** The user asked for the terminal's context menu, with or without a selection to copy (A11Y-11.11). */
     readonly onContextMenu?: (canCopy: boolean) => void;
+    /** Whether the host lets programs write the clipboard with OSC 52; off without it (SEC-06.1). */
+    readonly clipboardWrites?: () => boolean;
+    /** A program wrote text to the clipboard while allowed. */
+    readonly onClipboardWrite?: (text: string) => void;
 }
 
 /** The terminal font, embedded in the app. */
@@ -253,6 +258,7 @@ export class TerminalView {
         const keyboard = new KittyKeyboard(this.terminal);
         const disposables: IDisposable[] = [
             ...registerQueryFilters(this.terminal),
+            this.terminal.parser.registerOscHandler(52, (data) => this.#clipboardRequest(data)),
             keyboard,
             this.terminal.onWriteParsed(() => {
                 this.#syncPointerMode();
@@ -368,6 +374,14 @@ export class TerminalView {
         const interrupt = (): void => this.#announcer?.interrupt();
         this.surface.addEventListener('keydown', interrupt, { capture: true });
         this.#cleanups.push(() => this.surface.removeEventListener('keydown', interrupt, { capture: true }));
+    }
+
+    #clipboardRequest(data: string): boolean {
+        const request = parseClipboardRequest(data);
+        if (request?.kind === 'write' && this.#options.clipboardWrites?.() === true) {
+            this.#options.onClipboardWrite?.(request.text);
+        }
+        return true;
     }
 
     #syncPointerMode(): void {

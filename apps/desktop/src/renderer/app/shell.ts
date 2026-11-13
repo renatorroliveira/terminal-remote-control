@@ -22,7 +22,7 @@ import { pastedLines } from '../terminal/paste';
 import type { Announcer } from './announcer';
 import { linkAnnouncements } from './link-messages';
 import type { NotificationCenter } from './notifications';
-import { copyCappedMessage } from './paste-messages';
+import { clipboardWrittenMessage, copyCappedMessage } from './paste-messages';
 import { RegionCycler } from './regions';
 import {
     commandMessages,
@@ -288,11 +288,13 @@ export class Shell {
     }
 
     /** Shows or announces what a terminal reported. */
-    terminalNotice(_key: SessionKey, notice: TerminalNotice): void {
+    terminalNotice(key: SessionKey, notice: TerminalNotice): void {
+        const { intl, announcer, workspace } = this.#options;
         if (notice.kind === 'copy-capped') {
-            this.#options.announcer.announce(
-                this.#options.intl.formatMessage(copyCappedMessage, { lines: notice.lines, cap: SELECTION_CAP }),
-            );
+            announcer.announce(intl.formatMessage(copyCappedMessage, { lines: notice.lines, cap: SELECTION_CAP }));
+        } else {
+            const host = workspace.store.getState().hosts.find((entry) => key.startsWith(`${entry.id}/`));
+            announcer.announce(intl.formatMessage(clipboardWrittenMessage, { host: host?.destination ?? key }));
         }
     }
 

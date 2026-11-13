@@ -254,6 +254,12 @@ describe('Shell paste and copy (US-1.12.1, US-1.12.2, A11Y-04.7)', () => {
         shell.terminalNotice('host-0/a', { kind: 'copy-capped', lines: 6_000 });
         expect(spoken).toEqual(['Copied all 6,000 lines. Assistive technology sees the first 5,000.']);
     });
+
+    it('announces when a program writes the clipboard (SEC-06.1)', async () => {
+        const { shell, spoken } = await setup();
+        shell.terminalNotice('host-0/a', { kind: 'clipboard-written' });
+        expect(spoken).toEqual(['A program on devbox-1 put text on the clipboard.']);
+    });
 });
 
 describe('Shell sidebar and dialogs (US-1.6.3)', () => {

@@ -158,7 +158,10 @@ such as Shift-Return and Control-Tab as distinct keys. Others receive the classi
 The terminal sets `TERM=xterm-256color`, `COLORTERM=truecolor` and `TERM_PROGRAM=trc`, and resizes the session's
 PTY to fit the window.
 
-Terminal output never touches your clipboard: programs can't read it or write to it.
+Programs can't read your clipboard, and by default they can't write it either. To let a host's programs write it
+(for example tmux or Neovim copying over OSC 52), set `"allowClipboardWrites": true` on that host in `hosts.json`
+while TRC is closed; TRC then says each time a program puts text on the clipboard. The settings page will have
+this switch.
 
 A selection of more than 5,000 lines still copies whole; VoiceOver sees its first 5,000 lines, and TRC says so.
 Pasting more than one line shows the text and asks first, because the shell may run each line. Programs that ask
@@ -251,7 +254,7 @@ On your Mac, TRC keeps its settings in the TRC home, `~/.trc`:
 | File               | Holds                                                                                                                                                                                                   |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `config.json`      | `theme` (`midnight`, `system`, `light`, `dark`, `hc-light` or `hc-dark`), `sidebarWidth` (300 to 800), `sidebarCollapsed` (`true` or `false`) and `screenReaderMode` (`auto`, `on` or `off`)            |
-| `hosts.json`       | The known hosts                                                                                                                                                                                         |
+| `hosts.json`       | The known hosts, and per host `allowClipboardWrites` (off unless `true`)                                                                                                                                |
 | `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example` |
 
 Both files are readable only by you. Edit `config.json` while the app is closed; a value TRC can't use falls back

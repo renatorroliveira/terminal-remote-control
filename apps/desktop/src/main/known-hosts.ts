@@ -24,6 +24,7 @@ const HOST_SCHEMA: z.ZodType<KnownHost> = z
             })
             .strict(),
         installRoot: z.string().min(1).max(4096),
+        allowClipboardWrites: z.boolean().exactOptional(),
     })
     .strict();
 

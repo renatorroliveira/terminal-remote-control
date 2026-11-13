@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -57,5 +57,16 @@ describe('KnownHosts: forgetting, install locations and recent hosts (US-1.1.1, 
         await expect(hosts.setInstallRoot(host.id, 'relative/path')).rejects.toThrow(/install location/);
         await expect(hosts.setInstallRoot('host-0000000000000000', '~/x')).rejects.toThrow(/no host/);
         expect((await hosts.list())[0]?.installRoot).toBe('/scratch/me/trc');
+    });
+
+    it('keeps a host’s clipboard-write permission, off unless hosts.json turns it on (SEC-06.1)', async () => {
+        const home = directory();
+        const host = { id: 'host-0123456789abcdef', address: { destination: 'build' }, installRoot: '~/.trc' };
+        writeFileSync(
+            join(home, 'hosts.json'),
+            JSON.stringify({ hosts: [host, { ...host, id: 'host-fedcba9876543210', allowClipboardWrites: true }] }),
+        );
+        const hosts = await new KnownHosts(home).list();
+        expect(hosts.map((entry) => entry.allowClipboardWrites)).toEqual([undefined, true]);
     });
 });

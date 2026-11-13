@@ -205,6 +205,20 @@
       "value": "."
     }
   ],
+  "clipboard.written": [
+    {
+      "type": 0,
+      "value": "A program on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " put text on the clipboard."
+    }
+  ],
   "close.body": [
     {
       "type": 0,

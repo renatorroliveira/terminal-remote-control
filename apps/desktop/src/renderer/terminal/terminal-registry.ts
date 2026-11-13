@@ -46,6 +46,10 @@ export interface TerminalRegistryOptions {
     readonly onNotice?: (key: SessionKey, notice: TerminalNotice) => void;
     /** The user asked for a terminal's context menu (A11Y-11.11). */
     readonly onContextMenu?: (canCopy: boolean) => void;
+    /** Whether a host lets programs write the clipboard with OSC 52 (SEC-06.1). */
+    readonly clipboardWrites?: (hostId: string) => boolean;
+    /** A program in a session wrote the clipboard while its host allowed it. */
+    readonly onClipboardWrite?: (key: SessionKey, text: string) => void;
 }
 
 interface Entry {
@@ -255,6 +259,9 @@ export class TerminalRegistry implements TerminalHost {
             onContextMenu: (canCopy) => this.#options.onContextMenu?.(canCopy),
             onPasteRequest: (text) => withKey(this.#keyOf(link), (key) => this.#options.onPasteRequest?.(key, text)),
             onNotice: (notice) => withKey(this.#keyOf(link), (key) => this.#options.onNotice?.(key, notice)),
+            clipboardWrites: () => this.#options.clipboardWrites?.(hostId) === true,
+            onClipboardWrite: (text) =>
+                withKey(this.#keyOf(link), (key) => this.#options.onClipboardWrite?.(key, text)),
         });
         view.mount(frame);
         view.setTabFocusMode(this.#tabFocusMode);

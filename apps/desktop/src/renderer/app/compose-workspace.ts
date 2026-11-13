@@ -37,6 +37,8 @@ export interface WorkspaceSources {
     readonly onNotice: (key: SessionKey, notice: TerminalNotice) => void;
     /** The user asked for a terminal's context menu (A11Y-11.11). */
     readonly onContextMenu: (canCopy: boolean) => void;
+    /** A program wrote the clipboard while its host allowed it (SEC-06.1). */
+    readonly onClipboardWrite: (key: SessionKey, text: string) => void;
 }
 
 /** What speaking output needs. */
@@ -72,6 +74,9 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
         onPasteRequest: sources.onPasteRequest,
         onNotice: sources.onNotice,
         onContextMenu: sources.onContextMenu,
+        clipboardWrites: (hostId) =>
+            workspace?.store.getState().hosts.find((host) => host.id === hostId)?.allowClipboardWrites === true,
+        onClipboardWrite: sources.onClipboardWrite,
     });
     workspace = new WorkspaceController(sources.client, terminals, sources.hosts);
     return { workspace, terminals };

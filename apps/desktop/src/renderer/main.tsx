@@ -66,6 +66,10 @@ if (container !== null) {
             onPasteRequest: (key, text) => shell?.requestPaste(key, text),
             onNotice: (key, notice) => shell?.terminalNotice(key, notice),
             onContextMenu: (canCopy) => void window.trc.menus.terminal(canCopy),
+            onClipboardWrite: (key, text) => {
+                void window.trc.clipboard.write(text);
+                shell?.terminalNotice(key, { kind: 'clipboard-written' });
+            },
         });
         const { workspace, terminals } = composed;
         shell = new Shell({

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { app, BrowserWindow, ipcMain, Menu, protocol, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, Menu, protocol, shell } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
@@ -88,6 +88,10 @@ async function start(): Promise<void> {
             'menus:terminal': async (canCopy) => {
                 const menu = Menu.buildFromTemplate(terminalContextMenu(menuActions(), canCopy));
                 menu.popup(mainWindow === undefined ? {} : { window: mainWindow });
+                return undefined;
+            },
+            'clipboard:write': async (text) => {
+                clipboard.writeText(text);
                 return undefined;
             },
             'links:check': (target) => links.check(target),

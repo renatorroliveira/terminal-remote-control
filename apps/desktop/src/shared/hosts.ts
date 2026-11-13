@@ -15,4 +15,6 @@ export interface KnownHost {
     readonly address: HostAddress;
     /** Where the daemon installs on this host (US-1.4.3). */
     readonly installRoot: string;
+    /** Whether programs on this host may write the clipboard with OSC 52; off unless set (SEC-06.1). */
+    readonly allowClipboardWrites?: boolean;
 }
