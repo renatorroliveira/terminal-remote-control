@@ -51,7 +51,7 @@ your `known_hosts`. It never changes your SSH configuration or your keys. The on
    for Apple silicon, or `TRC-<version>-mac-x64.dmg` for Intel. `SHA256SUMS.txt` lists every file's checksum
    (`shasum -a 256 -c SHA256SUMS.txt`).
 2. Open the dmg and drag Terminal Remote Control to Applications.
-3. Open it once from Applications. Release 0.1 is ad-hoc signed, not notarized, so macOS blocks the first launch.
+3. Open it once from Applications. This release is ad-hoc signed, not notarized, so macOS blocks the first launch.
    Open System Settings, then Privacy & Security, and choose Open Anyway next to the message about Terminal Remote
    Control. Or, in Terminal:
 
@@ -350,6 +350,10 @@ terminal output, keystrokes, environment values or keys.
 
 On each host, the daemon lives in `~/.trc`: its binaries under `versions/`, its socket under `run/` and its logs.
 To remove TRC from a host, end its sessions, then delete `~/.trc` there.
+
+The licenses of the software TRC includes are in the app, in
+`Terminal Remote Control.app/Contents/Resources/notices/THIRD_PARTY_NOTICES.txt`; Electron's and Chromium's are in
+`LICENSE.electron.txt` and `LICENSES.chromium.html` beside it.
 
 ## Troubleshooting
 

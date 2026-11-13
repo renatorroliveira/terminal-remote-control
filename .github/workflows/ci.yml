@@ -65,3 +65,9 @@ jobs:
             - run: cargo fmt --all --check
             - run: cargo clippy --locked --workspace --all-targets -- -D warnings
             - run: cargo nextest run --locked --workspace
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: 24
+            - run: corepack enable pnpm
+            - run: pnpm install --frozen-lockfile --ignore-scripts
+            - run: pnpm notices:check

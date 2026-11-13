@@ -8,12 +8,14 @@
         "node": ">=24.22 <25"
     },
     "scripts": {
-        "check": "pnpm format:check && pnpm lint && pnpm docs:ids && pnpm --filter @trc/desktop i18n:check && pnpm typecheck && pnpm test && pnpm rust:check && pnpm gen:check",
+        "check": "pnpm format:check && pnpm lint && pnpm docs:ids && pnpm --filter @trc/desktop i18n:check && pnpm typecheck && pnpm test && pnpm rust:check && pnpm notices:check && pnpm gen:check",
         "format": "prettier --write .",
         "format:check": "prettier --check --log-level warn .",
         "lint": "biome check --reporter=concise .",
         "docs:ids": "node tools/doc-ids/check-doc-ids.ts",
         "docs:guide": "node tools/user-docs/guide.ts",
+        "notices": "node tools/notices/notices.ts",
+        "notices:check": "node tools/notices/notices.ts --check",
         "icons": "node tools/icons/render-icons.ts",
         "release": "node tools/release/release.ts",
         "typecheck": "tsc -p tools --pretty false && tsc -p crates --pretty false && pnpm -r --parallel run typecheck",

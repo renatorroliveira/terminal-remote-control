@@ -16,6 +16,8 @@ extraResources:
       to: daemon
     - from: resources/docs
       to: docs
+    - from: resources/notices
+      to: notices
     - from: resources/icons/icon.png
       to: icons/icon.png
 asar: true

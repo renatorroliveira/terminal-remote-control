@@ -1,6 +1,6 @@
 /**
  * Checks a packaged Terminal Remote Control.app before it ships (ST-20, SEC-01, SEC-04.2, P-11, P-14): the ad-hoc
- * signature, the fuses, no test seam in the bundle, the bundled daemons against their manifest, and that the app,
+ * signature, the fuses, no test seam in the bundle, the third-party notices, the bundled daemons against their manifest, and that the app,
  * launched in the background with every debugging switch, opens no listening TCP socket and no UDP socket. Run `pnpm verify:artifact <path to the .app>`.
  */
 import { spawnSync } from 'node:child_process';
@@ -47,6 +47,9 @@ export async function verifyArtifact(app: string): Promise<readonly string[]> {
             daemonFiles(resources),
             plist(app, 'CFBundleShortVersionString'),
         ),
+        ...(existsSync(join(resources, 'notices/THIRD_PARTY_NOTICES.txt'))
+            ? []
+            : ['the third-party notices are missing']),
         ...(await launchProblems(app)),
     ];
 }
