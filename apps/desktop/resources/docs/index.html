@@ -46,7 +46,7 @@
 <ol>
 <li>Download the release for your Mac from the <a href="https://github.com/renatorroliveira/terminal-remote-control/releases">Releases page</a>: <code>TRC-&lt;version&gt;-mac-arm64.dmg</code> for Apple silicon, or <code>TRC-&lt;version&gt;-mac-x64.dmg</code> for Intel. <code>SHA256SUMS.txt</code> lists every file's checksum (<code>shasum -a 256 -c SHA256SUMS.txt</code>).</li>
 <li>Open the dmg and drag Terminal Remote Control to Applications.</li>
-<li><p>Open it once from Applications. Release 0.1 is ad-hoc signed, not notarized, so macOS blocks the first launch. Open System Settings, then Privacy &amp; Security, and choose Open Anyway next to the message about Terminal Remote Control. Or, in Terminal:</p>
+<li><p>Open it once from Applications. This release is ad-hoc signed, not notarized, so macOS blocks the first launch. Open System Settings, then Privacy &amp; Security, and choose Open Anyway next to the message about Terminal Remote Control. Or, in Terminal:</p>
 <pre><code class="language-sh">xattr -dr com.apple.quarantine &quot;/Applications/Terminal Remote Control.app&quot;</code></pre></li>
 </ol>
 <h2 id="quick-start-with-voiceover">Quick start with VoiceOver</h2>
@@ -222,6 +222,7 @@
 <pre><code class="language-sh">TRC_HOME=~/work/trc open -n &quot;/Applications/Terminal Remote Control.app&quot;</code></pre>
 <p>Logs and Chromium's own data stay in <code>~/Library/Application Support/Terminal Remote Control</code>. Logs never hold terminal output, keystrokes, environment values or keys.</p>
 <p>On each host, the daemon lives in <code>~/.trc</code>: its binaries under <code>versions/</code>, its socket under <code>run/</code> and its logs. To remove TRC from a host, end its sessions, then delete <code>~/.trc</code> there.</p>
+<p>The licenses of the software TRC includes are in the app, in <code>Terminal Remote Control.app/Contents/Resources/notices/THIRD_PARTY_NOTICES.txt</code>; Electron's and Chromium's are in <code>LICENSE.electron.txt</code> and <code>LICENSES.chromium.html</code> beside it.</p>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <table>
 <thead><tr><th scope="col">The dialog says</th><th scope="col">What to do</th></tr></thead>
