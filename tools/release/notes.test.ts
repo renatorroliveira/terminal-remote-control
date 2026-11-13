@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { releaseNotes } from './notes.ts';
+import { releaseNotes, releaseTitle } from './notes.ts';
 
 describe('releaseNotes: GitHub release notes from Conventional Commit subjects', () => {
     it('groups features, fixes and the rest, and drops release bookkeeping', () => {
@@ -12,7 +12,7 @@ describe('releaseNotes: GitHub release notes from Conventional Commit subjects',
         ]);
         expect(notes).toBe(
             [
-                '# Terminal Remote Control 0.2.0',
+                '# TRC v0.2.0',
                 '',
                 '## Features',
                 '',
@@ -29,5 +29,9 @@ describe('releaseNotes: GitHub release notes from Conventional Commit subjects',
                 '',
             ].join('\n'),
         );
+    });
+
+    it('titles a release with the acronym and the tag', () => {
+        expect(releaseTitle('0.2.0')).toBe('TRC v0.2.0');
     });
 });

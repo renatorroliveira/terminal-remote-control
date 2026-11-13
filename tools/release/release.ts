@@ -4,7 +4,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArguments, type ReleaseOptions } from './arguments.ts';
-import { releaseNotes } from './notes.ts';
+import { releaseNotes, releaseTitle } from './notes.ts';
 import { bumpVersion, devVersion, lastRelease, setCargoVersion, setPackageVersion } from './versions.ts';
 
 /** The repository root. */
@@ -16,8 +16,10 @@ const REPOSITORY_FILES = [...PACKAGE_MANIFESTS, 'Cargo.toml', 'Cargo.lock'] as c
 
 /**
  * Cuts a release on GitHub (semver from the last `v*` tag): checks the tree, runs `pnpm check`, sets the version in
- * every manifest, builds the daemons and the ad-hoc signed macOS dmg and zip for arm64 and x64, commits, tags,
- * pushes, publishes the GitHub release with notes and SHA-256 sums, then moves `main` to the next `-dev` version.
+ * every manifest and commits it, builds the daemons and the ad-hoc signed macOS dmg and zip for arm64 and x64 from
+ * that commit, tags, pushes, publishes the GitHub release `TRC v<version>` with notes and SHA-256 sums, then moves
+ * `main` to the next `-dev` version. A failed build leaves the release commit local: `git reset --hard origin/main`
+ * before trying again.
  */
 export function release(options: ReleaseOptions): void {
     const last = lastRelease(capture('git', ['tag', '--list', 'v*']).split('\n'));
@@ -32,12 +34,12 @@ export function release(options: ReleaseOptions): void {
     preflight();
     run('pnpm', ['check']);
     setVersion(version);
+    commit(`chore(release): v${version}`, `Release Terminal Remote Control ${version}.`);
     run('pnpm', ['build:daemon']);
     rmSync(DIST, { recursive: true, force: true });
     run('pnpm', ['dist']);
     const assets = releaseAssets(version);
-    commit(`chore(release): v${version}`, `Release Terminal Remote Control ${version}.`);
-    run('git', ['tag', '-a', `v${version}`, '-m', `Terminal Remote Control ${version}`]);
+    run('git', ['tag', '-a', `v${version}`, '-m', releaseTitle(version)]);
     run('git', ['push', 'origin', 'main', `v${version}`]);
     publish(version, notes, assets);
     setVersion(devVersion(version));
@@ -99,7 +101,7 @@ function releaseAssets(version: string): readonly string[] {
 function publish(version: string, notes: string, assets: readonly string[]): void {
     const notesFile = join(mkdtempSync(join(tmpdir(), 'trc-release-')), 'notes.md');
     writeFileSync(notesFile, notes);
-    const title = `Terminal Remote Control ${version}`;
+    const title = releaseTitle(version);
     run('gh', [
         'release',
         'create',

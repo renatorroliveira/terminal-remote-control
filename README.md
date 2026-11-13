@@ -137,10 +137,11 @@ pnpm release minor --dry-run   # prints the next version and the release notes
 pnpm release minor             # or patch, or major
 ```
 
-It computes the version from the last `v*` tag, runs `pnpm check`, sets the version in every manifest, builds the
-daemons and the macOS artifacts, commits `chore(release): v<version>`, tags and pushes it, publishes a
-[GitHub Release](https://github.com/renatorroliveira/terminal-remote-control/releases) with the notes, the dmg and zip
-files and `SHA256SUMS.txt`, then commits and pushes the next `-dev` version.
+It computes the version from the last `v*` tag, runs `pnpm check`, sets the version in every manifest, commits
+`chore(release): v<version>`, builds the daemons and the macOS artifacts from that commit, tags and pushes it,
+publishes the [GitHub Release](https://github.com/renatorroliveira/terminal-remote-control/releases) `TRC v<version>`
+with the notes, the dmg and zip files and `SHA256SUMS.txt`, then commits and pushes the next `-dev` version. If a
+build fails after the release commit, run `git reset --hard origin/main` before trying again.
 
 CI builds the project and runs the unit tests on every push to `main` and every pull request. The integration, e2e
 and accessibility-tree suites need the local test hosts and macOS permissions, so they run locally.

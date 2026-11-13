@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, Menu, protocol } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL } from '../shared/contract';
+import { aboutPanelOptions } from './about-panel';
 import { relayAccessibilitySupport } from './accessibility-relay';
 import { AppConfigFile } from './app-config';
 import { appIconPath } from './app-icon';
@@ -28,6 +29,8 @@ const background = isBackgroundLaunch({ seamEnabled: __TRC_TEST_SEAM__, env: pro
 if (background && process.platform === 'darwin') {
     app.setActivationPolicy('accessory');
 }
+
+app.setAboutPanelOptions(aboutPanelOptions({ version: app.getVersion(), commit: __TRC_BUILD_COMMIT__ }));
 
 protocol.registerSchemesAsPrivileged([
     { scheme: APP_IDENTITY.appScheme, privileges: { standard: true, secure: true, supportFetchAPI: true } },
