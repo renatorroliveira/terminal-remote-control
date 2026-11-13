@@ -105,10 +105,11 @@ describe('HostsPanel: the add-host form (US-1.1.1, US-1.1.6)', () => {
         const hosts = new FakeKnownHostStore();
         hosts.suggested = ['devbox-1', 'build.example.com'];
         const { screen } = await renderPanel(hosts);
-        await screen.getByRole('combobox', { name: 'New host' }).fill('dev');
+        await screen.getByRole('combobox', { name: 'New host' }).fill('DEV');
+        await expect.element(screen.getByRole('option', { name: 'devbox-1' })).toBeVisible();
+        await expect.element(screen.getByRole('option', { name: 'build.example.com' })).not.toBeInTheDocument();
         await screen.getByRole('option', { name: 'devbox-1' }).click();
         await expect.element(screen.getByRole('combobox', { name: 'New host' })).toHaveValue('devbox-1');
-        await expect.element(screen.getByRole('option', { name: 'build.example.com' })).not.toBeInTheDocument();
     });
 
     it('keeps what the user typed while an earlier add was still saving', async () => {
