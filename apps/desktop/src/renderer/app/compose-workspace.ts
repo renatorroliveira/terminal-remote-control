@@ -6,6 +6,7 @@ import { terminalLabelMessage, terminalMessages } from '../sessions/messages';
 import { type KnownHostStore, type SessionKey, WorkspaceController } from '../sessions/workspace-controller';
 import { sessionName } from '../sessions/workspace-model';
 import type { TerminalLink } from '../terminal/hyperlinks';
+import type { TerminalNotice } from '../terminal/notices';
 import { DEFAULT_FLOOD_THRESHOLD } from '../terminal/output-announcer';
 import { floodMessage } from '../terminal/output-messages';
 import { type SessionSpeech, TerminalRegistry } from '../terminal/terminal-registry';
@@ -30,6 +31,12 @@ export interface WorkspaceSources {
     readonly speech: SpeechSources;
     /** The user opened a link in a terminal (US-1.12.3). */
     readonly onOpenLink: (link: TerminalLink) => void;
+    /** The user pasted more than one line into a session (US-1.12.2). */
+    readonly onPasteRequest: (key: SessionKey, text: string) => void;
+    /** A session's terminal reported something to show or announce. */
+    readonly onNotice: (key: SessionKey, notice: TerminalNotice) => void;
+    /** The user asked for a terminal's context menu (A11Y-11.11). */
+    readonly onContextMenu: (canCopy: boolean) => void;
 }
 
 /** What speaking output needs. */
@@ -62,6 +69,9 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
         onActivity: (key) => workspace?.recordActivity(key),
         speech: sessionSpeech(sources.speech, (lines) => intl.formatMessage(floodMessage, { lines })),
         onOpenLink: sources.onOpenLink,
+        onPasteRequest: sources.onPasteRequest,
+        onNotice: sources.onNotice,
+        onContextMenu: sources.onContextMenu,
     });
     workspace = new WorkspaceController(sources.client, terminals, sources.hosts);
     return { workspace, terminals };

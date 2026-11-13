@@ -2,6 +2,7 @@ import type { SessionInfo } from '@trc/protocol';
 import type { SessionKey, SessionOptions, TerminalHost } from '../sessions/workspace-controller';
 import type { TerminalPalette } from '../ui/themes';
 import type { TerminalLink } from './hyperlinks';
+import type { TerminalNotice } from './notices';
 import type { OutputSpeech } from './output-announcer';
 import { SessionLink, type SessionTransport } from './session-link';
 import styles from './terminal-registry.module.css';
@@ -39,6 +40,12 @@ export interface TerminalRegistryOptions {
     readonly speech?: SessionSpeech;
     /** The user opened a link in a terminal (US-1.12.3). */
     readonly onOpenLink?: (link: TerminalLink) => void;
+    /** The user pasted more than one line into a session (US-1.12.2). */
+    readonly onPasteRequest?: (key: SessionKey, text: string) => void;
+    /** A session's terminal reported something to show or announce. */
+    readonly onNotice?: (key: SessionKey, notice: TerminalNotice) => void;
+    /** The user asked for a terminal's context menu (A11Y-11.11). */
+    readonly onContextMenu?: (canCopy: boolean) => void;
 }
 
 interface Entry {
@@ -118,6 +125,13 @@ export class TerminalRegistry implements TerminalHost {
     /** Whether the open terminal waits for a key to pass to its process. */
     passingNextKey(): boolean {
         return this.#openEntry()?.view.passingNextKey ?? false;
+    }
+
+    /** Pastes text into a session's terminal and focuses it (US-1.12.2). */
+    paste(key: SessionKey, text: string): void {
+        const entry = this.#entries.get(key);
+        entry?.view.paste(text);
+        entry?.view.focus();
     }
 
     /** The links on the open terminal's screen (US-1.12.3). */
@@ -238,6 +252,9 @@ export class TerminalRegistry implements TerminalHost {
             onResize: (size) => link.resize(size),
             ...(speech === undefined ? {} : { speech }),
             onLink: (link) => this.#options.onOpenLink?.(link),
+            onContextMenu: (canCopy) => this.#options.onContextMenu?.(canCopy),
+            onPasteRequest: (text) => withKey(this.#keyOf(link), (key) => this.#options.onPasteRequest?.(key, text)),
+            onNotice: (notice) => withKey(this.#keyOf(link), (key) => this.#options.onNotice?.(key, notice)),
         });
         view.mount(frame);
         view.setTabFocusMode(this.#tabFocusMode);

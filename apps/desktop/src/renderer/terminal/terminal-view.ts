@@ -3,11 +3,13 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { type IDisposable, Terminal } from '@xterm/xterm';
 import type { TerminalPalette } from '../ui/themes';
 import { attachInput, type InputModes } from './ats-input';
-import { AtsSurface } from './ats-surface';
+import { AtsSurface, SELECTION_CAP } from './ats-surface';
 import { CreditTracker } from './credit-tracker';
 import { type TerminalLink, TerminalLinks } from './hyperlinks';
 import { KittyKeyboard } from './kitty-keyboard';
+import type { TerminalNotice } from './notices';
 import { OutputAnnouncer, type OutputSpeech } from './output-announcer';
+import { encodePaste, pastedLines } from './paste';
 import { registerQueryFilters } from './query-filter';
 import { SCROLLBAR_WIDTH, TerminalGeometry } from './terminal-geometry';
 import { xtermTheme } from './terminal-theme';
@@ -36,6 +38,12 @@ export interface TerminalViewOptions {
     readonly speech?: OutputSpeech;
     /** The user opened a link with Command+click, or Control+click off macOS (US-1.12.3). */
     readonly onLink?: (link: TerminalLink) => void;
+    /** The user pasted more than one line, which waits for a confirmation (US-1.12.2); without it, it is sent. */
+    readonly onPasteRequest?: (text: string) => void;
+    /** Something to show or announce, such as a copy past the selection cap. */
+    readonly onNotice?: (notice: TerminalNotice) => void;
+    /** The user asked for the terminal's context menu, with or without a selection to copy (A11Y-11.11). */
+    readonly onContextMenu?: (canCopy: boolean) => void;
 }
 
 /** The terminal font, embedded in the app. */
@@ -180,6 +188,11 @@ export class TerminalView {
         return this.#links.visible();
     }
 
+    /** Sends pasted text to the process, as bracketed paste when the program asked for it (US-1.12.2). */
+    paste(text: string): void {
+        this.#send(encodePaste(text, this.terminal.modes.bracketedPasteMode));
+    }
+
     /** Moves keyboard focus to the surface. */
     focus(): void {
         this.surface.focus();
@@ -276,6 +289,40 @@ export class TerminalView {
         this.#listenWheel();
         this.#listenInterrupt();
         this.#listenLinks();
+        this.#listenClipboard();
+    }
+
+    #listenClipboard(): void {
+        const onCopy = (event: ClipboardEvent): void => {
+            const position = this.terminal.getSelectionPosition();
+            if (position === undefined || event.clipboardData === null) {
+                return;
+            }
+            event.preventDefault();
+            event.clipboardData.setData('text/plain', this.terminal.getSelection());
+            const lines = position.end.y - position.start.y + 1;
+            if (lines > SELECTION_CAP) {
+                this.#options.onNotice?.({ kind: 'copy-capped', lines });
+            }
+        };
+        const onContextMenu = (event: Event): void => {
+            event.preventDefault();
+            this.#options.onContextMenu?.(this.terminal.hasSelection());
+        };
+        const onMenuKey = (event: KeyboardEvent): void => {
+            if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+                event.stopImmediatePropagation();
+                onContextMenu(event);
+            }
+        };
+        this.surface.addEventListener('copy', onCopy);
+        this.surface.addEventListener('contextmenu', onContextMenu);
+        this.surface.addEventListener('keydown', onMenuKey, { capture: true });
+        this.#cleanups.push(() => {
+            this.surface.removeEventListener('copy', onCopy);
+            this.surface.removeEventListener('contextmenu', onContextMenu);
+            this.surface.removeEventListener('keydown', onMenuKey, { capture: true });
+        });
     }
 
     #listenLinks(): void {
@@ -333,15 +380,25 @@ export class TerminalView {
         }
     }
 
+    #send(text: string): void {
+        this.#scheduler.input();
+        this.#announcer?.input(text);
+        this.terminal.clearSelection();
+        this.terminal.scrollToBottom();
+        this.#ats.placeCaret();
+        this.#options.onInput(text);
+    }
+
     #inputSink() {
         return {
-            send: (text: string): void => {
-                this.#scheduler.input();
-                this.#announcer?.input(text);
-                this.terminal.clearSelection();
-                this.terminal.scrollToBottom();
-                this.#ats.placeCaret();
-                this.#options.onInput(text);
+            send: (text: string): void => this.#send(text),
+            paste: (text: string): void => {
+                const confirm = this.#options.onPasteRequest;
+                if (confirm !== undefined && pastedLines(text) > 1) {
+                    confirm(text);
+                } else {
+                    this.paste(text);
+                }
             },
             page: (direction: 'up' | 'down'): void => this.terminal.scrollPages(direction === 'up' ? -1 : 1),
             composed: (): void => {

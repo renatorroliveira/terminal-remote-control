@@ -1,7 +1,7 @@
 import type { MenuItemConstructorOptions } from 'electron';
 import { describe, expect, it } from 'vitest';
 import { resolveKeymap } from '../shared/keymap';
-import { type MenuOptions, menuTemplate } from './menu';
+import { type MenuOptions, menuTemplate, terminalContextMenu } from './menu';
 
 function labels(items: readonly MenuItemConstructorOptions[]): (string | undefined)[] {
     return items.map((item) => item.label ?? item.role);
@@ -163,5 +163,28 @@ describe('menuTemplate: Session', () => {
             ['Next Session', 'Shift+Command+]'],
             ['Previous Session', 'Shift+Command+['],
         ]);
+    });
+});
+
+describe('terminalContextMenu (A11Y-11.11, US-1.12)', () => {
+    it('offers Copy only with a selection, Paste, List Links and Look Up', () => {
+        const commands: string[] = [];
+        const lookUps: number[] = [];
+        const menu = terminalContextMenu(
+            { ...options(), onCommand: (id) => commands.push(id), onLookUp: () => lookUps.push(1) },
+            false,
+        );
+        expect(menu.map((item) => item.role ?? item.label ?? item.type)).toEqual([
+            'copy',
+            'paste',
+            'separator',
+            'List Links…',
+            'Look Up',
+        ]);
+        expect(menu[0]?.enabled).toBe(false);
+        expect(menu[4]?.enabled).toBe(false);
+        expect(terminalContextMenu(options(), true)[0]?.enabled).toBe(true);
+        menu[3]?.click?.(undefined as never, undefined, undefined as never);
+        expect(commands).toEqual(['terminal.listLinks']);
     });
 });

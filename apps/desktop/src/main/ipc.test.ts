@@ -30,6 +30,7 @@ function handlers(display: unknown = {}): InvokeHandlers {
         }),
         'links:check': async (target) => ({ target, origin: undefined, trusted: false }),
         'links:open': async () => undefined,
+        'menus:terminal': async () => undefined,
         'sidebar:get-width': async () => 400,
         'sidebar:set-width': async () => undefined,
         'sidebar:get-collapsed': async () => false,

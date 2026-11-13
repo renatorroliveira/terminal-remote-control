@@ -159,6 +159,10 @@
     "defaultMessage": "Open",
     "description": "Context menu item."
   },
+  "copy.capped": {
+    "defaultMessage": "Copied all {lines, number} lines. Assistive technology sees the first {cap, number}.",
+    "description": "Announced after a copy of more lines than the OS sees selected."
+  },
   "failure.authenticationAgentEmpty.problem": {
     "defaultMessage": "Your SSH agent holds no keys, so ssh had no key to offer {name}.",
     "description": "What went wrong when a connection failed."
@@ -674,6 +678,26 @@
   "palette.title": {
     "defaultMessage": "Command palette",
     "description": "Dialog name."
+  },
+  "paste.body": {
+    "defaultMessage": "TRC types the text into the terminal, and the shell may run each line as a command.",
+    "description": "Says what pasting several lines does."
+  },
+  "paste.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button."
+  },
+  "paste.paste": {
+    "defaultMessage": "Paste",
+    "description": "Button."
+  },
+  "paste.preview": {
+    "defaultMessage": "Text to paste",
+    "description": "Field label."
+  },
+  "paste.title": {
+    "defaultMessage": "{lines, plural, one {Paste # line?} other {Paste # lines?}}",
+    "description": "Title of the confirmation before a paste of more than one line."
   },
   "rename.cancel": {
     "defaultMessage": "Cancel",

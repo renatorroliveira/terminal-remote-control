@@ -19,7 +19,7 @@ import { type InvokeHandlers, registerHandlers } from './ipc';
 import { KnownHosts } from './known-hosts';
 import { migrateLegacyState } from './legacy-state';
 import { LinkService } from './link-service';
-import { menuTemplate } from './menu';
+import { type MenuOptions, menuTemplate, terminalContextMenu } from './menu';
 import { openExternalFor } from './open-external';
 import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
@@ -83,6 +83,11 @@ async function start(): Promise<void> {
             'accessibility:get': async () => screenReader.current(),
             'accessibility:set-mode': async (mode) => {
                 await screenReader.setMode(mode);
+                return undefined;
+            },
+            'menus:terminal': async (canCopy) => {
+                const menu = Menu.buildFromTemplate(terminalContextMenu(menuActions(), canCopy));
+                menu.popup(mainWindow === undefined ? {} : { window: mainWindow });
                 return undefined;
             },
             'links:check': (target) => links.check(target),
@@ -149,10 +154,8 @@ function installMenu(display: DisplayRelay, config: AppConfigFile, theme: ThemeP
     Menu.setApplicationMenu(
         Menu.buildFromTemplate(
             menuTemplate({
+                ...menuActions(),
                 appName: APP_IDENTITY.productName,
-                keymap: resolveKeymap({}),
-                onCommand: (command) => mainWindow?.webContents.send(APP_COMMAND_CHANNEL, command),
-                onLookUp: () => mainWindow?.webContents.showDefinitionForSelection(),
                 themePreference: theme,
                 onThemePreference: (preference) => {
                     display.setPreference(preference);
@@ -161,6 +164,14 @@ function installMenu(display: DisplayRelay, config: AppConfigFile, theme: ThemeP
             }),
         ),
     );
+}
+
+function menuActions(): Pick<MenuOptions, 'keymap' | 'onCommand' | 'onLookUp'> {
+    return {
+        keymap: resolveKeymap({}),
+        onCommand: (command) => mainWindow?.webContents.send(APP_COMMAND_CHANNEL, command),
+        onLookUp: () => mainWindow?.webContents.showDefinitionForSelection(),
+    };
 }
 
 function focusMainWindow(): void {
