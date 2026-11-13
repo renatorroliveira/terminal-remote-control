@@ -49,7 +49,6 @@ pnpm-debug.log*
 dist/
 out/
 build/
-release/
 *.dmg
 *.zip
 *.tgz

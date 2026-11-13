@@ -9,7 +9,7 @@ export default defineConfig({
     main: {
         define: TEST_SEAM,
         build: {
-            externalizeDeps: { exclude: ['@trc/protocol'] },
+            externalizeDeps: false,
             rollupOptions: {
                 input: { index: resolve(import.meta.dirname, 'src/main/index.ts') },
             },

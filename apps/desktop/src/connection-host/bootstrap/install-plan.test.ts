@@ -41,6 +41,15 @@ describe('planInstall', () => {
         expect(planInstall(hello({ installed }), manifest)).toEqual({ kind: 'update-app', installedVersion: '0.10.0' });
     });
 
+    it('lets development and release daemons sit side by side: a -dev version never counts as newer', () => {
+        const installed = [{ sha256: 'e'.repeat(64), version: '9.0.0-dev' }];
+        expect(planInstall(hello({ installed }), manifest).kind).toBe('upload');
+        const development = { ...manifest, version: '0.2.0-dev' };
+        expect(
+            planInstall(hello({ installed: [{ sha256: 'c'.repeat(64), version: '0.3.0' }] }), development).kind,
+        ).toBe('upload');
+    });
+
     it('reports an unsupported system with what is missing', () => {
         expect(planInstall(hello({ os: 'Darwin' }), manifest)).toEqual({
             kind: 'unsupported',
