@@ -4,7 +4,7 @@ import type { GuideSection } from './guide';
 import type { KnownHost } from './hosts';
 import type { CommandId } from './keymap';
 import type { LinkCheck } from './links';
-import type { TerminalAppearance } from './terminal-appearance';
+import type { Settings } from './settings';
 
 /** Requests the renderer makes of the main process with `ipcRenderer.invoke`: arguments and result per channel. */
 export interface InvokeContract {
@@ -26,13 +26,16 @@ export interface InvokeContract {
     };
     readonly 'menus:terminal': { readonly args: readonly [canCopy: boolean]; readonly result: undefined };
     readonly 'clipboard:write': { readonly args: readonly [text: string]; readonly result: undefined };
-    readonly 'terminal:get-zoom': { readonly args: readonly []; readonly result: number };
-    readonly 'terminal:get-appearance': { readonly args: readonly []; readonly result: TerminalAppearance };
-    readonly 'terminal:set-zoom': { readonly args: readonly [zoom: number]; readonly result: undefined };
     readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
     readonly 'sidebar:get-collapsed': { readonly args: readonly []; readonly result: boolean };
     readonly 'sidebar:set-collapsed': { readonly args: readonly [collapsed: boolean]; readonly result: undefined };
+    readonly 'settings:get': { readonly args: readonly []; readonly result: Settings };
+    readonly 'settings:set': { readonly args: readonly [change: Partial<Settings>]; readonly result: undefined };
+    readonly 'hosts:set-clipboard-writes': {
+        readonly args: readonly [id: string, allowed: boolean];
+        readonly result: KnownHost;
+    };
     readonly 'help:open-guide': {
         readonly args: readonly [section: GuideSection | undefined];
         readonly result: undefined;
@@ -82,6 +85,8 @@ export interface TrcBridge {
         remove(id: string): Promise<void>;
         /** Moves a host's install location (US-1.4.3). */
         setInstallRoot(id: string, installRoot: string): Promise<KnownHost>;
+        /** Lets a host's programs write the clipboard with OSC 52, or stops them (SEC-06.1). */
+        setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost>;
     };
     readonly links: {
         /** The link as it would open, its origin, and whether a trusted prefix lets it open without asking. */
@@ -92,14 +97,6 @@ export interface TrcBridge {
     readonly clipboard: {
         /** Puts text a program wrote with OSC 52 on the clipboard, for a host that allows it (SEC-06.1). */
         write(text: string): Promise<void>;
-    };
-    readonly terminal: {
-        /** The terminal text size the user last chose, in percent (A11Y-07.4). */
-        zoom(): Promise<number>;
-        /** Keeps a terminal text size in `config.json`. */
-        setZoom(zoom: number): Promise<void>;
-        /** How the terminal grid and cursor look (A11Y-07.6, A11Y-07.8). */
-        appearance(): Promise<TerminalAppearance>;
     };
     readonly menus: {
         /** Shows the terminal's context menu: Copy when `canCopy`, Paste, List Links and Look Up (A11Y-11.11). */
@@ -114,6 +111,12 @@ export interface TrcBridge {
         collapsed(): Promise<boolean>;
         /** Keeps whether the sidebar is hidden in `config.json`. */
         setCollapsed(collapsed: boolean): Promise<void>;
+    };
+    readonly settings: {
+        /** The settings page's settings (A11Y-10.3). */
+        get(): Promise<Settings>;
+        /** Changes some settings and keeps them in `config.json`. */
+        set(change: Partial<Settings>): Promise<void>;
     };
     readonly help: {
         /** Opens the user guide in its own window, at a section when given (A11Y-10.4). */

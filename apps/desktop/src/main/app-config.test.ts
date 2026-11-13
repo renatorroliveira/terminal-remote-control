@@ -2,7 +2,21 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AppConfigFile, DEFAULT_APP_CONFIG } from './app-config';
+import { AppConfigFile, DEFAULT_APP_CONFIG, settingsOf } from './app-config';
+
+/** The settings-page defaults every config holds beside the fields a test checks (A11Y-10.3). */
+const SETTINGS_DEFAULTS = {
+    verbosity: 'detailed',
+    hints: true,
+    floodThreshold: 20,
+    minimumContrast: 4.5,
+    tabFocusMode: false,
+    scrollbackLines: 10_000,
+    stopGraceSeconds: 5,
+    autoClose: true,
+    pasteConfirmation: true,
+    newSessionFolder: 'home',
+};
 
 function home(): string {
     return mkdtempSync(join(tmpdir(), 'trc-home-'));
@@ -13,6 +27,7 @@ describe('AppConfigFile: config.json in the TRC home (P-18)', () => {
         const directory = home();
         const config = new AppConfigFile(directory);
         const defaults = {
+            ...SETTINGS_DEFAULTS,
             theme: 'midnight',
             sidebarWidth: 400,
             sidebarCollapsed: false,
@@ -34,6 +49,7 @@ describe('AppConfigFile: config.json in the TRC home (P-18)', () => {
         await config.update({ screenReaderMode: 'on' });
         await config.update({ terminalZoom: 150 });
         const changed = {
+            ...SETTINGS_DEFAULTS,
             theme: 'system',
             sidebarWidth: 520,
             sidebarCollapsed: true,
@@ -67,6 +83,7 @@ describe('AppConfigFile: values it cannot use', () => {
             }),
         );
         expect(await new AppConfigFile(directory).read()).toEqual({
+            ...SETTINGS_DEFAULTS,
             theme: 'midnight',
             sidebarWidth: 640,
             sidebarCollapsed: false,
@@ -76,6 +93,7 @@ describe('AppConfigFile: values it cannot use', () => {
         });
         writeFileSync(join(directory, 'config.json'), JSON.stringify({ theme: 'dark', sidebarWidth: 9000 }));
         expect(await new AppConfigFile(directory).read()).toEqual({
+            ...SETTINGS_DEFAULTS,
             theme: 'dark',
             sidebarWidth: 400,
             sidebarCollapsed: false,
@@ -91,6 +109,7 @@ describe('AppConfigFile: updates', () => {
         const config = new AppConfigFile(home());
         await Promise.all([config.update({ theme: 'light' }), config.update({ sidebarWidth: 300 })]);
         expect(await config.read()).toEqual({
+            ...SETTINGS_DEFAULTS,
             theme: 'light',
             sidebarWidth: 300,
             sidebarCollapsed: false,
@@ -116,6 +135,50 @@ describe('AppConfigFile: terminal appearance (A11Y-07.6, A11Y-07.8, A11Y-08.1)',
             cursorStyle: 'block',
             cursorWidth: 2,
             cursorBlink: true,
+        });
+    });
+});
+
+describe('AppConfigFile: the settings page’s settings (A11Y-10.3)', () => {
+    it('keeps each setting it can use and falls back to the default of the others', async () => {
+        const directory = home();
+        writeFileSync(
+            join(directory, 'config.json'),
+            JSON.stringify({
+                verbosity: 'brief',
+                hints: 'no',
+                floodThreshold: 4,
+                minimumContrast: 7,
+                tabFocusMode: true,
+                scrollbackLines: 100_001,
+                stopGraceSeconds: 30,
+                autoClose: false,
+                pasteConfirmation: 0,
+                newSessionFolder: 'open-session',
+            }),
+        );
+        expect(await new AppConfigFile(directory).read()).toMatchObject({
+            verbosity: 'brief',
+            hints: true,
+            floodThreshold: 20,
+            minimumContrast: 7,
+            tabFocusMode: true,
+            scrollbackLines: 10_000,
+            stopGraceSeconds: 30,
+            autoClose: false,
+            pasteConfirmation: true,
+            newSessionFolder: 'open-session',
+        });
+    });
+
+    it('gives the settings page its settings and not the layout', () => {
+        const settings = settingsOf({ ...DEFAULT_APP_CONFIG, sidebarWidth: 520, floodThreshold: 40 });
+        expect(settings).toEqual({
+            ...SETTINGS_DEFAULTS,
+            floodThreshold: 40,
+            theme: 'midnight',
+            terminalZoom: 100,
+            terminalAppearance: DEFAULT_APP_CONFIG.terminalAppearance,
         });
     });
 });

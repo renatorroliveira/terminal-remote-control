@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import type { KnownHost } from '../../shared/hosts';
 import type { ClientRequest } from '../connection/host-client';
-import { type TerminalHost, type WorkspaceClient, WorkspaceController } from './workspace-controller';
+import {
+    type SessionPreferences,
+    type TerminalHost,
+    type WorkspaceClient,
+    WorkspaceController,
+} from './workspace-controller';
 import { sessionKey } from './workspace-model';
 import { FakeKnownHostStore } from './workspace-test-doubles';
 
@@ -115,11 +120,11 @@ class FakeHosts extends FakeKnownHostStore {
 
 const connected: ConnectionState = { status: 'connected', daemon: { version: '0.1.0', sha256: 'ab', proto: 1 } };
 
-function setup() {
+function setup(preferences?: SessionPreferences) {
     const client = new FakeClient();
     const terminals = new FakeTerminals();
     const hosts = new FakeHosts();
-    const workspace = new WorkspaceController(client, terminals, hosts);
+    const workspace = new WorkspaceController(client, terminals, hosts, preferences && (() => preferences));
     return { client, terminals, hosts, workspace };
 }
 
@@ -259,6 +264,20 @@ describe('WorkspaceController: exited sessions (US-1.10.7)', () => {
         expect(terminals.closedSessions).toEqual([sessionKey(host.id, 'a')]);
     });
 
+    it('keeps a session that exited cleanly when auto-close is off (US-1.10.7)', async () => {
+        const { client, workspace } = setup({ autoClose: false, stopGraceSeconds: 5, newSessionFolder: 'home' });
+        client.listed = [exited('a', { code: 0 })];
+        const host = await workspace.addHost('devbox-1');
+        client.states.get(host.id)?.(connected);
+        await expect.poll(() => workspace.store.getState().sessions.get(host.id)?.length).toBe(1);
+        client.messages.get(host.id)?.({
+            type: 'sessionEvent',
+            change: { kind: 'updated', session: exited('b', { code: 0 }) },
+        });
+        await expect.poll(() => workspace.store.getState().sessions.get(host.id)?.length).toBe(2);
+        expect(closes(client)).toEqual([]);
+    });
+
     it('closes sessions that exited cleanly while the app was away', async () => {
         const { client, workspace } = setup();
         client.listed = [exited('a', { code: 0 }), exited('b', { code: 1 }), info('c')];
@@ -290,6 +309,15 @@ describe('WorkspaceController: forgetting, moving and testing hosts (US-1.1.5, U
         await expect(workspace.moveInstallRoot(host.id, 'relative')).rejects.toThrow();
     });
 
+    it('lets a host’s programs write the clipboard, and stops them again (SEC-06.1)', async () => {
+        const { workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        await workspace.setClipboardWrites(host.id, true);
+        expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBe(true);
+        await workspace.setClipboardWrites(host.id, false);
+        expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBeUndefined();
+    });
+
     it('tests a connection: connects, reports success and disconnects again, or reports the failure', async () => {
         const { client, workspace } = setup();
         const host = await workspace.addHost('devbox-1');
@@ -314,8 +342,8 @@ describe('WorkspaceController: forgetting, moving and testing hosts (US-1.1.5, U
     });
 });
 
-async function connectedSetup() {
-    const context = setup();
+async function connectedSetup(preferences?: SessionPreferences) {
+    const context = setup(preferences);
     const host = await context.workspace.addHost('devbox-1');
     context.client.states.get(host.id)?.(connected);
     await expect.poll(() => context.workspace.store.getState().sessions.get(host.id)?.length).toBe(2);
@@ -353,6 +381,27 @@ describe('WorkspaceController: managing sessions (US-1.10)', () => {
         await workspace.duplicateSession(`${host.id}/a`);
         expect(terminals.specs.at(-1)).toEqual({ profileId: 'login', cwd: '/srv/app' });
         expect(terminals.shown.at(-1)).toBe(`${host.id}/c`);
+    });
+});
+
+describe('WorkspaceController: session settings (US-1.7.1, US-1.10.2)', () => {
+    it('stops with the grace period set, and starts new sessions in the open session’s folder when set', async () => {
+        const { client, host, terminals, workspace } = await connectedSetup({
+            autoClose: true,
+            stopGraceSeconds: 12,
+            newSessionFolder: 'open-session',
+        });
+        await workspace.stopSession(`${host.id}/a`);
+        expect(client.requests).toEqual([{ type: 'stop', session: 'a', graceMs: 12_000 }]);
+        client.messages.get(host.id)?.({
+            type: 'sessionEvent',
+            change: { kind: 'updated', session: { ...info('a'), cwd: '/srv/app' } },
+        });
+        workspace.open(`${host.id}/a`);
+        await workspace.newSessionHere();
+        expect(terminals.specs.at(-1)).toEqual({ cwd: '/srv/app' });
+        await workspace.newSession(host.id);
+        expect(terminals.specs.at(-1)).toBeUndefined();
     });
 });
 

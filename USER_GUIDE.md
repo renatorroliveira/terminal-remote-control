@@ -17,6 +17,7 @@ what later releases add.
 - [Sessions](#sessions)
 - [The terminal](#the-terminal)
 - [Moving around and commands](#moving-around-and-commands)
+- [Settings](#settings)
 - [Appearance](#appearance)
 - [Accessibility](#accessibility)
 - [Files and folders](#files-and-folders)
@@ -158,8 +159,10 @@ The Sessions list is a tree: each connected host, then its sessions. It is one s
   and environment; the scrollback stays), Duplicate (same shell and folder), Move up, Move down, and Close, which
   asks first because it deletes the session and its scrollback. You can also drag a session up or down its
   host's list. The command palette lists the open session's actions too.
-- **Ending a session.** Type `exit`, or end its program. A session that exits cleanly (code 0) leaves the list;
-  one that failed stays, so you can read its last output.
+- **Ending a session.** Type `exit`, or end its program. A session that exits cleanly (code 0) leaves the list,
+  unless you turn off "Close sessions that exit cleanly" in [Settings](#settings); one that failed stays, so you
+  can read its last output.
+- **Stopping.** Stop asks the program to end, then forces it after the seconds Settings sets (5 by default).
 
 Sessions keep running on the host when you quit the app or the connection drops. When the app connects again, it
 lists them, and opening one shows its screen as the host has it now. A host reboot ends them in this release.
@@ -186,9 +189,8 @@ The terminal sets `TERM=xterm-256color`, `COLORTERM=truecolor` and `TERM_PROGRAM
 PTY to fit the window.
 
 Programs can't read your clipboard, and by default they can't write it either. To let a host's programs write it
-(for example tmux or Neovim copying over OSC 52), set `"allowClipboardWrites": true` on that host in `hosts.json`
-while TRC is closed; TRC then says each time a program puts text on the clipboard. The settings page will have
-this switch.
+(for example tmux or Neovim copying over OSC 52), turn on that host's switch in Settings, under Hosts; TRC then says
+each time a program puts text on the clipboard.
 
 A selection of more than 5,000 lines still copies whole; VoiceOver sees its first 5,000 lines, and TRC says so.
 Pasting more than one line shows the text and asks first, because the shell may run each line. Programs that ask
@@ -254,6 +256,20 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
   failures while connecting at launch. TRC also says when a host connects or its connection is lost.
 - **Menus.** View and Terminal hold the same commands, with their Command shortcuts.
 
+## Settings
+
+Command-, (or Terminal Remote Control, then Settings…) opens the settings page. Type in Search settings to show
+only the settings whose name or description holds what you type; the line under the field says how many are
+shown. Every change applies at once and is kept; Escape or Close returns to where you were.
+
+| Section                  | Settings                                                                                                                                                                                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Speech and announcements | Screen-reader mode (automatic, on or off); Announcements (Detailed, or Brief, which leaves out the steps of connecting); the shortcut hint VoiceOver reads after the terminal's name; the flood threshold (5 to 100 lines a second, 20 by default) |
+| Terminal display         | Theme; minimum text contrast (4.5 to 1, or 7 to 1); text size; line height; letter spacing; cursor shape, bar width and blinking                                                                                                                   |
+| Keyboard                 | Tab moves focus out of the terminal, from launch on                                                                                                                                                                                                |
+| Sessions                 | Where new sessions start (the home folder, or the open session's folder); scrollback lines for new sessions (1,000 to 100,000); the seconds Stop waits; closing sessions that exit cleanly; asking before a paste of more than one line            |
+| Hosts                    | For each host, whether its programs may write the clipboard (OSC 52)                                                                                                                                                                               |
+
 ## Appearance
 
 - **Theme.** View, then Theme: Midnight (the default, black with green, high contrast), System (follows macOS
@@ -262,10 +278,10 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 - **Terminal text size.** Command-= makes the terminal text bigger, Command-- smaller and Command-0 returns it to
   the default, in steps of 10% from 50% to 200% (also in the Terminal menu). Every session follows, resizes to fit,
   and TRC says the new size and remembers it.
-- **Cursor and spacing.** The cursor is a block that doesn't blink. In `config.json`, `terminalAppearance` sets
-  `cursorStyle` (`block`, `bar` or `underline`), `cursorWidth` (a bar's thickness, 1 to 6 pixels), `cursorBlink`,
-  `lineHeight` (1 to 2) and `letterSpacing` (0 to 4 pixels); the settings page will have them too. A blinking
-  cursor stops after 5 seconds without typing, and never blinks while macOS Reduce motion is on.
+- **Cursor and spacing.** The cursor is a block that doesn't blink. Settings, under Terminal display, changes its
+  shape (block, bar or underline), the bar's width (1 to 6 pixels), blinking, the line height (1 to 2) and the
+  letter spacing (0 to 4 pixels). A blinking cursor stops after 5 seconds without typing, and never blinks while
+  macOS Reduce motion is on.
 - **Window size.** View, then Zoom In (Control-Command-=), Zoom Out (Control-Command--) and Actual Size
   (Control-Command-0) scale the whole window, sidebar included. Option-Command-= and - stay macOS Zoom's.
 - **Sidebar width.** Drag the sidebar's right edge, between 300 and 800 pixels. Or focus the edge with Tab and use
@@ -295,8 +311,9 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
       another line or that line changes.
     - Pressing any key drops the output still waiting to be spoken.
 - **Screen-reader mode** turns on by itself when VoiceOver or other assistive technology starts using the app, and
-  TRC says so. To force it, choose "Screen reader mode: on", "Screen reader mode: off" or "Screen reader mode:
-  automatic" in the command palette (Shift-Command-P); TRC remembers the choice. For one launch, start the app
+  TRC says so. To force it, pick On or Off for Screen-reader mode in Settings, or choose "Screen reader mode: on",
+  "Screen reader mode: off" or "Screen reader mode: automatic" in the command palette (Shift-Command-P); TRC
+  remembers the choice. For one launch, start the app
   with the flag:
 
     ```sh
@@ -310,11 +327,11 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 
 On your Mac, TRC keeps its settings in the TRC home, `~/.trc`:
 
-| File               | Holds                                                                                                                                                                                                                                             |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config.json`      | `theme` (`midnight`, `system`, `light`, `dark`, `hc-light` or `hc-dark`), `sidebarWidth` (300 to 800), `sidebarCollapsed` (`true` or `false`) and `screenReaderMode` (`auto`, `on` or `off`), `terminalZoom` (50 to 200) and `terminalAppearance` |
-| `hosts.json`       | The known hosts, and per host `allowClipboardWrites` (off unless `true`)                                                                                                                                                                          |
-| `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example`                                           |
+| File               | Holds                                                                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config.json`      | Your [settings](#settings), the screen-reader mode, and the sidebar's width (`sidebarWidth`, 300 to 800) and whether it is hidden (`sidebarCollapsed`)                                                  |
+| `hosts.json`       | The known hosts, and per host `allowClipboardWrites` (off unless `true`)                                                                                                                                |
+| `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example` |
 
 Both files are readable only by you. Edit `config.json` while the app is closed; a value TRC can't use falls back
 to its default.
@@ -353,8 +370,7 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 
 Later releases of Epic 1 add:
 
-- Changing shortcuts, and plain F6 to move between regions, in the settings page.
-- The settings page.
+- Changing shortcuts, plain F6 to move between regions, and sound cues, in the settings page.
 
 Later epics add sessions that survive a host reboot, local sessions on the Mac, macOS hosts, and the Windows and
 Linux apps. [The PRD](docs/PRD.md) has the full plan.

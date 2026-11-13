@@ -128,11 +128,13 @@ export function hostRemoved(workspace: Workspace, hostId: string): Workspace {
     };
 }
 
-/** Takes a host's new install location (US-1.4.3). */
-export function hostMoved(workspace: Workspace, hostId: string, installRoot: string): Workspace {
+/** Takes a host's changed record: its install location (US-1.4.3) or its clipboard permission (SEC-06.1). */
+export function hostUpdated(workspace: Workspace, known: KnownHost): Workspace {
     return {
         ...workspace,
-        hosts: workspace.hosts.map((host) => (host.id === hostId ? { ...host, installRoot } : host)),
+        hosts: workspace.hosts.map((host) =>
+            host.id === known.id ? { ...known, destination: host.destination, state: host.state } : host,
+        ),
     };
 }
 

@@ -288,6 +288,18 @@ export class FakeKnownHostStore implements KnownHostStore {
     }
 
     /** Moves a host's install location, refusing a relative one. */
+    setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost> {
+        const index = this.#hosts.findIndex((host) => host.id === id);
+        const found = this.#hosts[index];
+        if (found === undefined) {
+            return Promise.reject(new Error(`no host ${id}`));
+        }
+        const { allowClipboardWrites: _previous, ...host } = found;
+        const changed = allowed ? { ...host, allowClipboardWrites: true } : host;
+        this.#hosts[index] = changed;
+        return Promise.resolve(changed);
+    }
+
     setInstallRoot(id: string, installRoot: string): Promise<KnownHost> {
         const index = this.#hosts.findIndex((host) => host.id === id);
         const host = this.#hosts[index];

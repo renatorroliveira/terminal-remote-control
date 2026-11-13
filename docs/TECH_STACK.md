@@ -425,10 +425,16 @@ either way.
     - App state files (P-18) go through one `JsonStore`: zod-validated reads
       that fall back to defaults, atomic writes, mode 0600 in a 0700
       directory, the TRC home (`~/.trc`, or `TRC_HOME`; D-33). `config.json`
-      holds the theme and the sidebar width, each field falling back to its own
-      default; `hosts.json` holds the known hosts (address, port and install
-      location), which the main process serves over the `hosts:list` and
-      `hosts:add` channels. Earlier versions' files in their `@trc/desktop`
+      holds the settings page's settings (`src/shared/settings.ts`), the
+      screen-reader mode and the sidebar layout, each field falling back to its
+      own default; `hosts.json` holds the known hosts (address, port, install
+      location and OSC 52 permission), which the main process serves over the
+      `hosts:*` channels.
+    - The settings page (A11Y-10.3) reads and changes settings over
+      `settings:get` and `settings:set`. A change must name known settings,
+      each exactly within its range (`src/main/settings-schema.ts`), or it is
+      refused. The renderer's `SettingsStore` applies a change at once, then
+      keeps it; terminals, the shell and the workspace read it from there. Earlier versions' files in their `@trc/desktop`
       profile are copied in once. Logs and Chromium's own data stay in
       `~/Library/Application Support/Terminal Remote Control`, named by the
       package's `productName`.

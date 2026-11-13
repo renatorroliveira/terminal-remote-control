@@ -179,6 +179,10 @@
     "defaultMessage": "Previous session",
     "description": "Command name."
   },
+  "command.settingsShow": {
+    "defaultMessage": "Settings…",
+    "description": "Command name."
+  },
   "command.sidebarToggle": {
     "defaultMessage": "Show or hide the sidebar",
     "description": "Command name."
@@ -998,6 +1002,226 @@
   "session.unspecified": {
     "defaultMessage": "Unknown state",
     "description": "Session state."
+  },
+  "setting.autoClose": {
+    "defaultMessage": "Close sessions that exit cleanly",
+    "description": "Setting."
+  },
+  "setting.autoClose.description": {
+    "defaultMessage": "A session that exits with another code or a signal always stays.",
+    "description": "Setting description."
+  },
+  "setting.choice.bar": {
+    "defaultMessage": "Bar",
+    "description": "Cursor shape choice."
+  },
+  "setting.choice.block": {
+    "defaultMessage": "Block",
+    "description": "Cursor shape choice."
+  },
+  "setting.choice.brief": {
+    "defaultMessage": "Brief",
+    "description": "Verbosity choice."
+  },
+  "setting.choice.contrastAa": {
+    "defaultMessage": "4.5 to 1 (WCAG AA)",
+    "description": "Contrast."
+  },
+  "setting.choice.contrastAaa": {
+    "defaultMessage": "7 to 1 (WCAG AAA)",
+    "description": "Contrast."
+  },
+  "setting.choice.dark": {
+    "defaultMessage": "Dark",
+    "description": "Theme choice."
+  },
+  "setting.choice.detailed": {
+    "defaultMessage": "Detailed",
+    "description": "Verbosity choice."
+  },
+  "setting.choice.hcDark": {
+    "defaultMessage": "High contrast dark",
+    "description": "Theme choice."
+  },
+  "setting.choice.hcLight": {
+    "defaultMessage": "High contrast light",
+    "description": "Theme choice."
+  },
+  "setting.choice.home": {
+    "defaultMessage": "The home folder",
+    "description": "New session folder choice."
+  },
+  "setting.choice.light": {
+    "defaultMessage": "Light",
+    "description": "Theme choice."
+  },
+  "setting.choice.midnight": {
+    "defaultMessage": "Midnight",
+    "description": "Theme choice."
+  },
+  "setting.choice.openSession": {
+    "defaultMessage": "The open session’s folder",
+    "description": "New session folder choice."
+  },
+  "setting.choice.srAuto": {
+    "defaultMessage": "Automatic",
+    "description": "Screen-reader mode choice."
+  },
+  "setting.choice.srOff": {
+    "defaultMessage": "Off",
+    "description": "Screen-reader mode choice."
+  },
+  "setting.choice.srOn": {
+    "defaultMessage": "On",
+    "description": "Screen-reader mode choice."
+  },
+  "setting.choice.system": {
+    "defaultMessage": "System",
+    "description": "Theme choice."
+  },
+  "setting.choice.underline": {
+    "defaultMessage": "Underline",
+    "description": "Cursor shape choice."
+  },
+  "setting.clipboardWrites": {
+    "defaultMessage": "Programs may write the clipboard (OSC 52)",
+    "description": "Setting: one switch per host."
+  },
+  "setting.clipboardWrites.description": {
+    "defaultMessage": "TRC says each time a program puts text on the clipboard. Programs can never read it.",
+    "description": "Setting description."
+  },
+  "setting.cursorBlink": {
+    "defaultMessage": "Blinking cursor",
+    "description": "Setting."
+  },
+  "setting.cursorBlink.description": {
+    "defaultMessage": "Stops after 5 seconds without typing, and never blinks while Reduce motion is on.",
+    "description": "Setting description."
+  },
+  "setting.cursorStyle": {
+    "defaultMessage": "Cursor shape",
+    "description": "Setting."
+  },
+  "setting.cursorWidth": {
+    "defaultMessage": "Bar cursor width, pixels",
+    "description": "Setting."
+  },
+  "setting.floodThreshold": {
+    "defaultMessage": "Lines a second before output is summarized",
+    "description": "Setting."
+  },
+  "setting.hints": {
+    "defaultMessage": "Shortcut hint on the terminal",
+    "description": "Setting."
+  },
+  "setting.hints.description": {
+    "defaultMessage": "VoiceOver reads it after the terminal’s name: Option F1, accessibility help.",
+    "description": "Setting description."
+  },
+  "setting.letterSpacing": {
+    "defaultMessage": "Letter spacing, pixels",
+    "description": "Setting."
+  },
+  "setting.lineHeight": {
+    "defaultMessage": "Line height",
+    "description": "Setting."
+  },
+  "setting.minimumContrast": {
+    "defaultMessage": "Minimum text contrast",
+    "description": "Setting."
+  },
+  "setting.minimumContrast.description": {
+    "defaultMessage": "Colors programs choose are adjusted to keep at least this contrast.",
+    "description": "Setting description."
+  },
+  "setting.newSessionFolder": {
+    "defaultMessage": "New sessions start in",
+    "description": "Setting."
+  },
+  "setting.pasteConfirmation": {
+    "defaultMessage": "Ask before pasting more than one line",
+    "description": "Setting."
+  },
+  "setting.screenReaderMode": {
+    "defaultMessage": "Screen-reader mode",
+    "description": "Setting."
+  },
+  "setting.screenReaderMode.description": {
+    "defaultMessage": "Speaks new output. Automatic turns on when VoiceOver or other assistive technology is in use.",
+    "description": "Setting description."
+  },
+  "setting.scrollbackLines": {
+    "defaultMessage": "Scrollback lines",
+    "description": "Setting."
+  },
+  "setting.scrollbackLines.description": {
+    "defaultMessage": "For sessions created from now on, from 1,000 to 100,000.",
+    "description": "Setting description."
+  },
+  "setting.stopGraceSeconds": {
+    "defaultMessage": "Seconds Stop waits before forcing",
+    "description": "Setting."
+  },
+  "setting.tabFocusMode": {
+    "defaultMessage": "Tab moves focus out of the terminal",
+    "description": "Setting."
+  },
+  "setting.terminalZoom": {
+    "defaultMessage": "Text size, percent",
+    "description": "Setting."
+  },
+  "setting.theme": {
+    "defaultMessage": "Theme",
+    "description": "Setting."
+  },
+  "setting.verbosity": {
+    "defaultMessage": "Announcements",
+    "description": "Setting."
+  },
+  "setting.verbosity.description": {
+    "defaultMessage": "Brief leaves out the steps of connecting to a host.",
+    "description": "Setting description."
+  },
+  "settings.close": {
+    "defaultMessage": "Close",
+    "description": "Button that closes the settings page."
+  },
+  "settings.group.display": {
+    "defaultMessage": "Terminal display",
+    "description": "Section."
+  },
+  "settings.group.hosts": {
+    "defaultMessage": "Hosts",
+    "description": "Section."
+  },
+  "settings.group.keyboard": {
+    "defaultMessage": "Keyboard",
+    "description": "Section."
+  },
+  "settings.group.sessions": {
+    "defaultMessage": "Sessions",
+    "description": "Section."
+  },
+  "settings.group.speech": {
+    "defaultMessage": "Speech and announcements",
+    "description": "Section."
+  },
+  "settings.none": {
+    "defaultMessage": "No setting matches.",
+    "description": "Shown when the search matches no setting."
+  },
+  "settings.search": {
+    "defaultMessage": "Search settings",
+    "description": "Label of the field that filters the settings."
+  },
+  "settings.shown": {
+    "defaultMessage": "{shown} of {total} settings shown.",
+    "description": "Status line under the search field."
+  },
+  "settings.title": {
+    "defaultMessage": "Settings",
+    "description": "Title of the settings page."
   },
   "shell.noSession": {
     "defaultMessage": "No session is open.",

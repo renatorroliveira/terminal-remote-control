@@ -31,6 +31,19 @@ describe('AccessibilityHelp: Option+F1 (A11Y-10.1)', () => {
         await expect.element(row).toHaveFocus();
     });
 
+    it('returns focus to the New host field it was opened from (A11Y-05)', async () => {
+        await page.viewport(1400, 800);
+        const { rendered } = renderApp();
+        const screen = await rendered;
+        const field = screen.getByRole('combobox', { name: 'New host' });
+        await expect.element(field).toBeVisible();
+        (field.element() as HTMLElement).focus();
+        await userEvent.keyboard('{Alt>}{F1}{/Alt}');
+        await expect.element(screen.getByRole('dialog', { name: 'Accessibility help' })).toBeVisible();
+        await userEvent.keyboard('{Escape}');
+        await expect.element(field).toHaveFocus();
+    });
+
     it('opens the user guide, or its VoiceOver quick start, and closes (A11Y-10.4)', async () => {
         const { shell, guides, rendered } = renderApp();
         const screen = await rendered;

@@ -3,6 +3,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import type { ScreenReaderMode } from '../../shared/accessibility';
 import { resolveKeymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
+import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings';
 import { messagesFor } from '../i18n/locale';
 import { WorkspaceController } from '../sessions/workspace-controller';
 import {
@@ -13,6 +14,7 @@ import {
 } from '../sessions/workspace-test-doubles';
 import type { AnnounceOptions } from './announcer';
 import { NotificationCenter } from './notifications';
+import { SettingsStore } from './settings/settings-store';
 import { type LinkControls, type ScreenReaderControls, Shell } from './shell';
 import { paletteActions } from './workspace-actions';
 
@@ -74,7 +76,22 @@ class FakeScreenReader implements ScreenReaderControls {
 
 const CONNECTED = { status: 'connected', daemon: { version: '0.2.0', sha256: 'ab', proto: 1 } } as const;
 
-async function setup(narrow = false) {
+class FakeSettingsSource {
+    stored: Settings = { ...DEFAULT_SETTINGS, terminalZoom: 190 };
+    readonly changes: Partial<Settings>[] = [];
+
+    get(): Promise<Settings> {
+        return Promise.resolve(this.stored);
+    }
+
+    set(change: Partial<Settings>): Promise<void> {
+        this.changes.push(change);
+        this.stored = { ...this.stored, ...change };
+        return Promise.resolve();
+    }
+}
+
+async function setup(narrow = false, stored: Partial<Settings> = {}) {
     const client = new FakeWorkspaceClient([bashSession('a')]);
     const terminals = new FakeTerminalHost([]);
     const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore());
@@ -82,7 +99,9 @@ async function setup(narrow = false) {
     const saved: boolean[] = [];
     const screenReader = new FakeScreenReader();
     const links = new FakeLinks();
-    const zooms: number[] = [];
+    const source = new FakeSettingsSource();
+    source.stored = { ...source.stored, ...stored };
+    const settings = new SettingsStore(source);
     const intl = createIntl({ locale: 'en', messages: messagesFor('en') });
     const shell = new Shell({
         workspace,
@@ -107,17 +126,13 @@ async function setup(narrow = false) {
         isNarrow: () => narrow,
         screenReader,
         links,
-        terminalZoom: {
-            get: () => Promise.resolve(190),
-            set: (zoom) => {
-                zooms.push(zoom);
-                return Promise.resolve();
-            },
-        },
+        settings,
     });
     onTestFinished(shell.start());
+    await settings.load();
     await workspace.addHost('devbox-1');
-    return { client, terminals, workspace, shell, spoken, saved, screenReader, intl, links, zooms };
+    const zooms = (): (number | undefined)[] => source.changes.map((change) => change.terminalZoom);
+    return { client, terminals, workspace, shell, spoken, saved, screenReader, intl, links, zooms, source };
 }
 
 describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
@@ -144,6 +159,7 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'Find…',
             'Accessibility help',
             'User guide',
+            'Settings…',
         ]);
     });
 
@@ -367,7 +383,7 @@ describe('Shell terminal text size (A11Y-07.4)', () => {
         shell.run('terminal.zoomReset');
         shell.run('terminal.zoomOut');
         expect(terminals.zoom).toBe(90);
-        expect(zooms).toEqual([200, 200, 100, 90]);
+        expect(zooms()).toEqual([200, 200, 100, 90]);
         expect(spoken).toEqual([
             'Terminal text 200%, the largest.',
             'Terminal text 200%, the largest.',
@@ -401,6 +417,34 @@ describe('Shell sidebar and dialogs (US-1.6.3)', () => {
         });
         expect(shell.state.getState().paletteOpen).toBe(false);
         await expect.poll(() => ran).toBe(true);
+    });
+});
+
+describe('Shell settings (A11Y-05.4, A11Y-10.3)', () => {
+    it('opens the settings page with what config.json holds now, and closes it', async () => {
+        const { shell, source } = await setup();
+        source.stored = { ...source.stored, theme: 'dark' };
+        shell.run('settings.show');
+        await expect.poll(() => shell.state.getState().settingsOpen).toBe(true);
+        expect(shell.settings?.current.theme).toBe('dark');
+        shell.closeSettings();
+        expect(shell.state.getState().settingsOpen).toBe(false);
+    });
+
+    it('starts with Tab focus mode as kept, and keeps each toggle', async () => {
+        const { shell, terminals, source } = await setup(false, { tabFocusMode: true });
+        expect(terminals.tabFocusMode).toBe(true);
+        shell.run('terminal.toggleTabFocus');
+        expect(terminals.tabFocusMode).toBe(false);
+        expect(source.changes).toEqual([{ tabFocusMode: false }]);
+    });
+
+    it('in brief verbosity, announces no connection steps but still a security-key touch', async () => {
+        const { client, spoken } = await setup(false, { verbosity: 'brief' });
+        client.push('host-0', { status: 'connecting', step: 'connecting', touch: undefined });
+        client.push('host-0', { status: 'connecting', step: 'connecting', touch: 'Confirm user presence' });
+        client.push('host-0', { status: 'connecting', step: 'uploading', touch: undefined });
+        expect(spoken).toEqual(['! Touch your security key for devbox-1']);
     });
 });
 

@@ -70,18 +70,29 @@ export class KnownHosts {
 
     /** Moves a host's install location, for a home directory that cannot run programs (US-1.4.3). */
     setInstallRoot(id: string, installRoot: string): Promise<KnownHost> {
+        if (!isInstallRoot(installRoot)) {
+            return Promise.reject(new Error(`not an install location: ${JSON.stringify(installRoot)}`));
+        }
+        return this.#change(id, (host) => ({ ...host, installRoot }));
+    }
+
+    /** Lets a host's programs write the clipboard with OSC 52, or stops them (SEC-06.1); off drops the field. */
+    setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost> {
+        return this.#change(id, ({ allowClipboardWrites: _previous, ...host }) =>
+            allowed ? { ...host, allowClipboardWrites: true } : host,
+        );
+    }
+
+    #change(id: string, change: (host: KnownHost) => KnownHost): Promise<KnownHost> {
         return this.#serially(async () => {
-            if (!isInstallRoot(installRoot)) {
-                throw new Error(`not an install location: ${JSON.stringify(installRoot)}`);
-            }
             const file = await this.#store.read();
             const host = file.hosts.find((entry) => entry.id === id);
             if (host === undefined) {
                 throw new Error(`no host ${id}`);
             }
-            const moved: KnownHost = { ...host, installRoot };
-            await this.#store.write({ ...file, hosts: file.hosts.map((entry) => (entry.id === id ? moved : entry)) });
-            return moved;
+            const changed = change(host);
+            await this.#store.write({ ...file, hosts: file.hosts.map((entry) => (entry.id === id ? changed : entry)) });
+            return changed;
         });
     }
 

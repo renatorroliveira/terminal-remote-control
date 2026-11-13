@@ -4,6 +4,7 @@ import type { ScreenReaderMode } from '../../shared/accessibility';
 import type { GuideSection } from '../../shared/guide';
 import type { CommandId, Keymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
+import type { Settings } from '../../shared/settings';
 import { nextZoom, TERMINAL_ZOOM, type ZoomChange } from '../../shared/terminal-zoom';
 import { CommandRegistry } from '../commands/command-registry';
 import { installShortcuts } from '../commands/shortcuts';
@@ -28,6 +29,7 @@ import { linkAnnouncements } from './link-messages';
 import type { NotificationCenter } from './notifications';
 import { clipboardWrittenMessage, copyCappedMessage } from './paste-messages';
 import { RegionCycler } from './regions';
+import type { SettingsStore } from './settings/settings-store';
 import {
     commandMessages,
     findAnnouncements,
@@ -67,12 +69,6 @@ export interface FindState extends FindOptions {
     readonly query: string;
     /** The selected match of how many, or an unreadable expression; undefined before a search. */
     readonly result: FindResult | undefined;
-}
-
-/** Where the terminal text size is kept: `config.json` in the TRC home. */
-export interface ZoomSettings {
-    get(): Promise<number>;
-    set(zoom: number): Promise<void>;
 }
 
 /** A paste of more than one line, waiting for the user's confirmation (US-1.12.2). */
@@ -140,6 +136,8 @@ export interface ShellState {
     readonly find: FindState | undefined;
     /** Where accessibility help was asked for, while it is open (A11Y-10.1). */
     readonly help: HelpContext | undefined;
+    /** Whether the settings page is open (A11Y-10.3). */
+    readonly settingsOpen: boolean;
 }
 
 /** A dialog about a session, or the New session dialog. */
@@ -169,8 +167,8 @@ export interface ShellOptions {
     readonly screenReader?: ScreenReaderControls;
     /** Where links open; without it, links do nothing. */
     readonly links?: LinkControls;
-    /** Where the terminal text size is kept; without it, it starts at 100% each time. */
-    readonly terminalZoom?: ZoomSettings;
+    /** The settings page's settings; without them, the defaults apply and nothing is kept. */
+    readonly settings?: SettingsStore;
     /** Opens the user guide; without it, the guide commands do nothing. */
     readonly guide?: GuideControls;
 }
@@ -195,6 +193,7 @@ const INITIAL_STATE: ShellState = {
     bell: false,
     find: undefined,
     help: undefined,
+    settingsOpen: false,
 };
 
 /** How long the status bar shows the bell. */
@@ -213,7 +212,8 @@ export class Shell {
     readonly sidebar: SidebarSettings;
     readonly #options: ShellOptions;
     readonly #regions: RegionCycler;
-    #paletteReturn: HTMLElement | undefined;
+    /** Where focus returns when the palette, help or the settings page closes (A11Y-05.8). */
+    #focusReturn: HTMLElement | undefined;
 
     /** Builds the shell and registers its commands. */
     constructor(options: ShellOptions) {
@@ -246,12 +246,13 @@ export class Shell {
             this.#options.screenReader?.onScreenReaderChanged((on) => this.#announceScreenReader(on)) ??
             (() => undefined);
         void this.#options.sidebar.collapsed().then((sidebarCollapsed) => this.state.setState({ sidebarCollapsed }));
-        void this.#options.terminalZoom?.get().then((terminalZoom) => this.#applyZoom(terminalZoom));
+        const stopSettings = this.#followSettings();
         return () => {
             stopShortcuts();
             stopRegions();
             stopHosts();
             stopScreenReader();
+            stopSettings();
         };
     }
 
@@ -285,22 +286,14 @@ export class Shell {
 
     /** Opens the command palette, remembering where focus was. */
     openPalette(): void {
-        const active = this.#options.document.activeElement;
-        this.#paletteReturn = active instanceof HTMLElement ? active : undefined;
+        this.#rememberFocus();
         this.state.setState({ paletteOpen: true });
     }
 
     /** Closes the command palette, returns focus to where it was, then runs `then` (A11Y-05.8). */
     closePalette(then?: () => void): void {
-        const returnTo = this.#paletteReturn;
-        this.#paletteReturn = undefined;
         this.state.setState({ paletteOpen: false });
-        setTimeout(() => {
-            if (returnTo?.isConnected === true) {
-                returnTo.focus();
-            }
-            then?.();
-        }, 0);
+        this.#returnFocus(then);
     }
 
     /** Opens or closes the notification list. */
@@ -372,14 +365,34 @@ export class Shell {
         }
     }
 
+    /** The settings page's settings, when the app keeps them. */
+    get settings(): SettingsStore | undefined {
+        return this.#options.settings;
+    }
+
+    /** Opens the settings page once it has read what `config.json` holds now (A11Y-10.3). */
+    async openSettings(): Promise<void> {
+        this.#rememberFocus();
+        await this.#options.settings?.load();
+        this.state.setState({ settingsOpen: true });
+    }
+
+    /** Closes the settings page and returns focus to where it was. */
+    closeSettings(): void {
+        this.state.setState({ settingsOpen: false });
+        this.#returnFocus();
+    }
+
     /** Opens accessibility help for the context that has focus (A11Y-10.1). */
     openHelp(): void {
+        this.#rememberFocus();
         this.state.setState({ help: helpContext(this.#options.document.activeElement) });
     }
 
-    /** Closes accessibility help. */
+    /** Closes accessibility help and returns focus to where it was. */
     closeHelp(): void {
         this.state.setState({ help: undefined });
+        this.#returnFocus();
     }
 
     /** Closes accessibility help and opens the user guide, at a section when given (A11Y-10.4). */
@@ -479,8 +492,8 @@ export class Shell {
     /** Toggles Tab focus mode for every terminal and announces the new state (A11Y-05.4). */
     toggleTabFocus(): void {
         const tabFocusMode = !this.state.getState().tabFocusMode;
-        this.state.setState({ tabFocusMode });
-        this.#options.terminals.setTabFocusMode(tabFocusMode);
+        this.#applyTabFocus(tabFocusMode);
+        void this.#options.settings?.update({ tabFocusMode });
         this.#announce(tabFocusMode ? shellAnnouncements.tabMovesFocus : shellAnnouncements.tabToTerminal);
     }
 
@@ -542,6 +555,7 @@ export class Shell {
             'terminal.find': () => this.openFind(),
             'help.accessibility': () => this.openHelp(),
             'help.userGuide': () => this.openGuide(),
+            'settings.show': () => void this.openSettings(),
         };
         for (const [id, run] of Object.entries(actions) as [CommandId, () => void][]) {
             this.commands.register({ id, label: this.#options.intl.formatMessage(commandMessages[id]), run });
@@ -594,7 +608,7 @@ export class Shell {
     #zoom(change: ZoomChange): void {
         const zoom = nextZoom(this.state.getState().terminalZoom, change);
         this.#applyZoom(zoom);
-        void this.#options.terminalZoom?.set(zoom);
+        void this.#options.settings?.update({ terminalZoom: zoom });
         const { intl, announcer } = this.#options;
         const message =
             change === 'in' && zoom === TERMINAL_ZOOM.max
@@ -608,6 +622,48 @@ export class Shell {
     #applyZoom(terminalZoom: number): void {
         this.state.setState({ terminalZoom });
         this.#options.terminals.setZoom(terminalZoom);
+    }
+
+    #rememberFocus(): void {
+        const active = this.#options.document.activeElement;
+        this.#focusReturn = active instanceof HTMLElement ? active : undefined;
+    }
+
+    #returnFocus(then?: () => void): void {
+        const returnTo = this.#focusReturn;
+        this.#focusReturn = undefined;
+        setTimeout(() => {
+            if (returnTo?.isConnected === true) {
+                returnTo.focus();
+            }
+            then?.();
+        }, 0);
+    }
+
+    #applyTabFocus(tabFocusMode: boolean): void {
+        this.state.setState({ tabFocusMode });
+        this.#options.terminals.setTabFocusMode(tabFocusMode);
+    }
+
+    #followSettings(): () => void {
+        const settings = this.#options.settings;
+        if (settings === undefined) {
+            return () => undefined;
+        }
+        const apply = (now: Settings): void => {
+            if (now.terminalZoom !== this.state.getState().terminalZoom) {
+                this.#applyZoom(now.terminalZoom);
+            }
+            if (now.tabFocusMode !== this.state.getState().tabFocusMode) {
+                this.#applyTabFocus(now.tabFocusMode);
+            }
+        };
+        apply(settings.current);
+        return settings.state.subscribe(apply);
+    }
+
+    #brief(): boolean {
+        return this.#options.settings?.current.verbosity === 'brief';
     }
 
     #listLinks(): void {
@@ -693,7 +749,7 @@ export class Shell {
                 politeness: 'assertive',
             });
         }
-        if (was.status !== 'connecting' || was.step !== now.step) {
+        if (!this.#brief() && (was.status !== 'connecting' || was.step !== now.step)) {
             const step = intl.formatMessage(connectStepMessages[now.step]);
             announcer.announce(intl.formatMessage(connectStepAnnouncement, { host: host.destination, step }), {
                 group: host.id,
