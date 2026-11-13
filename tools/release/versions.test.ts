@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { bumpVersion, devVersion, lastRelease, setCargoVersion, setPackageVersion } from './versions.ts';
+import {
+    bumpVersion,
+    crateName,
+    devVersion,
+    lastRelease,
+    setCargoLockVersion,
+    setCargoVersion,
+    setPackageVersion,
+} from './versions.ts';
 
 describe('release versions (semver)', () => {
     it('bumps the last release by major, minor or patch', () => {
@@ -27,5 +35,23 @@ describe('release versions (semver)', () => {
             '[workspace]\nmembers = []\n\n[workspace.package]\nversion = "0.1.0"\nedition = "2024"\n\n[dependencies]\nfoo = { version = "1.0" }\n';
         expect(setCargoVersion(toml, '0.2.0-dev')).toBe(toml.replace('version = "0.1.0"', 'version = "0.2.0-dev"'));
         expect(() => setCargoVersion('[package]\nname = "x"\n', '1.0.0')).toThrow(/workspace.package/);
+    });
+});
+
+describe('Cargo.lock versions', () => {
+    const lock =
+        '[[package]]\nname = "serde"\nversion = "1.0.0"\n\n[[package]]\nname = "trcd"\nversion = "0.2.0-dev"\ndependencies = [\n "serde",\n]\n\n[[package]]\nname = "trc-vt"\nversion = "0.2.0-dev"\n';
+
+    it('sets the version of the workspace crates only, so `cargo --locked` accepts the release commit', () => {
+        expect(setCargoLockVersion(lock, ['trcd', 'trc-vt'], '0.2.0')).toBe(lock.replaceAll('"0.2.0-dev"', '"0.2.0"'));
+    });
+
+    it('fails for a crate the lock file does not list', () => {
+        expect(() => setCargoLockVersion(lock, ['trc-protocol'], '0.2.0')).toThrow(/trc-protocol/);
+    });
+
+    it('reads a crate name from its Cargo.toml', () => {
+        expect(crateName('[package]\nname = "trc-vt"\nversion.workspace = true\n')).toBe('trc-vt');
+        expect(() => crateName('[workspace]\n')).toThrow(/no package name/);
     });
 });

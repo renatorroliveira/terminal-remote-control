@@ -3,7 +3,7 @@ import type { Bump } from './versions.ts';
 /** What `pnpm release` was asked to do. */
 export interface ReleaseOptions {
     readonly bump: Bump;
-    /** Print the version and the notes, and change nothing. */
+    /** Build and check everything in the workflow, but push and publish nothing. */
     readonly dryRun: boolean;
 }
 

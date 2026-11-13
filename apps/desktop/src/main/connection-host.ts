@@ -2,19 +2,20 @@ import { app, type BrowserWindow, MessageChannelMain, utilityProcess } from 'ele
 import connectionHostPath from '../connection-host/index?modulePath';
 import { CONNECTION_HOST_NAME, CONNECTION_PORT_CHANNEL } from '../shared/connection-port';
 import { connectionHostInit } from './connection-host-init';
+import type { TestSeam } from './test-seam';
 
 /**
  * Starts the connection host and gives the window a fresh MessagePort to it after every page load, so a reload
- * reconnects to the same connections (TECH_STACK §4.2). `resources` holds the bundled daemons and helpers.
+ * reconnects to the same connections (TECH_STACK §4.2). `resources` holds the bundled daemons and helpers, and
+ * `seam` is the P-14 test seam, empty in release builds.
  */
-export function startConnectionHost(window: BrowserWindow, resources: string): void {
+export function startConnectionHost(window: BrowserWindow, resources: string, seam: TestSeam): void {
     const child = utilityProcess.fork(connectionHostPath, [], { serviceName: CONNECTION_HOST_NAME });
     const init = connectionHostInit({
         userData: app.getPath('userData'),
         resources,
         appVersion: app.getVersion(),
-        env: process.env,
-        seamEnabled: __TRC_TEST_SEAM__,
+        seam,
     });
     let first = true;
     window.webContents.on('did-finish-load', () => {

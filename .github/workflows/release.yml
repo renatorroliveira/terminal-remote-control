@@ -1,0 +1,182 @@
+name: release
+
+# Cuts a release entirely in GitHub Actions (P-21, D-42), from the Run workflow button or `pnpm release <bump>`. The
+# prepare job commits the version; CI, the daemons, the macOS packages and a smoke test on each architecture's own
+# runner all check that commit; only then does the publish job tag, push and publish it. A dry run stops before
+# publish, and pushes nothing.
+on:
+    workflow_dispatch:
+        inputs:
+            bump:
+                description: Which part of the version goes up
+                type: choice
+                options: [minor, patch, major]
+                required: true
+            dry-run:
+                description: Build and check everything, but push and publish nothing
+                type: boolean
+                default: true
+
+permissions:
+    contents: read
+
+concurrency:
+    group: release
+    cancel-in-progress: false
+
+env:
+    GIT_AUTHOR_NAME: github-actions[bot]
+    GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+    GIT_COMMITTER_NAME: github-actions[bot]
+    GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+
+jobs:
+    prepare:
+        name: prepare the release commit
+        if: github.ref == 'refs/heads/main'
+        runs-on: ubuntu-24.04
+        outputs:
+            version: ${{ steps.prepare.outputs.version }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  fetch-depth: 0
+                  persist-credentials: false
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: 24
+            - run: corepack enable pnpm
+            - run: pnpm install --frozen-lockfile
+            - id: prepare
+              run: node tools/release/prepare.ts "$BUMP" "$RUNNER_TEMP/release"
+              env:
+                  BUMP: ${{ inputs.bump }}
+            - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: release-commit
+                  path: ${{ runner.temp }}/release
+                  if-no-files-found: error
+
+    checks:
+        name: checks
+        needs: prepare
+        uses: ./.github/workflows/ci.yml
+        with:
+            release-commit: true
+
+    daemon:
+        name: daemons (Linux x86_64 and arm64)
+        needs: prepare
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: ./.github/actions/release-commit
+            - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+              with:
+                  toolchain: 1.99.1
+                  targets: x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+            - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+              with:
+                  tool: cargo-zigbuild@0.24
+            - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+              with:
+                  version: 0.17.1
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: 24
+            - run: sudo apt-get update && sudo apt-get install -y minisign
+            - run: tools/fetch-libghostty.sh
+            - run: node tools/build-daemon/build-daemon.ts
+            - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: daemon
+                  path: apps/desktop/resources/daemon
+                  if-no-files-found: error
+
+    package:
+        name: macOS packages (arm64 and x64)
+        needs: daemon
+        runs-on: macos-15
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: ./.github/actions/release-commit
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: 24
+            - run: corepack enable pnpm
+            - run: pnpm install --frozen-lockfile
+            - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+              with:
+                  name: daemon
+                  path: apps/desktop/resources/daemon
+            - run: chmod 755 apps/desktop/resources/daemon/*/trcd
+            - run: pnpm dist
+            - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: packages
+                  path: |
+                      apps/desktop/dist/TRC-*-mac-*.dmg
+                      apps/desktop/dist/TRC-*-mac-*.zip
+                  if-no-files-found: error
+
+    smoke:
+        name: smoke test (${{ matrix.arch }})
+        needs: [prepare, package]
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - runner: macos-15
+                      arch: arm64
+                    - runner: macos-15-intel
+                      arch: x64
+        runs-on: ${{ matrix.runner }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: ./.github/actions/release-commit
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: 24
+            - run: corepack enable pnpm
+            - run: pnpm install --frozen-lockfile --ignore-scripts
+            - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+              with:
+                  name: packages
+                  path: ${{ runner.temp }}/packages
+            - run: ditto -x -k "$RUNNER_TEMP/packages/TRC-$VERSION-mac-$ARCH.zip" "$RUNNER_TEMP/app"
+              env:
+                  VERSION: ${{ needs.prepare.outputs.version }}
+                  ARCH: ${{ matrix.arch }}
+            - run: pnpm verify:artifact "$RUNNER_TEMP/app/Terminal Remote Control.app"
+
+    publish:
+        name: publish
+        needs: [prepare, checks, smoke]
+        if: ${{ !inputs.dry-run }}
+        runs-on: ubuntu-24.04
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  fetch-depth: 0
+            - uses: ./.github/actions/release-commit
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: 24
+            - run: corepack enable pnpm
+            - run: pnpm install --frozen-lockfile
+            - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+              with:
+                  name: packages
+                  path: ${{ runner.temp }}/packages
+            - run: node tools/release/publish.ts "$VERSION" "$RUNNER_TEMP/release/notes.md" "$RUNNER_TEMP/packages"
+              env:
+                  VERSION: ${{ needs.prepare.outputs.version }}
+                  GH_TOKEN: ${{ github.token }}

@@ -41,11 +41,12 @@ tooling (`tools/*`).
 - Icons: `pnpm icons` renders `apps/desktop/resources/icons` from
   `tools/icons`. Packaging: `pnpm dist` (ad-hoc signed arm64 and x64 dmg and
   zip in `apps/desktop/dist`).
-- Releases: `pnpm release <major|minor|patch> [--dry-run]` from a clean,
-  pushed `main` with `gh` logged in (D-34). Run it with
-  `GIT_AUTHOR_NAME="$(git config user.name) (Agentic)"` and
-  `GIT_AUTHOR_EMAIL="$(git config user.email)"` set. CI
-  (`.github/workflows/ci.yml`) builds and unit-tests every push and PR.
+- Releases run entirely in GitHub Actions (`.github/workflows/release.yml`,
+  P-21, D-42): `pnpm release <major|minor|patch> [--dry-run]` starts it with
+  `gh` and watches it; it commits the version as `github-actions[bot]`, builds,
+  runs `pnpm verify:artifact` on each architecture's runner, then tags, pushes
+  and publishes. CI (`.github/workflows/ci.yml`) builds and unit-tests every
+  push and PR, and the release commit.
 - `pnpm install` also brands the development Electron.app (name, icon,
   ad-hoc re-signature) through `tools/dev-electron` (D-35), so menus and the
   About panel show the product in dev and test builds.

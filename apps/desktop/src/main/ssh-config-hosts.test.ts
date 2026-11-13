@@ -51,11 +51,10 @@ describe('sshConfigHosts: every Host the user can type, from ~/.ssh/config and i
 
 describe('sshConfigFilesFor: which configuration files to read', () => {
     it('reads ~/.ssh/config, after the P-14 seam file in a test build only', () => {
-        const env = { TRC_TEST_SSH_CONFIG: '/tmp/seam/ssh_config' };
-        expect(sshConfigFilesFor({ seamEnabled: true, env, home: '/home/me' })).toEqual([
+        expect(sshConfigFilesFor({ testConfig: '/tmp/seam/ssh_config', home: '/home/me' })).toEqual([
             '/tmp/seam/ssh_config',
             '/home/me/.ssh/config',
         ]);
-        expect(sshConfigFilesFor({ seamEnabled: false, env, home: '/home/me' })).toEqual(['/home/me/.ssh/config']);
+        expect(sshConfigFilesFor({ testConfig: undefined, home: '/home/me' })).toEqual(['/home/me/.ssh/config']);
     });
 });

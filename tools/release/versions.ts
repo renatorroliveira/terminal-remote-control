@@ -51,6 +51,26 @@ export function setCargoVersion(toml: string, version: string): string {
     return toml.replace(section, section.replace(/version = "[^"]+"$/, `version = "${version}"`));
 }
 
+/** A Cargo.lock text with the version of each named workspace crate set, so `cargo --locked` accepts it. */
+export function setCargoLockVersion(lock: string, crates: readonly string[], version: string): string {
+    return crates.reduce((text, crate) => {
+        const entry = new RegExp(`(\\[\\[package\\]\\]\\nname = "${crate}"\\nversion = ")[^"]+(")`);
+        if (!entry.test(text)) {
+            throw new Error(`Cargo.lock has no package ${crate}`);
+        }
+        return text.replace(entry, `$1${version}$2`);
+    }, lock);
+}
+
+/** The package name in a crate's Cargo.toml. */
+export function crateName(toml: string): string {
+    const name = /^\[package\]\n(?:(?!\[)[^\n]*\n)*?name = "([^"]+)"/m.exec(toml)?.[1];
+    if (name === undefined) {
+        throw new Error('Cargo.toml has no package name');
+    }
+    return name;
+}
+
 function compare(left: string, right: string): number {
     const a = left.split('.').map(Number);
     const b = right.split('.').map(Number);
