@@ -22,6 +22,10 @@ export function testHostsMissing(): string | undefined {
 export interface TestHostApp {
     readonly app: ElectronApplication;
     readonly window: Page;
+    /** The scratch TRC home of this launch. */
+    readonly home: string;
+    /** The file the test build writes opened links to instead of opening them. */
+    readonly openedLinks: string;
 }
 
 /**
@@ -31,14 +35,17 @@ export interface TestHostApp {
 export async function launchWithTestHosts(installRoot?: string, args: readonly string[] = []): Promise<TestHostApp> {
     const scratch = mkdtempSync(join(tmpdir(), 'trc-e2e-'));
     const knownHosts = join(scratch, 'known_hosts');
+    const home = join(scratch, 'home');
+    const openedLinks = join(scratch, 'opened-links.log');
     copyFileSync(join(run, 'known_hosts.smoke'), knownHosts);
     const app = await launchApp([`--user-data-dir=${join(scratch, 'user-data')}`, ...args], {
         TRC_TEST_SSH_CONFIG: join(run, 'ssh_config'),
         TRC_TEST_KNOWN_HOSTS: knownHosts,
-        TRC_HOME: join(scratch, 'home'),
+        TRC_TEST_OPENED_LINKS: openedLinks,
+        TRC_HOME: home,
         ...(installRoot === undefined ? {} : { TRC_TEST_INSTALL_ROOT: installRoot }),
     });
-    return { app, window: await app.firstWindow() };
+    return { app, window: await app.firstWindow(), home, openedLinks };
 }
 
 /** A fresh install location on the test hosts, removed by {@link removeInstall}. */
@@ -73,12 +80,13 @@ export function removeInstall(alias: string, root: string): void {
 }
 
 /**
- * Adds `destination` as a known host, connects it from its badge, creates a session, and returns the session's text
+ * Adds `destination` as a known host, choosing its SSH config suggestion by name so a pointer resting over the list
+ * cannot pick another, connects it from its badge, creates a session, and returns the session's text
  * surface once it opens.
  */
 export async function openTerminal(window: Page, destination: string): Promise<Locator> {
     await window.getByRole('combobox', { name: 'New host' }).fill(destination);
-    await window.keyboard.press('Tab');
+    await window.getByRole('option', { name: destination, exact: true }).click();
     await window.getByRole('button', { name: 'Add host' }).click();
     await window.getByRole('button', { name: `Connect ${destination}` }).click();
     await window.getByRole('button', { name: `Disconnect ${destination}` }).waitFor({ timeout: 60_000 });

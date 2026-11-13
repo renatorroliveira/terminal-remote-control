@@ -2,6 +2,7 @@ import type { IntlShape, MessageDescriptor } from 'react-intl';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ScreenReaderMode } from '../../shared/accessibility';
 import type { CommandId, Keymap } from '../../shared/keymap';
+import type { LinkCheck } from '../../shared/links';
 import { CommandRegistry } from '../commands/command-registry';
 import { installShortcuts } from '../commands/shortcuts';
 import { failureMessage } from '../sessions/failure-messages';
@@ -14,7 +15,9 @@ import {
 import { sessionStateText } from '../sessions/session-state-text';
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import { type HostEntry, hostGroups, type SessionKey, sessionName, type Workspace } from '../sessions/workspace-model';
+import type { TerminalLink } from '../terminal/hyperlinks';
 import type { Announcer } from './announcer';
+import { linkAnnouncements } from './link-messages';
 import type { NotificationCenter } from './notifications';
 import { RegionCycler } from './regions';
 import {
@@ -32,7 +35,20 @@ export interface TerminalControls {
     setTabFocusMode(on: boolean): void;
     sendNextKey(): boolean;
     passingNextKey(): boolean;
+    /** The links on the open terminal's screen (US-1.12.3). */
+    visibleLinks(): readonly TerminalLink[];
 }
+
+/** What the shell asks of the main process to open links (US-1.12.3, US-1.12.4). */
+export interface LinkControls {
+    check(target: string): Promise<LinkCheck | undefined>;
+    open(target: string, trustOrigin: boolean): Promise<void>;
+}
+
+/** The link dialog open now: confirming one link, or choosing from the links on the screen. */
+export type LinkDialog =
+    | { readonly kind: 'confirm'; readonly text: string; readonly check: LinkCheck }
+    | { readonly kind: 'list'; readonly links: readonly TerminalLink[] };
 
 /** What the shell asks of screen-reader mode (A11Y-10.2). */
 export interface ScreenReaderControls {
@@ -69,6 +85,8 @@ export interface ShellState {
     readonly hostDialog: HostDialog | undefined;
     /** The session dialog open now: renaming or closing a session, or a new session with options. */
     readonly sessionDialog: SessionDialog | undefined;
+    /** The link dialog open now (US-1.12.3). */
+    readonly linkDialog: LinkDialog | undefined;
 }
 
 /** A dialog about a session, or the New session dialog. */
@@ -96,6 +114,8 @@ export interface ShellOptions {
     readonly isNarrow: () => boolean;
     /** Screen-reader mode, when the app can change it. */
     readonly screenReader?: ScreenReaderControls;
+    /** Where links open; without it, links do nothing. */
+    readonly links?: LinkControls;
 }
 
 const INITIAL_STATE: ShellState = {
@@ -107,6 +127,7 @@ const INITIAL_STATE: ShellState = {
     panelOpen: false,
     hostDialog: undefined,
     sessionDialog: undefined,
+    linkDialog: undefined,
 };
 
 /**
@@ -231,6 +252,41 @@ export class Shell {
         this.state.setState({ sessionDialog });
     }
 
+    /** Opens a link dialog, or closes it. */
+    setLinkDialog(linkDialog: LinkDialog | undefined): void {
+        this.state.setState({ linkDialog });
+    }
+
+    /**
+     * Opens a link from the terminal (US-1.12.3, US-1.12.4): at once when it starts with a trusted prefix, otherwise
+     * after the confirmation; a target the app never opens is announced instead.
+     */
+    async openLink(link: TerminalLink): Promise<void> {
+        const links = this.#options.links;
+        if (links === undefined) {
+            return;
+        }
+        const check = await links.check(link.target).catch(() => undefined);
+        if (check === undefined) {
+            this.setLinkDialog(undefined);
+            this.#announce(linkAnnouncements.refused);
+        } else if (check.trusted) {
+            this.setLinkDialog(undefined);
+            await links.open(check.target, false);
+        } else {
+            this.setLinkDialog({ kind: 'confirm', text: link.text, check });
+        }
+    }
+
+    /** Opens the link the confirmation shows, first trusting its origin when `trustOrigin` is set. */
+    async confirmLink(trustOrigin: boolean): Promise<void> {
+        const dialog = this.state.getState().linkDialog;
+        this.setLinkDialog(undefined);
+        if (dialog?.kind === 'confirm') {
+            await this.#options.links?.open(dialog.check.target, trustOrigin);
+        }
+    }
+
     /** Tests a host's connection and announces when it works; a failure shows the failure dialog (US-1.1.5). */
     async testConnection(hostId: string): Promise<void> {
         const host = this.#options.workspace.store.getState().hosts.find((entry) => entry.id === hostId);
@@ -300,6 +356,7 @@ export class Shell {
                 this.setSessionDialog({ kind: 'new', hostId: this.#options.workspace.defaultHost() }),
             'session.next': () => this.#options.workspace.openNext(1),
             'session.previous': () => this.#options.workspace.openNext(-1),
+            'terminal.listLinks': () => this.#listLinks(),
         };
         for (const [id, run] of Object.entries(actions) as [CommandId, () => void][]) {
             this.commands.register({ id, label: this.#options.intl.formatMessage(commandMessages[id]), run });
@@ -312,6 +369,15 @@ export class Shell {
             return;
         }
         void this.#options.workspace.newSessionHere();
+    }
+
+    #listLinks(): void {
+        const links = this.#options.terminals.visibleLinks();
+        if (links.length === 0) {
+            this.#announce(linkAnnouncements.none);
+            return;
+        }
+        this.setLinkDialog({ kind: 'list', links });
     }
 
     #sendNextKey(): void {

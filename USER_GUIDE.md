@@ -159,6 +159,18 @@ PTY to fit the window.
 
 Terminal output never touches your clipboard: programs can't read it or write to it.
 
+### Links
+
+Command-click a web address in the terminal, or a link a program prints (such as `ls --hyperlink`), to open it
+with the app macOS assigns to it, such as your browser. Shift-Command-O lists the links on the screen, so you can
+open one from the keyboard.
+
+Programs decide what links say, so TRC first shows the full address and asks. When the link's text differs from
+its address, the dialog says so. Choose "Always open links that start with https://example.com" to trust that
+site: from then on its links open without asking. TRC keeps the trusted prefixes in `accept_urls.json` (see
+[Files and folders](#files-and-folders)). Links without a site, such as `mailto:` or `file:` links, always ask.
+TRC never opens `javascript:` or `data:` links.
+
 ## Moving around and commands
 
 The window has three regions: the sidebar (sessions and hosts), the terminal, and the status bar at the bottom.
@@ -172,6 +184,7 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 | Send the next key to the terminal            | Shift-Command-K                                       |
 | Mute output announcements for this session   | Shift-Command-A                                       |
 | Notifications                                | Shift-Command-N                                       |
+| List the links on the screen                 | Shift-Command-O                                       |
 | Actions for the focused session or host      | Shift-F10, the Menu key, Control-click or right-click |
 
 - **Regions.** Moving to a region puts you back where you were in it. A hidden sidebar is skipped.
@@ -230,10 +243,11 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 
 On your Mac, TRC keeps its settings in the TRC home, `~/.trc`:
 
-| File          | Holds                                                                                                                                                                                        |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config.json` | `theme` (`midnight`, `system`, `light`, `dark`, `hc-light` or `hc-dark`), `sidebarWidth` (300 to 800), `sidebarCollapsed` (`true` or `false`) and `screenReaderMode` (`auto`, `on` or `off`) |
-| `hosts.json`  | The known hosts                                                                                                                                                                              |
+| File               | Holds                                                                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config.json`      | `theme` (`midnight`, `system`, `light`, `dark`, `hc-light` or `hc-dark`), `sidebarWidth` (300 to 800), `sidebarCollapsed` (`true` or `false`) and `screenReaderMode` (`auto`, `on` or `off`)            |
+| `hosts.json`       | The known hosts                                                                                                                                                                                         |
+| `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example` |
 
 Both files are readable only by you. Edit `config.json` while the app is closed; a value TRC can't use falls back
 to its default.
@@ -274,7 +288,7 @@ Later releases of Epic 1 add:
 
 - Changing shortcuts, and plain F6 to move between regions, in the settings page.
 - A review mode to read the scrollback, and Find.
-- Links, paste confirmation, the settings page, accessibility help (Option-F1) and the in-app guide (the Help
+- Paste confirmation, the settings page, accessibility help (Option-F1) and the in-app guide (the Help
   menu items do nothing yet).
 - Reconnecting after a network loss with a single action.
 

@@ -31,7 +31,7 @@ const THEME_CHOICES: readonly (readonly [ThemePreference, string] | 'separator')
 
 /**
  * The menu bar: the standard macOS menus; Session with new, next and previous session; Edit with Look Up and Speech; View with the command palette, notifications,
- * the sidebar, regions, the theme and zoom; Terminal with Tab focus mode, send next key and mute; and Help with the
+ * the sidebar, regions, the theme and zoom; Terminal with Tab focus mode, send next key, mute and list links; and Help with the
  * user guide and accessibility help. Each command shows its Command shortcut and runs in the renderer.
  */
 export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[] {
@@ -86,6 +86,7 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
                 command(options, 'terminal.toggleTabFocus', MAIN_STRINGS.tabMovesFocus),
                 command(options, 'terminal.sendNextKey', MAIN_STRINGS.sendNextKey),
                 command(options, 'announcements.toggleMute', MAIN_STRINGS.muteAnnouncements),
+                command(options, 'terminal.listLinks', MAIN_STRINGS.listLinks),
             ],
         },
         { role: 'windowMenu' },

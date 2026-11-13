@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { SCREEN_READER_MODES } from '../shared/accessibility';
 import type { InvokeChannel, InvokeContract } from '../shared/contract';
 import { SIDEBAR_WIDTH } from '../shared/layout';
+import { MAX_LINK_LENGTH } from '../shared/links';
 
 /** The part of `ipcMain` the registry uses. */
 export interface IpcMainLike {
@@ -14,6 +15,7 @@ export type InvokeHandlers = {
 };
 
 const HOST_ID = z.string().regex(/^host-[0-9a-f]{16}$/);
+const LINK = z.string().min(1).max(MAX_LINK_LENGTH);
 
 const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['args']> } = {
     'display:get': z.tuple([]),
@@ -24,6 +26,8 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'hosts:suggestions': z.tuple([]),
     'hosts:remove': z.tuple([HOST_ID]),
     'hosts:set-install-root': z.tuple([HOST_ID, z.string().min(1).max(4096)]),
+    'links:check': z.tuple([LINK]),
+    'links:open': z.tuple([LINK, z.boolean()]),
     'sidebar:get-width': z.tuple([]),
     'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),
     'sidebar:get-collapsed': z.tuple([]),

@@ -251,3 +251,18 @@ describe('TerminalRegistry output speech (A11Y-02.1, A11Y-02.4, A11Y-02.7)', () 
         expect(speech.spoken).toEqual([]);
     });
 });
+
+function targets(registry: TerminalRegistry): string[] {
+    return registry.visibleLinks().map((link) => link.target);
+}
+
+describe('TerminalRegistry links (US-1.12.3)', () => {
+    it('lists the links on the open terminal’s screen, and none without an open session', async () => {
+        const { transport, registry } = setup();
+        expect(registry.visibleLinks()).toEqual([]);
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(1)).toBe(true);
+        transport.output(1, 'see https://example.com/docs\r\n');
+        await expect.poll(() => targets(registry)).toEqual(['https://example.com/docs']);
+    });
+});

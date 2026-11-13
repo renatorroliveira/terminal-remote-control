@@ -58,6 +58,11 @@ export const commandMessages = defineMessages<CommandId>({
         defaultMessage: 'Previous session',
         description: 'Command name.',
     },
+    'terminal.listLinks': {
+        id: 'command.terminalListLinks',
+        defaultMessage: 'List links…',
+        description: 'Command name: lists the links on the terminal screen to open one (US-1.12.3).',
+    },
 });
 
 /** What the shell announces when a command changes something (A11Y-05.4, A11Y-12.1). */

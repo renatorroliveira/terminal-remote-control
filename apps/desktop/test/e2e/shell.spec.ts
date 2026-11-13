@@ -68,6 +68,7 @@ test('puts the commands in the View and Terminal menus with their Command shortc
             'Tab Moves Focus Shift+Command+M',
             'Send Next Key to Terminal Shift+Command+K',
             'Mute Output Announcements Shift+Command+A',
+            'List Links… Shift+Command+O',
         ],
     ]);
     await app.close();

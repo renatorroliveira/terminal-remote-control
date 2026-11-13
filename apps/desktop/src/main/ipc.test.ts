@@ -28,6 +28,8 @@ function handlers(display: unknown = {}): InvokeHandlers {
             address: { destination: 'x' },
             installRoot: '/scratch/trc',
         }),
+        'links:check': async (target) => ({ target, origin: undefined, trusted: false }),
+        'links:open': async () => undefined,
         'sidebar:get-width': async () => 400,
         'sidebar:set-width': async () => undefined,
         'sidebar:get-collapsed': async () => false,
@@ -52,6 +54,12 @@ describe('registerHandlers (zod at the renderer boundary)', () => {
         );
         await expect(async () => registered.get('accessibility:get')?.({}, 1)).rejects.toThrow(/invalid arguments/);
         await expect(async () => registered.get('accessibility:set-mode')?.({}, 'loud')).rejects.toThrow(
+            /invalid arguments/,
+        );
+        await expect(async () => registered.get('links:open')?.({}, 'https://example.com')).rejects.toThrow(
+            /invalid arguments/,
+        );
+        await expect(async () => registered.get('links:check')?.({}, 'x'.repeat(9_000))).rejects.toThrow(
             /invalid arguments/,
         );
         await expect(async () => registered.get('hosts:add')?.({}, 'devbox-1', '~/.trc')).rejects.toThrow(

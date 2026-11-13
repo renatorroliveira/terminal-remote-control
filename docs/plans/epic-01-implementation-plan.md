@@ -671,12 +671,13 @@ As built:
 - Exact copy with logical lines; over the cap, an announcement.
 - Paste: Cmd+V and the context menu, bracketed paste, and a confirmation for multiple lines that states the line
   count.
-- Links:
+- Links (US-1.12.3, US-1.12.4):
     - OSC 8 through `linkHandler`;
     - URL and path detection;
-    - modifier+click;
+    - Cmd+click (Ctrl+click on other platforms);
     - a "list links" command;
-    - the target is shown when it differs from the text.
+    - any scheme the OS opens, always behind a confirmation that shows the target, unless the target starts with
+      a trusted prefix from `accept_urls.json` in the TRC home; the confirmation can trust the link's origin.
 - OSC 52 off by default, enabled per host. Clipboard reads always refused.
 - Control characters stripped from titles and announcements.
 - Minimum contrast 4.5:1, including the dim-text fix.
@@ -686,6 +687,16 @@ As built:
 - Blink: off under reduce motion, and stops after 5 s without input.
 - Visual bell: at most 3 flashes per second, with alternatives.
 - A pinned viewport with an announced "new output below" indicator.
+
+As built so far (links first, by the owner's request on 2026-11-13):
+
+- Links (D-38): Command+click (Control+click elsewhere) on a detected URL of any scheme or an OSC 8 hyperlink, and
+  Shift+Command+O ("List links") for the keyboard. Every link asks first with its full address, unless it starts
+  with a prefix in `accept_urls.json`; the dialog can trust the link's `scheme://host`. The main process refuses
+  script and content schemes. Test builds log opened links to `TRC_TEST_OPENED_LINKS` instead of opening them.
+- Plain-text file paths are not detected: on a remote host they name files the Mac can't open. They wait for local
+  sessions in E5; OSC 8 `file:` links still open after the confirmation.
+- Fixed on the way: Add host's suggestions now narrow as the user types (US-1.1.1).
 
 **ST-16 Review mode and find** (A11Y-03.1–8, US-1.13)
 
@@ -755,7 +766,8 @@ As built:
 - Run `code-reviewer` and `technical-auditor` in parallel on every commit after the tech stack commit
   (`docs(stack): add tech stack research and decisions`). Fix every finding test-first.
 - Final pass over CLAUDE.md, README, TECH_STACK and PRD status.
-- Commit, and tag `v0.1.0` locally.
+- Commit, then release the epic as `v0.2.0` with `pnpm release minor` (D-34); the owner set this on 2026-11-13,
+  after M1 shipped as `v0.1.0`.
 
 ## 6. Traceability
 
@@ -828,7 +840,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-12 | Done        | —      |
 | ST-13 | Done        | —      |
 | ST-14 | Done        | —      |
-| ST-15 | Not started | —      |
+| ST-15 | In progress | —      |
 | ST-16 | Not started | —      |
 | ST-17 | Not started | —      |
 | ST-18 | Not started | —      |

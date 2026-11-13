@@ -62,6 +62,7 @@ if (container !== null) {
                 screenReader: () => assistiveTechnology.screenReader,
                 isMuted: (key) => shell?.isMuted(key) ?? false,
             },
+            onOpenLink: (link) => void shell?.openLink(link),
         });
         const { workspace, terminals } = composed;
         shell = new Shell({
@@ -75,6 +76,7 @@ if (container !== null) {
             document,
             isNarrow: () => narrow.matches,
             screenReader: assistiveTechnology,
+            links: window.trc.links,
         });
         void workspace.load().then(() => workspace.connectAll());
         reactRoot.render(

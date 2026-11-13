@@ -2,6 +2,7 @@ import type { AccessibilityState, ScreenReaderMode } from './accessibility';
 import type { DisplaySettings } from './display';
 import type { KnownHost } from './hosts';
 import type { CommandId } from './keymap';
+import type { LinkCheck } from './links';
 
 /** Requests the renderer makes of the main process with `ipcRenderer.invoke`: arguments and result per channel. */
 export interface InvokeContract {
@@ -15,6 +16,11 @@ export interface InvokeContract {
     readonly 'hosts:set-install-root': {
         readonly args: readonly [id: string, installRoot: string];
         readonly result: KnownHost;
+    };
+    readonly 'links:check': { readonly args: readonly [target: string]; readonly result: LinkCheck | undefined };
+    readonly 'links:open': {
+        readonly args: readonly [target: string, trustOrigin: boolean];
+        readonly result: undefined;
     };
     readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
@@ -65,6 +71,12 @@ export interface TrcBridge {
         remove(id: string): Promise<void>;
         /** Moves a host's install location (US-1.4.3). */
         setInstallRoot(id: string, installRoot: string): Promise<KnownHost>;
+    };
+    readonly links: {
+        /** The link as it would open, its origin, and whether a trusted prefix lets it open without asking. */
+        check(target: string): Promise<LinkCheck | undefined>;
+        /** Opens a link the user confirmed or trusts, first trusting its origin when asked (US-1.12.4). */
+        open(target: string, trustOrigin: boolean): Promise<void>;
     };
     readonly sidebar: {
         /** The sidebar width the user last chose, in CSS pixels. */

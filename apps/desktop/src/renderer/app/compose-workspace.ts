@@ -5,6 +5,7 @@ import { DEFAULT_LOCALE, messagesFor } from '../i18n/locale';
 import { terminalLabelMessage, terminalMessages } from '../sessions/messages';
 import { type KnownHostStore, type SessionKey, WorkspaceController } from '../sessions/workspace-controller';
 import { sessionName } from '../sessions/workspace-model';
+import type { TerminalLink } from '../terminal/hyperlinks';
 import { DEFAULT_FLOOD_THRESHOLD } from '../terminal/output-announcer';
 import { floodMessage } from '../terminal/output-messages';
 import { type SessionSpeech, TerminalRegistry } from '../terminal/terminal-registry';
@@ -27,6 +28,8 @@ export interface WorkspaceSources {
     readonly hosts: KnownHostStore;
     /** Where the open session's output is spoken, and when (A11Y-02). */
     readonly speech: SpeechSources;
+    /** The user opened a link in a terminal (US-1.12.3). */
+    readonly onOpenLink: (link: TerminalLink) => void;
 }
 
 /** What speaking output needs. */
@@ -58,6 +61,7 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
         }),
         onActivity: (key) => workspace?.recordActivity(key),
         speech: sessionSpeech(sources.speech, (lines) => intl.formatMessage(floodMessage, { lines })),
+        onOpenLink: sources.onOpenLink,
     });
     workspace = new WorkspaceController(sources.client, terminals, sources.hosts);
     return { workspace, terminals };

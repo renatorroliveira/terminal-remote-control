@@ -98,4 +98,14 @@
         background: var(--trc-color-selection-background);
         color: var(--trc-color-selection-text);
     }
+
+    .option[data-focused] .hint {
+        color: inherit;
+    }
+
+    .option {
+        display: flex;
+        flex-direction: column;
+        overflow-wrap: anywhere;
+    }
 }

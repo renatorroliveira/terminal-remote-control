@@ -325,6 +325,12 @@
       "value": "Show or hide the sidebar"
     }
   ],
+  "command.terminalListLinks": [
+    {
+      "type": 0,
+      "value": "List links…"
+    }
+  ],
   "command.terminalSendNextKey": [
     {
       "type": 0,
@@ -1183,6 +1189,104 @@
     {
       "type": 1,
       "value": "host"
+    }
+  ],
+  "link.confirm.address": [
+    {
+      "type": 0,
+      "value": "Address"
+    }
+  ],
+  "link.confirm.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "link.confirm.check": [
+    {
+      "type": 0,
+      "value": "A program in the terminal printed this link. Check its address before you open it."
+    }
+  ],
+  "link.confirm.differs": [
+    {
+      "type": 0,
+      "value": "The link shows “"
+    },
+    {
+      "type": 1,
+      "value": "text"
+    },
+    {
+      "type": 0,
+      "value": "”, but it opens the address below. Check it before you open it."
+    }
+  ],
+  "link.confirm.open": [
+    {
+      "type": 0,
+      "value": "Open"
+    }
+  ],
+  "link.confirm.title": [
+    {
+      "type": 0,
+      "value": "Open this link?"
+    }
+  ],
+  "link.confirm.trust": [
+    {
+      "type": 0,
+      "value": "Always open links that start with "
+    },
+    {
+      "type": 1,
+      "value": "origin"
+    }
+  ],
+  "link.confirm.trustHint": [
+    {
+      "type": 0,
+      "value": "Always open links that start with "
+    },
+    {
+      "type": 1,
+      "value": "origin"
+    },
+    {
+      "type": 0,
+      "value": " opens them without asking from now on. accept_urls.json in the TRC home folder keeps the list."
+    }
+  ],
+  "link.list.close": [
+    {
+      "type": 0,
+      "value": "Close"
+    }
+  ],
+  "link.list.label": [
+    {
+      "type": 0,
+      "value": "Links"
+    }
+  ],
+  "link.list.title": [
+    {
+      "type": 0,
+      "value": "Links on the screen"
+    }
+  ],
+  "link.none": [
+    {
+      "type": 0,
+      "value": "No links on the screen."
+    }
+  ],
+  "link.refused": [
+    {
+      "type": 0,
+      "value": "TRC doesn’t open this kind of link."
     }
   ],
   "newSession.cancel": [

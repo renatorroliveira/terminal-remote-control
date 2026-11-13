@@ -14,6 +14,7 @@ export const COMMAND_IDS = [
     'session.newWithOptions',
     'session.next',
     'session.previous',
+    'terminal.listLinks',
 ] as const;
 
 /** A command's ID. */
@@ -70,6 +71,7 @@ export const DEFAULT_KEYMAP: Readonly<Partial<Record<CommandId, string>>> = {
     'session.newWithOptions': 'Shift+Cmd+T',
     'session.next': 'Shift+Cmd+]',
     'session.previous': 'Shift+Cmd+[',
+    'terminal.listLinks': 'Shift+Cmd+O',
 };
 
 /** Reads a chord such as `Shift+Cmd+P`; modifiers come in any order, as `Ctrl`, `Control`, `Option`, `Alt`, `Cmd`. */
