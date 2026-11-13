@@ -13,6 +13,7 @@ describe('APP_IDENTITY', () => {
             bundleId: 'dev.trc.desktop',
             appScheme: 'app',
             appHost: 'trc',
+            docsHost: 'docs',
             copyright: 'Copyright © 2026 Renato Oliveira',
             repositoryUrl: 'https://github.com/renatorroliveira/terminal-remote-control',
         });

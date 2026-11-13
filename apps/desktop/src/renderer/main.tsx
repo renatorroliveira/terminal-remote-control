@@ -90,6 +90,7 @@ if (container !== null) {
             screenReader: assistiveTechnology,
             links: window.trc.links,
             terminalZoom: { get: () => window.trc.terminal.zoom(), set: (zoom) => window.trc.terminal.setZoom(zoom) },
+            guide: { open: (section) => void window.trc.help.openGuide(section) },
         });
         void workspace.load().then(() => workspace.connectAll());
         reactRoot.render(

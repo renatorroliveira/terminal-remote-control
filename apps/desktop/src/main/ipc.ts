@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { SCREEN_READER_MODES } from '../shared/accessibility';
 import { MAX_CLIPBOARD_WRITE } from '../shared/clipboard';
 import type { InvokeChannel, InvokeContract } from '../shared/contract';
+import { GUIDE_SECTION_NAMES } from '../shared/guide';
 import { SIDEBAR_WIDTH } from '../shared/layout';
 import { MAX_LINK_LENGTH } from '../shared/links';
 import { TERMINAL_ZOOM } from '../shared/terminal-zoom';
@@ -39,6 +40,7 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),
     'sidebar:get-collapsed': z.tuple([]),
     'sidebar:set-collapsed': z.tuple([z.boolean()]),
+    'help:open-guide': z.tuple([z.enum(GUIDE_SECTION_NAMES).or(z.undefined())]),
 };
 
 /**

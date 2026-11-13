@@ -40,6 +40,7 @@ function handlers(display: unknown = {}): InvokeHandlers {
         'sidebar:set-width': async () => undefined,
         'sidebar:get-collapsed': async () => false,
         'sidebar:set-collapsed': async () => undefined,
+        'help:open-guide': async () => undefined,
     };
 }
 
@@ -103,6 +104,16 @@ describe('registerHandlers: hosts, sidebar and trust', () => {
         await expect(registered.get('sidebar:set-width')?.({}, 300)).resolves.toBeUndefined();
         expect(await registered.get('sidebar:get-collapsed')?.({})).toBe(false);
         await expect(registered.get('sidebar:set-collapsed')?.({}, true)).resolves.toBeUndefined();
+    });
+
+    it('opens the user guide at a known section only (A11Y-10.4)', async () => {
+        const { handlers: registered, ipc } = fakeIpc();
+        registerHandlers(ipc, handlers(), trusted);
+        await expect(registered.get('help:open-guide')?.({}, undefined)).resolves.toBeUndefined();
+        await expect(registered.get('help:open-guide')?.({}, 'voiceover')).resolves.toBeUndefined();
+        await expect(async () => registered.get('help:open-guide')?.({}, '../secret')).rejects.toThrow(
+            /invalid arguments/,
+        );
     });
 
     it('rejects requests from a page that is not the app', async () => {

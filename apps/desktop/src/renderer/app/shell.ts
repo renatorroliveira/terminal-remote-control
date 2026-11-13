@@ -1,6 +1,7 @@
 import type { IntlShape, MessageDescriptor } from 'react-intl';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ScreenReaderMode } from '../../shared/accessibility';
+import type { GuideSection } from '../../shared/guide';
 import type { CommandId, Keymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
 import { nextZoom, TERMINAL_ZOOM, type ZoomChange } from '../../shared/terminal-zoom';
@@ -22,6 +23,7 @@ import type { TerminalLink } from '../terminal/hyperlinks';
 import type { TerminalNotice } from '../terminal/notices';
 import { pastedLines } from '../terminal/paste';
 import type { Announcer } from './announcer';
+import { type HelpContext, helpContext } from './help/help-context';
 import { linkAnnouncements } from './link-messages';
 import type { NotificationCenter } from './notifications';
 import { clipboardWrittenMessage, copyCappedMessage } from './paste-messages';
@@ -136,6 +138,8 @@ export interface ShellState {
     readonly bell: boolean;
     /** The find bar, while it is open (US-1.13). */
     readonly find: FindState | undefined;
+    /** Where accessibility help was asked for, while it is open (A11Y-10.1). */
+    readonly help: HelpContext | undefined;
 }
 
 /** A dialog about a session, or the New session dialog. */
@@ -167,6 +171,13 @@ export interface ShellOptions {
     readonly links?: LinkControls;
     /** Where the terminal text size is kept; without it, it starts at 100% each time. */
     readonly terminalZoom?: ZoomSettings;
+    /** Opens the user guide; without it, the guide commands do nothing. */
+    readonly guide?: GuideControls;
+}
+
+/** Opens the bundled user guide in its own window (A11Y-10.4). */
+export interface GuideControls {
+    open(section: GuideSection | undefined): void;
 }
 
 const INITIAL_STATE: ShellState = {
@@ -183,6 +194,7 @@ const INITIAL_STATE: ShellState = {
     terminalZoom: TERMINAL_ZOOM.initial,
     bell: false,
     find: undefined,
+    help: undefined,
 };
 
 /** How long the status bar shows the bell. */
@@ -360,6 +372,22 @@ export class Shell {
         }
     }
 
+    /** Opens accessibility help for the context that has focus (A11Y-10.1). */
+    openHelp(): void {
+        this.state.setState({ help: helpContext(this.#options.document.activeElement) });
+    }
+
+    /** Closes accessibility help. */
+    closeHelp(): void {
+        this.state.setState({ help: undefined });
+    }
+
+    /** Closes accessibility help and opens the user guide, at a section when given (A11Y-10.4). */
+    openGuide(section?: GuideSection): void {
+        this.closeHelp();
+        this.#options.guide?.open(section);
+    }
+
     /** Opens the find bar for the open session (US-1.13). */
     openFind(): void {
         if (this.#options.workspace.store.getState().open === undefined) {
@@ -512,6 +540,8 @@ export class Shell {
             'terminal.zoomReset': () => this.#zoom('reset'),
             'review.toggle': () => this.#toggleReview(),
             'terminal.find': () => this.openFind(),
+            'help.accessibility': () => this.openHelp(),
+            'help.userGuide': () => this.openGuide(),
         };
         for (const [id, run] of Object.entries(actions) as [CommandId, () => void][]) {
             this.commands.register({ id, label: this.#options.intl.formatMessage(commandMessages[id]), run });

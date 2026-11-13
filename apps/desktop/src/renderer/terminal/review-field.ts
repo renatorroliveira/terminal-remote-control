@@ -185,6 +185,7 @@ function pageStart(line: number, total: number): number {
 function createField(): HTMLTextAreaElement {
     const field = document.createElement('textarea');
     field.readOnly = true;
+    field.dataset['review'] = '';
     field.spellcheck = false;
     field.className = styles['review'] ?? '';
     field.setAttribute('autocapitalize', 'off');

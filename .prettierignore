@@ -11,3 +11,4 @@ docs/spikes/s4/
 crates/*/tests/corpus/
 apps/desktop/lang/
 apps/desktop/src/renderer/i18n/compiled/
+apps/desktop/resources/docs/index.html

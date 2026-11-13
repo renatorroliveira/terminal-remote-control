@@ -11,13 +11,17 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
     '.woff2': 'font/woff2',
 };
 
+/** The folder each `app://` host serves: the renderer for the app's page, and the user guide's. */
+export type AppRoots = Readonly<Record<string, string>>;
+
 /**
- * Maps an `app://trc/...` URL to a file inside the renderer root, or returns `undefined` when the URL has another
- * scheme or host, or would escape the root.
+ * Maps an `app://<host>/...` URL to a file inside that host's root, or returns `undefined` when the URL has another
+ * scheme or an unknown host, or would escape the root.
  */
-export function resolveAppRequest(url: string, root: string): string | undefined {
+export function resolveAppRequest(url: string, roots: AppRoots): string | undefined {
     const parsed = URL.canParse(url) ? new URL(url) : undefined;
-    if (parsed?.protocol !== `${APP_IDENTITY.appScheme}:` || parsed.host !== APP_IDENTITY.appHost) {
+    const root = parsed === undefined ? undefined : roots[parsed.host];
+    if (parsed?.protocol !== `${APP_IDENTITY.appScheme}:` || root === undefined) {
         return undefined;
     }
     const relative = decodeURIComponent(parsed.pathname).replace(/^\/+/, '') || 'index.html';

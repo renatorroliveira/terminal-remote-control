@@ -1,0 +1,75 @@
+@layer components {
+    .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        background: rgb(0 0 0 / 70%);
+    }
+
+    .modal {
+        width: min(44rem, 100%);
+        max-height: 100%;
+        overflow: auto;
+        border: 1px solid var(--trc-color-border);
+        border-radius: 6px;
+        background: var(--trc-color-surface);
+        color: var(--trc-color-text);
+    }
+
+    .dialog {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1.25rem;
+        outline: none;
+    }
+
+    .heading {
+        margin: 0;
+        font-size: 1.125rem;
+    }
+
+    .subheading {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .text {
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .caption {
+        padding-bottom: 0.25rem;
+        font-weight: 600;
+        text-align: start;
+    }
+
+    .table th,
+    .table td {
+        padding: 0.25rem 0.5rem;
+        border-bottom: 1px solid var(--trc-color-border);
+        text-align: start;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+    }
+
+    .keys {
+        font-family: var(--trc-font-terminal);
+    }
+
+    .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+}

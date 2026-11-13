@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terminal Remote Control user guide</title>
+<link rel="stylesheet" href="guide.css">
+</head>
+<body>
+<main>
+<h1 id="terminal-remote-control-user-guide">Terminal Remote Control user guide</h1>
+<p>Terminal Remote Control (TRC) runs terminal sessions on your Linux hosts and shows them in one accessible macOS window. The sessions belong to a small daemon, <code>trcd</code>, that the app installs on each host for your user, so a session keeps running when you quit the app or lose the network.</p>
+<p>This guide covers version 0.1, the first milestone of Epic 1. <a href="#whats-not-there-yet">What's not there yet</a> lists what later releases add.</p>
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="#requirements">Requirements</a></li>
+<li><a href="#install">Install</a></li>
+<li><a href="#quick-start-with-voiceover">Quick start with VoiceOver</a></li>
+<li><a href="#add-a-host">Add a host</a></li>
+<li><a href="#connect">Connect</a></li>
+<li><a href="#sessions">Sessions</a></li>
+<li><a href="#the-terminal">The terminal</a></li>
+<li><a href="#moving-around-and-commands">Moving around and commands</a></li>
+<li><a href="#appearance">Appearance</a></li>
+<li><a href="#accessibility">Accessibility</a></li>
+<li><a href="#files-and-folders">Files and folders</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#whats-not-there-yet">What's not there yet</a></li>
+</ul>
+<h2 id="requirements">Requirements</h2>
+<p>On your Mac:</p>
+<ul>
+<li>macOS on Apple silicon or Intel.</li>
+<li>OpenSSH 8.5 or later. The one that ships with macOS works.</li>
+<li>An SSH key that reaches each host, loaded in your SSH agent (<code>ssh-add -l</code> lists it). TRC never asks for passwords or passphrases.</li>
+</ul>
+<p>On each host:</p>
+<ul>
+<li>Linux on x86_64 or arm64.</li>
+<li><code>sshd</code> that accepts your key, and a POSIX shell.</li>
+<li>A few megabytes free in your home folder, or in another folder you choose, that allows running programs (not mounted <code>noexec</code>), and <code>sha256sum</code> or <code>shasum</code>. The host needs no internet access, no root or sudo, and no packages.</li>
+</ul>
+<p>TRC uses your own SSH setup: <code>~/.ssh/config</code> (aliases, <code>ProxyCommand</code>, <code>ProxyJump</code>, ports, users), your agent and your <code>known_hosts</code>. It never changes your SSH configuration or your keys. The one file it writes is <code>~/.ssh/known_hosts</code>, and only when you trust a new host key.</p>
+<h2 id="install">Install</h2>
+<ol>
+<li>Download the release for your Mac from the <a href="https://github.com/renatorroliveira/terminal-remote-control/releases">Releases page</a>: <code>TRC-&lt;version&gt;-mac-arm64.dmg</code> for Apple silicon, or <code>TRC-&lt;version&gt;-mac-x64.dmg</code> for Intel. <code>SHA256SUMS.txt</code> lists every file's checksum (<code>shasum -a 256 -c SHA256SUMS.txt</code>).</li>
+<li>Open the dmg and drag Terminal Remote Control to Applications.</li>
+<li><p>Open it once from Applications. Release 0.1 is ad-hoc signed, not notarized, so macOS blocks the first launch. Open System Settings, then Privacy &amp; Security, and choose Open Anyway next to the message about Terminal Remote Control. Or, in Terminal:</p>
+<pre><code class="language-sh">xattr -dr com.apple.quarantine &quot;/Applications/Terminal Remote Control.app&quot;</code></pre></li>
+</ol>
+<h2 id="quick-start-with-voiceover">Quick start with VoiceOver</h2>
+<p>VO below means the VoiceOver keys: Control-Option, or Caps Lock if you set VoiceOver to use it.</p>
+<ol>
+<li>Turn on VoiceOver with Command-F5, then open Terminal Remote Control. TRC notices VoiceOver, turns on screen-reader mode and says so.</li>
+<li>Press Command-F6 until VoiceOver says &quot;Sessions and hosts&quot;, then press Tab until it says &quot;New host&quot;. Type a host as you would after <code>ssh</code>, and press Return. TRC says each step of connecting.</li>
+<li>Press Command-T for a new session. Focus moves to its terminal, and VoiceOver says the session's name and host.</li>
+<li>Type commands as in any terminal. TRC speaks new output as it arrives and leaves out what you type, which VoiceOver already echoes. Press Control to stop VoiceOver speaking; Shift-Command-A mutes the session's output.</li>
+<li>To read what is on the screen, press VO-L for the line at the cursor. For everything, press Option-F2: review mode holds the whole scrollback as text that you read with the arrow keys and VoiceOver's usual commands. Escape returns to the terminal.</li>
+<li>Select text in review mode with Shift and the arrow keys; VO-F6 reads the selection and Command-C copies it.</li>
+<li>Command-F6 moves between the sidebar, the terminal and the status bar. In the session list, Up and Down Arrow move between sessions and Return opens one.</li>
+<li>Option-F1 lists the shortcuts for where you are. Help, then Terminal Remote Control Help, opens this guide in its own window.</li>
+</ol>
+<h2 id="add-a-host">Add a host</h2>
+<p>The sidebar's Hosts section has the New host field, with Add host to its right, and an optional User field below.</p>
+<ol>
+<li>Type the host as you would after <code>ssh</code>: an alias from your SSH config (<code>devbox</code>), or <code>user@host</code>, <code>host:port</code> or <code>user@host:port</code>. As you type, TRC offers hosts you added before and the <code>Host</code> entries of your <code>~/.ssh/config</code> and the files it includes; press Down Arrow to pick one.</li>
+<li>To log in as another user, type it in User, or put it in the host as <code>user@host</code> (not both).</li>
+<li>Press Return or choose Add host.</li>
+</ol>
+<p>TRC connects to the new host at once. The first time, it installs the daemon under <code>~/.trc</code> on the host, which takes a few seconds; each step shows in the host's state and is announced.</p>
+<h3 id="trust-a-host-key">Trust a host key</h3>
+<p>When your <code>known_hosts</code> doesn't know the host yet, a dialog shows the host, its key type and the SHA-256 fingerprint in a field you can select and copy. Compare it with one you got from the host's owner, then choose Trust, which adds the key to <code>~/.ssh/known_hosts</code>, or Reject (or press Escape). Take as long as you need: the question never times out.</p>
+<p>TRC refuses a host whose key changed. If you expected the change, remove the old key yourself (<code>ssh-keygen -R &lt;host&gt;</code>) and connect again.</p>
+<h3 id="host-actions">Host actions</h3>
+<p>Open a host's actions with Shift-F10, the Menu key or Control-click on it in the Hosts list or the Sessions list, or find them in the command palette:</p>
+<ul>
+<li><strong>New session</strong>, <strong>Connect</strong>, <strong>Disconnect</strong> or <strong>Cancel connecting</strong>.</li>
+<li><strong>Test connection</strong>: connects, says whether it works, and disconnects again.</li>
+<li><strong>Change install location</strong>: for a host whose home folder can't run programs (mounted <code>noexec</code>), pick another folder, such as one on another disk. The next connection uses it.</li>
+<li><strong>Forget</strong>: removes the host from TRC after you confirm. Its sessions keep running on the host, and adding the host again shows them.</li>
+</ul>
+<h2 id="connect">Connect</h2>
+<p>When the app opens, it connects to every known host. A host that fails stays disconnected and shows no dialog.</p>
+<p>Each host in the Hosts section shows its state as an icon and as text: Not connected, Connecting, Connected, Connection failed or Disconnected. Its button connects, cancels or disconnects it.</p>
+<p>If your key is a security key, TRC shows and says &quot;Touch your security key for &lt;host&gt;&quot; while ssh waits for the touch.</p>
+<p>When a working connection drops, TRC says &quot;Connection to &lt;host&gt; lost&quot; and lists it in the notifications. The host's sessions stay in the list, marked Disconnected, and their terminals take no input: a key press is not sent and not kept for later, and TRC shows and says &quot;Disconnected — input not sent&quot;. Choose the host's Connect button to reconnect: the sessions still running on the host come back, and each open terminal attaches to its session again.</p>
+<p>When a connection you started fails, a dialog names the host, explains the reason (for example, the agent has no key the host accepts, the host is unreachable, or the connection timed out) and offers the details ssh reported. Choose OK to close it.</p>
+<h2 id="sessions">Sessions</h2>
+<p>The Sessions list is a tree: each connected host, then its sessions. It is one stop for Tab.</p>
+<table>
+<thead><tr><th scope="col">Action</th><th scope="col">Keys or gesture</th></tr></thead>
+<tbody>
+<tr><td>Move through hosts and sessions</td><td>Up and Down Arrow, Home, End, or type the start of a name</td></tr>
+<tr><td>Expand or collapse a host</td><td>Right or Left Arrow, Return, or click its name</td></tr>
+<tr><td>Go from a session to its host</td><td>Left Arrow</td></tr>
+<tr><td>Open a session</td><td>Return, Space or click</td></tr>
+<tr><td>New session on this or the last host</td><td>Command-T, or the + to the right of a host's name</td></tr>
+<tr><td>New session with a shell, folder or name</td><td>Shift-Command-T</td></tr>
+<tr><td>Next and previous session</td><td>Shift-Command-] and Shift-Command-[</td></tr>
+<tr><td>A session's or host's actions</td><td>Shift-F10, the Menu key, Control-click or right-click</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Opening.</strong> Moving through the list doesn't switch sessions. Opening one moves focus to its terminal, and TRC says its name, host and state, and whether it has output you haven't seen.</li>
+<li><strong>States.</strong> Each session shows Starting, Running, Exited (with the exit code or signal), Stopped or Failed to start, and &quot;new output&quot; while it has output you haven't seen. VoiceOver reads its position, such as &quot;2 of 3&quot;.</li>
+<li><strong>New session with options.</strong> Choose the host, the shell, the working folder, a name, and environment variables (one <code>NAME=value</code> per line; <code>NAME=</code> removes a variable).</li>
+<li><strong>Session actions.</strong> Rename (an empty name shows the title the program sets), Stop, Restart (same shell, folder and environment; the scrollback stays), Duplicate (same shell and folder), Move up, Move down, and Close, which asks first because it deletes the session and its scrollback. You can also drag a session up or down its host's list. The command palette lists the open session's actions too.</li>
+<li><strong>Ending a session.</strong> Type <code>exit</code>, or end its program. A session that exits cleanly (code 0) leaves the list; one that failed stays, so you can read its last output.</li>
+</ul>
+<p>Sessions keep running on the host when you quit the app or the connection drops. When the app connects again, it lists them, and opening one shows its screen as the host has it now. A host reboot ends them in this release.</p>
+<h2 id="the-terminal">The terminal</h2>
+<p>The terminal takes every key you type, including Escape, Tab and the arrow keys, and sends it to the session. The Command key belongs to the app.</p>
+<table>
+<thead><tr><th scope="col">Action</th><th scope="col">Keys or gesture</th></tr></thead>
+<tbody>
+<tr><td>Copy the selection</td><td>Command-C. Wrapped lines come out as the program printed them</td></tr>
+<tr><td>Paste</td><td>Command-V. More than one line asks first and says how many</td></tr>
+<tr><td>Copy, Paste, List Links and Look Up</td><td>Shift-F10, the Menu key, Control-click or right-click</td></tr>
+<tr><td>Select text</td><td>Drag. Drag past the top or bottom edge to scroll; farther is faster</td></tr>
+<tr><td>Scroll back and forward a page</td><td>Shift-Page Up and Shift-Page Down</td></tr>
+<tr><td>Look up the selected word</td><td>Control-Command-D, or Edit, then Look Up</td></tr>
+<tr><td>Speak the selection</td><td>Edit, then Speech, then Start Speaking</td></tr>
+</tbody>
+</table>
+<p>Programs that ask for the kitty keyboard protocol (Claude Code, Neovim, Helix and others) receive modified keys such as Shift-Return and Control-Tab as distinct keys. Others receive the classic xterm codes.</p>
+<p>The terminal sets <code>TERM=xterm-256color</code>, <code>COLORTERM=truecolor</code> and <code>TERM_PROGRAM=trc</code>, and resizes the session's PTY to fit the window.</p>
+<p>Programs can't read your clipboard, and by default they can't write it either. To let a host's programs write it (for example tmux or Neovim copying over OSC 52), set <code>&quot;allowClipboardWrites&quot;: true</code> on that host in <code>hosts.json</code> while TRC is closed; TRC then says each time a program puts text on the clipboard. The settings page will have this switch.</p>
+<p>A selection of more than 5,000 lines still copies whole; VoiceOver sees its first 5,000 lines, and TRC says so. Pasting more than one line shows the text and asks first, because the shell may run each line. Programs that ask for bracketed paste, such as bash and zsh, then wait for Return before they run anything.</p>
+<p>When you scroll back, the terminal stays where you are while output arrives, and a &quot;New output below&quot; button appears (TRC says so once). Click it, press Shift-Page Down to the end, or type to return to the bottom.</p>
+<p>The bell never flashes: the status bar shows &quot;Bell&quot; for a few seconds and TRC says it. A session in the background gets a &quot;bell&quot; badge in the session list instead, until you open it.</p>
+<h3 id="review-mode-and-find">Review mode and Find</h3>
+<p>Option-F2 opens review mode: the whole scrollback and screen as a read-only text field over the terminal, with the caret on the cursor's line. VoiceOver reads it by character, word, line and paragraph, a braille display follows the caret, and Shift with the arrow keys selects text for Command-C. Command-Up and Command-Down go to the start and the end; output that arrives meanwhile doesn't move you, TRC says &quot;New output&quot; once, and Command-Down brings it in. Option-F2 or Escape returns to the terminal; review mode never sends keys to the program.</p>
+<p>Command-F opens Find above the terminal. Type to search, from the most recent output back; Return finds the previous match and Shift-Return the next. Match case and Regular expression narrow it. TRC selects each match, says &quot;Match 3 of 17&quot;, and in review mode moves the caret to it. Escape closes Find and returns where you were.</p>
+<h3 id="links">Links</h3>
+<p>Command-click a web address in the terminal, or a link a program prints (such as <code>ls --hyperlink</code>), to open it with the app macOS assigns to it, such as your browser. Shift-Command-O lists the links on the screen, so you can open one from the keyboard.</p>
+<p>Programs decide what links say, so TRC first shows the full address and asks. When the link's text differs from its address, the dialog says so. Choose &quot;Always open links that start with https://example.com&quot; to trust that site: from then on its links open without asking. TRC keeps the trusted prefixes in <code>accept_urls.json</code> (see <a href="#files-and-folders">Files and folders</a>). Links without a site, such as <code>mailto:</code> or <code>file:</code> links, always ask. TRC never opens <code>javascript:</code> or <code>data:</code> links.</p>
+<h2 id="moving-around-and-commands">Moving around and commands</h2>
+<p>The window has three regions: the sidebar (sessions and hosts), the terminal, and the status bar at the bottom.</p>
+<table>
+<thead><tr><th scope="col">Action</th><th scope="col">Keys</th></tr></thead>
+<tbody>
+<tr><td>Next region, previous region</td><td>Command-F6, Shift-Command-F6</td></tr>
+<tr><td>Command palette</td><td>Shift-Command-P</td></tr>
+<tr><td>Show or hide the sidebar</td><td>Control-Command-S, or Enter on the sidebar's edge</td></tr>
+<tr><td>Tab moves focus out of the terminal (toggle)</td><td>Shift-Command-M</td></tr>
+<tr><td>Send the next key to the terminal</td><td>Shift-Command-K</td></tr>
+<tr><td>Mute output announcements for this session</td><td>Shift-Command-A</td></tr>
+<tr><td>Notifications</td><td>Shift-Command-N</td></tr>
+<tr><td>List the links on the screen</td><td>Shift-Command-O</td></tr>
+<tr><td>Review mode, the whole buffer as text</td><td>Option-F2</td></tr>
+<tr><td>Find in the terminal</td><td>Command-F</td></tr>
+<tr><td>Actions for the focused session or host</td><td>Shift-F10, the Menu key, Control-click or right-click</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Regions.</strong> Moving to a region puts you back where you were in it. A hidden sidebar is skipped.</li>
+<li><strong>Tab focus mode.</strong> The terminal normally sends Tab to the shell. With Tab focus mode on, Tab and Shift-Tab leave the terminal like in any other field. The status bar shows the mode, and TRC says which way Tab goes.</li>
+<li><strong>Send next key.</strong> After Shift-Command-K, the next key goes to the program even if it is an app shortcut.</li>
+<li><strong>Command palette.</strong> Type part of a name, then press Return. The palette lists every command with its shortcut, every host action (connect, disconnect, new session) and every session to open. Escape closes it.</li>
+<li><strong>Status bar.</strong> It shows the open session's host and its connection, the daemon version on that host, the Tab focus mode and mute buttons, and how many notifications are waiting.</li>
+<li><strong>Notifications.</strong> Connection failures and lost connections stay in the list until you dismiss them, including failures while connecting at launch. TRC also says when a host connects or its connection is lost.</li>
+<li><strong>Menus.</strong> View and Terminal hold the same commands, with their Command shortcuts.</li>
+</ul>
+<h2 id="appearance">Appearance</h2>
+<ul>
+<li><strong>Theme.</strong> View, then Theme: Midnight (the default, black with green, high contrast), System (follows macOS light or dark), Light, Dark, High contrast light and High contrast dark. TRC also follows the macOS Increase contrast and Reduce motion settings.</li>
+<li><strong>Terminal text size.</strong> Command-= makes the terminal text bigger, Command-- smaller and Command-0 returns it to the default, in steps of 10% from 50% to 200% (also in the Terminal menu). Every session follows, resizes to fit, and TRC says the new size and remembers it.</li>
+<li><strong>Cursor and spacing.</strong> The cursor is a block that doesn't blink. In <code>config.json</code>, <code>terminalAppearance</code> sets <code>cursorStyle</code> (<code>block</code>, <code>bar</code> or <code>underline</code>), <code>cursorWidth</code> (a bar's thickness, 1 to 6 pixels), <code>cursorBlink</code>, <code>lineHeight</code> (1 to 2) and <code>letterSpacing</code> (0 to 4 pixels); the settings page will have them too. A blinking cursor stops after 5 seconds without typing, and never blinks while macOS Reduce motion is on.</li>
+<li><strong>Window size.</strong> View, then Zoom In (Control-Command-=), Zoom Out (Control-Command--) and Actual Size (Control-Command-0) scale the whole window, sidebar included. Option-Command-= and - stay macOS Zoom's.</li>
+<li><strong>Sidebar width.</strong> Drag the sidebar's right edge, between 300 and 800 pixels. Or focus the edge with Tab and use Left and Right (10 pixels per press), Home (narrowest) and End (widest); Enter hides the sidebar and shows it again. TRC remembers the width and whether the sidebar is hidden.</li>
+</ul>
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+<li><strong>VoiceOver</strong> reads the terminal as a text field holding the screen's text, by character, word or line. The text field's cursor is the terminal's cursor, so VoiceOver and Zoom follow it as you type.</li>
+<li><strong>Selection</strong> in the terminal is real text selection, so Speak Selection, Look Up and Services work on it.</li>
+<li><strong>Keyboard.</strong> Every control works with the keyboard, with a visible focus ring, and the terminal never traps focus: Command-F6 always leaves it, and Tab focus mode lets Tab leave it too.</li>
+<li><strong>Accessibility help.</strong> Option-F1, or Help, then Accessibility Help, lists the shortcuts for where you are (the terminal, review mode or the session list), then those that work everywhere, with the shortcut each command has now. Its User guide button opens this guide.</li>
+<li><strong>User guide.</strong> Help, then Terminal Remote Control Help, opens this guide in a window of its own, as headings, lists and tables that VoiceOver reads like any web page.</li>
+<li><strong>Announcements.</strong> Status changes, such as Tab focus mode or a host connecting, are spoken without moving focus.</li>
+<li><strong>Spoken output.</strong> In screen-reader mode, TRC speaks the open session's new output as it arrives, line after line, without moving focus:
+<ul>
+<li>It doesn't repeat what you type, which VoiceOver already echoes.</li>
+<li>Sessions in the background stay silent. Shift-Command-A mutes and unmutes the open session.</li>
+<li>When more than 20 lines arrive in a second, TRC stops reading line by line and, once the output pauses, says how many lines arrived, such as &quot;312 lines of output&quot;.</li>
+<li>In full-screen programs such as vim, less and htop, it reads the line at the cursor when the cursor moves to another line or that line changes.</li>
+<li>Pressing any key drops the output still waiting to be spoken.</li>
+</ul></li>
+<li><p><strong>Screen-reader mode</strong> turns on by itself when VoiceOver or other assistive technology starts using the app, and TRC says so. To force it, choose &quot;Screen reader mode: on&quot;, &quot;Screen reader mode: off&quot; or &quot;Screen reader mode: automatic&quot; in the command palette (Shift-Command-P); TRC remembers the choice. For one launch, start the app with the flag:</p>
+<pre><code class="language-sh">open -a &quot;Terminal Remote Control&quot; --args --screen-reader-mode=on</code></pre></li>
+</ul>
+<ul>
+<li><strong>Voice Control</strong> can choose every button by its name, for example &quot;Click New session on devbox&quot;.</li>
+<li><strong>Fonts.</strong> TRC embeds Atkinson Hyperlegible Next for the interface and Intel One Mono for the terminal.</li>
+</ul>
+<h2 id="files-and-folders">Files and folders</h2>
+<p>On your Mac, TRC keeps its settings in the TRC home, <code>~/.trc</code>:</p>
+<table>
+<thead><tr><th scope="col">File</th><th scope="col">Holds</th></tr></thead>
+<tbody>
+<tr><td><code>config.json</code></td><td><code>theme</code> (<code>midnight</code>, <code>system</code>, <code>light</code>, <code>dark</code>, <code>hc-light</code> or <code>hc-dark</code>), <code>sidebarWidth</code> (300 to 800), <code>sidebarCollapsed</code> (<code>true</code> or <code>false</code>) and <code>screenReaderMode</code> (<code>auto</code>, <code>on</code> or <code>off</code>), <code>terminalZoom</code> (50 to 200) and <code>terminalAppearance</code></td></tr>
+<tr><td><code>hosts.json</code></td><td>The known hosts, and per host <code>allowClipboardWrites</code> (off unless <code>true</code>)</td></tr>
+<tr><td><code>accept_urls.json</code></td><td>The link prefixes you trust, as a JSON list such as <code>[&quot;https://github.com/myteam/&quot;]</code>. A prefix matches up to a <code>/</code>, <code>?</code> or <code>#</code>, so <code>https://github.com</code> never matches <code>https://github.com.evil.example</code></td></tr>
+</tbody>
+</table>
+<p>Both files are readable only by you. Edit <code>config.json</code> while the app is closed; a value TRC can't use falls back to its default.</p>
+<p>To use another folder, set <code>TRC_HOME</code> when you start the app. A leading <code>~</code> means your home folder, and a relative path lies under it:</p>
+<pre><code class="language-sh">TRC_HOME=~/work/trc open -n &quot;/Applications/Terminal Remote Control.app&quot;</code></pre>
+<p>Logs and Chromium's own data stay in <code>~/Library/Application Support/Terminal Remote Control</code>. Logs never hold terminal output, keystrokes, environment values or keys.</p>
+<p>On each host, the daemon lives in <code>~/.trc</code>: its binaries under <code>versions/</code>, its socket under <code>run/</code> and its logs. To remove TRC from a host, end its sessions, then delete <code>~/.trc</code> there.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead><tr><th scope="col">The dialog says</th><th scope="col">What to do</th></tr></thead>
+<tbody>
+<tr><td>No SSH agent is running, or your agent holds no keys</td><td>Start <code>ssh-agent</code> and add your key with <code>ssh-add</code>, then connect again.</td></tr>
+<tr><td>Your key needs its passphrase, or its PIN</td><td>Add the key with <code>ssh-add</code>, which asks for it, then connect again.</td></tr>
+<tr><td>The host refused every key ssh offered</td><td>Check that <code>ssh &lt;host&gt;</code> works in Terminal without a password.</td></tr>
+<tr><td>The host couldn't be found, or didn't answer</td><td>Check the name, your network or VPN, and any <code>ProxyCommand</code> or <code>ProxyJump</code> your config needs.</td></tr>
+<tr><td>The host key has changed</td><td>Ask the host's administrator. Only if the new fingerprint matches, run <code>ssh-keygen -R &lt;host&gt;</code>.</td></tr>
+<tr><td>The host runs a newer daemon than this app</td><td>Another Mac installed a newer TRC on this host. Update the app.</td></tr>
+<tr><td>The install location doesn't allow running programs</td><td>Choose another install location from the host's actions, then connect again.</td></tr>
+<tr><td>The daemon couldn't be installed</td><td>Check free space and permissions in the install location on the host.</td></tr>
+</tbody>
+</table>
+<p>If the app doesn't open after you download it, see <a href="#install">Install</a>, step 3.</p>
+<p><code>ssh -G &lt;host&gt;</code> shows the settings ssh will use for a host, and <code>ssh -v &lt;host&gt;</code> shows each connection step.</p>
+<h2 id="whats-not-there-yet">What's not there yet</h2>
+<p>Later releases of Epic 1 add:</p>
+<ul>
+<li>Changing shortcuts, and plain F6 to move between regions, in the settings page.</li>
+<li>The settings page.</li>
+</ul>
+<p>Later epics add sessions that survive a host reboot, local sessions on the Mac, macOS hosts, and the Windows and Linux apps. <a href="https://github.com/renatorroliveira/terminal-remote-control/blob/main/docs/PRD.md">The PRD</a> has the full plan.</p>
+</main>
+</body>
+</html>

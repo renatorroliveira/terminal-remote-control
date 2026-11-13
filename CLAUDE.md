@@ -17,6 +17,9 @@ tooling (`tools/*`).
 - Lint only: `pnpm lint`. Format: `pnpm format`. Types: `pnpm typecheck`.
 - UI messages: `pnpm --filter @trc/desktop i18n` after changing any
   `defineMessages`; `pnpm check` fails while they are stale.
+- User guide: `pnpm docs:guide` after changing `USER_GUIDE.md`; it renders the
+  in-app guide, `apps/desktop/resources/docs/index.html` (D-41), and
+  `pnpm check` fails while that page is stale.
 - Unit and component tests: `pnpm test`; one test:
   `pnpm exec vitest run <file> -t <name>`.
 - Rust: `cargo nextest run --workspace`; one test: `cargo nextest run <name>`.

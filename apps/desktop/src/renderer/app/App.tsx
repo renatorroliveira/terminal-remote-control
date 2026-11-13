@@ -16,6 +16,7 @@ import { BUTTON } from '../ui/buttons';
 import styles from './App.module.css';
 import { CommandPalette } from './CommandPalette';
 import { FindBar } from './FindBar';
+import { AccessibilityHelp } from './help/AccessibilityHelp';
 import { LinkDialogs } from './LinkDialogs';
 import { NotificationsDialog } from './NotificationsDialog';
 import { PasteDialog } from './PasteDialog';
@@ -61,6 +62,7 @@ export function App({ workspace, terminals, shell }: AppProps) {
                 <NotificationsDialog shell={shell} />
                 <LinkDialogs shell={shell} />
                 <PasteDialog shell={shell} />
+                <AccessibilityHelp shell={shell} />
             </div>
         </ShellContext.Provider>
     );
