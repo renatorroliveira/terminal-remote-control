@@ -16,6 +16,8 @@ use crate::socket::connect_with_retry;
 
 /// How long the bridge waits for a core it started.
 const CORE_START_TIMEOUT: Duration = Duration::from_secs(10);
+/// How long the bridge keeps passing on the core's output after its input ends, so replies already on the way arrive.
+const DRAIN_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Connects to the core, starting it when needed, and relays until either side closes.
 pub fn run(layout: &InstallLayout) -> io::Result<()> {
@@ -78,8 +80,12 @@ async fn relay(stream: UnixStream) -> io::Result<()> {
         copy(&mut from_core, &mut stdout).await?;
         stdout.flush().await
     };
+    tokio::pin!(downstream);
     tokio::select! {
-        result = upstream => result,
-        result = downstream => result,
+        result = upstream => {
+            result?;
+            tokio::time::timeout(DRAIN_TIMEOUT, &mut downstream).await.unwrap_or(Ok(()))
+        }
+        result = &mut downstream => result,
     }
 }

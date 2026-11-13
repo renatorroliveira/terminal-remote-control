@@ -26,7 +26,7 @@ strip = true
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 thiserror = "2.0.21"
-rustix = { version = "1.1.6", features = ["process", "fs", "net", "pty", "termios"] }
+rustix = { version = "1.1.6", features = ["event", "fs", "net", "pipe", "process", "pty", "termios"] }
 sha2 = "0.11.1"
 tokio = { version = "1.54.1", features = ["rt", "net", "io-util", "sync", "time", "macros", "process", "io-std"] }
 tracing = "0.1.44"

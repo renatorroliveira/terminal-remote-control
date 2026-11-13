@@ -1,15 +1,17 @@
 //! A shell in a pseudo-terminal: spawning, input, output, resizing and signals.
 //!
 //! Output is read on a dedicated thread into a small bounded channel. When the event loop stops receiving, the
-//! thread blocks, the PTY stops being read and the program blocks on its writes (D-19).
+//! thread blocks, the PTY stops being read and the program blocks on its writes (D-19). Dropping [`Pty`] closes a
+//! pipe that the reader and writer threads also wait on, so they let go of the terminal even while a descendant
+//! still holds it open, and the terminal closes as a real one does.
 //!
 //! The child is set up with raw system calls only between `fork` and `exec` (`setsid`, `TIOCSCTTY`), because the
 //! holder is multithreaded and allocating there can deadlock or crash (D-23).
 
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::{Read, Write};
-use std::os::fd::{BorrowedFd, OwnedFd};
+use std::io::{ErrorKind, Read, Write};
+use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -17,6 +19,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc as std_mpsc;
 
+use rustix::event::{PollFd, PollFlags, poll};
+use rustix::fs::{OFlags, fcntl_setfl};
+use rustix::io::{Errno, FdFlags, fcntl_setfd};
 use rustix::process::{Pid, Signal, ioctl_tiocsctty, kill_process, kill_process_group, setsid};
 use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
 use rustix::termios::{InputModes, OptionalActions, Winsize, tcgetattr, tcsetattr, tcsetwinsize};
@@ -28,6 +33,8 @@ use super::stop_plan::StopSignal;
 
 /// Bytes read from the PTY in one go.
 const READ_SIZE: usize = 32 * 1024;
+/// The most output passed on after the PTY is dropped.
+const DRAIN_LIMIT: usize = 1024 * 1024;
 
 /// What to run in the PTY.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,6 +91,8 @@ pub struct Pty {
     input: std_mpsc::Sender<Input>,
     replies: Arc<AtomicUsize>,
     pid: u32,
+    /// The write end of the stop pipe: dropped with the PTY, it tells the reader and writer threads to stop.
+    _stop: OwnedFd,
 }
 
 /// The most reply bytes that may wait for the program, such as answers to cursor-position queries, so output full
@@ -109,6 +118,11 @@ impl Pty {
         let mut child = command(spec, &slave)?.spawn()?;
         drop(slave);
         let pid = child.id();
+        fcntl_setfl(&master, OFlags::NONBLOCK)?;
+        let (stop_reader, stop) = rustix::pipe::pipe()?;
+        fcntl_setfd(&stop_reader, FdFlags::CLOEXEC)?;
+        fcntl_setfd(&stop, FdFlags::CLOEXEC)?;
+        let stop_writer = stop_reader.try_clone()?;
         let reader = File::from(master.try_clone()?);
         let writer = File::from(master.try_clone()?);
         let (chunks_tx, chunks) = mpsc::channel(2);
@@ -116,8 +130,8 @@ impl Pty {
         let (input, input_rx) = std_mpsc::channel();
         let replies = Arc::new(AtomicUsize::new(0));
         let queued = Arc::clone(&replies);
-        std::thread::spawn(move || read_output(reader, &chunks_tx));
-        std::thread::spawn(move || write_input(writer, &input_rx, &queued));
+        std::thread::spawn(move || read_output(&reader, &stop_reader, &chunks_tx));
+        std::thread::spawn(move || write_input(&writer, &stop_writer, &input_rx, &queued));
         std::thread::spawn(move || {
             let status = child.wait().map_or(
                 ExitStatus {
@@ -134,6 +148,7 @@ impl Pty {
                 input,
                 replies,
                 pid,
+                _stop: stop,
             },
             PtyOutput { chunks, exit },
         ))
@@ -293,27 +308,95 @@ pub fn signal_name(signal: i32) -> String {
     name.to_owned()
 }
 
-fn read_output(mut reader: File, chunks: &mpsc::Sender<Vec<u8>>) {
+fn read_output(mut reader: &File, stop: &OwnedFd, chunks: &mpsc::Sender<Vec<u8>>) {
     let mut buffer = vec![0; READ_SIZE];
-    while let Ok(read) = reader.read(&mut buffer) {
-        if read == 0 || chunks.blocking_send(buffer[..read].to_vec()).is_err() {
+    loop {
+        match wait(reader, PollFlags::IN, stop) {
+            Wait::Ready => {}
+            Wait::Stopped => return drain(reader, &mut buffer, chunks),
+            Wait::Failed => return,
+        }
+        match reader.read(&mut buffer) {
+            Ok(0) => return,
+            Ok(read) => {
+                if chunks.blocking_send(buffer[..read].to_vec()).is_err() {
+                    return;
+                }
+            }
+            Err(error) if retryable(&error) => {}
+            Err(_) => return,
+        }
+    }
+}
+
+/// Passes on the output already waiting in the PTY when it is dropped, such as a short program's last line, up to
+/// [`DRAIN_LIMIT`] bytes, so a program that keeps writing cannot hold the terminal open.
+fn drain(mut reader: &File, buffer: &mut [u8], chunks: &mpsc::Sender<Vec<u8>>) {
+    let mut drained = 0;
+    while drained < DRAIN_LIMIT {
+        match reader.read(buffer) {
+            Ok(read) if read > 0 && chunks.blocking_send(buffer[..read].to_vec()).is_ok() => drained += read,
+            Err(error) if error.kind() == ErrorKind::Interrupted => {}
+            _ => return,
+        }
+    }
+}
+
+fn write_input(writer: &File, stop: &OwnedFd, input: &std_mpsc::Receiver<Input>, replies: &AtomicUsize) {
+    while let Ok(next) = input.recv() {
+        let (Input::Typed(bytes) | Input::Reply(bytes)) = &next;
+        let written = write_all(writer, bytes, stop);
+        if let Input::Reply(bytes) = &next {
+            replies.fetch_sub(bytes.len(), Ordering::AcqRel);
+        }
+        if !written {
             break;
         }
     }
 }
 
-fn write_input(mut writer: File, input: &std_mpsc::Receiver<Input>, replies: &AtomicUsize) {
-    while let Ok(next) = input.recv() {
-        let written = match &next {
-            Input::Typed(bytes) | Input::Reply(bytes) => writer.write_all(bytes).and_then(|()| writer.flush()),
-        };
-        if let Input::Reply(bytes) = &next {
-            replies.fetch_sub(bytes.len(), Ordering::AcqRel);
+/// Writes all of `bytes` to the non-blocking PTY as it takes them; false when it fails or the PTY is dropped first.
+fn write_all(mut writer: &File, mut bytes: &[u8], stop: &OwnedFd) -> bool {
+    while !bytes.is_empty() {
+        if wait(writer, PollFlags::OUT, stop) != Wait::Ready {
+            return false;
         }
-        if written.is_err() {
-            break;
+        match writer.write(bytes) {
+            Ok(0) => return false,
+            Ok(written) => bytes = &bytes[written..],
+            Err(error) if retryable(&error) => {}
+            Err(_) => return false,
         }
     }
+    true
+}
+
+/// What a wait on the PTY ended with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Wait {
+    /// The PTY is ready for the events asked, or hung up.
+    Ready,
+    /// The [`Pty`] was dropped: its stop pipe closed.
+    Stopped,
+    /// Polling failed.
+    Failed,
+}
+
+/// Waits until `fd` is ready for `events` or the stop pipe closes, whichever comes first.
+fn wait(fd: &impl AsFd, events: PollFlags, stop: &OwnedFd) -> Wait {
+    loop {
+        let mut fds = [PollFd::new(fd, events), PollFd::new(stop, PollFlags::IN)];
+        match poll(&mut fds, None) {
+            Ok(_) if !fds[1].revents().is_empty() => return Wait::Stopped,
+            Ok(_) if !fds[0].revents().is_empty() => return Wait::Ready,
+            Ok(_) | Err(Errno::INTR) => {}
+            Err(_) => return Wait::Failed,
+        }
+    }
+}
+
+fn retryable(error: &std::io::Error) -> bool {
+    matches!(error.kind(), ErrorKind::WouldBlock | ErrorKind::Interrupted)
 }
 
 #[cfg(target_os = "linux")]
@@ -352,6 +435,18 @@ mod tests {
         }
         let status = (&mut pty_output.exit).await.unwrap();
         (String::from_utf8_lossy(&text).into_owned(), status)
+    }
+
+    #[tokio::test]
+    async fn closes_the_pty_when_dropped_even_while_a_descendant_holds_the_terminal() {
+        let (pty, mut output) = Pty::spawn(&spec("trap '' HUP; sleep 30 & echo started; exit 0")).unwrap();
+        (&mut output.exit).await.unwrap();
+        drop(pty);
+        let drained = tokio::time::timeout(Duration::from_secs(5), async {
+            while output.chunks.recv().await.is_some() {}
+        })
+        .await;
+        assert!(drained.is_ok(), "the PTY reader still holds the terminal open");
     }
 
     #[tokio::test]

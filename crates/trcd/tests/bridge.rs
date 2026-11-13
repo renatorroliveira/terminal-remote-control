@@ -180,6 +180,27 @@ fn two_bridges_starting_at_once_share_one_core() {
 }
 
 #[test]
+fn delivers_the_reply_to_a_request_sent_just_before_its_input_closes() {
+    let installed = Installed::new();
+    let mut warm = Bridge::start(&installed);
+    warm.hello();
+    assert!(warm.finish().success());
+    for _ in 0..20 {
+        let mut bridge = Bridge::start(&installed);
+        bridge.send(&ClientMessage::Hello {
+            min_proto: 1,
+            max_proto: 1,
+            app_version: "test".into(),
+            caps: vec![],
+        });
+        drop(bridge.stdin.take());
+        bridge.receive(|m| matches!(m, ServerMessage::Welcome { .. }));
+        assert!(bridge.finish().success());
+    }
+    kill(core_pid(&installed));
+}
+
+#[test]
 fn prints_the_version_and_the_binary_checksum() {
     let installed = Installed::new();
     let output = installed

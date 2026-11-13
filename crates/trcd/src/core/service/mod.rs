@@ -5,6 +5,7 @@
 
 mod holder_events;
 mod requests;
+mod size;
 
 use std::collections::BTreeMap;
 use std::io;
@@ -20,6 +21,7 @@ use trc_protocol::{ServerMessage, SessionId};
 use super::adopt::adopt_holders;
 use super::launch::launch_holder;
 use super::registry::Registry;
+use crate::accept_backoff::AcceptBackoff;
 use crate::frame_io::{FrameReader, FrameSender};
 use crate::holder::environment::Account;
 use crate::holder::protocol::{HolderCommand, HolderSpec};
@@ -53,6 +55,7 @@ pub struct Core {
     events_tx: mpsc::Sender<CoreEvent>,
     events: mpsc::Receiver<CoreEvent>,
     next_client: ClientId,
+    accepting: AcceptBackoff,
 }
 
 type ClientId = u64;
@@ -98,6 +101,7 @@ impl Core {
             events_tx,
             events,
             next_client: 1,
+            accepting: AcceptBackoff::default(),
         }
     }
 
@@ -123,7 +127,10 @@ impl Core {
     pub async fn serve(mut self, listener: UnixListener) {
         loop {
             tokio::select! {
-                accepted = listener.accept() => self.on_accept(accepted.map(|(stream, _)| stream)),
+                accepted = listener.accept(), if self.accepting.ready() => {
+                    self.on_accept(accepted.map(|(stream, _)| stream));
+                }
+                () = self.accepting.rested() => self.accepting.resume(),
                 Some(event) = self.events.recv() => self.on_event(event),
             }
         }
@@ -131,6 +138,7 @@ impl Core {
 
     fn on_accept(&mut self, accepted: io::Result<UnixStream>) {
         let Ok(stream) = accepted else {
+            self.accepting.failed();
             return;
         };
         if !is_same_user(&stream) {

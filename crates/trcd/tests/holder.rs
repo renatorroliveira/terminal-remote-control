@@ -336,3 +336,24 @@ async fn coalesces_title_changes_instead_of_sending_a_status_for_each() {
     let sent = client.statuses.len() - before;
     assert!(sent <= 10, "{sent} statuses for 2000 title changes");
 }
+
+#[tokio::test]
+async fn sends_a_title_change_within_the_status_tick_while_output_floods() {
+    let mut client = started("/bin/sh").await;
+    client.input("printf '\\033]0;flooding\\007'; yes trc-flood | head -c 150000000; echo flood-$((1+1))\r");
+    let granted = std::cell::Cell::new(0_usize);
+    client
+        .until(|c| {
+            let seen = c.output.len();
+            if seen > granted.get() {
+                c.credit(u32::try_from(seen - granted.get()).unwrap_or(u32::MAX));
+                granted.set(seen);
+            }
+            c.statuses.last().and_then(|s| s.title.as_deref()) == Some("flooding") || c.output.ends_with(b"flood-2\r\n")
+        })
+        .await;
+    assert!(
+        !client.output.ends_with(b"flood-2\r\n"),
+        "the title reached the client only after the flood"
+    );
+}
