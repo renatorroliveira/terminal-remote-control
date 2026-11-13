@@ -1,20 +1,22 @@
-import type { SessionInfo } from '@trc/protocol';
+import type { CreateSessionSpec, SessionInfo, ShellProfile } from '@trc/protocol';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ConnectionState } from '../../shared/connection';
 import type { TrcBridge } from '../../shared/contract';
 import type { KnownHost } from '../../shared/hosts';
-import type { HostClient } from '../connection/host-client';
+import type { ClientRequest, HostClient } from '../connection/host-client';
 import {
     EMPTY_WORKSPACE,
     failureAcknowledged,
     type HostEntry,
     hostAdded,
+    hostGroups,
     hostMoved,
     hostRemoved,
     hostStateChanged,
     hostToggled,
     isConnected,
     type SessionKey,
+    sessionActivity,
     sessionChanged,
     sessionKey,
     sessionOpened,
@@ -37,13 +39,16 @@ export type KnownHostStore = TrcBridge['hosts'];
 export interface TerminalHost {
     /** Shows a session's terminal and focuses it, attaching it the first time. */
     show(key: SessionKey, hostId: string, session: SessionInfo): void;
-    /** Creates a session on a host at the terminal area's size. */
-    create(hostId: string): Promise<SessionInfo>;
+    /** Creates a session on a host at the terminal area's size, with the options given. */
+    create(hostId: string, options?: SessionOptions): Promise<SessionInfo>;
     /** Removes the terminals of a host whose connection closed. */
     closeHost(hostId: string): void;
     /** Removes the terminal of a session the daemon closed. */
     closeSession(key: SessionKey): void;
 }
+
+/** What a new session may set beyond its size (US-1.7.2). */
+export type SessionOptions = Partial<Pick<CreateSessionSpec, 'profileId' | 'cwd' | 'name' | 'env'>>;
 
 /** What pressing a host's connection button does now. */
 export type ConnectionAction = 'connect' | 'disconnect' | 'cancel' | 'review-key';
@@ -65,6 +70,8 @@ export class WorkspaceController {
     readonly #tests = new Map<string, (passed: boolean) => void>();
     /** Hosts the user forgot, whose late state changes are ignored. */
     readonly #forgotten = new Set<string>();
+    /** The host a session was last opened or created on (US-1.7.1). */
+    #lastHost: string | undefined;
 
     /** Creates an empty workspace. */
     constructor(client: WorkspaceClient, terminals: TerminalHost, hosts: KnownHostStore) {
@@ -189,8 +196,32 @@ export class WorkspaceController {
         if (found === undefined) {
             return;
         }
+        this.#lastHost = found.hostId;
         this.#update((workspace) => sessionOpened(workspace, key));
         this.#terminals.show(key, found.hostId, found.session);
+    }
+
+    /** Notes output in a session, which has unread output unless it is open (US-1.8.3). */
+    recordActivity(key: SessionKey): void {
+        const before = this.store.getState();
+        const after = sessionActivity(before, key);
+        if (after !== before) {
+            this.store.setState(after, true);
+        }
+    }
+
+    /** Opens the session `step` places after the open one in list order, wrapping around (US-1.8.2). */
+    openNext(step: 1 | -1): void {
+        const keys = hostGroups(this.store.getState()).flatMap((group) => group.sessions.map((item) => item.key));
+        if (keys.length === 0) {
+            return;
+        }
+        const current = keys.indexOf(this.store.getState().open ?? '');
+        const next = current === -1 ? (step === 1 ? 0 : keys.length - 1) : (current + step + keys.length) % keys.length;
+        const key = keys[next];
+        if (key !== undefined) {
+            this.open(key);
+        }
     }
 
     /** Collapses or expands a host group. */
@@ -199,14 +230,86 @@ export class WorkspaceController {
     }
 
     /** Creates a session on a connected host and opens it (US-1.7.1). */
-    async newSession(hostId: string): Promise<void> {
+    async newSession(hostId: string, options?: SessionOptions): Promise<void> {
         const host = this.#host(hostId);
         if (host === undefined || !isConnected(host)) {
             return;
         }
-        const session = await this.#terminals.create(host.id);
+        const session = await this.#terminals.create(host.id, options);
         this.#update((workspace) => sessionChanged(workspace, host.id, { kind: 'created', session }));
         this.open(sessionKey(host.id, session.id));
+    }
+
+    /** Creates a session with the options the New session dialog chose (US-1.7.2). */
+    newSessionWith(hostId: string, options: SessionOptions): Promise<void> {
+        return this.newSession(hostId, options);
+    }
+
+    /** Creates a session on the open session's host, else the last-used host, else the first connected one (US-1.7.1). */
+    newSessionHere(): Promise<void> {
+        const host = this.defaultHost();
+        return host === undefined ? Promise.resolve() : this.newSession(host);
+    }
+
+    /** The host a new session goes to: the open session's, else the last-used, else the first connected one. */
+    defaultHost(): string | undefined {
+        const { open, hosts } = this.store.getState();
+        const connected = (id: string | undefined): boolean =>
+            hosts.some((host) => host.id === id && isConnected(host));
+        const candidates = [open?.split('/')[0], this.#lastHost, hosts.find(isConnected)?.id];
+        return candidates.find(connected);
+    }
+
+    /** The shell profiles a connected host offers (US-1.7.2). */
+    async profiles(hostId: string): Promise<readonly ShellProfile[]> {
+        const reply = await this.#client.request(hostId, { type: 'listProfiles' });
+        return reply.type === 'profiles' ? reply.profiles : [];
+    }
+
+    /** Renames a session; an empty name gives the program's title back (US-1.10.1). */
+    async renameSession(key: SessionKey, name: string): Promise<void> {
+        const trimmed = name.trim();
+        await this.#sessionRequest(key, (session) => ({
+            type: 'rename',
+            session,
+            ...(trimmed === '' ? {} : { name: trimmed }),
+        }));
+    }
+
+    /** Stops a session: SIGHUP, then SIGTERM, then SIGKILL after the daemon's grace period (US-1.10.2). */
+    stopSession(key: SessionKey): Promise<void> {
+        return this.#sessionRequest(key, (session) => ({ type: 'stop', session }));
+    }
+
+    /** Restarts a session with its shell, directory and environment, keeping its scrollback (US-1.10.3). */
+    restartSession(key: SessionKey): Promise<void> {
+        return this.#sessionRequest(key, (session) => ({ type: 'restart', session }));
+    }
+
+    /** Stops a session if it runs, then removes it and its scrollback (US-1.10.4). */
+    closeSession(key: SessionKey): Promise<void> {
+        return this.#sessionRequest(key, (session) => ({ type: 'close', session }));
+    }
+
+    /** Moves a session to `index` among its host's sessions (US-1.10.6). */
+    moveSession(key: SessionKey, index: number): Promise<void> {
+        return this.#sessionRequest(key, (session) => ({ type: 'reorder', session, index }));
+    }
+
+    /** Opens a new session on the same host with the same shell and working directory (US-1.10.5). */
+    async duplicateSession(key: SessionKey): Promise<void> {
+        const found = this.#find(key);
+        if (found !== undefined) {
+            const { profile, cwd } = found.session;
+            await this.newSession(found.hostId, { profileId: profile.id, ...(cwd === undefined ? {} : { cwd }) });
+        }
+    }
+
+    async #sessionRequest(key: SessionKey, request: (session: string) => ClientRequest): Promise<void> {
+        const found = this.#find(key);
+        if (found !== undefined) {
+            await this.#client.request(found.hostId, request(found.session.id));
+        }
     }
 
     #add(host: KnownHost): void {

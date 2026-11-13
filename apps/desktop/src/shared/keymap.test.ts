@@ -109,7 +109,7 @@ describe('resolveKeymap: defaults plus the user’s bindings', () => {
         for (const binding of Object.values(DEFAULT_KEYMAP)) {
             const words = formatChord(chord(binding)).replace('Ctrl', 'Control').replace('Cmd', 'Command').split('+');
             const documented = [words.slice(0, -1).sort(), words.at(-1)];
-            const rows = [...design.matchAll(/\| ([A-Za-z+0-9]+) +\|/g)].map((match) => {
+            const rows = [...design.matchAll(/\| ([A-Za-z+0-9[\]]+) +\|/g)].map((match) => {
                 const parts = (match[1] ?? '').split('+');
                 return [parts.slice(0, -1).sort(), parts.at(-1)];
             });

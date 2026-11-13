@@ -102,25 +102,25 @@ describe('App (US-1.6.1)', () => {
         await screen.getByRole('button', { name: 'Connect devbox-1' }).click();
         expect(client.calls).toEqual(['connect host-0 devbox-1']);
         client.push('host-0', CONNECTED);
-        const host = screen.getByRole('button', { name: 'devbox-1 Connected' });
+        const host = screen.getByRole('treeitem', { name: 'devbox-1, Connected' });
         await expect.element(host).toHaveAttribute('aria-expanded', 'true');
-        await screen.getByRole('option', { name: 'bash, Running' }).click();
+        await screen.getByRole('treeitem', { name: 'bash, Running' }).click();
         expect(terminals.shown).toEqual(['host-0/a']);
         await screen.getByRole('button', { name: 'New session on devbox-1' }).click();
         await expect.poll(() => terminals.shown).toEqual(['host-0/a', 'host-0/b']);
         await host.click();
         await expect.element(host).toHaveAttribute('aria-expanded', 'false');
-        await expect.element(screen.getByRole('listbox', { name: 'Sessions on devbox-1' })).not.toBeInTheDocument();
+        await expect.element(screen.getByRole('treeitem', { name: 'bash, Running' })).not.toBeInTheDocument();
     });
 
-    it('moves focus to a New session button when the focused session closes, so focus is never lost (A11Y-05)', async () => {
+    it('moves focus to the session tree when the focused session closes, so focus is never lost (A11Y-05)', async () => {
         await page.viewport(1400, 800);
         const { client, rendered } = renderApp();
         const screen = await rendered;
         await connectedHost(screen, client);
-        await screen.getByRole('option', { name: 'bash, Running' }).click();
+        await screen.getByRole('treeitem', { name: 'bash, Running' }).click();
         client.message('host-0', { type: 'sessionEvent', change: { kind: 'closed', sessionId: 'a' } });
-        await expect.element(screen.getByRole('button', { name: 'New session on devbox-1' })).toHaveFocus();
+        await expect.element(screen.getByRole('treeitem', { name: 'devbox-1, Connected' })).toHaveFocus();
     });
 });
 
@@ -261,7 +261,7 @@ describe('App: buttons (A11Y-07.1)', () => {
         ]);
         client.push('host-0', CONNECTED);
         await expect.element(screen.getByRole('button', { name: 'Disconnect devbox-1' })).toBeVisible();
-        for (const name of ['Add host', 'Disconnect devbox-1', 'New session on devbox-1', 'devbox-1 Connected']) {
+        for (const name of ['Add host', 'Disconnect devbox-1', 'New session on devbox-1']) {
             expect(getComputedStyle(screen.getByRole('button', { name }).element()).cursor).toBe('pointer');
         }
     });
@@ -293,7 +293,7 @@ describe('App: status bar (US-1.6.1)', () => {
         await expect.poll(() => bar.element().textContent).toContain('Daemon not reached');
         await connectedHost(screen, client);
         await expect.poll(() => bar.element().textContent).toContain('1 of 1 hosts connected');
-        await screen.getByRole('option', { name: 'bash, Running' }).click();
+        await screen.getByRole('treeitem', { name: 'bash, Running' }).click();
         await expect.poll(() => bar.element().textContent).toContain('devbox-1: Connected');
         await expect.poll(() => bar.element().textContent).toContain('Daemon 0.1.0');
         const tab = bar.getByRole('button', { name: 'Tab moves focus' });
@@ -395,14 +395,14 @@ describe('App: notifications and context menus (A11Y-11.11, A11Y-12)', () => {
         const { client, rendered } = renderApp();
         const screen = await rendered;
         await connectedHost(screen, client);
-        const option = screen.getByRole('option', { name: 'bash, Running' });
+        const option = screen.getByRole('treeitem', { name: 'bash, Running' });
         (option.element() as HTMLElement).focus();
         await userEvent.keyboard('{Shift>}{F10}{/Shift}');
         const menu = screen.getByRole('menu', { name: 'Actions for bash' });
         await expect.element(menu.getByRole('menuitem', { name: 'Open' })).toHaveFocus();
         await userEvent.keyboard('{Escape}');
         await expect.element(option).toHaveFocus();
-        (screen.getByRole('button', { name: 'devbox-1 Connected' }).element() as HTMLElement).focus();
+        (screen.getByRole('treeitem', { name: 'devbox-1, Connected' }).element() as HTMLElement).focus();
         await userEvent.keyboard('{Shift>}{F10}{/Shift}');
         const hostMenu = screen.getByRole('menu', { name: 'Actions for devbox-1' });
         await expect.element(hostMenu.getByRole('menuitem', { name: 'New session on devbox-1' })).toHaveFocus();
@@ -496,5 +496,97 @@ describe('App: forgetting and moving hosts (A11Y-11.9, US-1.4.3, US-1.1.5)', () 
         client.push('host-0', CONNECTED);
         await expect.poll(() => spoken).toContain('The connection to devbox-1 works.');
         expect(client.calls).toContain('disconnect host-0');
+    });
+});
+
+describe('App: managing sessions (US-1.10)', () => {
+    async function sessionMenu(screen: Awaited<ReturnType<typeof renderApp>['rendered']>, item: string) {
+        (screen.getByRole('treeitem', { name: 'bash, Running' }).element() as HTMLElement).focus();
+        await userEvent.keyboard('{Shift>}{F10}{/Shift}');
+        await screen.getByRole('menuitem', { name: item }).click();
+    }
+
+    it('renames a session, and an empty name gives the program’s title back (US-1.10.1)', async () => {
+        await page.viewport(1400, 800);
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        await sessionMenu(screen, 'Rename…');
+        const field = screen.getByRole('dialog', { name: 'Rename bash' }).getByRole('textbox', { name: 'Name' });
+        await expect.element(field).toHaveFocus();
+        await field.fill('logs');
+        await userEvent.keyboard('{Enter}');
+        await expect.poll(() => client.requests).toContainEqual({ type: 'rename', session: 'a', name: 'logs' });
+    });
+
+    it('closes a session only after a confirmation that names what it deletes (US-1.10.4)', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        await sessionMenu(screen, 'Close…');
+        const confirm = screen.getByRole('alertdialog', { name: 'Close bash?' });
+        await expect.poll(() => confirm.element().textContent).toContain('deletes the session and its scrollback');
+        await expect.element(confirm.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+        await noViolations();
+        await confirm.getByRole('button', { name: 'Close session' }).click();
+        await expect.poll(() => client.requests).toContainEqual({ type: 'close', session: 'a' });
+    });
+
+    it('stops, restarts and duplicates a session from its menu (US-1.10.2, US-1.10.3, US-1.10.5)', async () => {
+        await page.viewport(1400, 800);
+        const { client, terminals, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        await sessionMenu(screen, 'Stop');
+        await sessionMenu(screen, 'Restart');
+        await sessionMenu(screen, 'Duplicate');
+        await expect
+            .poll(() => client.requests)
+            .toEqual([
+                { type: 'stop', session: 'a' },
+                { type: 'restart', session: 'a' },
+            ]);
+        await expect.poll(() => terminals.options.at(-1)).toEqual({ profileId: 'login' });
+    });
+});
+
+describe('App: creating and switching sessions (US-1.7, US-1.8.2)', () => {
+    it('creates a session with Command+T and moves between sessions with Shift+Command+] and [', async () => {
+        await page.viewport(1400, 800);
+        const { client, terminals, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        await screen.getByRole('combobox', { name: 'New host' }).click();
+        await userEvent.keyboard('{Meta>}t{/Meta}');
+        await expect.poll(() => terminals.shown).toEqual(['host-0/b']);
+        await userEvent.keyboard('{Shift>}{Meta>}]{/Meta}{/Shift}');
+        await userEvent.keyboard('{Shift>}{Meta>}[[{/Meta}{/Shift}');
+        expect(terminals.shown).toEqual(['host-0/b', 'host-0/a', 'host-0/b']);
+    });
+
+    it('creates a session with a chosen shell, folder, name and environment (US-1.7.2)', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const { client, terminals, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        await screen.getByRole('combobox', { name: 'New host' }).click();
+        await userEvent.keyboard('{Shift>}{Meta>}t{/Meta}{/Shift}');
+        const dialog = screen.getByRole('dialog', { name: 'New session' });
+        await dialog.getByRole('button', { name: /Shell/ }).click();
+        await screen.getByRole('option', { name: 'zsh' }).click();
+        await dialog.getByRole('textbox', { name: 'Working folder (optional)' }).fill('/srv/app');
+        await dialog.getByRole('textbox', { name: 'Name (optional)' }).fill('deploy');
+        await dialog.getByRole('textbox', { name: 'Environment (optional)' }).fill('not a variable');
+        await dialog.getByRole('button', { name: 'Create' }).click();
+        await expect.element(dialog.getByText(/Write each line as NAME=value/)).toBeVisible();
+        await noViolations();
+        await dialog.getByRole('textbox', { name: 'Environment (optional)' }).fill('EDITOR=vim\nOLD=');
+        await dialog.getByRole('button', { name: 'Create' }).click();
+        await expect
+            .poll(() => terminals.options.at(-1))
+            .toEqual({ profileId: 'zsh', cwd: '/srv/app', name: 'deploy', env: { EDITOR: 'vim', OLD: null } });
     });
 });

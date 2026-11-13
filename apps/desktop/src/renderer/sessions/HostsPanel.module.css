@@ -80,10 +80,6 @@
         gap: 0.5rem;
     }
 
-    .entry .input {
-        flex: 1;
-    }
-
     .input {
         min-height: 28px;
         min-width: 0;
@@ -93,6 +89,10 @@
         background: var(--trc-color-background);
         color: var(--trc-color-text);
         font: inherit;
+    }
+
+    .entry .input {
+        flex: 1;
     }
 
     .popover {

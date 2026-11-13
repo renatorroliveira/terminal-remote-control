@@ -1,5 +1,5 @@
 import type { SessionInfo } from '@trc/protocol';
-import type { SessionKey, TerminalHost } from '../sessions/workspace-controller';
+import type { SessionKey, SessionOptions, TerminalHost } from '../sessions/workspace-controller';
 import type { TerminalPalette } from '../ui/themes';
 import { SessionLink, type SessionTransport } from './session-link';
 import styles from './terminal-registry.module.css';
@@ -18,6 +18,8 @@ export interface TerminalRegistryOptions {
     readonly assistiveTechnology: () => boolean;
     readonly palette: TerminalPalette;
     readonly labelFor: (hostId: string, session: SessionInfo) => TerminalLabel;
+    /** Output arrived for a session, open or not (US-1.8.3). */
+    readonly onActivity?: (key: SessionKey) => void;
 }
 
 interface Entry {
@@ -96,11 +98,11 @@ export class TerminalRegistry implements TerminalHost {
         return this.#openEntry()?.view.passingNextKey ?? false;
     }
 
-    /** Creates a session on `hostId` at the terminal area's size, in a frame of its own. */
-    async create(hostId: string): Promise<SessionInfo> {
+    /** Creates a session on `hostId` at the terminal area's size, with the options given, in a frame of its own. */
+    async create(hostId: string, options: SessionOptions = {}): Promise<SessionInfo> {
         const entry = this.#newEntry(hostId);
         await entry.view.ready;
-        const session = await entry.link.create({ env: {} }).catch((error: unknown) => {
+        const session = await entry.link.create({ ...options, env: options.env ?? {} }).catch((error: unknown) => {
             this.#dispose(entry);
             throw error;
         });
@@ -145,6 +147,15 @@ export class TerminalRegistry implements TerminalHost {
         this.#entries.clear();
     }
 
+    #activity(link: SessionLink): void {
+        for (const [key, entry] of this.#entries) {
+            if (entry.link === link) {
+                this.#options.onActivity?.(key);
+                return;
+            }
+        }
+    }
+
     #openEntry(): Entry | undefined {
         return this.#open === undefined ? undefined : this.#entries.get(this.#open);
     }
@@ -161,7 +172,10 @@ export class TerminalRegistry implements TerminalHost {
         frame.className = styles['frame'] ?? '';
         this.#area?.append(frame);
         let view: TerminalView | undefined;
-        const link = new SessionLink(this.#options.transport, hostId, (data) => void view?.write(data));
+        const link = new SessionLink(this.#options.transport, hostId, (data) => {
+            void view?.write(data);
+            this.#activity(link);
+        });
         view = new TerminalView({
             palette: this.#palette,
             isMac: this.#options.isMac,

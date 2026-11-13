@@ -108,17 +108,31 @@ Choose OK to close it.
 
 ## Sessions
 
-Each connected host has its own section in the Sessions list.
+The Sessions list is a tree: each connected host, then its sessions. It is one stop for Tab.
 
-- **New session.** Choose the + button to the right of a host's name, labeled "New session on <host>". The
-  session starts your login shell in your home folder and opens at once.
-- **Collapse and expand.** Choose a host's name to hide or show its sessions.
-- **Open a session.** Click it, or move to it with the arrow keys and press Return or Space. Moving through the
-  list doesn't switch sessions. Home and End jump to the first and last session, and typing letters jumps to the
-  next name that starts with them.
-- **States.** Each session shows Starting, Running, Exited or Stopped. A session whose program failed shows its
-  exit code or signal and stays in the list, so you can read its last output.
-- **Ending a session.** Type `exit`, or end its program. A session that exits cleanly (code 0) leaves the list.
+| Action                                   | Keys or gesture                                           |
+| ---------------------------------------- | --------------------------------------------------------- |
+| Move through hosts and sessions          | Up and Down Arrow, Home, End, or type the start of a name |
+| Expand or collapse a host                | Right or Left Arrow, Return, or click its name            |
+| Go from a session to its host            | Left Arrow                                                |
+| Open a session                           | Return, Space or click                                    |
+| New session on this or the last host     | Command-T, or the + to the right of a host's name         |
+| New session with a shell, folder or name | Shift-Command-T                                           |
+| Next and previous session                | Shift-Command-] and Shift-Command-[                       |
+| A session's or host's actions            | Shift-F10, the Menu key, Control-click or right-click     |
+
+- **Opening.** Moving through the list doesn't switch sessions. Opening one moves focus to its terminal, and TRC
+  says its name, host and state, and whether it has output you haven't seen.
+- **States.** Each session shows Starting, Running, Exited (with the exit code or signal), Stopped or Failed to
+  start, and "new output" while it has output you haven't seen. VoiceOver reads its position, such as "2 of 3".
+- **New session with options.** Choose the host, the shell, the working folder, a name, and environment variables
+  (one `NAME=value` per line; `NAME=` removes a variable).
+- **Session actions.** Rename (an empty name shows the title the program sets), Stop, Restart (same shell, folder
+  and environment; the scrollback stays), Duplicate (same shell and folder), Move up, Move down, and Close, which
+  asks first because it deletes the session and its scrollback. You can also drag a session up or down its
+  host's list. The command palette lists the open session's actions too.
+- **Ending a session.** Type `exit`, or end its program. A session that exits cleanly (code 0) leaves the list;
+  one that failed stays, so you can read its last output.
 
 Sessions keep running on the host when you quit the app or the connection drops. When the app connects again, it
 lists them, and opening one shows its screen as the host has it now. A host reboot ends them in this release.
@@ -240,8 +254,6 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 
 Later releases of Epic 1 add:
 
-- Renaming, stopping, restarting, reordering and closing sessions from the app, and a dialog to pick the shell,
-  folder and environment of a new session.
 - Changing shortcuts, and plain F6 to move between regions, in the settings page.
 - Spoken announcements of new output (the mute button is ready for them), a review mode to read the scrollback,
   and Find.

@@ -10,12 +10,19 @@ import {
     hostActionMessages,
     touchMessage,
 } from '../sessions/host-messages';
+import { sessionStateText } from '../sessions/session-state-text';
 import type { WorkspaceController } from '../sessions/workspace-controller';
-import { type HostEntry, type SessionKey, sessionName } from '../sessions/workspace-model';
+import { type HostEntry, hostGroups, type SessionKey, sessionName, type Workspace } from '../sessions/workspace-model';
 import type { Announcer } from './announcer';
 import type { NotificationCenter } from './notifications';
 import { RegionCycler } from './regions';
-import { commandMessages, hostAnnouncements, muteAnnouncements, shellAnnouncements } from './shell-messages';
+import {
+    commandMessages,
+    hostAnnouncements,
+    muteAnnouncements,
+    openAnnouncements,
+    shellAnnouncements,
+} from './shell-messages';
 
 /** What the shell's commands ask of the terminals. */
 export interface TerminalControls {
@@ -47,7 +54,14 @@ export interface ShellState {
     readonly panelOpen: boolean;
     /** The host dialog open now: forgetting a host, or moving its install location. */
     readonly hostDialog: HostDialog | undefined;
+    /** The session dialog open now: renaming or closing a session, or a new session with options. */
+    readonly sessionDialog: SessionDialog | undefined;
 }
+
+/** A dialog about a session, or the New session dialog. */
+export type SessionDialog =
+    | { readonly kind: 'rename' | 'close'; readonly key: SessionKey }
+    | { readonly kind: 'new'; readonly hostId: string | undefined };
 
 /** A dialog about one host. */
 export interface HostDialog {
@@ -77,6 +91,7 @@ const INITIAL_STATE: ShellState = {
     sidebarCollapsed: false,
     panelOpen: false,
     hostDialog: undefined,
+    sessionDialog: undefined,
 };
 
 /**
@@ -174,6 +189,11 @@ export class Shell {
         this.state.setState({ hostDialog });
     }
 
+    /** Opens a session dialog, or closes it. */
+    setSessionDialog(sessionDialog: SessionDialog | undefined): void {
+        this.state.setState({ sessionDialog });
+    }
+
     /** Tests a host's connection and announces when it works; a failure shows the failure dialog (US-1.1.5). */
     async testConnection(hostId: string): Promise<void> {
         const host = this.#options.workspace.store.getState().hosts.find((entry) => entry.id === hostId);
@@ -238,10 +258,23 @@ export class Shell {
             'terminal.toggleTabFocus': () => this.toggleTabFocus(),
             'terminal.sendNextKey': () => this.#sendNextKey(),
             'announcements.toggleMute': () => this.toggleMute(),
+            'session.new': () => this.#newSession(),
+            'session.newWithOptions': () =>
+                this.setSessionDialog({ kind: 'new', hostId: this.#options.workspace.defaultHost() }),
+            'session.next': () => this.#options.workspace.openNext(1),
+            'session.previous': () => this.#options.workspace.openNext(-1),
         };
         for (const [id, run] of Object.entries(actions) as [CommandId, () => void][]) {
             this.commands.register({ id, label: this.#options.intl.formatMessage(commandMessages[id]), run });
         }
+    }
+
+    #newSession(): void {
+        if (this.#options.workspace.defaultHost() === undefined) {
+            this.#announce(shellAnnouncements.noHost);
+            return;
+        }
+        void this.#options.workspace.newSessionHere();
     }
 
     #sendNextKey(): void {
@@ -260,7 +293,14 @@ export class Shell {
     #watchHosts(): () => void {
         const store = this.#options.workspace.store;
         let previous = store.getState().hosts;
-        return store.subscribe((state) => {
+        let before = store.getState();
+        const stopOpen = store.subscribe((state) => {
+            if (state.open !== undefined && state.open !== before.open) {
+                this.#announceOpen(state, before.unread.has(state.open));
+            }
+            before = state;
+        });
+        const stopHosts = store.subscribe((state) => {
             for (const host of state.hosts) {
                 const before = previous.find((entry) => entry.id === host.id);
                 if (before !== undefined && before.state.status !== host.state.status) {
@@ -272,6 +312,26 @@ export class Shell {
             }
             previous = state.hosts;
         });
+        return () => {
+            stopOpen();
+            stopHosts();
+        };
+    }
+
+    #announceOpen(state: Workspace, unread: boolean): void {
+        const { intl, announcer } = this.#options;
+        for (const group of hostGroups(state)) {
+            const item = group.sessions.find((entry) => entry.key === state.open);
+            if (item !== undefined) {
+                const message = unread ? openAnnouncements.openedUnread : openAnnouncements.opened;
+                const values = {
+                    session: item.label,
+                    host: group.host.destination,
+                    state: sessionStateText(intl, item),
+                };
+                announcer.announce(intl.formatMessage(message, values), { group: 'open-session' });
+            }
+        }
     }
 
     #reportProgress(before: HostEntry, host: HostEntry): void {

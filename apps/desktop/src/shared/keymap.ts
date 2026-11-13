@@ -10,6 +10,10 @@ export const COMMAND_IDS = [
     'notifications.show',
     'help.accessibility',
     'help.userGuide',
+    'session.new',
+    'session.newWithOptions',
+    'session.next',
+    'session.previous',
 ] as const;
 
 /** A command's ID. */
@@ -62,6 +66,10 @@ export const DEFAULT_KEYMAP: Readonly<Partial<Record<CommandId, string>>> = {
     'announcements.toggleMute': 'Shift+Cmd+A',
     'notifications.show': 'Shift+Cmd+N',
     'help.accessibility': 'Option+F1',
+    'session.new': 'Cmd+T',
+    'session.newWithOptions': 'Shift+Cmd+T',
+    'session.next': 'Shift+Cmd+]',
+    'session.previous': 'Shift+Cmd+[',
 };
 
 /** Reads a chord such as `Shift+Cmd+P`; modifiers come in any order, as `Ctrl`, `Control`, `Option`, `Alt`, `Cmd`. */

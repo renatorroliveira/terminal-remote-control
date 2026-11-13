@@ -115,6 +115,29 @@ test.describe('a live terminal on a Linux host: leaving the terminal (A11Y-05)',
     });
 });
 
+test.describe('a live session on a Linux host: rename and close (US-1.10)', () => {
+    const install = liveHost();
+
+    test('renames a session on the daemon, then closes it after the confirmation', async () => {
+        const { app, window } = await launchWithTestHosts(install.root);
+        await openTerminal(window, 'trc-ubuntu');
+        const session = window.getByRole('treeitem', { name: /^bash/ }).first();
+        await session.focus();
+        await window.keyboard.press('Shift+F10');
+        await window.getByRole('menuitem', { name: 'Rename…' }).click();
+        await window.getByRole('textbox', { name: 'Name' }).fill('renamed-e2e');
+        await window.keyboard.press('Enter');
+        const renamed = window.getByRole('treeitem', { name: /^renamed-e2e, / });
+        await expect(renamed).toBeVisible({ timeout: 15_000 });
+        await renamed.focus();
+        await window.keyboard.press('Shift+F10');
+        await window.getByRole('menuitem', { name: 'Close…' }).click();
+        await window.getByRole('button', { name: 'Close session' }).click();
+        await expect(renamed).toHaveCount(0, { timeout: 15_000 });
+        await app.close();
+    });
+});
+
 test.describe('a live terminal on a Linux host: size and keys (M1)', () => {
     const install = liveHost();
 

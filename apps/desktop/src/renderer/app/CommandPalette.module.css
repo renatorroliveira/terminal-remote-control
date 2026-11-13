@@ -14,6 +14,7 @@
         width: min(36rem, 100%);
         max-height: 70vh;
         display: flex;
+        overflow-y: auto;
         border: 1px solid var(--trc-color-border);
         border-radius: 6px;
         background: var(--trc-color-surface);
@@ -24,13 +25,17 @@
         display: flex;
         flex-direction: column;
         width: 100%;
-        min-height: 0;
+        height: max-content;
         outline: none;
     }
 
     .search {
+        position: sticky;
+        inset-block-start: 0;
+        z-index: 1;
         padding: 0.5rem;
         border-block-end: 1px solid var(--trc-color-border);
+        background: var(--trc-color-surface);
     }
 
     .label {
@@ -51,7 +56,6 @@
     }
 
     .list {
-        overflow-y: auto;
         padding: 0.25rem;
         outline: none;
     }

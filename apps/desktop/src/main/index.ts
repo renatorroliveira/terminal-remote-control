@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, Menu, protocol } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL } from '../shared/contract';
+import type { ThemePreference } from '../shared/display';
 import { resolveKeymap } from '../shared/keymap';
 import { aboutPanelOptions } from './about-panel';
 import { relayAccessibilitySupport } from './accessibility-relay';
@@ -14,7 +15,7 @@ import { startConnectionHost } from './connection-host';
 import { DisplayRelay } from './display-relay';
 import { suggestedAddresses } from './host-suggestions';
 import { installRootFor } from './install-root';
-import { registerHandlers } from './ipc';
+import { type InvokeHandlers, registerHandlers } from './ipc';
 import { KnownHosts } from './known-hosts';
 import { migrateLegacyState } from './legacy-state';
 import { menuTemplate } from './menu';
@@ -58,43 +59,67 @@ async function start(): Promise<void> {
     const { theme } = await config.read();
     const display = new DisplayRelay(theme);
     const knownHosts = new KnownHosts(home);
-    const installRoot = installRootFor({ seamEnabled: __TRC_TEST_SEAM__, env: process.env });
-    const sshConfigFiles = sshConfigFilesFor({
-        seamEnabled: __TRC_TEST_SEAM__,
-        env: process.env,
-        home: app.getPath('home'),
-    });
     registerHandlers(
         ipcMain,
         {
             'display:get': async () => display.current(),
             'accessibility:get': async () => app.isAccessibilitySupportEnabled(),
-            'hosts:list': () => knownHosts.list(),
-            'hosts:add': (address) => knownHosts.add(address, installRoot),
-            'hosts:suggestions': async () =>
-                suggestedAddresses(
-                    await knownHosts.recent(),
-                    await sshConfigHosts(sshConfigFiles, app.getPath('home')),
-                    await knownHosts.list(),
-                ),
-            'hosts:remove': async (id) => {
-                await knownHosts.remove(id);
-                return undefined;
-            },
-            'hosts:set-install-root': (id, root) => knownHosts.setInstallRoot(id, root),
-            'sidebar:get-width': async () => (await config.read()).sidebarWidth,
-            'sidebar:set-width': async (width) => {
-                await config.update({ sidebarWidth: width });
-                return undefined;
-            },
-            'sidebar:get-collapsed': async () => (await config.read()).sidebarCollapsed,
-            'sidebar:set-collapsed': async (collapsed) => {
-                await config.update({ sidebarCollapsed: collapsed });
-                return undefined;
-            },
+            ...hostHandlers(knownHosts),
+            ...sidebarHandlers(config),
         },
         (event) => isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
     );
+    installMenu(display, config, theme);
+    mainWindow = createWindow(display);
+}
+
+type HostHandlers = Pick<
+    InvokeHandlers,
+    'hosts:list' | 'hosts:add' | 'hosts:suggestions' | 'hosts:remove' | 'hosts:set-install-root'
+>;
+
+function hostHandlers(knownHosts: KnownHosts): HostHandlers {
+    const home = app.getPath('home');
+    const installRoot = installRootFor({ seamEnabled: __TRC_TEST_SEAM__, env: process.env });
+    const sshConfigFiles = sshConfigFilesFor({ seamEnabled: __TRC_TEST_SEAM__, env: process.env, home });
+    return {
+        'hosts:list': () => knownHosts.list(),
+        'hosts:add': (address) => knownHosts.add(address, installRoot),
+        'hosts:suggestions': async () =>
+            suggestedAddresses(
+                await knownHosts.recent(),
+                await sshConfigHosts(sshConfigFiles, home),
+                await knownHosts.list(),
+            ),
+        'hosts:remove': async (id) => {
+            await knownHosts.remove(id);
+            return undefined;
+        },
+        'hosts:set-install-root': (id, root) => knownHosts.setInstallRoot(id, root),
+    };
+}
+
+type SidebarHandlers = Pick<
+    InvokeHandlers,
+    'sidebar:get-width' | 'sidebar:set-width' | 'sidebar:get-collapsed' | 'sidebar:set-collapsed'
+>;
+
+function sidebarHandlers(config: AppConfigFile): SidebarHandlers {
+    return {
+        'sidebar:get-width': async () => (await config.read()).sidebarWidth,
+        'sidebar:set-width': async (width) => {
+            await config.update({ sidebarWidth: width });
+            return undefined;
+        },
+        'sidebar:get-collapsed': async () => (await config.read()).sidebarCollapsed,
+        'sidebar:set-collapsed': async (collapsed) => {
+            await config.update({ sidebarCollapsed: collapsed });
+            return undefined;
+        },
+    };
+}
+
+function installMenu(display: DisplayRelay, config: AppConfigFile, theme: ThemePreference): void {
     Menu.setApplicationMenu(
         Menu.buildFromTemplate(
             menuTemplate({
@@ -110,7 +135,6 @@ async function start(): Promise<void> {
             }),
         ),
     );
-    mainWindow = createWindow(display);
 }
 
 function focusMainWindow(): void {

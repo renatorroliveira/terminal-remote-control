@@ -21,7 +21,15 @@ function options(): MenuOptions {
 describe('menuTemplate', () => {
     it('has the standard macOS menus, including Help', () => {
         const template = menuTemplate(options());
-        expect(labels(template)).toEqual(['Terminal Remote Control', 'Edit', 'View', 'Terminal', 'windowMenu', 'help']);
+        expect(labels(template)).toEqual([
+            'Terminal Remote Control',
+            'Session',
+            'Edit',
+            'View',
+            'Terminal',
+            'windowMenu',
+            'help',
+        ]);
     });
 
     it('sends the help commands to the renderer', () => {
@@ -42,7 +50,7 @@ describe('menuTemplate', () => {
 describe('menuTemplate: View', () => {
     it('offers the palette, the sidebar, regions, notifications and zoom (A11Y-05, A11Y-07.4)', () => {
         const template = menuTemplate(options());
-        const view = template[2]?.submenu as MenuItemConstructorOptions[];
+        const view = template[3]?.submenu as MenuItemConstructorOptions[];
         expect(view.map((item) => item.role ?? item.label ?? item.type)).toEqual([
             'Command Palette…',
             'Show Notifications',
@@ -64,8 +72,8 @@ describe('menuTemplate: View', () => {
     it('shows each Command shortcut from the keymap and sends the command to the renderer (docs/design/keymap.md)', () => {
         const commands: string[] = [];
         const template = menuTemplate({ ...options(), onCommand: (id) => commands.push(id) });
-        const view = template[2]?.submenu as MenuItemConstructorOptions[];
-        const terminal = template[3]?.submenu as MenuItemConstructorOptions[];
+        const view = template[3]?.submenu as MenuItemConstructorOptions[];
+        const terminal = template[4]?.submenu as MenuItemConstructorOptions[];
         const accelerators = [...view, ...terminal]
             .filter((item) => item.click !== undefined && item.label !== 'Theme')
             .map((item) => [item.label, item.accelerator]);
@@ -87,7 +95,7 @@ describe('menuTemplate: View', () => {
 
     it('shows no shortcut for a command bound to a key the terminal may need', () => {
         const template = menuTemplate({ ...options(), keymap: resolveKeymap({ 'region.next': 'F6' }) });
-        const view = template[2]?.submenu as MenuItemConstructorOptions[];
+        const view = template[3]?.submenu as MenuItemConstructorOptions[];
         expect(view.find((item) => item.label === 'Next Region')?.accelerator).toBeUndefined();
     });
 });
@@ -96,7 +104,7 @@ describe('menuTemplate: Edit', () => {
     it('has the macOS text services in Edit: Look Up and Speech (US-1.12, A11Y-04)', () => {
         let lookedUp = 0;
         const template = menuTemplate({ ...options(), onLookUp: () => (lookedUp += 1) });
-        const edit = template[1]?.submenu as MenuItemConstructorOptions[];
+        const edit = template[2]?.submenu as MenuItemConstructorOptions[];
         expect(edit.map((item) => item.role ?? item.label ?? item.type)).toEqual([
             'undo',
             'redo',
@@ -121,7 +129,7 @@ describe('menuTemplate: Edit', () => {
     it('picks the theme from View, Midnight checked by default (A11Y-07.3)', () => {
         const picked: string[] = [];
         const template = menuTemplate({ ...options(), onThemePreference: (theme) => picked.push(theme) });
-        const view = template[2]?.submenu as MenuItemConstructorOptions[];
+        const view = template[3]?.submenu as MenuItemConstructorOptions[];
         const themes = view.find((item) => item.label === 'Theme')?.submenu as MenuItemConstructorOptions[];
         expect(themes.map((item) => [item.label ?? item.type, item.type, item.checked])).toEqual([
             ['Midnight', 'radio', true],
@@ -135,5 +143,19 @@ describe('menuTemplate: Edit', () => {
         themes[1]?.click?.(undefined as never, undefined, undefined as never);
         themes[5]?.click?.(undefined as never, undefined, undefined as never);
         expect(picked).toEqual(['system', 'hc-light']);
+    });
+});
+
+describe('menuTemplate: Session', () => {
+    it('creates and switches sessions with their shortcuts (US-1.7.1, US-1.8.2)', () => {
+        const template = menuTemplate(options());
+        const session = template[1]?.submenu as MenuItemConstructorOptions[];
+        expect(session.map((item) => [item.label ?? item.type, item.accelerator])).toEqual([
+            ['New Session', 'Command+T'],
+            ['New Session…', 'Shift+Command+T'],
+            ['separator', undefined],
+            ['Next Session', 'Shift+Command+]'],
+            ['Previous Session', 'Shift+Command+['],
+        ]);
     });
 });

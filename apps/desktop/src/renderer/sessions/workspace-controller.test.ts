@@ -1,7 +1,6 @@
 import type { ExitStatus, ServerMessage, SessionInfo } from '@trc/protocol';
 import { describe, expect, it } from 'vitest';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
-import { parseHostAddress } from '../../shared/host-address';
 import type { KnownHost } from '../../shared/hosts';
 import type { ClientRequest } from '../connection/host-client';
 import { type TerminalHost, type WorkspaceClient, WorkspaceController } from './workspace-controller';
@@ -76,8 +75,11 @@ class FakeTerminals implements TerminalHost {
         this.shown.push(key);
     }
 
-    create(hostId: string): Promise<SessionInfo> {
+    readonly specs: unknown[] = [];
+
+    create(hostId: string, spec?: unknown): Promise<SessionInfo> {
         this.created.push(hostId);
+        this.specs.push(spec);
         return Promise.resolve(info('c', 2));
     }
 
@@ -282,5 +284,66 @@ describe('WorkspaceController: forgetting, moving and testing hosts (US-1.1.5, U
         client.states.get(host.id)?.(connected);
         expect(await workspace.testConnection(host.id)).toBe(true);
         expect(client.calls).not.toContain(`disconnect ${host.id}`);
+    });
+});
+
+async function connectedSetup() {
+    const context = setup();
+    const host = await context.workspace.addHost('devbox-1');
+    context.client.states.get(host.id)?.(connected);
+    await expect.poll(() => context.workspace.store.getState().sessions.get(host.id)?.length).toBe(2);
+    context.client.requests.length = 0;
+    return { ...context, host };
+}
+
+describe('WorkspaceController: managing sessions (US-1.10)', () => {
+    it('renames, stops, restarts, closes and moves a session through the daemon', async () => {
+        const { client, host, workspace } = await connectedSetup();
+        const key = `${host.id}/a`;
+        await workspace.renameSession(key, 'logs');
+        await workspace.renameSession(key, '');
+        await workspace.stopSession(key);
+        await workspace.restartSession(key);
+        await workspace.moveSession(key, 1);
+        await workspace.closeSession(key);
+        expect(client.requests).toEqual([
+            { type: 'rename', session: 'a', name: 'logs' },
+            { type: 'rename', session: 'a' },
+            { type: 'stop', session: 'a' },
+            { type: 'restart', session: 'a' },
+            { type: 'reorder', session: 'a', index: 1 },
+            { type: 'close', session: 'a' },
+        ]);
+    });
+
+    it('duplicates a session with its shell and working directory (US-1.10.5)', async () => {
+        const { client, host, terminals, workspace } = await connectedSetup();
+        client.listed = [{ ...info('a'), cwd: '/srv/app' }];
+        client.messages.get(host.id)?.({
+            type: 'sessionEvent',
+            change: { kind: 'updated', session: client.listed[0] as SessionInfo },
+        });
+        await workspace.duplicateSession(`${host.id}/a`);
+        expect(terminals.specs.at(-1)).toEqual({ profileId: 'login', cwd: '/srv/app' });
+        expect(terminals.shown.at(-1)).toBe(`${host.id}/c`);
+    });
+});
+
+describe('WorkspaceController: creating and switching (US-1.7, US-1.8.2)', () => {
+    it('creates on the open session’s host, or the last-used host, with the options given', async () => {
+        const { host, terminals, workspace } = await connectedSetup();
+        await workspace.newSessionHere();
+        expect(terminals.created.at(-1)).toBe(host.id);
+        await workspace.newSessionWith(host.id, { profileId: 'zsh', cwd: '/tmp', name: 'scratch', env: { A: '1' } });
+        expect(terminals.specs.at(-1)).toEqual({ profileId: 'zsh', cwd: '/tmp', name: 'scratch', env: { A: '1' } });
+    });
+
+    it('opens the next and previous session in list order, wrapping around', async () => {
+        const { host, terminals, workspace } = await connectedSetup();
+        workspace.open(`${host.id}/a`);
+        workspace.openNext(1);
+        workspace.openNext(1);
+        workspace.openNext(-1);
+        expect(terminals.shown).toEqual([`${host.id}/a`, `${host.id}/b`, `${host.id}/a`, `${host.id}/b`]);
     });
 });

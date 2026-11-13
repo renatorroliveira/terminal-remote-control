@@ -25,6 +25,8 @@ export interface Workspace {
     readonly collapsed: ReadonlySet<string>;
     /** The host whose failed connection waits for the user to acknowledge it (US-1.3.3). */
     readonly failureNotice: string | undefined;
+    /** Sessions with output the user has not seen since they last had them open (US-1.8.3). */
+    readonly unread: ReadonlySet<SessionKey>;
 }
 
 /** One session in a host's list. */
@@ -32,6 +34,8 @@ export interface SessionItem {
     readonly key: SessionKey;
     readonly label: string;
     readonly session: SessionInfo;
+    /** Whether it has output the user has not seen (US-1.8.3). */
+    readonly unread: boolean;
 }
 
 /** A host in the Sessions area, with its sessions; the sidebar hides them while the host is collapsed. */
@@ -54,6 +58,7 @@ export const EMPTY_WORKSPACE: Workspace = {
     open: undefined,
     collapsed: new Set(),
     failureNotice: undefined,
+    unread: new Set(),
 };
 
 /** The key of a host's session. */
@@ -158,9 +163,22 @@ export function applySessionChange(sessions: readonly SessionInfo[], change: Ses
     }
 }
 
-/** Opens a session in the terminal area. */
+/** Opens a session in the terminal area; its output counts as seen. */
 export function sessionOpened(workspace: Workspace, key: SessionKey | undefined): Workspace {
-    return { ...workspace, open: key };
+    if (key === undefined || !workspace.unread.has(key)) {
+        return { ...workspace, open: key };
+    }
+    const unread = new Set(workspace.unread);
+    unread.delete(key);
+    return { ...workspace, open: key, unread };
+}
+
+/** Records output in a session; unless it is open, it now has unread output (US-1.8.3). */
+export function sessionActivity(workspace: Workspace, key: SessionKey): Workspace {
+    if (key === workspace.open || workspace.unread.has(key)) {
+        return workspace;
+    }
+    return { ...workspace, unread: new Set([...workspace.unread, key]) };
 }
 
 /** Collapses or expands a host group (US-1.6.2). */
@@ -181,6 +199,7 @@ export function hostGroups(workspace: Workspace): readonly HostGroup[] {
             expanded: !workspace.collapsed.has(host.id),
             sessions: (workspace.sessions.get(host.id) ?? []).map((session) => ({
                 key: sessionKey(host.id, session.id),
+                unread: workspace.unread.has(sessionKey(host.id, session.id)),
                 label: sessionName(session),
                 session,
             })),

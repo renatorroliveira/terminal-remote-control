@@ -6,9 +6,10 @@ import { APP_IDENTITY } from '../../shared/app-identity';
 import { SIDEBAR_WIDTH } from '../../shared/layout';
 import { shellMessages } from '../i18n/messages';
 import { ConnectionFailureDialog } from '../sessions/ConnectionFailureDialog';
-import { HostDialogs } from '../sessions/HostDialogs';
-import { NEW_SESSION_ATTRIBUTE } from '../sessions/HostSessions';
+import { ADD_HOST_ATTRIBUTE, HostDialogs } from '../sessions/HostDialogs';
 import { sidebarMessages } from '../sessions/messages';
+import { SessionDialogs } from '../sessions/SessionDialogs';
+import { SESSION_TREE_ATTRIBUTE } from '../sessions/SessionTree';
 import { Sidebar } from '../sessions/Sidebar';
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import { BUTTON } from '../ui/buttons';
@@ -52,6 +53,7 @@ export function App({ workspace, terminals, shell }: AppProps) {
                 <StatusBar workspace={workspace} shell={shell} />
                 <ConnectionFailureDialog workspace={workspace} />
                 <HostDialogs workspace={workspace} shell={shell} />
+                <SessionDialogs workspace={workspace} shell={shell} />
                 <CommandPalette shell={shell} workspace={workspace} />
                 <NotificationsDialog shell={shell} />
             </div>
@@ -130,7 +132,8 @@ function useFocusRescue(workspace: WorkspaceController): void {
     const open = useStore(workspace.store, (state) => state.open);
     useEffect(() => {
         if (open === undefined && document.activeElement === document.body) {
-            document.querySelector<HTMLElement>(`[${NEW_SESSION_ATTRIBUTE}]`)?.focus();
+            const row = document.querySelector<HTMLElement>(`[${SESSION_TREE_ATTRIBUTE}] [tabindex="0"]`);
+            (row ?? document.querySelector<HTMLElement>(`[${ADD_HOST_ATTRIBUTE}]`))?.focus();
         }
     }, [open]);
 }

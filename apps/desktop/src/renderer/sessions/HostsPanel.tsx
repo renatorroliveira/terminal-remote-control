@@ -16,14 +16,14 @@ import { useStore } from 'zustand';
 import { useShell } from '../app/shell-context';
 import { contextMenuMessages } from '../app/shell-messages';
 import { hostActions } from '../app/workspace-actions';
-import { BUTTON, PRIMARY_BUTTON } from '../ui/buttons';
+import { PRIMARY_BUTTON } from '../ui/buttons';
 import { useContextMenu } from '../ui/context-menu';
 import { BusyIcon, ConnectedIcon, DisconnectedIcon } from '../ui/icons';
 import { ADD_HOST_ATTRIBUTE } from './HostDialogs';
 import styles from './HostsPanel.module.css';
 import { addHostMessages } from './host-messages';
 import { hostStateText } from './host-state-text';
-import { connectionActionMessages, hostFailureMessage, hostStateMessages, sidebarMessages } from './messages';
+import { connectionActionMessages, hostFailureMessage, sidebarMessages } from './messages';
 import type { WorkspaceController } from './workspace-controller';
 import type { HostEntry } from './workspace-model';
 

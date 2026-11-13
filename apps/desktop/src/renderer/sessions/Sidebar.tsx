@@ -1,9 +1,9 @@
 import { useIntl } from 'react-intl';
 import { useStore } from 'zustand';
 import { REGION_ATTRIBUTE } from '../app/regions';
-import { HostSessions } from './HostSessions';
 import { HostsPanel } from './HostsPanel';
 import { sidebarMessages } from './messages';
+import { SessionTree } from './SessionTree';
 import styles from './Sidebar.module.css';
 import type { WorkspaceController } from './workspace-controller';
 import { hostGroups } from './workspace-model';
@@ -18,8 +18,8 @@ export interface SidebarProps {
 }
 
 /**
- * The sidebar (US-1.6.1): at the top, the open sessions grouped by host, each host with its + button; at the
- * bottom, the known hosts and the field that adds one.
+ * The sidebar (US-1.6.1): at the top, the session tree, each host with its + button; at the bottom, the known
+ * hosts and the field that adds one.
  */
 export function Sidebar({ id, className, workspace, onOpened }: SidebarProps) {
     const intl = useIntl();
@@ -42,25 +42,16 @@ export function Sidebar({ id, className, workspace, onOpened }: SidebarProps) {
 
 function SessionsPanel({ workspace, onOpened }: Pick<SidebarProps, 'workspace' | 'onOpened'>) {
     const intl = useIntl();
-    const state = useStore(workspace.store);
-    const groups = hostGroups(state);
+    const empty = useStore(workspace.store, (state) => hostGroups(state).length === 0);
     return (
         <section aria-labelledby="trc-sessions-heading" className={styles['sessions']}>
             <h2 id="trc-sessions-heading" className={styles['heading']}>
                 {intl.formatMessage(sidebarMessages.sessions)}
             </h2>
-            {groups.length === 0 ? (
+            {empty ? (
                 <p className={styles['empty']}>{intl.formatMessage(sidebarMessages.noSessions)}</p>
             ) : (
-                groups.map((group) => (
-                    <HostSessions
-                        key={group.host.id}
-                        group={group}
-                        workspace={workspace}
-                        open={state.open}
-                        onOpened={onOpened}
-                    />
-                ))
+                <SessionTree workspace={workspace} onOpened={onOpened} />
             )}
         </section>
     );

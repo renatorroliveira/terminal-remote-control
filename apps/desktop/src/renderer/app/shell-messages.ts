@@ -45,6 +45,18 @@ export const commandMessages = defineMessages<CommandId>({
         description: 'Command name.',
     },
     'help.userGuide': { id: 'command.helpUserGuide', defaultMessage: 'User guide', description: 'Command name.' },
+    'session.new': { id: 'command.sessionNew', defaultMessage: 'New session', description: 'Command name.' },
+    'session.newWithOptions': {
+        id: 'command.sessionNewWithOptions',
+        defaultMessage: 'New session with options…',
+        description: 'Command name: opens the New session dialog.',
+    },
+    'session.next': { id: 'command.sessionNext', defaultMessage: 'Next session', description: 'Command name.' },
+    'session.previous': {
+        id: 'command.sessionPrevious',
+        defaultMessage: 'Previous session',
+        description: 'Command name.',
+    },
 });
 
 /** What the shell announces when a command changes something (A11Y-05.4, A11Y-12.1). */
@@ -70,6 +82,11 @@ export const shellAnnouncements = defineMessages({
         description: 'Announced when a command needs an open session.',
     },
     sidebarHidden: { id: 'announce.sidebarHidden', defaultMessage: 'Sidebar hidden.', description: 'Announcement.' },
+    noHost: {
+        id: 'announce.noHost',
+        defaultMessage: 'No host is connected.',
+        description: 'Announced when a new session needs a connected host.',
+    },
     sidebarShown: { id: 'announce.sidebarShown', defaultMessage: 'Sidebar shown.', description: 'Announcement.' },
 });
 
@@ -84,6 +101,20 @@ export const muteAnnouncements = {
         id: 'announce.unmuted',
         defaultMessage: 'Output announcements on for {session}.',
         description: 'Announced when output announcements are unmuted for a session.',
+    }),
+};
+
+/** What opening a session announces (US-1.8.3). */
+export const openAnnouncements = {
+    opened: defineMessage<{ session: string; host: string; state: string }>({
+        id: 'announce.opened',
+        defaultMessage: '{session} on {host}: {state}.',
+        description: 'Announced politely when a session opens.',
+    }),
+    openedUnread: defineMessage<{ session: string; host: string; state: string }>({
+        id: 'announce.openedUnread',
+        defaultMessage: '{session} on {host}: {state}, new output.',
+        description: 'Announced politely when a session with unseen output opens.',
     }),
 };
 
