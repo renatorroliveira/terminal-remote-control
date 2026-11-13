@@ -81,6 +81,9 @@ const MATCHERS: readonly Matcher[] = [
     },
 ];
 
+/** The details of a failure ssh printed nothing about, such as a busy server dropping the connection. */
+const SILENT_EXIT = 'ssh ended the connection without a message.';
+
 /**
  * Classifies a failed connection from ssh's stderr lines and the effective settings (US-1.3.1, the S4 corpus). ssh
  * ends some messages with `\r\n`, so carriage returns are dropped first.
@@ -90,7 +93,8 @@ export function classifyFailure(raw: readonly string[], nonce: string, config: E
     const keys = stderr
         .map((line) => parseHelperLine(line, nonce))
         .flatMap((line) => (line?.kind === 'host-key' ? [line.key] : []));
-    const details = shownDetails(stderr, nonce);
+    const shown = shownDetails(stderr, nonce);
+    const details = shown.trim() === '' ? SILENT_EXIT : shown;
     for (const matcher of MATCHERS) {
         const kind = matcher(stderr, keys, config);
         if (kind !== undefined) {

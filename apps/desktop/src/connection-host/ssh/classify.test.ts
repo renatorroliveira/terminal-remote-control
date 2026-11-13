@@ -100,6 +100,16 @@ describe('classifyFailure on the S4 corpus (US-1.3.1)', () => {
             kind: 'other',
         });
     });
+
+    it('says so when ssh ended without a message, as when a busy server drops the connection', () => {
+        expect(classifyFailure([], 'n0nce', direct)).toEqual({
+            kind: 'other',
+            details: 'ssh ended the connection without a message.',
+        });
+        expect(classifyFailure(['', '\r'], 'n0nce', direct).details).toBe(
+            'ssh ended the connection without a message.',
+        );
+    });
 });
 
 function probes(overrides: Partial<AuthProbes>): AuthProbes {
