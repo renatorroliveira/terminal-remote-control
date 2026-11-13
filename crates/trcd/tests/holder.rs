@@ -323,3 +323,16 @@ async fn shuts_down_after_stopping_the_process() {
         SessionState::Stopped | SessionState::Exited
     ));
 }
+
+#[tokio::test]
+async fn coalesces_title_changes_instead_of_sending_a_status_for_each() {
+    let mut client = started("/bin/sh").await;
+    let before = client.statuses.len();
+    client.input("i=0; while [ $i -lt 2000 ]; do printf '\\033]0;t%d\\007' $i; i=$((i+1)); done; echo titles-done\r");
+    client.until(|c| c.text().contains("titles-done")).await;
+    client
+        .until(|c| c.statuses.last().and_then(|s| s.title.as_deref()) == Some("t1999"))
+        .await;
+    let sent = client.statuses.len() - before;
+    assert!(sent <= 10, "{sent} statuses for 2000 title changes");
+}
