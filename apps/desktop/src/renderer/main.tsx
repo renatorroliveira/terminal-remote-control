@@ -98,6 +98,7 @@ if (container !== null) {
             links: window.trc.links,
             settings,
             guide: { open: (section) => void window.trc.help.openGuide(section) },
+            menus: { ignoreShortcuts: (ignore) => void window.trc.menus.ignoreShortcuts(ignore) },
         });
         void settingsLoaded.then(() => workspace.load()).then(() => workspace.connectAll());
         reactRoot.render(

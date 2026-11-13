@@ -54,6 +54,8 @@ export const settingLabelMessages = defineMessages({
     cursorStyle: { id: 'setting.cursorStyle', defaultMessage: 'Cursor shape', description: 'Setting.' },
     cursorWidth: { id: 'setting.cursorWidth', defaultMessage: 'Bar cursor width, pixels', description: 'Setting.' },
     cursorBlink: { id: 'setting.cursorBlink', defaultMessage: 'Blinking cursor', description: 'Setting.' },
+    plainF6: { id: 'setting.plainF6', defaultMessage: 'Plain F6 moves between regions', description: 'Setting.' },
+    shortcuts: { id: 'setting.shortcuts', defaultMessage: 'Shortcuts', description: 'Setting: the shortcut table.' },
     tabFocusMode: {
         id: 'setting.tabFocusMode',
         defaultMessage: 'Tab moves focus out of the terminal',
@@ -114,6 +116,16 @@ export const settingDescriptionMessages = defineMessages({
         defaultMessage: 'Stops after 5 seconds without typing, and never blinks while Reduce motion is on.',
         description: 'Setting description.',
     },
+    plainF6: {
+        id: 'setting.plainF6.description',
+        defaultMessage: 'Shift-F6 goes back. Off by default, because programs such as htop and mc use F6.',
+        description: 'Setting description.',
+    },
+    shortcuts: {
+        id: 'setting.shortcuts.description',
+        defaultMessage: 'Change a command’s shortcut, or reset it to the default.',
+        description: 'Setting description.',
+    },
     scrollbackLines: {
         id: 'setting.scrollbackLines.description',
         defaultMessage: 'For sessions created from now on, from 1,000 to 100,000.',
@@ -154,5 +166,76 @@ export const settingChoiceMessages = defineMessages({
         id: 'setting.choice.openSession',
         defaultMessage: 'The open session’s folder',
         description: 'New session folder choice.',
+    },
+});
+
+/** The shortcut table and its recorder (A11Y-05.7). */
+export const shortcutMessages = {
+    ...defineMessages({
+        command: { id: 'shortcuts.command', defaultMessage: 'Command', description: 'Shortcut table column.' },
+        shortcut: { id: 'shortcuts.shortcut', defaultMessage: 'Shortcut', description: 'Shortcut table column.' },
+        actions: { id: 'shortcuts.actions', defaultMessage: 'Actions', description: 'Shortcut table column.' },
+        none: { id: 'shortcuts.none', defaultMessage: 'None', description: 'A command without a shortcut.' },
+        change: { id: 'shortcuts.change', defaultMessage: 'Change', description: 'Button text.' },
+        reset: { id: 'shortcuts.reset', defaultMessage: 'Reset', description: 'Button text.' },
+    }),
+    changeLabel: defineMessage<{ command: string }>({
+        id: 'shortcuts.changeLabel',
+        defaultMessage: 'Change {command}',
+        description: 'Accessible name of the button that records a new shortcut.',
+    }),
+    resetLabel: defineMessage<{ command: string }>({
+        id: 'shortcuts.resetLabel',
+        defaultMessage: 'Reset {command}',
+        description: 'Accessible name of the button that gives a command its default shortcut back.',
+    }),
+    recording: defineMessage<{ command: string }>({
+        id: 'shortcuts.recording',
+        defaultMessage: 'Press the new shortcut for {command}, or Escape to keep it',
+        description: 'The recorder, waiting for a key press.',
+    }),
+    set: defineMessage<{ command: string; shortcut: string }>({
+        id: 'shortcuts.set',
+        defaultMessage: '{command}: {shortcut}.',
+        description: 'Status after a new shortcut is kept.',
+    }),
+    resetDone: defineMessage<{ command: string; shortcut: string }>({
+        id: 'shortcuts.resetDone',
+        defaultMessage: '{command}: back to {shortcut}.',
+        description: 'Status after a shortcut is reset.',
+    }),
+    taken: defineMessage<{ command: string; shortcut: string }>({
+        id: 'shortcuts.taken',
+        defaultMessage: '{shortcut} is already the shortcut of {command}.',
+        description: 'Status when the pressed shortcut belongs to another command.',
+    }),
+};
+
+/** Why a shortcut cannot be used (docs/design/keymap.md). */
+export const bindingProblemMessages = defineMessages({
+    'no-modifier': {
+        id: 'shortcuts.problem.noModifier',
+        defaultMessage: 'A shortcut needs Control, Option or Command, or a function key.',
+        description: 'Refused shortcut.',
+    },
+    'control-code': {
+        id: 'shortcuts.problem.controlCode',
+        defaultMessage: 'The terminal uses Control with that key.',
+        description: 'Refused shortcut.',
+    },
+    'option-types': {
+        id: 'shortcuts.problem.optionTypes',
+        defaultMessage: 'Option with that key types a character.',
+        description: 'Refused shortcut.',
+    },
+    'screen-reader': {
+        id: 'shortcuts.problem.screenReader',
+        defaultMessage: 'VoiceOver uses Control with Option.',
+        description: 'Refused shortcut.',
+    },
+    reserved: {
+        id: 'shortcuts.problem.reserved',
+        defaultMessage: 'macOS, VoiceOver or a menu already uses that shortcut.',
+        description: 'Refused shortcut.',
     },
 });

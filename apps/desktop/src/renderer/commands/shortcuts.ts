@@ -3,7 +3,8 @@ import type { CommandRegistry } from './command-registry';
 
 /** What the shortcut dispatcher needs. */
 export interface ShortcutOptions {
-    readonly keymap: Keymap;
+    /** The keymap in force now, which rebinding changes. */
+    readonly keymap: () => Keymap;
     readonly commands: Pick<CommandRegistry, 'run'>;
     /** Whether the terminal asked for the next key, even an app shortcut (A11Y-05.3). */
     readonly passNextKey: () => boolean;
@@ -22,7 +23,7 @@ export function installShortcuts(target: Window, options: ShortcutOptions): () =
             return;
         }
         const chord = chordFromKey(event);
-        const command = chord === undefined ? undefined : options.keymap.commandFor(chord);
+        const command = chord === undefined ? undefined : options.keymap().commandFor(chord);
         if (command !== undefined && options.commands.run(command)) {
             event.preventDefault();
             event.stopImmediatePropagation();

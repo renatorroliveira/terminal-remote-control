@@ -9,14 +9,16 @@ function press(target: EventTarget, code: string, modifiers: KeyboardEventInit =
     return event;
 }
 
-function setup(state: { passNextKey?: boolean; blocked?: boolean } = {}) {
+function setup(
+    state: { passNextKey?: boolean; blocked?: boolean; overrides?: Partial<Record<CommandId, string>> } = {},
+) {
     const ran: CommandId[] = [];
     const commands = new CommandRegistry();
     commands.register({ id: 'palette.show', label: 'Show command palette', run: () => ran.push('palette.show') });
     const input = document.createElement('textarea');
     document.body.append(input);
     const uninstall = installShortcuts(window, {
-        keymap: resolveKeymap({}),
+        keymap: () => resolveKeymap(state.overrides ?? {}),
         commands,
         passNextKey: () => state.passNextKey ?? false,
         blocked: () => state.blocked ?? false,
@@ -27,6 +29,17 @@ function setup(state: { passNextKey?: boolean; blocked?: boolean } = {}) {
     });
     return { ran, input };
 }
+
+describe('installShortcuts: rebinding (A11Y-05.7)', () => {
+    it('follows the keymap in force at each key press', () => {
+        const state: { overrides?: Partial<Record<CommandId, string>> } = {};
+        const { ran, input } = setup(state);
+        state.overrides = { 'palette.show': 'Ctrl+Cmd+P' };
+        press(input, 'KeyP', { metaKey: true, shiftKey: true });
+        press(input, 'KeyP', { metaKey: true, ctrlKey: true });
+        expect(ran).toEqual(['palette.show']);
+    });
+});
 
 describe('installShortcuts: one dispatcher for every app shortcut (A11Y-05.2, A11Y-05.3)', () => {
     it('runs the bound command before the focused element sees the key', () => {

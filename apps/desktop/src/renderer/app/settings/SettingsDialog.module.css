@@ -171,6 +171,44 @@
         cursor: pointer;
     }
 
+    .shortcuts {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .shortcuts th,
+    .shortcuts td {
+        padding: 0.25rem 0.5rem;
+        border-bottom: 1px solid var(--trc-color-border);
+        text-align: start;
+        vertical-align: middle;
+        overflow-wrap: anywhere;
+    }
+
+    .shortcuts tbody th {
+        font-weight: normal;
+    }
+
+    .keys {
+        font-family: var(--trc-font-terminal);
+    }
+
+    .rowActions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .recorder {
+        min-height: 28px;
+        padding: 0.25rem 0.75rem;
+        border: 2px solid var(--trc-color-focus-ring);
+        border-radius: 4px;
+        background: var(--trc-color-background);
+        color: var(--trc-color-text);
+        font: inherit;
+    }
+
     .hosts {
         display: flex;
         flex-direction: column;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { COMMAND_IDS } from '../shared/keymap';
 import {
     SETTINGS_LIMITS as LIMITS,
     MINIMUM_CONTRASTS,
@@ -12,6 +13,9 @@ import {
     type TerminalAppearance,
 } from '../shared/terminal-appearance';
 import { TERMINAL_ZOOM } from '../shared/terminal-zoom';
+
+/** The longest shortcut text a setting may hold. */
+const MAX_BINDING_LENGTH = 64;
 
 const THEME_PREFERENCES = ['midnight', 'system', 'light', 'dark', 'hc-light', 'hc-dark'] as const;
 
@@ -45,6 +49,8 @@ export const SETTINGS_FIELDS = {
     autoClose: z.boolean(),
     pasteConfirmation: z.boolean(),
     newSessionFolder: z.enum(NEW_SESSION_FOLDERS),
+    shortcuts: z.partialRecord(z.enum(COMMAND_IDS), z.string().min(1).max(MAX_BINDING_LENGTH)),
+    plainF6: z.boolean(),
 } as const;
 
 const CHANGE = z.object(SETTINGS_FIELDS).partial().strict();

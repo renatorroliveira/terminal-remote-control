@@ -43,7 +43,9 @@ describe('AccessibilityHelp: Option+F1 (A11Y-10.1)', () => {
         await userEvent.keyboard('{Escape}');
         await expect.element(field).toHaveFocus();
     });
+});
 
+describe('AccessibilityHelp: the user guide and the Help menu (A11Y-10.4)', () => {
     it('opens the user guide, or its VoiceOver quick start, and closes (A11Y-10.4)', async () => {
         const { shell, guides, rendered } = renderApp();
         const screen = await rendered;

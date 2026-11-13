@@ -113,6 +113,17 @@ describe('resolveKeymap: defaults plus the user’s bindings', () => {
         ]);
     });
 
+    it('adds plain F6 and Shift+F6 for the regions when asked, unless a command took them (A11Y-05.2)', () => {
+        const plain = resolveKeymap({}, { plainF6: true });
+        expect(plain.commandFor(chord('F6'))).toBe('region.next');
+        expect(plain.commandFor(chord('Shift+F6'))).toBe('region.previous');
+        expect(plain.chordFor('region.next')).toEqual(chord('Cmd+F6'));
+        expect(resolveKeymap({}).commandFor(chord('F6'))).toBeUndefined();
+        const taken = resolveKeymap({ 'review.toggle': 'F6' }, { plainF6: true });
+        expect(taken.commandFor(chord('F6'))).toBe('review.toggle');
+        expect(taken.commandFor(chord('Shift+F6'))).toBe('region.previous');
+    });
+
     it('matches the defaults docs/design/keymap.md documents', () => {
         const design = readFileSync(join(import.meta.dirname, '../../../../docs/design/keymap.md'), 'utf8');
         for (const binding of Object.values(DEFAULT_KEYMAP)) {

@@ -16,6 +16,8 @@ const SETTINGS_DEFAULTS = {
     autoClose: true,
     pasteConfirmation: true,
     newSessionFolder: 'home',
+    shortcuts: {},
+    plainF6: false,
 };
 
 function home(): string {

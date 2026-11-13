@@ -22,7 +22,9 @@ defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
       Control+Command+0, = and - for zooming the window).
 5. **One command per chord.** A binding that breaks a rule, or repeats another command's chord, is refused with
    the reason, and the command keeps its default.
-6. **Rebindable.** Every command in the table can be rebound (the settings page arrives in ST-18). Shift+F10 and
+6. **Rebindable.** Every command in the table can be rebound from Settings, under Keyboard: Change records the
+   next key press, which must follow these rules and belong to no other command, and Reset gives the default
+   back. While it records, the menus give up their shortcuts so a Command chord reaches it. Shift+F10 and
    the Menu key open context menus (A11Y-11.11) and Shift+Page Up and Page Down scroll the terminal; these follow
    platform convention and are not rebindable.
 7. **One dispatcher.** The renderer matches every shortcut, so "Send next key to terminal" (A11Y-05.3) can pass
@@ -55,8 +57,8 @@ defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
 | Find in the terminal       | Command+F         | Every app's find shortcut (US-1.13)                                                |
 | Open the settings          | Command+,         | The macOS Settings shortcut (A11Y-10.3)                                            |
 
-Plain F6 for the next region, the Windows convention, becomes an option in settings (A11Y-05.2). It is off by
-default because htop and mc use F6.
+Plain F6 (and Shift+F6) for the regions, the Windows convention, is an option in Settings (A11Y-05.2). It is off
+by default because htop and mc use F6, and a command bound to F6 keeps it.
 
 Regions, in order: the sidebar (sessions and hosts), the terminal, and the status bar. Moving to a region focuses
 the element that last had focus there, or else its first control; a hidden sidebar is skipped.

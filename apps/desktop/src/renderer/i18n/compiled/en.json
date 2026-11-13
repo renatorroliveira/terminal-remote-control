@@ -2421,6 +2421,18 @@
       "value": "Ask before pasting more than one line"
     }
   ],
+  "setting.plainF6": [
+    {
+      "type": 0,
+      "value": "Plain F6 moves between regions"
+    }
+  ],
+  "setting.plainF6.description": [
+    {
+      "type": 0,
+      "value": "Shift-F6 goes back. Off by default, because programs such as htop and mc use F6."
+    }
+  ],
   "setting.screenReaderMode": [
     {
       "type": 0,
@@ -2443,6 +2455,18 @@
     {
       "type": 0,
       "value": "For sessions created from now on, from 1,000 to 100,000."
+    }
+  ],
+  "setting.shortcuts": [
+    {
+      "type": 0,
+      "value": "Shortcuts"
+    }
+  ],
+  "setting.shortcuts.description": [
+    {
+      "type": 0,
+      "value": "Change a command’s shortcut, or reset it to the default."
     }
   ],
   "setting.stopGraceSeconds": [
@@ -2557,6 +2581,160 @@
     {
       "type": 0,
       "value": "No session is open."
+    }
+  ],
+  "shortcuts.actions": [
+    {
+      "type": 0,
+      "value": "Actions"
+    }
+  ],
+  "shortcuts.change": [
+    {
+      "type": 0,
+      "value": "Change"
+    }
+  ],
+  "shortcuts.changeLabel": [
+    {
+      "type": 0,
+      "value": "Change "
+    },
+    {
+      "type": 1,
+      "value": "command"
+    }
+  ],
+  "shortcuts.command": [
+    {
+      "type": 0,
+      "value": "Command"
+    }
+  ],
+  "shortcuts.none": [
+    {
+      "type": 0,
+      "value": "None"
+    }
+  ],
+  "shortcuts.problem.controlCode": [
+    {
+      "type": 0,
+      "value": "The terminal uses Control with that key."
+    }
+  ],
+  "shortcuts.problem.noModifier": [
+    {
+      "type": 0,
+      "value": "A shortcut needs Control, Option or Command, or a function key."
+    }
+  ],
+  "shortcuts.problem.optionTypes": [
+    {
+      "type": 0,
+      "value": "Option with that key types a character."
+    }
+  ],
+  "shortcuts.problem.reserved": [
+    {
+      "type": 0,
+      "value": "macOS, VoiceOver or a menu already uses that shortcut."
+    }
+  ],
+  "shortcuts.problem.screenReader": [
+    {
+      "type": 0,
+      "value": "VoiceOver uses Control with Option."
+    }
+  ],
+  "shortcuts.recording": [
+    {
+      "type": 0,
+      "value": "Press the new shortcut for "
+    },
+    {
+      "type": 1,
+      "value": "command"
+    },
+    {
+      "type": 0,
+      "value": ", or Escape to keep it"
+    }
+  ],
+  "shortcuts.reset": [
+    {
+      "type": 0,
+      "value": "Reset"
+    }
+  ],
+  "shortcuts.resetDone": [
+    {
+      "type": 1,
+      "value": "command"
+    },
+    {
+      "type": 0,
+      "value": ": back to "
+    },
+    {
+      "type": 1,
+      "value": "shortcut"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "shortcuts.resetLabel": [
+    {
+      "type": 0,
+      "value": "Reset "
+    },
+    {
+      "type": 1,
+      "value": "command"
+    }
+  ],
+  "shortcuts.set": [
+    {
+      "type": 1,
+      "value": "command"
+    },
+    {
+      "type": 0,
+      "value": ": "
+    },
+    {
+      "type": 1,
+      "value": "shortcut"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "shortcuts.shortcut": [
+    {
+      "type": 0,
+      "value": "Shortcut"
+    }
+  ],
+  "shortcuts.taken": [
+    {
+      "type": 1,
+      "value": "shortcut"
+    },
+    {
+      "type": 0,
+      "value": " is already the shortcut of "
+    },
+    {
+      "type": 1,
+      "value": "command"
+    },
+    {
+      "type": 0,
+      "value": "."
     }
   ],
   "sidebar.addHost": [

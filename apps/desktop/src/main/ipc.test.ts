@@ -38,6 +38,7 @@ function handlers(display: unknown = {}): InvokeHandlers {
         'sidebar:get-collapsed': async () => false,
         'sidebar:set-collapsed': async () => undefined,
         'help:open-guide': async () => undefined,
+        'menus:ignore-shortcuts': async () => undefined,
         'settings:get': async () => DEFAULT_SETTINGS,
         'settings:set': async () => undefined,
         'hosts:set-clipboard-writes': async (id, allowed) => ({
@@ -128,7 +129,17 @@ describe('registerHandlers: hosts, sidebar and trust', () => {
         await expect(
             registered.get('settings:set')?.({}, { floodThreshold: 40, hints: false }),
         ).resolves.toBeUndefined();
-        for (const change of [{ floodThreshold: 4 }, { theme: 'neon' }, { sidebarWidth: 300 }, { hints: undefined }]) {
+        await expect(
+            registered.get('settings:set')?.({}, { shortcuts: { 'terminal.find': 'Ctrl+Cmd+G' }, plainF6: true }),
+        ).resolves.toBeUndefined();
+        for (const change of [
+            { floodThreshold: 4 },
+            { theme: 'neon' },
+            { sidebarWidth: 300 },
+            { hints: undefined },
+            { shortcuts: { 'no.such': 'F2' } },
+            { shortcuts: { 'terminal.find': 'x'.repeat(65) } },
+        ]) {
             await expect(async () => registered.get('settings:set')?.({}, change)).rejects.toThrow(/invalid arguments/);
         }
         await expect(

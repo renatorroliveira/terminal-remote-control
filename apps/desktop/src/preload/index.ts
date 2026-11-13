@@ -49,6 +49,7 @@ const bridge: TrcBridge = {
     },
     menus: {
         terminal: (canCopy) => ipcRenderer.invoke('menus:terminal', canCopy) as Promise<void>,
+        ignoreShortcuts: (ignore) => ipcRenderer.invoke('menus:ignore-shortcuts', ignore) as Promise<void>,
     },
     sidebar: {
         width: () => ipcRenderer.invoke('sidebar:get-width') as Promise<number>,

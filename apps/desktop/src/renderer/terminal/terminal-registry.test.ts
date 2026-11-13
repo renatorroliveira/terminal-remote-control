@@ -189,7 +189,9 @@ describe('TerminalRegistry (US-1.8)', () => {
         expect(Math.min(...resizes)).toBeGreaterThan(100);
         expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(2);
     });
+});
 
+describe('TerminalRegistry: closing and losing hosts (US-1.8, US-1.14)', () => {
     it('removes the terminals of a host whose connection closed, and only those', () => {
         const { area, registry } = setup();
         registry.show('h1/a', 'h1', info('a'));

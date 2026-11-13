@@ -4,7 +4,8 @@ import { app, BrowserWindow, clipboard, ipcMain, Menu, protocol, shell } from 'e
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
-import { resolveKeymap } from '../shared/keymap';
+import { type Keymap, UNBOUND_KEYMAP } from '../shared/keymap';
+import { keymapFor } from '../shared/settings';
 import { aboutPanelOptions } from './about-panel';
 import { relayAccessibility } from './accessibility-relay';
 import { AppConfigFile, settingsOf } from './app-config';
@@ -33,6 +34,9 @@ const resources = app.isPackaged ? process.resourcesPath : join(app.getAppPath()
 const appRoots = { [APP_IDENTITY.appHost]: rendererRoot, [APP_IDENTITY.docsHost]: join(resources, 'docs') };
 const devServer = process.env['ELECTRON_RENDERER_URL'];
 let mainWindow: BrowserWindow | undefined;
+let keymap: Keymap = keymapFor({ shortcuts: {}, plainF6: false });
+/** Whether the settings page records a shortcut, so the menus give up theirs (A11Y-05.7). */
+let recordingShortcut = false;
 const background = isBackgroundLaunch({ seamEnabled: __TRC_TEST_SEAM__, env: process.env });
 
 if (background && process.platform === 'darwin') {
@@ -61,7 +65,9 @@ async function start(): Promise<void> {
     const home = trcHome(process.env, app.getPath('home'));
     await migrateLegacyState({ appData: app.getPath('appData'), home });
     const config = new AppConfigFile(home);
-    const { theme, screenReaderMode } = await config.read();
+    const stored = await config.read();
+    const { theme, screenReaderMode } = stored;
+    keymap = keymapFor(stored);
     const display = new DisplayRelay(theme);
     const screenReader = new ScreenReaderSetting({
         stored: screenReaderMode,
@@ -86,11 +92,7 @@ async function start(): Promise<void> {
                 await screenReader.setMode(mode);
                 return undefined;
             },
-            'menus:terminal': async (canCopy) => {
-                const menu = Menu.buildFromTemplate(terminalContextMenu(menuActions(), canCopy));
-                menu.popup(mainWindow === undefined ? {} : { window: mainWindow });
-                return undefined;
-            },
+            ...menuHandlers(display, config),
             'clipboard:write': async (text) => {
                 clipboard.writeText(text);
                 return undefined;
@@ -146,6 +148,23 @@ function hostHandlers(knownHosts: KnownHosts): HostHandlers {
     };
 }
 
+type MenuHandlers = Pick<InvokeHandlers, 'menus:terminal' | 'menus:ignore-shortcuts'>;
+
+function menuHandlers(display: DisplayRelay, config: AppConfigFile): MenuHandlers {
+    return {
+        'menus:terminal': async (canCopy) => {
+            const menu = Menu.buildFromTemplate(terminalContextMenu(menuActions(), canCopy));
+            menu.popup(mainWindow === undefined ? {} : { window: mainWindow });
+            return undefined;
+        },
+        'menus:ignore-shortcuts': async (ignore) => {
+            recordingShortcut = ignore;
+            installMenu(display, config, (await config.read()).theme);
+            return undefined;
+        },
+    };
+}
+
 type SettingsHandlers = Pick<InvokeHandlers, 'settings:get' | 'settings:set'>;
 
 function settingsHandlers(config: AppConfigFile, display: DisplayRelay): SettingsHandlers {
@@ -155,7 +174,11 @@ function settingsHandlers(config: AppConfigFile, display: DisplayRelay): Setting
             await config.update(change);
             if (change.theme !== undefined) {
                 display.setPreference(change.theme);
-                installMenu(display, config, change.theme);
+            }
+            if (change.theme !== undefined || change.shortcuts !== undefined || change.plainF6 !== undefined) {
+                const settings = await config.read();
+                keymap = keymapFor(settings);
+                installMenu(display, config, settings.theme);
             }
             return undefined;
         },
@@ -200,7 +223,7 @@ function installMenu(display: DisplayRelay, config: AppConfigFile, theme: ThemeP
 
 function menuActions(): Pick<MenuOptions, 'keymap' | 'onCommand' | 'onLookUp'> {
     return {
-        keymap: resolveKeymap({}),
+        keymap: recordingShortcut ? UNBOUND_KEYMAP : keymap,
         onCommand: (command) => mainWindow?.webContents.send(APP_COMMAND_CHANNEL, command),
         onLookUp: () => mainWindow?.webContents.showDefinitionForSelection(),
     };
