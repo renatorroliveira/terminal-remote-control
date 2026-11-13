@@ -41,6 +41,8 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
             submenu: [
                 { role: 'about' },
                 { type: 'separator' },
+                command(options, 'settings.show', MAIN_STRINGS.settings),
+                { type: 'separator' },
                 { role: 'services' },
                 { type: 'separator' },
                 { role: 'hide' },

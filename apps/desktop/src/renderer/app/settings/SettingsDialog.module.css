@@ -1,0 +1,193 @@
+@layer components {
+    .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        background: rgb(0 0 0 / 70%);
+    }
+
+    .modal {
+        width: min(44rem, 100%);
+        max-height: 100%;
+        overflow: auto;
+        border: 1px solid var(--trc-color-border);
+        border-radius: 6px;
+        background: var(--trc-color-surface);
+        color: var(--trc-color-text);
+    }
+
+    .dialog {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1.25rem;
+        outline: none;
+    }
+
+    .heading {
+        margin: 0;
+        font-size: 1.125rem;
+    }
+
+    .search {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .input {
+        min-height: 32px;
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--trc-color-secondary-border);
+        border-radius: 4px;
+        background: var(--trc-color-background);
+        color: var(--trc-color-text);
+        font: inherit;
+    }
+
+    .status {
+        margin: 0;
+    }
+
+    .section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--trc-color-border);
+    }
+
+    .sectionHeading {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .setting {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .label {
+        font-weight: 600;
+    }
+
+    .description {
+        margin: 0;
+        color: var(--trc-color-text-muted);
+        font-size: 0.875rem;
+        overflow-wrap: anywhere;
+    }
+
+    .choices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 1rem;
+    }
+
+    .radio,
+    .switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 28px;
+        cursor: pointer;
+    }
+
+    .radio::before {
+        box-sizing: border-box;
+        width: 18px;
+        height: 18px;
+        flex: none;
+        border: 2px solid var(--trc-color-secondary-border);
+        border-radius: 50%;
+        content: '';
+    }
+
+    .radio[data-selected]::before {
+        border: 6px solid var(--trc-color-primary);
+    }
+
+    .radio[data-focus-visible],
+    .switch[data-focus-visible] {
+        outline: 2px solid var(--trc-color-focus-ring);
+        outline-offset: 2px;
+    }
+
+    .track {
+        position: relative;
+        box-sizing: border-box;
+        width: 36px;
+        height: 20px;
+        flex: none;
+        border: 2px solid var(--trc-color-secondary-border);
+        border-radius: 10px;
+        background: var(--trc-color-background);
+    }
+
+    .track::after {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--trc-color-secondary-border);
+        content: '';
+    }
+
+    .switch[data-selected] .track {
+        border-color: var(--trc-color-primary-border);
+        background: var(--trc-color-primary);
+    }
+
+    .switch[data-selected] .track::after {
+        left: 18px;
+        background: var(--trc-color-primary-text);
+    }
+
+    .number {
+        display: inline-flex;
+        align-items: stretch;
+        gap: 0.25rem;
+        max-width: 14rem;
+    }
+
+    .number .input {
+        width: 7rem;
+        font-family: var(--trc-font-terminal);
+    }
+
+    .stepper {
+        min-width: 32px;
+        border: 1px solid var(--trc-color-secondary-border);
+        border-radius: 4px;
+        background: var(--trc-color-secondary);
+        color: var(--trc-color-secondary-text);
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .hosts {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    .actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .track::after {
+        transition: left 120ms ease;
+    }
+}

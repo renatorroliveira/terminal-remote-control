@@ -3,6 +3,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ConnectionState } from '../../shared/connection';
 import type { TrcBridge } from '../../shared/contract';
 import type { KnownHost } from '../../shared/hosts';
+import type { Settings } from '../../shared/settings';
 import type { ClientRequest, HostClient } from '../connection/host-client';
 import {
     EMPTY_WORKSPACE,
@@ -10,10 +11,10 @@ import {
     type HostEntry,
     hostAdded,
     hostGroups,
-    hostMoved,
     hostRemoved,
     hostStateChanged,
     hostToggled,
+    hostUpdated,
     isConnected,
     type SessionKey,
     sessionActivity,
@@ -52,6 +53,9 @@ export interface TerminalHost {
     closeSession(key: SessionKey): void;
 }
 
+/** The settings that change how sessions start, stop and end (US-1.7.1, US-1.10.2, US-1.10.7). */
+export type SessionPreferences = Pick<Settings, 'autoClose' | 'stopGraceSeconds' | 'newSessionFolder'>;
+
 /** What a new session may set beyond its size (US-1.7.2). */
 export type SessionOptions = Partial<Pick<CreateSessionSpec, 'profileId' | 'cwd' | 'name' | 'env'>>;
 
@@ -69,6 +73,7 @@ export class WorkspaceController {
     readonly #client: WorkspaceClient;
     readonly #terminals: TerminalHost;
     readonly #hosts: KnownHostStore;
+    readonly #preferences: (() => SessionPreferences) | undefined;
     /** Hosts the app is connecting on its own, whose failures raise no dialog. */
     readonly #automatic = new Set<string>();
     /** Connection tests waiting for their host to connect or fail (US-1.1.5). */
@@ -78,11 +83,17 @@ export class WorkspaceController {
     /** The host a session was last opened or created on (US-1.7.1). */
     #lastHost: string | undefined;
 
-    /** Creates an empty workspace. */
-    constructor(client: WorkspaceClient, terminals: TerminalHost, hosts: KnownHostStore) {
+    /** Creates an empty workspace; without `preferences`, the daemon's defaults and auto-close apply. */
+    constructor(
+        client: WorkspaceClient,
+        terminals: TerminalHost,
+        hosts: KnownHostStore,
+        preferences?: () => SessionPreferences,
+    ) {
         this.#client = client;
         this.#terminals = terminals;
         this.#hosts = hosts;
+        this.#preferences = preferences;
         this.store = createStore<Workspace>(() => EMPTY_WORKSPACE);
     }
 
@@ -162,7 +173,13 @@ export class WorkspaceController {
     /** Moves a host's install location; the next connection uses it (US-1.4.3). */
     async moveInstallRoot(hostId: string, installRoot: string): Promise<void> {
         const moved = await this.#hosts.setInstallRoot(hostId, installRoot);
-        this.#update((workspace) => hostMoved(workspace, hostId, moved.installRoot));
+        this.#update((workspace) => hostUpdated(workspace, moved));
+    }
+
+    /** Lets a host's programs write the clipboard with OSC 52, or stops them (SEC-06.1). */
+    async setClipboardWrites(hostId: string, allowed: boolean): Promise<void> {
+        const changed = await this.#hosts.setClipboardWrites(hostId, allowed);
+        this.#update((workspace) => hostUpdated(workspace, changed));
     }
 
     /**
@@ -259,10 +276,17 @@ export class WorkspaceController {
         return this.newSession(hostId, options);
     }
 
-    /** Creates a session on the open session's host, else the last-used host, else the first connected one (US-1.7.1). */
+    /**
+     * Creates a session on the open session's host, else the last-used host, else the first connected one, in the
+     * home folder or, when set, the open session's folder (US-1.7.1).
+     */
     newSessionHere(): Promise<void> {
         const host = this.defaultHost();
-        return host === undefined ? Promise.resolve() : this.newSession(host);
+        if (host === undefined) {
+            return Promise.resolve();
+        }
+        const cwd = this.#openFolder(host);
+        return cwd === undefined ? this.newSession(host) : this.newSession(host, { cwd });
     }
 
     /** The host a new session goes to: the open session's, else the last-used, else the first connected one. */
@@ -292,7 +316,12 @@ export class WorkspaceController {
 
     /** Stops a session: SIGHUP, then SIGTERM, then SIGKILL after the daemon's grace period (US-1.10.2). */
     stopSession(key: SessionKey): Promise<void> {
-        return this.#sessionRequest(key, (session) => ({ type: 'stop', session }));
+        const grace = this.#preferences?.().stopGraceSeconds;
+        return this.#sessionRequest(key, (session) => ({
+            type: 'stop',
+            session,
+            ...(grace === undefined ? {} : { graceMs: grace * 1_000 }),
+        }));
     }
 
     /** Restarts a session with its shell, directory and environment, keeping its scrollback (US-1.10.3). */
@@ -400,9 +429,21 @@ export class WorkspaceController {
     }
 
     #closeIfClean(hostId: string, sessions: readonly SessionInfo[]): void {
+        if (this.#preferences?.().autoClose === false) {
+            return;
+        }
         for (const session of sessions.filter(exitedCleanly)) {
             this.#client.request(hostId, { type: 'close', session: session.id }).catch(() => undefined);
         }
+    }
+
+    #openFolder(hostId: string): string | undefined {
+        const open = this.store.getState().open;
+        if (this.#preferences?.().newSessionFolder !== 'open-session' || open === undefined) {
+            return undefined;
+        }
+        const found = this.#find(open);
+        return found?.hostId === hostId ? found.session.cwd : undefined;
     }
 
     #host(hostId: string): HostEntry | undefined {

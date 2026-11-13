@@ -11,6 +11,8 @@ import { AssistiveTechnology } from './app/assistive-technology';
 import { type ComposedWorkspace, composeWorkspace } from './app/compose-workspace';
 import { applyDisplaySettings, applyLocale } from './app/display';
 import { NotificationCenter } from './app/notifications';
+import { applyTerminalSettings } from './app/settings/settings-effects';
+import { SettingsStore } from './app/settings/settings-store';
 import { Shell } from './app/shell';
 import { receiveConnectionPorts } from './connection/connection-port';
 import { HostClient } from './connection/host-client';
@@ -46,8 +48,11 @@ document.body.append(announcements);
 const announcer = new Announcer(new LiveRegionSink(announcements));
 const notifications = new NotificationCenter();
 const keymap = resolveKeymap({});
+const settings = new SettingsStore(window.trc.settings);
+const settingsLoaded = settings.load();
 const narrow = window.matchMedia('(max-width: 800px)');
 let shell: Shell | undefined;
+let stopTerminalSettings = (): void => undefined;
 window.trc.commands.onCommand((command) => shell?.run(command));
 const container = document.getElementById('root');
 if (container !== null) {
@@ -73,10 +78,12 @@ if (container !== null) {
                 void window.trc.clipboard.write(text);
                 shell?.terminalNotice(key, { kind: 'clipboard-written' });
             },
+            settings: () => settings.current,
         });
         const { workspace, terminals } = composed;
         terminals.setReducedMotion(reducedMotion);
-        void window.trc.terminal.appearance().then((appearance) => terminals.setAppearance(appearance));
+        stopTerminalSettings();
+        stopTerminalSettings = applyTerminalSettings(settings, terminals);
         shell = new Shell({
             workspace,
             terminals,
@@ -89,10 +96,10 @@ if (container !== null) {
             isNarrow: () => narrow.matches,
             screenReader: assistiveTechnology,
             links: window.trc.links,
-            terminalZoom: { get: () => window.trc.terminal.zoom(), set: (zoom) => window.trc.terminal.setZoom(zoom) },
+            settings,
             guide: { open: (section) => void window.trc.help.openGuide(section) },
         });
-        void workspace.load().then(() => workspace.connectAll());
+        void settingsLoaded.then(() => workspace.load()).then(() => workspace.connectAll());
         reactRoot.render(
             <StrictMode>
                 <AppProviders locale={DEFAULT_LOCALE}>

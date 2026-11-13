@@ -46,6 +46,10 @@ class SlowKnownHostStore implements KnownHostStore {
         return this.#hosts.setInstallRoot(id, installRoot);
     }
 
+    setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost> {
+        return this.#hosts.setClipboardWrites(id, allowed);
+    }
+
     finish(): void {
         for (const done of this.#waiting.splice(0)) {
             done();

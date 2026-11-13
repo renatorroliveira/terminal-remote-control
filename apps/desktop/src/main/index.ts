@@ -7,7 +7,7 @@ import type { ThemePreference } from '../shared/display';
 import { resolveKeymap } from '../shared/keymap';
 import { aboutPanelOptions } from './about-panel';
 import { relayAccessibility } from './accessibility-relay';
-import { AppConfigFile } from './app-config';
+import { AppConfigFile, settingsOf } from './app-config';
 import { appIconPath } from './app-icon';
 import { contentTypeFor, resolveAppRequest } from './app-protocol';
 import { isBackgroundLaunch } from './background-launch';
@@ -102,12 +102,7 @@ async function start(): Promise<void> {
             },
             ...hostHandlers(knownHosts),
             ...sidebarHandlers(config),
-            'terminal:get-zoom': async () => (await config.read()).terminalZoom,
-            'terminal:get-appearance': async () => (await config.read()).terminalAppearance,
-            'terminal:set-zoom': async (zoom) => {
-                await config.update({ terminalZoom: zoom });
-                return undefined;
-            },
+            ...settingsHandlers(config, display),
             'help:open-guide': async (section) => {
                 guide.open(section);
                 return undefined;
@@ -121,7 +116,12 @@ async function start(): Promise<void> {
 
 type HostHandlers = Pick<
     InvokeHandlers,
-    'hosts:list' | 'hosts:add' | 'hosts:suggestions' | 'hosts:remove' | 'hosts:set-install-root'
+    | 'hosts:list'
+    | 'hosts:add'
+    | 'hosts:suggestions'
+    | 'hosts:remove'
+    | 'hosts:set-install-root'
+    | 'hosts:set-clipboard-writes'
 >;
 
 function hostHandlers(knownHosts: KnownHosts): HostHandlers {
@@ -142,6 +142,23 @@ function hostHandlers(knownHosts: KnownHosts): HostHandlers {
             return undefined;
         },
         'hosts:set-install-root': (id, root) => knownHosts.setInstallRoot(id, root),
+        'hosts:set-clipboard-writes': (id, allowed) => knownHosts.setClipboardWrites(id, allowed),
+    };
+}
+
+type SettingsHandlers = Pick<InvokeHandlers, 'settings:get' | 'settings:set'>;
+
+function settingsHandlers(config: AppConfigFile, display: DisplayRelay): SettingsHandlers {
+    return {
+        'settings:get': async () => settingsOf(await config.read()),
+        'settings:set': async (change) => {
+            await config.update(change);
+            if (change.theme !== undefined) {
+                display.setPreference(change.theme);
+                installMenu(display, config, change.theme);
+            }
+            return undefined;
+        },
     };
 }
 

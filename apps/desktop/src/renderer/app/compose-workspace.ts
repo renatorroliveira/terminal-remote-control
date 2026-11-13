@@ -1,5 +1,6 @@
 import type { SessionInfo } from '@trc/protocol';
 import { createIntl } from 'react-intl';
+import type { Settings } from '../../shared/settings';
 import type { HostClient } from '../connection/host-client';
 import { DEFAULT_LOCALE, messagesFor } from '../i18n/locale';
 import {
@@ -12,7 +13,6 @@ import { type KnownHostStore, type SessionKey, WorkspaceController } from '../se
 import { sessionName } from '../sessions/workspace-model';
 import type { TerminalLink } from '../terminal/hyperlinks';
 import type { TerminalNotice } from '../terminal/notices';
-import { DEFAULT_FLOOD_THRESHOLD } from '../terminal/output-announcer';
 import { floodMessage } from '../terminal/output-messages';
 import { type SessionSpeech, TerminalRegistry } from '../terminal/terminal-registry';
 import type { TerminalPalette } from '../ui/themes';
@@ -44,6 +44,8 @@ export interface WorkspaceSources {
     readonly onContextMenu: (canCopy: boolean) => void;
     /** A program wrote the clipboard while its host allowed it (SEC-06.1). */
     readonly onClipboardWrite: (key: SessionKey, text: string) => void;
+    /** The settings page's current settings (A11Y-10.3). */
+    readonly settings: () => Settings;
 }
 
 /** What speaking output needs. */
@@ -84,27 +86,36 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
             }),
         }),
         onActivity: (key) => workspace?.recordActivity(key),
-        speech: sessionSpeech(sources.speech, (lines) => intl.formatMessage(floodMessage, { lines })),
+        speech: sessionSpeech(
+            sources.speech,
+            () => sources.settings().floodThreshold,
+            (lines) => intl.formatMessage(floodMessage, { lines }),
+        ),
         onOpenLink: sources.onOpenLink,
-        onPasteRequest: sources.onPasteRequest,
+        onPasteRequest: (key, text) =>
+            sources.settings().pasteConfirmation ? sources.onPasteRequest(key, text) : terminals.paste(key, text),
         onNotice: sources.onNotice,
         onContextMenu: sources.onContextMenu,
         clipboardWrites: (hostId) =>
             workspace?.store.getState().hosts.find((host) => host.id === hostId)?.allowClipboardWrites === true,
         onClipboardWrite: sources.onClipboardWrite,
     });
-    workspace = new WorkspaceController(sources.client, terminals, sources.hosts);
+    workspace = new WorkspaceController(sources.client, terminals, sources.hosts, sources.settings);
     return { workspace, terminals };
 }
 
 /** Speaks each session's output through the announcer, one appending group per session (A11Y-02.1). */
-function sessionSpeech(sources: SpeechSources, summary: (lines: number) => string): SessionSpeech {
+function sessionSpeech(
+    sources: SpeechSources,
+    floodThreshold: () => number,
+    summary: (lines: number) => string,
+): SessionSpeech {
     const group = (key: SessionKey): string => `output:${key}`;
     return {
         allowed: (key) => sources.screenReader() && !sources.isMuted(key),
         speak: (key, text) => sources.announcer.announce(text, { group: group(key), append: true }),
         cancel: (key) => sources.announcer.cancel(group(key)),
-        floodThreshold: () => DEFAULT_FLOOD_THRESHOLD,
+        floodThreshold,
         summary,
     };
 }

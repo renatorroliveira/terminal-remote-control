@@ -67,6 +67,8 @@ export interface TerminalViewOptions {
     readonly speech?: OutputSpeech;
     /** The terminal font size in CSS pixels; {@link TERMINAL_FONT_SIZE} without it (A11Y-07.4). */
     readonly fontSize?: number;
+    /** Lines of scrollback the terminal keeps; {@link DEFAULT_SCROLLBACK_LINES} without it (NFR-10). */
+    readonly scrollback?: number;
     /** The user opened a link with Command+click, or Control+click off macOS (US-1.12.3). */
     readonly onLink?: (link: TerminalLink) => void;
     /** The user pasted more than one line, which waits for a confirmation (US-1.12.2); without it, it is sent. */
@@ -87,7 +89,8 @@ export const TERMINAL_FONT_FAMILY = '"Intel One Mono", monospace';
 export const TERMINAL_FONT_SIZE = 14;
 /** The grid's default maximum width. */
 export const DEFAULT_MAX_COLUMNS = 120;
-const SCROLLBACK_LINES = 10_000;
+/** The scrollback a terminal keeps unless told otherwise (NFR-10). */
+export const DEFAULT_SCROLLBACK_LINES = 10_000;
 const FOCUS_IN = '\u001b[I';
 const FOCUS_OUT = '\u001b[O';
 
@@ -132,7 +135,7 @@ export class TerminalView {
             allowProposedApi: true,
             fontFamily: TERMINAL_FONT_FAMILY,
             fontSize: options.fontSize ?? TERMINAL_FONT_SIZE,
-            scrollback: SCROLLBACK_LINES,
+            scrollback: options.scrollback ?? DEFAULT_SCROLLBACK_LINES,
             cursorStyle: 'block',
             cursorInactiveStyle: 'outline',
             minimumContrastRatio: 4.5,
@@ -319,6 +322,20 @@ export class TerminalView {
         this.#wantsBlink = appearance.cursorBlink;
         this.#blink.set({ wanted: this.#wantsBlink, reducedMotion: this.#reducedMotion });
         this.#geometry?.setExtraSpacing(appearance.letterSpacing);
+    }
+
+    /** Names the help and leave-terminal shortcuts in the terminal's description, or not when hints are off (A11Y-01.2). */
+    setHints(on: boolean): void {
+        if (on) {
+            this.surface.setAttribute('aria-describedby', this.#hint.id);
+        } else {
+            this.surface.removeAttribute('aria-describedby');
+        }
+    }
+
+    /** Keeps at least `ratio` contrast between each cell's text and background (A11Y-04, A11Y-10.3). */
+    setMinimumContrast(ratio: number): void {
+        this.terminal.options.minimumContrastRatio = ratio;
     }
 
     /** Stops the cursor blinking while the OS reduces motion (A11Y-08.1). */

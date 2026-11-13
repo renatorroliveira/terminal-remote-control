@@ -59,6 +59,15 @@ describe('KnownHosts: forgetting, install locations and recent hosts (US-1.1.1, 
         expect((await hosts.list())[0]?.installRoot).toBe('/scratch/me/trc');
     });
 
+    it('turns a host’s clipboard writes on and off from the settings page (SEC-06.1)', async () => {
+        const hosts = new KnownHosts(directory());
+        const host = await hosts.add('devbox-1', '~/.trc');
+        expect(await hosts.setClipboardWrites(host.id, true)).toEqual({ ...host, allowClipboardWrites: true });
+        expect(await hosts.setClipboardWrites(host.id, false)).toEqual(host);
+        await expect(hosts.setClipboardWrites('host-0000000000000000', true)).rejects.toThrow(/no host/);
+        expect((await hosts.list())[0]).toEqual(host);
+    });
+
     it('keeps a host’s clipboard-write permission, off unless hosts.json turns it on (SEC-06.1)', async () => {
         const home = directory();
         const host = { id: 'host-0123456789abcdef', address: { destination: 'build' }, installRoot: '~/.trc' };

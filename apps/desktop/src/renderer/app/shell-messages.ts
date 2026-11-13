@@ -79,6 +79,7 @@ export const commandMessages = defineMessages<CommandId>({
         description: 'Command name: opens or closes review mode, a read-only text field with the whole buffer.',
     },
     'terminal.find': { id: 'command.terminalFind', defaultMessage: 'Find…', description: 'Command name.' },
+    'settings.show': { id: 'command.settingsShow', defaultMessage: 'Settings…', description: 'Command name.' },
     'terminal.listLinks': {
         id: 'command.terminalListLinks',
         defaultMessage: 'List links…',

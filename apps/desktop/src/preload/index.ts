@@ -11,7 +11,7 @@ import {
 import type { DisplaySettings } from '../shared/display';
 import type { KnownHost } from '../shared/hosts';
 import type { LinkCheck } from '../shared/links';
-import type { TerminalAppearance } from '../shared/terminal-appearance';
+import type { Settings } from '../shared/settings';
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
     const handler = (_event: IpcRendererEvent, value: T): void => listener(value);
@@ -37,6 +37,8 @@ const bridge: TrcBridge = {
         remove: (id) => ipcRenderer.invoke('hosts:remove', id) as Promise<void>,
         setInstallRoot: (id, installRoot) =>
             ipcRenderer.invoke('hosts:set-install-root', id, installRoot) as Promise<KnownHost>,
+        setClipboardWrites: (id, allowed) =>
+            ipcRenderer.invoke('hosts:set-clipboard-writes', id, allowed) as Promise<KnownHost>,
     },
     links: {
         check: (target) => ipcRenderer.invoke('links:check', target) as Promise<LinkCheck | undefined>,
@@ -44,11 +46,6 @@ const bridge: TrcBridge = {
     },
     clipboard: {
         write: (text) => ipcRenderer.invoke('clipboard:write', text) as Promise<void>,
-    },
-    terminal: {
-        zoom: () => ipcRenderer.invoke('terminal:get-zoom') as Promise<number>,
-        setZoom: (zoom) => ipcRenderer.invoke('terminal:set-zoom', zoom) as Promise<void>,
-        appearance: () => ipcRenderer.invoke('terminal:get-appearance') as Promise<TerminalAppearance>,
     },
     menus: {
         terminal: (canCopy) => ipcRenderer.invoke('menus:terminal', canCopy) as Promise<void>,
@@ -58,6 +55,10 @@ const bridge: TrcBridge = {
         setWidth: (width) => ipcRenderer.invoke('sidebar:set-width', width) as Promise<void>,
         collapsed: () => ipcRenderer.invoke('sidebar:get-collapsed') as Promise<boolean>,
         setCollapsed: (collapsed) => ipcRenderer.invoke('sidebar:set-collapsed', collapsed) as Promise<void>,
+    },
+    settings: {
+        get: () => ipcRenderer.invoke('settings:get') as Promise<Settings>,
+        set: (change) => ipcRenderer.invoke('settings:set', change) as Promise<void>,
     },
     help: {
         openGuide: (section) => ipcRenderer.invoke('help:open-guide', section) as Promise<void>,

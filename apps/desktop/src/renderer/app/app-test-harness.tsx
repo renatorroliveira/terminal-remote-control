@@ -4,6 +4,7 @@ import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import type { GuideSection } from '../../shared/guide';
 import { resolveKeymap } from '../../shared/keymap';
+import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings';
 import { messagesFor } from '../i18n/locale';
 import { WorkspaceController } from '../sessions/workspace-controller';
 import {
@@ -16,6 +17,7 @@ import { themeStyleSheet } from '../ui/themes';
 import { App } from './App';
 import { AppProviders } from './AppProviders';
 import { NotificationCenter } from './notifications';
+import { SettingsStore } from './settings/settings-store';
 import { Shell } from './shell';
 
 /** A connected host's state. */
@@ -33,6 +35,24 @@ export function installTokens(): () => void {
     };
 }
 
+/** A `config.json` stand-in that records each settings change. */
+export class RecordingSettingsSource {
+    stored: Settings = DEFAULT_SETTINGS;
+    readonly changes: Partial<Settings>[] = [];
+
+    /** The kept settings. */
+    get(): Promise<Settings> {
+        return Promise.resolve(this.stored);
+    }
+
+    /** Keeps a change. */
+    set(change: Partial<Settings>): Promise<void> {
+        this.changes.push(change);
+        this.stored = { ...this.stored, ...change };
+        return Promise.resolve();
+    }
+}
+
 /** Renders the whole app over test doubles, with a shell recording what it saves and speaks. */
 export function renderApp(savedWidth = 400) {
     const client = new FakeWorkspaceClient([bashSession('a')]);
@@ -41,6 +61,8 @@ export function renderApp(savedWidth = 400) {
     const saved: (number | boolean)[] = [];
     const spoken: string[] = [];
     const guides: (GuideSection | undefined)[] = [];
+    const settingsSource = new RecordingSettingsSource();
+    const settings = new SettingsStore(settingsSource);
     const shell = new Shell({
         workspace,
         terminals,
@@ -63,6 +85,7 @@ export function renderApp(savedWidth = 400) {
         document,
         isNarrow: () => window.innerWidth <= 800,
         guide: { open: (section) => guides.push(section) },
+        settings,
     });
     return {
         client,
@@ -72,6 +95,7 @@ export function renderApp(savedWidth = 400) {
         saved,
         spoken,
         guides,
+        settingsSource,
         rendered: render(
             <AppProviders locale="en">
                 <App workspace={workspace} terminals={terminals} shell={shell} />

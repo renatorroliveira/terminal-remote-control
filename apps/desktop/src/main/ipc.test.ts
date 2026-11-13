@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_TERMINAL_APPEARANCE } from '../shared/terminal-appearance';
+import { DEFAULT_SETTINGS } from '../shared/settings';
 import { type InvokeHandlers, registerHandlers } from './ipc';
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown;
@@ -33,14 +33,19 @@ function handlers(display: unknown = {}): InvokeHandlers {
         'links:open': async () => undefined,
         'menus:terminal': async () => undefined,
         'clipboard:write': async () => undefined,
-        'terminal:get-zoom': async () => 100,
-        'terminal:get-appearance': async () => DEFAULT_TERMINAL_APPEARANCE,
-        'terminal:set-zoom': async () => undefined,
         'sidebar:get-width': async () => 400,
         'sidebar:set-width': async () => undefined,
         'sidebar:get-collapsed': async () => false,
         'sidebar:set-collapsed': async () => undefined,
         'help:open-guide': async () => undefined,
+        'settings:get': async () => DEFAULT_SETTINGS,
+        'settings:set': async () => undefined,
+        'hosts:set-clipboard-writes': async (id, allowed) => ({
+            id,
+            address: { destination: 'x' },
+            installRoot: '~/.trc',
+            ...(allowed ? { allowClipboardWrites: true } : {}),
+        }),
     };
 }
 
@@ -112,6 +117,24 @@ describe('registerHandlers: hosts, sidebar and trust', () => {
         await expect(registered.get('help:open-guide')?.({}, undefined)).resolves.toBeUndefined();
         await expect(registered.get('help:open-guide')?.({}, 'voiceover')).resolves.toBeUndefined();
         await expect(async () => registered.get('help:open-guide')?.({}, '../secret')).rejects.toThrow(
+            /invalid arguments/,
+        );
+    });
+
+    it('takes a settings change only with known settings in range (A11Y-10.3)', async () => {
+        const { handlers: registered, ipc } = fakeIpc();
+        registerHandlers(ipc, handlers(), trusted);
+        expect(await registered.get('settings:get')?.({})).toEqual(DEFAULT_SETTINGS);
+        await expect(
+            registered.get('settings:set')?.({}, { floodThreshold: 40, hints: false }),
+        ).resolves.toBeUndefined();
+        for (const change of [{ floodThreshold: 4 }, { theme: 'neon' }, { sidebarWidth: 300 }, { hints: undefined }]) {
+            await expect(async () => registered.get('settings:set')?.({}, change)).rejects.toThrow(/invalid arguments/);
+        }
+        await expect(
+            registered.get('hosts:set-clipboard-writes')?.({}, 'host-0000000000000000', true),
+        ).resolves.toEqual(expect.objectContaining({ allowClipboardWrites: true }));
+        await expect(async () => registered.get('hosts:set-clipboard-writes')?.({}, 'host-0', true)).rejects.toThrow(
             /invalid arguments/,
         );
     });

@@ -20,6 +20,7 @@ export const COMMAND_IDS = [
     'terminal.zoomReset',
     'review.toggle',
     'terminal.find',
+    'settings.show',
 ] as const;
 
 /** A command's ID. */
@@ -82,6 +83,7 @@ export const DEFAULT_KEYMAP: Readonly<Partial<Record<CommandId, string>>> = {
     'terminal.zoomReset': 'Cmd+0',
     'review.toggle': 'Option+F2',
     'terminal.find': 'Cmd+F',
+    'settings.show': 'Cmd+,',
 };
 
 /** Reads a chord such as `Shift+Cmd+P`; modifiers come in any order, as `Ctrl`, `Control`, `Option`, `Alt`, `Cmd`. */

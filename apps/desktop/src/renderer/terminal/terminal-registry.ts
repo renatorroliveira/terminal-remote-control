@@ -8,7 +8,7 @@ import type { TerminalNotice } from './notices';
 import type { OutputSpeech } from './output-announcer';
 import { SessionLink, type SessionTransport } from './session-link';
 import styles from './terminal-registry.module.css';
-import { TERMINAL_FONT_SIZE, type TerminalLabel, TerminalView } from './terminal-view';
+import { DEFAULT_SCROLLBACK_LINES, TERMINAL_FONT_SIZE, type TerminalLabel, TerminalView } from './terminal-view';
 
 /** A terminal's accessible names and texts. */
 export type { TerminalLabel } from './terminal-view';
@@ -74,6 +74,9 @@ export class TerminalRegistry implements TerminalHost {
     #fontSize = TERMINAL_FONT_SIZE;
     #appearance: TerminalAppearance = DEFAULT_TERMINAL_APPEARANCE;
     #reducedMotion = false;
+    #hints = true;
+    #minimumContrast = 4.5;
+    #scrollback = DEFAULT_SCROLLBACK_LINES;
 
     /** Creates an empty registry. */
     constructor(options: TerminalRegistryOptions) {
@@ -181,6 +184,27 @@ export class TerminalRegistry implements TerminalHost {
         }
     }
 
+    /** Shows or drops every terminal's shortcut hint (A11Y-01.2). */
+    setHints(on: boolean): void {
+        this.#hints = on;
+        for (const entry of this.#entries.values()) {
+            entry.view.setHints(on);
+        }
+    }
+
+    /** Sets the contrast every terminal keeps between text and background (A11Y-04, A11Y-10.3). */
+    setMinimumContrast(ratio: number): void {
+        this.#minimumContrast = ratio;
+        for (const entry of this.#entries.values()) {
+            entry.view.setMinimumContrast(ratio);
+        }
+    }
+
+    /** Sets the scrollback of terminals and sessions created from now on (NFR-10, US-1.11.4). */
+    setScrollback(lines: number): void {
+        this.#scrollback = lines;
+    }
+
     /** Pastes text into a session's terminal and focuses it (US-1.12.2). */
     paste(key: SessionKey, text: string): void {
         const entry = this.#entries.get(key);
@@ -197,7 +221,8 @@ export class TerminalRegistry implements TerminalHost {
     async create(hostId: string, options: SessionOptions = {}): Promise<SessionInfo> {
         const entry = this.#newEntry(hostId);
         await entry.view.ready;
-        const session = await entry.link.create({ ...options, env: options.env ?? {} }).catch((error: unknown) => {
+        const spec = { ...options, env: options.env ?? {}, scrollbackLines: this.#scrollback };
+        const session = await entry.link.create(spec).catch((error: unknown) => {
             this.#dispose(entry);
             throw error;
         });
@@ -324,6 +349,7 @@ export class TerminalRegistry implements TerminalHost {
         view = new TerminalView({
             palette: this.#palette,
             fontSize: this.#fontSize,
+            scrollback: this.#scrollback,
             isMac: this.#options.isMac,
             assistiveTechnology: this.#options.assistiveTechnology,
             onInput: (text) => link.input(text),
@@ -340,6 +366,8 @@ export class TerminalRegistry implements TerminalHost {
         });
         view.mount(frame);
         view.setConnected(!this.#offline.has(hostId));
+        view.setHints(this.#hints);
+        view.setMinimumContrast(this.#minimumContrast);
         view.setTabFocusMode(this.#tabFocusMode);
         view.setReducedMotion(this.#reducedMotion);
         const appearance = this.#appearance;

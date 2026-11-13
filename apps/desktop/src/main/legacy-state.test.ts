@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_SETTINGS } from '../shared/settings';
 import { migrateLegacyState } from './legacy-state';
 
 function folders() {
@@ -20,6 +21,7 @@ describe('migrateLegacyState: settings and hosts from the old @trc/desktop profi
         writeFileSync(join(userData, 'hosts.json'), JSON.stringify(HOSTS));
         await migrateLegacyState({ appData, home });
         expect(JSON.parse(readFileSync(join(home, 'config.json'), 'utf8'))).toEqual({
+            ...DEFAULT_SETTINGS,
             theme: 'hc-dark',
             sidebarWidth: 400,
             sidebarCollapsed: false,

@@ -32,6 +32,17 @@ describe('menuTemplate', () => {
         ]);
     });
 
+    it('opens Settings from the app menu with Command+, (A11Y-10.3)', () => {
+        const commands: string[] = [];
+        const template = menuTemplate({ ...options(), onCommand: (id) => commands.push(id) });
+        const app = template[0]?.submenu as MenuItemConstructorOptions[];
+        const settings = app.find((item) => item.label === 'Settings…');
+        expect(settings?.accelerator).toBe('Command+,');
+        expect(labels(app).slice(0, 3)).toEqual(['about', undefined, 'Settings…']);
+        settings?.click?.(undefined as never, undefined, undefined as never);
+        expect(commands).toEqual(['settings.show']);
+    });
+
     it('sends the help commands to the renderer', () => {
         const commands: string[] = [];
         const template = menuTemplate({ ...options(), onCommand: (id) => commands.push(id) });

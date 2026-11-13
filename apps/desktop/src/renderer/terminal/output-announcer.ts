@@ -22,8 +22,6 @@ export interface SpeechClock {
     schedule(run: () => void, delayMs: number): () => void;
 }
 
-/** The default flood threshold, in lines a second. */
-export const DEFAULT_FLOOD_THRESHOLD = 20;
 /** Output is spoken once it has paused this long... */
 const SETTLE_MS = 100;
 /** ...and at most this long after it started, so speech starts promptly (NFR-04). */

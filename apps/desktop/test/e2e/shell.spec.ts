@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -109,5 +109,25 @@ test('Option+F1 lists the shortcuts, and opens the user guide in its own accessi
     await expect(guide.getByRole('main')).toBeVisible();
     expect(await axeViolations(guide)).toEqual([]);
     await expect(help).toHaveCount(0);
+    await app.close();
+});
+
+test('Command+, opens the searchable settings page, and a theme change applies and is kept (A11Y-10.3)', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'trc-e2e-home-'));
+    const app = await launchApp([], { TRC_HOME: home });
+    const window = await app.firstWindow();
+    await window.getByRole('combobox', { name: 'New host' }).focus();
+    await window.keyboard.press('Meta+Comma');
+    const settings = window.getByRole('dialog', { name: 'Settings' });
+    await expect(settings.getByRole('searchbox', { name: 'Search settings' })).toBeFocused();
+    expect(await axeViolations(window)).toEqual([]);
+    await window.keyboard.type('theme');
+    await settings.getByText('High contrast dark', { exact: true }).click();
+    await expect(window.locator('html')).toHaveAttribute('data-theme', 'hc-dark');
+    await expect.poll(() => JSON.parse(readFileSync(join(home, 'config.json'), 'utf8')).theme).toBe('hc-dark');
+    await window.keyboard.press('Escape');
+    await window.keyboard.press('Escape');
+    await expect(settings).toHaveCount(0);
+    await expect(window.getByRole('combobox', { name: 'New host' })).toBeFocused();
     await app.close();
 });

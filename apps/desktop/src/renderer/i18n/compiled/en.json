@@ -443,6 +443,12 @@
       "value": "Previous session"
     }
   ],
+  "command.settingsShow": [
+    {
+      "type": 0,
+      "value": "Settings…"
+    }
+  ],
   "command.sidebarToggle": [
     {
       "type": 0,
@@ -2203,6 +2209,348 @@
     {
       "type": 0,
       "value": "Unknown state"
+    }
+  ],
+  "setting.autoClose": [
+    {
+      "type": 0,
+      "value": "Close sessions that exit cleanly"
+    }
+  ],
+  "setting.autoClose.description": [
+    {
+      "type": 0,
+      "value": "A session that exits with another code or a signal always stays."
+    }
+  ],
+  "setting.choice.bar": [
+    {
+      "type": 0,
+      "value": "Bar"
+    }
+  ],
+  "setting.choice.block": [
+    {
+      "type": 0,
+      "value": "Block"
+    }
+  ],
+  "setting.choice.brief": [
+    {
+      "type": 0,
+      "value": "Brief"
+    }
+  ],
+  "setting.choice.contrastAa": [
+    {
+      "type": 0,
+      "value": "4.5 to 1 (WCAG AA)"
+    }
+  ],
+  "setting.choice.contrastAaa": [
+    {
+      "type": 0,
+      "value": "7 to 1 (WCAG AAA)"
+    }
+  ],
+  "setting.choice.dark": [
+    {
+      "type": 0,
+      "value": "Dark"
+    }
+  ],
+  "setting.choice.detailed": [
+    {
+      "type": 0,
+      "value": "Detailed"
+    }
+  ],
+  "setting.choice.hcDark": [
+    {
+      "type": 0,
+      "value": "High contrast dark"
+    }
+  ],
+  "setting.choice.hcLight": [
+    {
+      "type": 0,
+      "value": "High contrast light"
+    }
+  ],
+  "setting.choice.home": [
+    {
+      "type": 0,
+      "value": "The home folder"
+    }
+  ],
+  "setting.choice.light": [
+    {
+      "type": 0,
+      "value": "Light"
+    }
+  ],
+  "setting.choice.midnight": [
+    {
+      "type": 0,
+      "value": "Midnight"
+    }
+  ],
+  "setting.choice.openSession": [
+    {
+      "type": 0,
+      "value": "The open session’s folder"
+    }
+  ],
+  "setting.choice.srAuto": [
+    {
+      "type": 0,
+      "value": "Automatic"
+    }
+  ],
+  "setting.choice.srOff": [
+    {
+      "type": 0,
+      "value": "Off"
+    }
+  ],
+  "setting.choice.srOn": [
+    {
+      "type": 0,
+      "value": "On"
+    }
+  ],
+  "setting.choice.system": [
+    {
+      "type": 0,
+      "value": "System"
+    }
+  ],
+  "setting.choice.underline": [
+    {
+      "type": 0,
+      "value": "Underline"
+    }
+  ],
+  "setting.clipboardWrites": [
+    {
+      "type": 0,
+      "value": "Programs may write the clipboard (OSC 52)"
+    }
+  ],
+  "setting.clipboardWrites.description": [
+    {
+      "type": 0,
+      "value": "TRC says each time a program puts text on the clipboard. Programs can never read it."
+    }
+  ],
+  "setting.cursorBlink": [
+    {
+      "type": 0,
+      "value": "Blinking cursor"
+    }
+  ],
+  "setting.cursorBlink.description": [
+    {
+      "type": 0,
+      "value": "Stops after 5 seconds without typing, and never blinks while Reduce motion is on."
+    }
+  ],
+  "setting.cursorStyle": [
+    {
+      "type": 0,
+      "value": "Cursor shape"
+    }
+  ],
+  "setting.cursorWidth": [
+    {
+      "type": 0,
+      "value": "Bar cursor width, pixels"
+    }
+  ],
+  "setting.floodThreshold": [
+    {
+      "type": 0,
+      "value": "Lines a second before output is summarized"
+    }
+  ],
+  "setting.hints": [
+    {
+      "type": 0,
+      "value": "Shortcut hint on the terminal"
+    }
+  ],
+  "setting.hints.description": [
+    {
+      "type": 0,
+      "value": "VoiceOver reads it after the terminal’s name: Option F1, accessibility help."
+    }
+  ],
+  "setting.letterSpacing": [
+    {
+      "type": 0,
+      "value": "Letter spacing, pixels"
+    }
+  ],
+  "setting.lineHeight": [
+    {
+      "type": 0,
+      "value": "Line height"
+    }
+  ],
+  "setting.minimumContrast": [
+    {
+      "type": 0,
+      "value": "Minimum text contrast"
+    }
+  ],
+  "setting.minimumContrast.description": [
+    {
+      "type": 0,
+      "value": "Colors programs choose are adjusted to keep at least this contrast."
+    }
+  ],
+  "setting.newSessionFolder": [
+    {
+      "type": 0,
+      "value": "New sessions start in"
+    }
+  ],
+  "setting.pasteConfirmation": [
+    {
+      "type": 0,
+      "value": "Ask before pasting more than one line"
+    }
+  ],
+  "setting.screenReaderMode": [
+    {
+      "type": 0,
+      "value": "Screen-reader mode"
+    }
+  ],
+  "setting.screenReaderMode.description": [
+    {
+      "type": 0,
+      "value": "Speaks new output. Automatic turns on when VoiceOver or other assistive technology is in use."
+    }
+  ],
+  "setting.scrollbackLines": [
+    {
+      "type": 0,
+      "value": "Scrollback lines"
+    }
+  ],
+  "setting.scrollbackLines.description": [
+    {
+      "type": 0,
+      "value": "For sessions created from now on, from 1,000 to 100,000."
+    }
+  ],
+  "setting.stopGraceSeconds": [
+    {
+      "type": 0,
+      "value": "Seconds Stop waits before forcing"
+    }
+  ],
+  "setting.tabFocusMode": [
+    {
+      "type": 0,
+      "value": "Tab moves focus out of the terminal"
+    }
+  ],
+  "setting.terminalZoom": [
+    {
+      "type": 0,
+      "value": "Text size, percent"
+    }
+  ],
+  "setting.theme": [
+    {
+      "type": 0,
+      "value": "Theme"
+    }
+  ],
+  "setting.verbosity": [
+    {
+      "type": 0,
+      "value": "Announcements"
+    }
+  ],
+  "setting.verbosity.description": [
+    {
+      "type": 0,
+      "value": "Brief leaves out the steps of connecting to a host."
+    }
+  ],
+  "settings.close": [
+    {
+      "type": 0,
+      "value": "Close"
+    }
+  ],
+  "settings.group.display": [
+    {
+      "type": 0,
+      "value": "Terminal display"
+    }
+  ],
+  "settings.group.hosts": [
+    {
+      "type": 0,
+      "value": "Hosts"
+    }
+  ],
+  "settings.group.keyboard": [
+    {
+      "type": 0,
+      "value": "Keyboard"
+    }
+  ],
+  "settings.group.sessions": [
+    {
+      "type": 0,
+      "value": "Sessions"
+    }
+  ],
+  "settings.group.speech": [
+    {
+      "type": 0,
+      "value": "Speech and announcements"
+    }
+  ],
+  "settings.none": [
+    {
+      "type": 0,
+      "value": "No setting matches."
+    }
+  ],
+  "settings.search": [
+    {
+      "type": 0,
+      "value": "Search settings"
+    }
+  ],
+  "settings.shown": [
+    {
+      "type": 1,
+      "value": "shown"
+    },
+    {
+      "type": 0,
+      "value": " of "
+    },
+    {
+      "type": 1,
+      "value": "total"
+    },
+    {
+      "type": 0,
+      "value": " settings shown."
+    }
+  ],
+  "settings.title": [
+    {
+      "type": 0,
+      "value": "Settings"
     }
   ],
   "shell.noSession": [

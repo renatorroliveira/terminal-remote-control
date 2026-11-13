@@ -5,7 +5,7 @@ import type { InvokeChannel, InvokeContract } from '../shared/contract';
 import { GUIDE_SECTION_NAMES } from '../shared/guide';
 import { SIDEBAR_WIDTH } from '../shared/layout';
 import { MAX_LINK_LENGTH } from '../shared/links';
-import { TERMINAL_ZOOM } from '../shared/terminal-zoom';
+import { SETTINGS_CHANGE_SCHEMA } from './settings-schema';
 
 /** The part of `ipcMain` the registry uses. */
 export interface IpcMainLike {
@@ -33,13 +33,13 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'links:open': z.tuple([LINK, z.boolean()]),
     'menus:terminal': z.tuple([z.boolean()]),
     'clipboard:write': z.tuple([z.string().max(MAX_CLIPBOARD_WRITE)]),
-    'terminal:get-zoom': z.tuple([]),
-    'terminal:get-appearance': z.tuple([]),
-    'terminal:set-zoom': z.tuple([z.number().int().min(TERMINAL_ZOOM.min).max(TERMINAL_ZOOM.max)]),
     'sidebar:get-width': z.tuple([]),
     'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),
     'sidebar:get-collapsed': z.tuple([]),
     'sidebar:set-collapsed': z.tuple([z.boolean()]),
+    'settings:get': z.tuple([]),
+    'settings:set': z.tuple([SETTINGS_CHANGE_SCHEMA]),
+    'hosts:set-clipboard-writes': z.tuple([HOST_ID, z.boolean()]),
     'help:open-guide': z.tuple([z.enum(GUIDE_SECTION_NAMES).or(z.undefined())]),
 };
 

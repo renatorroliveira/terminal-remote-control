@@ -23,6 +23,7 @@ import { PasteDialog } from './PasteDialog';
 import { REGION_ATTRIBUTE } from './regions';
 import { SidebarSplitter } from './SidebarSplitter';
 import { StatusBar } from './StatusBar';
+import { SettingsDialog } from './settings/SettingsDialog';
 import type { Shell } from './shell';
 import { ShellContext } from './shell-context';
 
@@ -63,6 +64,7 @@ export function App({ workspace, terminals, shell }: AppProps) {
                 <LinkDialogs shell={shell} />
                 <PasteDialog shell={shell} />
                 <AccessibilityHelp shell={shell} />
+                <SettingsDialog shell={shell} workspace={workspace} />
             </div>
         </ShellContext.Provider>
     );

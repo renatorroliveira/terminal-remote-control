@@ -776,3 +776,19 @@ describe('TerminalView: a lost connection (US-1.14.2)', () => {
         expect(inputs).toEqual(['ls']);
     });
 });
+
+describe('TerminalView: settings (A11Y-01.2, A11Y-04, NFR-10)', () => {
+    it('drops the shortcut hint when hints are off, enforces the contrast set, and keeps the scrollback set', async () => {
+        const { view } = mount({ scrollback: 50_000 });
+        await view.ready;
+        const hint = view.surface.getAttribute('aria-describedby');
+        expect(hint).not.toBeNull();
+        view.setHints(false);
+        expect(view.surface.hasAttribute('aria-describedby')).toBe(false);
+        view.setHints(true);
+        expect(view.surface.getAttribute('aria-describedby')).toBe(hint);
+        view.setMinimumContrast(7);
+        expect(view.terminal.options.minimumContrastRatio).toBe(7);
+        expect(view.terminal.options.scrollback).toBe(50_000);
+    });
+});

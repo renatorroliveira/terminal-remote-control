@@ -165,6 +165,20 @@ describe('TerminalRegistry (US-1.8)', () => {
         expect(create?.type === 'create' && create.spec.size.cols).toBe(120);
     });
 
+    it('creates sessions with the scrollback set, and drops every terminal’s hint when hints are off', async () => {
+        const { area, transport, registry } = setup();
+        registry.setScrollback(50_000);
+        await registry.create('h1');
+        const create = transport.requests.find((request) => request.type === 'create');
+        expect(create?.type === 'create' && create.spec.scrollbackLines).toBe(50_000);
+        registry.show('h1/a', 'h1', info('a'));
+        registry.setHints(false);
+        registry.show('h1/b', 'h1', info('b'));
+        expect(
+            [...area.querySelectorAll('[role="textbox"]')].map((surface) => surface.hasAttribute('aria-describedby')),
+        ).toEqual([false, false, false]);
+    });
+
     it('keeps a hidden terminal at its size instead of shrinking it to nothing', async () => {
         const { area, transport, registry } = setup();
         registry.show('h1/a', 'h1', info('a'));
