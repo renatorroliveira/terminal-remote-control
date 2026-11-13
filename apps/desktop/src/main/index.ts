@@ -4,6 +4,7 @@ import { app, BrowserWindow, ipcMain, Menu, protocol } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL } from '../shared/contract';
 import { relayAccessibilitySupport } from './accessibility-relay';
+import { appIconPath } from './app-icon';
 import { contentTypeFor, resolveAppRequest } from './app-protocol';
 import { type AppSettings, appSettingsStore } from './app-settings';
 import { isBackgroundLaunch } from './background-launch';
@@ -16,6 +17,7 @@ import { CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
 import { isAppPage } from './trusted-sender';
 
 const rendererRoot = join(import.meta.dirname, '../renderer');
+const resources = app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources');
 const devServer = process.env['ELECTRON_RENDERER_URL'];
 let mainWindow: BrowserWindow | undefined;
 const background = isBackgroundLaunch({ seamEnabled: __TRC_TEST_SEAM__, env: process.env });
@@ -38,6 +40,9 @@ if (app.requestSingleInstanceLock()) {
 
 async function start(): Promise<void> {
     protocol.handle(APP_IDENTITY.appScheme, serveAppRequest);
+    if (!app.isPackaged && !background) {
+        app.dock?.setIcon(appIconPath(resources));
+    }
     const store = appSettingsStore(app.getPath('userData'));
     let settings: AppSettings = await store.read();
     const display = new DisplayRelay(settings.theme);
@@ -103,13 +108,14 @@ function createWindow(display: DisplayRelay): BrowserWindow {
         width: 1200,
         height: 800,
         title: APP_IDENTITY.productName,
+        icon: appIconPath(resources),
         show: !background,
         webPreferences: secureWebPreferences(join(import.meta.dirname, '../preload/index.cjs')),
     });
     if (background) {
         window.once('ready-to-show', () => window.showInactive());
     }
-    startConnectionHost(window);
+    startConnectionHost(window, resources);
     display.attach(window);
     relayAccessibilitySupport(window);
     void window.loadURL(devServer ?? `${APP_IDENTITY.appScheme}://${APP_IDENTITY.appHost}/index.html`);
