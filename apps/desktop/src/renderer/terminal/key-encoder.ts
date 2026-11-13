@@ -2,8 +2,10 @@
  * Terminal key encoding, ported from xterm.js `src/common/input/Keyboard.ts` (MIT License; Copyright (c) 2014 The
  * xterm.js authors, Copyright (c) 2012-2013 Christopher Jeffrey). It covers the keys that never produce text input;
  * printable characters, IME and dictation arrive through `beforeinput` instead (D-22). It reads `event.key` and
- * `event.code` rather than the deprecated `keyCode`, with the same output.
+ * `event.code` rather than the deprecated `keyCode`, with the same output. Programs that turn on the kitty keyboard
+ * protocol's disambiguation get its encodings first (D-30).
  */
+import { disambiguatedKey, KITTY_DISAMBIGUATE } from './kitty-keys';
 
 /** The parts of a keyboard event the encoder reads. */
 export interface KeyInput {
@@ -22,6 +24,8 @@ export interface EncoderModes {
     /** Option acts as Meta on macOS; off by default, so Option types characters. */
     readonly macOptionIsMeta: boolean;
     readonly isMac: boolean;
+    /** The kitty keyboard protocol flags the program asked for; only disambiguation is honored (D-30). */
+    readonly kittyFlags: number;
 }
 
 /** What a key does in the terminal. */
@@ -91,6 +95,10 @@ const SHIFTED_BY_CODE: Readonly<Record<string, readonly [string, string]>> = {
 export function encodeKey(input: KeyInput, modes: EncoderModes): KeyAction {
     if (input.metaKey) {
         return NONE;
+    }
+    const kitty = (modes.kittyFlags & KITTY_DISAMBIGUATE) === 0 ? undefined : disambiguatedKey(input, modes);
+    if (kitty !== undefined) {
+        return send(kitty);
     }
     const special = specialKey(input, modifierCode(input), modes);
     if (special !== undefined) {

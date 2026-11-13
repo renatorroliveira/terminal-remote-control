@@ -1,20 +1,24 @@
 @layer components {
-    .button {
+    :where(.button) {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
         min-height: 28px;
         padding: 0.25rem 0.75rem;
-        border: 1px solid var(--trc-color-border);
+        border: 1px solid var(--trc-color-secondary-border);
         border-radius: 4px;
-        background: var(--trc-color-background);
-        color: var(--trc-color-text);
+        background: var(--trc-color-secondary);
+        color: var(--trc-color-secondary-text);
         font: inherit;
+        cursor: pointer;
     }
 
-    .button[data-disabled] {
+    :where(.button)[data-disabled] {
+        border-color: var(--trc-color-border);
+        background: var(--trc-color-background);
         color: var(--trc-color-text-muted);
+        cursor: default;
     }
 
     .primary {

@@ -23,6 +23,8 @@ export interface InputTarget {
     readonly terminal: Terminal;
     readonly modes: InputModes;
     readonly isMac: boolean;
+    /** The kitty keyboard protocol flags the program asked for. */
+    readonly keyboardFlags: () => number;
 }
 
 const BRACKETED_START = '\u001b[200~';
@@ -40,7 +42,7 @@ const BEFORE_INPUT_BYTES: Readonly<Record<string, string>> = {
  * cancelled, so the DOM only ever holds the terminal's text (D-22); IME text is sent once, on `compositionend`.
  */
 export function attachInput(target: InputTarget, sink: InputSink): () => void {
-    const { element, terminal, modes, isMac } = target;
+    const { element, terminal, modes, isMac, keyboardFlags } = target;
     const onKeyDown = (event: KeyboardEvent): void => {
         if (event.isComposing) {
             return;
@@ -61,6 +63,7 @@ export function attachInput(target: InputTarget, sink: InputSink): () => void {
             applicationCursorKeys: terminal.modes.applicationCursorKeysMode,
             macOptionIsMeta: false,
             isMac,
+            kittyFlags: keyboardFlags(),
         });
         if (action.kind === 'send') {
             event.preventDefault();

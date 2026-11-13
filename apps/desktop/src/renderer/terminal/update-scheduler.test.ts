@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { UpdateScheduler } from './update-scheduler';
 
-describe('UpdateScheduler (S3a cadence, R2)', () => {
+/** Runs each test of the enclosing block on fake timers, frames and clock. */
+function useFakeClock(): void {
     beforeEach(() => {
         vi.useFakeTimers({
             toFake: [
@@ -17,6 +18,10 @@ describe('UpdateScheduler (S3a cadence, R2)', () => {
     afterEach(() => {
         vi.useRealTimers();
     });
+}
+
+describe('UpdateScheduler (S3a cadence, R2)', () => {
+    useFakeClock();
 
     it('updates once per animation frame without assistive technology', () => {
         let updates = 0;
@@ -68,21 +73,7 @@ describe('UpdateScheduler (S3a cadence, R2)', () => {
 });
 
 describe('UpdateScheduler: typing echo (NFR-02, A11Y-06)', () => {
-    beforeEach(() => {
-        vi.useFakeTimers({
-            toFake: [
-                'setTimeout',
-                'clearTimeout',
-                'requestAnimationFrame',
-                'cancelAnimationFrame',
-                'performance',
-                'Date',
-            ],
-        });
-    });
-    afterEach(() => {
-        vi.useRealTimers();
-    });
+    useFakeClock();
 
     it('updates on the next frame for the echo of typing, even with assistive technology', () => {
         let updates = 0;

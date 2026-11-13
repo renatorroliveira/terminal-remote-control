@@ -101,9 +101,11 @@ export function sessionsListed(workspace: Workspace, hostId: string, sessions: r
     return withSessions(workspace, hostId, sortByOrder(sessions));
 }
 
-/** Applies one daemon session event to a host's sessions. */
+/** Applies one daemon session event to a host's sessions; a closed session is no longer open. */
 export function sessionChanged(workspace: Workspace, hostId: string, change: SessionChange): Workspace {
-    return withSessions(workspace, hostId, applySessionChange(workspace.sessions.get(hostId) ?? [], change));
+    const next = withSessions(workspace, hostId, applySessionChange(workspace.sessions.get(hostId) ?? [], change));
+    const closedOpen = change.kind === 'closed' && workspace.open === sessionKey(hostId, change.sessionId);
+    return closedOpen ? { ...next, open: undefined } : next;
 }
 
 /** Applies one daemon session event to a session list. */

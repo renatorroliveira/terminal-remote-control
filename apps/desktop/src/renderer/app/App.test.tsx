@@ -56,7 +56,7 @@ describe('App (US-1.6.1)', () => {
 
     it('lists a connected host and its sessions, opens one, and creates new ones', async () => {
         await page.viewport(1400, 800);
-        const { client, terminals, workspace, rendered } = renderApp();
+        const { client, terminals, rendered } = renderApp();
         const screen = await rendered;
         await screen.getByRole('textbox', { name: 'New host' }).fill('devbox-1');
         await userEvent.keyboard('{Enter}');
@@ -70,6 +70,20 @@ describe('App (US-1.6.1)', () => {
         await expect.poll(() => terminals.shown).toEqual(['host-0/a', 'host-0/b']);
     });
 
+    it('moves focus to New session when the focused session closes, so focus is never lost (A11Y-05)', async () => {
+        await page.viewport(1400, 800);
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await screen.getByRole('textbox', { name: 'New host' }).fill('devbox-1');
+        await userEvent.keyboard('{Enter}');
+        client.push('host-0', CONNECTED);
+        await screen.getByRole('treeitem', { name: 'bash, Running' }).click();
+        client.message('host-0', { type: 'sessionEvent', change: { kind: 'closed', sessionId: 'a' } });
+        await expect.element(screen.getByRole('button', { name: 'New session' })).toHaveFocus();
+    });
+});
+
+describe('App: layout (US-1.6.1, A11Y-07.5)', () => {
     it('keeps the sidebar 400 px wide beside the terminal area', async () => {
         await page.viewport(1400, 800);
         const screen = await renderApp().rendered;
@@ -92,7 +106,9 @@ describe('App (US-1.6.1)', () => {
         await expect.element(screen.getByRole('navigation', { name: 'Sessions and hosts' })).toBeVisible();
         expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
     });
+});
 
+describe('App: failed connections (US-1.3)', () => {
     it('shows a failed connection in a modal alert until the user presses OK (US-1.3)', async () => {
         await page.viewport(1400, 800);
         onTestFinished(installTokens());
@@ -128,7 +144,9 @@ describe('App (US-1.6.1)', () => {
         await expect.element(alert).not.toBeInTheDocument();
         await expect.element(screen.getByRole('button', { name: 'Connect devbox-1' })).toHaveFocus();
     });
+});
 
+describe('App: buttons (A11Y-07.1)', () => {
     it('draws New session and Add host as primary buttons (Midnight: white on dark green)', async () => {
         await page.viewport(1400, 800);
         onTestFinished(installTokens());
@@ -139,6 +157,26 @@ describe('App (US-1.6.1)', () => {
         }
         const addHost = getComputedStyle(screen.getByRole('button', { name: 'Add host' }).element());
         expect([addHost.backgroundColor, addHost.color]).toEqual(['rgb(0, 77, 26)', 'rgb(255, 255, 255)']);
+    });
+
+    it('draws other buttons light on dark gray, and shows the pointer over every enabled button', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const { client, workspace, rendered } = renderApp();
+        const screen = await rendered;
+        await workspace.addHost('devbox-1');
+        expect(getComputedStyle(screen.getByRole('button', { name: 'New session' }).element()).cursor).toBe('default');
+        client.push('host-0', CONNECTED);
+        await expect.element(screen.getByRole('button', { name: 'Disconnect devbox-1' })).toBeVisible();
+        const select = getComputedStyle(screen.getByRole('button', { name: /Host$/ }).element());
+        expect([select.backgroundColor, select.color, select.borderColor]).toEqual([
+            'rgb(51, 51, 51)',
+            'rgb(210, 210, 210)',
+            'rgb(140, 140, 140)',
+        ]);
+        for (const name of ['Add host', 'Disconnect devbox-1', 'New session', /Host$/]) {
+            expect(getComputedStyle(screen.getByRole('button', { name }).element()).cursor).toBe('pointer');
+        }
     });
 
     it('has no WCAG 2.2 A or AA violations', async () => {

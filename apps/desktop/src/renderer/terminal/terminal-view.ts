@@ -5,6 +5,7 @@ import type { TerminalPalette } from '../ui/themes';
 import { attachInput, type InputModes } from './ats-input';
 import { AtsSurface } from './ats-surface';
 import { CreditTracker } from './credit-tracker';
+import { KittyKeyboard } from './kitty-keyboard';
 import { registerQueryFilters } from './query-filter';
 import { SCROLLBAR_WIDTH, TerminalGeometry } from './terminal-geometry';
 import { xtermTheme } from './terminal-theme';
@@ -208,17 +209,19 @@ export class TerminalView {
 
     #listen(): void {
         const request = (): void => this.#scheduler.request();
+        const keyboard = new KittyKeyboard(this.terminal);
         const disposables: IDisposable[] = [
             ...registerQueryFilters(this.terminal),
+            keyboard,
             this.terminal.onWriteParsed(() => {
                 this.#syncPointerMode();
                 request();
             }),
             this.terminal.onScroll(request),
             this.terminal.onSelectionChange(request),
-            this.terminal.onResize((size) => {
+            this.terminal.onResize(({ cols, rows }) => {
                 this.#geometry?.align();
-                this.#options.onResize(size);
+                this.#options.onResize({ cols, rows });
                 request();
             }),
             this.terminal.onData((data) => this.#forwardTerminalData(data)),
@@ -231,7 +234,13 @@ export class TerminalView {
         this.#cleanups.push(this.#ats.listen(this.#scheduler));
         this.#cleanups.push(
             attachInput(
-                { element: this.surface, terminal: this.terminal, modes: this.#modes, isMac: this.#options.isMac },
+                {
+                    element: this.surface,
+                    terminal: this.terminal,
+                    modes: this.#modes,
+                    isMac: this.#options.isMac,
+                    keyboardFlags: () => keyboard.flags,
+                },
                 this.#inputSink(),
             ),
         );

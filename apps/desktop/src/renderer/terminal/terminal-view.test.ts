@@ -127,6 +127,75 @@ describe('TerminalView: the Accessible Text Surface (A11Y-01, A11Y-04, A11Y-06)'
     });
 });
 
+async function scrolledHistory(view: TerminalView): Promise<void> {
+    const lines = Array.from({ length: 200 }, (_, index) => `line ${index}`).join('\r\n');
+    await written(view, lines);
+}
+
+function drag(view: TerminalView, clientY: number): void {
+    view.surface.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, buttons: 1 }));
+    window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, buttons: 1, clientX: 40, clientY }));
+}
+
+function pause(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+describe('TerminalView: dragging a selection past an edge (A11Y-04)', () => {
+    it('scrolls down and extends the selection while the pointer is below the terminal', async () => {
+        const { view } = mount();
+        view.surface.focus();
+        await scrolledHistory(view);
+        view.terminal.scrollToTop();
+        await frames();
+        const text = view.surface.querySelector('[data-row="0"]')?.firstChild as Text;
+        drag(view, view.surface.getBoundingClientRect().bottom + 40);
+        getSelection()?.setBaseAndExtent(text, 0, text, 4);
+        await pause(400);
+        window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0 }));
+        await frames();
+        const viewport = view.terminal.buffer.active.viewportY;
+        expect(viewport).toBeGreaterThan(0);
+        expect(view.terminal.getSelectionPosition()?.start.y).toBe(0);
+        expect(view.terminal.getSelectionPosition()?.end.y).toBe(viewport + view.terminal.rows - 1);
+        await pause(200);
+        expect(view.terminal.buffer.active.viewportY).toBe(viewport);
+    });
+
+    it('scrolls up and extends the selection while the pointer is above the terminal', async () => {
+        const { view } = mount();
+        view.surface.focus();
+        await scrolledHistory(view);
+        const bottom = view.terminal.buffer.active.viewportY;
+        const last = bottom + view.terminal.rows - 1;
+        const text = view.surface.querySelector(`[data-row="${last}"]`)?.firstChild as Text;
+        drag(view, view.surface.getBoundingClientRect().top - 40);
+        getSelection()?.setBaseAndExtent(text, 3, text, 0);
+        await pause(400);
+        window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0 }));
+        await frames();
+        const viewport = view.terminal.buffer.active.viewportY;
+        expect(viewport).toBeLessThan(bottom);
+        expect(view.terminal.getSelectionPosition()?.start.y).toBe(viewport);
+    });
+
+    it('scrolls faster the farther the pointer is past the edge', async () => {
+        const scrolled: number[] = [];
+        for (const distance of [2, 200]) {
+            const { view } = mount();
+            view.surface.focus();
+            await scrolledHistory(view);
+            view.terminal.scrollToTop();
+            await frames();
+            drag(view, view.surface.getBoundingClientRect().bottom + distance);
+            await pause(300);
+            window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0 }));
+            scrolled.push(view.terminal.buffer.active.viewportY);
+        }
+        expect(scrolled[1]).toBeGreaterThan(scrolled[0] ?? 0);
+    });
+});
+
 describe('TerminalView: input (A11Y-09, D-22)', () => {
     it('sends keys and text input without ever editing the DOM', async () => {
         const { view, inputs } = mount();
@@ -175,6 +244,17 @@ describe('TerminalView: input (A11Y-09, D-22)', () => {
             }),
         );
         expect(inputs).toEqual(['\u001b[200~echo pasted\u001b[201~']);
+    });
+});
+
+describe('TerminalView: keyboard protocol (US-1.11)', () => {
+    it('sends Shift+Enter as CSI 13;2u once the program turns on kitty disambiguation', async () => {
+        const { view, inputs } = mount();
+        await written(view, '');
+        key(view.surface, { key: 'Enter', code: 'Enter', shiftKey: true });
+        await written(view, '\u001b[>1u');
+        key(view.surface, { key: 'Enter', code: 'Enter', shiftKey: true });
+        expect(inputs).toEqual(['\r', '\u001b[13;2u']);
     });
 });
 
@@ -293,7 +373,9 @@ describe('TerminalView: output (US-1.11, SEC-06, D-19)', () => {
         view.surface.blur();
         expect(view.terminal.options.cursorInactiveStyle).toBe('outline');
     });
+});
 
+describe('TerminalView: layout and size (A11Y-07.5, US-1.11.3)', () => {
     it('keeps 20 px between the terminal border, where the focus ring is drawn, and the text', async () => {
         const { view } = mount();
         await view.ready;
@@ -322,6 +404,19 @@ describe('TerminalView: output (US-1.11, SEC-06, D-19)', () => {
         await frames();
         expect(view.terminal.cols).toBeLessThan(60);
         expect(sizes.at(-1)?.cols).toBe(view.terminal.cols);
+    });
+
+    it('reports every size change as just columns and rows, which the daemon accepts (US-1.11.3)', async () => {
+        const { view, host, sizes } = mount();
+        await view.ready;
+        host.style.width = '600px';
+        await frames();
+        await frames();
+        expect(sizes.length).toBeGreaterThan(1);
+        for (const size of sizes) {
+            expect(Object.keys(size).sort()).toEqual(['cols', 'rows']);
+        }
+        expect(sizes.at(-1)).toEqual({ cols: view.terminal.cols, rows: view.terminal.rows });
     });
 
     it('fits the terminal to its host and reports the size', async () => {

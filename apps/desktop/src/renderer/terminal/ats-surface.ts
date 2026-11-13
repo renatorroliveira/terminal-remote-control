@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm';
+import { SelectionAutoScroll } from './selection-autoscroll';
 import { type CellLine, columnToOffset, minimalEdit, offsetToColumn, rowsToRender } from './text-geometry';
 import type { UpdateScheduler } from './update-scheduler';
 
@@ -15,7 +16,8 @@ export const SELECTION_CAP = 5_000;
 
 /**
  * The Accessible Text Surface's content: one text node per rendered row, the DOM selection mirrored with xterm's in
- * both directions, and a collapsed caret at the terminal cursor (A11Y-04, A11Y-06, S2 rules).
+ * both directions, and a collapsed caret at the terminal cursor (A11Y-04, A11Y-06, S2 rules). A pointer selection
+ * dragged past the top or bottom edge scrolls the terminal and grows with it.
  */
 export class AtsSurface {
     readonly #terminal: Terminal;
@@ -33,13 +35,24 @@ export class AtsSurface {
 
     /** Starts mirroring DOM selection changes into the terminal and tracking pointer drags. */
     listen(scheduler: UpdateScheduler): () => void {
+        const autoScroll = new SelectionAutoScroll({
+            bounds: () => this.#element.getBoundingClientRect(),
+            rowHeight: () => this.#cell.height,
+            scrollSelection: (lines, clientX) => this.#scrollSelection(lines, clientX),
+        });
         const onSelection = (): void => this.#onDomSelection();
         const onPointerDown = (event: PointerEvent): void => {
             if (event.button === 0) {
                 this.#pointerSelecting = true;
             }
         };
+        const onPointerMove = (event: PointerEvent): void => {
+            if (this.#pointerSelecting) {
+                autoScroll.move(event.clientX, event.clientY);
+            }
+        };
         const onPointerUp = (): void => {
+            autoScroll.stop();
             if (this.#pointerSelecting) {
                 this.#pointerSelecting = false;
                 scheduler.request();
@@ -47,10 +60,13 @@ export class AtsSurface {
         };
         document.addEventListener('selectionchange', onSelection);
         this.#element.addEventListener('pointerdown', onPointerDown);
+        window.addEventListener('pointermove', onPointerMove);
         window.addEventListener('pointerup', onPointerUp);
         return () => {
+            autoScroll.stop();
             document.removeEventListener('selectionchange', onSelection);
             this.#element.removeEventListener('pointerdown', onPointerDown);
+            window.removeEventListener('pointermove', onPointerMove);
             window.removeEventListener('pointerup', onPointerUp);
         };
     }
@@ -121,6 +137,22 @@ export class AtsSurface {
     resetRows(): void {
         for (const node of this.#rows.values()) {
             node.replaceChildren(document.createTextNode(''));
+        }
+    }
+
+    #scrollSelection(lines: number, clientX: number): void {
+        this.#terminal.scrollLines(lines);
+        this.update();
+        const { viewportY } = this.#terminal.buffer.active;
+        const row = lines > 0 ? viewportY + this.#terminal.rows - 1 : viewportY;
+        const column = Math.floor(
+            (clientX - this.#element.getBoundingClientRect().left) / Math.max(1, this.#cell.width),
+        );
+        const point = this.#domPoint(row, Math.max(0, Math.min(column, this.#terminal.cols)));
+        const selection = getSelection();
+        if (point !== undefined && selection?.anchorNode && this.#element.contains(selection.anchorNode)) {
+            selection.extend(point[0], point[1]);
+            this.#mirrorRange(selection.getRangeAt(0));
         }
     }
 

@@ -74,7 +74,9 @@ describe('HostsPanel (US-1.1.1, US-1.2, US-1.5)', () => {
         await new Promise((settled) => setTimeout(settled, 50));
         expect((field.element() as HTMLInputElement).value).toBe('devbox-2');
     });
+});
 
+describe('HostsPanel: connection badges (US-1.2, US-1.5)', () => {
     it('names each badge by what it does, describes the state, and connects or disconnects on press', async () => {
         const { client, workspace, screen } = await renderPanel();
         const host = await workspace.addHost('devbox-1');
@@ -107,7 +109,9 @@ describe('HostsPanel (US-1.1.1, US-1.2, US-1.5)', () => {
         await userEvent.keyboard('{Enter}');
         expect(client.calls).toEqual([`accept ${host.id} SHA256:abc`]);
     });
+});
 
+describe('HostsPanel: failures and accessibility (US-1.3)', () => {
     it('describes a failed host with what went wrong', async () => {
         const { client, workspace, screen } = await renderPanel();
         const host = await workspace.addHost('devbox-1');

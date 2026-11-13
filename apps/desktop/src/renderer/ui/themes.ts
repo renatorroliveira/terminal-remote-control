@@ -14,6 +14,11 @@ export interface UiPalette {
     readonly primaryText: string;
     /** The primary button's edge, which must stand out from the page (non-text contrast). */
     readonly primaryBorder: string;
+    /** The fill of every other button. */
+    readonly secondary: string;
+    readonly secondaryText: string;
+    /** The other buttons' edge, which must stand out from the page (non-text contrast). */
+    readonly secondaryBorder: string;
     readonly focusRing: string;
     readonly selectionBackground: string;
     readonly selectionText: string;
@@ -85,6 +90,9 @@ const MIDNIGHT: Theme = {
         primary: '#004d1a',
         primaryText: '#ffffff',
         primaryBorder: '#00ad2c',
+        secondary: '#333333',
+        secondaryText: '#d2d2d2',
+        secondaryBorder: '#8c8c8c',
         focusRing: '#ffb000',
         selectionBackground: '#00ad2c',
         selectionText: '#000000',
@@ -135,6 +143,9 @@ export const THEMES: Readonly<Record<ThemeName, Theme>> = {
             primary: '#0b5cad',
             primaryText: '#ffffff',
             primaryBorder: '#0b5cad',
+            secondary: '#e5e5e5',
+            secondaryText: '#1f1f1f',
+            secondaryBorder: '#767676',
             focusRing: '#0b5cad',
             selectionBackground: '#0b5cad',
             selectionText: '#ffffff',
@@ -163,6 +174,9 @@ export const THEMES: Readonly<Record<ThemeName, Theme>> = {
             primary: '#0e639c',
             primaryText: '#ffffff',
             primaryBorder: '#6cb6ff',
+            secondary: '#3c3c3c',
+            secondaryText: '#e8e8e8',
+            secondaryBorder: '#8c8c8c',
             focusRing: '#6cb6ff',
             selectionBackground: '#6cb6ff',
             selectionText: '#0b1a2a',
@@ -191,6 +205,9 @@ export const THEMES: Readonly<Record<ThemeName, Theme>> = {
             primary: '#0033a0',
             primaryText: '#ffffff',
             primaryBorder: '#0033a0',
+            secondary: '#ffffff',
+            secondaryText: '#000000',
+            secondaryBorder: '#000000',
             focusRing: '#0033a0',
             selectionBackground: '#000000',
             selectionText: '#ffffff',
@@ -219,6 +236,9 @@ export const THEMES: Readonly<Record<ThemeName, Theme>> = {
             primary: '#8fd4ff',
             primaryText: '#000000',
             primaryBorder: '#ffffff',
+            secondary: '#000000',
+            secondaryText: '#ffffff',
+            secondaryBorder: '#ffffff',
             focusRing: '#ffff00',
             selectionBackground: '#ffff00',
             selectionText: '#000000',
@@ -249,6 +269,9 @@ export const UI_CONTRAST_PAIRS: readonly ContrastPair<UiPalette>[] = [
     { foreground: 'primaryText', background: 'primary', minimum: TEXT },
     { foreground: 'primaryBorder', background: 'background', minimum: NON_TEXT },
     { foreground: 'primaryBorder', background: 'surface', minimum: NON_TEXT },
+    { foreground: 'secondaryText', background: 'secondary', minimum: TEXT },
+    { foreground: 'secondaryBorder', background: 'background', minimum: NON_TEXT },
+    { foreground: 'secondaryBorder', background: 'surface', minimum: NON_TEXT },
     { foreground: 'selectionText', background: 'selectionBackground', minimum: TEXT },
     { foreground: 'border', background: 'background', minimum: NON_TEXT },
     { foreground: 'border', background: 'surface', minimum: NON_TEXT },

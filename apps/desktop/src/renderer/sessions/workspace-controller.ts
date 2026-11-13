@@ -38,6 +38,8 @@ export interface TerminalHost {
     create(hostId: string): Promise<SessionInfo>;
     /** Removes the terminals of a host whose connection closed. */
     closeHost(hostId: string): void;
+    /** Removes the terminal of a session the daemon closed. */
+    closeSession(key: SessionKey): void;
 }
 
 /** What pressing a host's connection button does now. */
@@ -48,7 +50,8 @@ export const DEFAULT_INSTALL_ROOT = '~/.trc';
 
 /**
  * Keeps the workspace read model current from the connection host, and carries out what the sidebar asks: add,
- * connect and disconnect hosts, open and create sessions, collapse host groups (US-1.1, US-1.6, US-1.7, US-1.8).
+ * connect and disconnect hosts, open and create sessions, collapse host groups (US-1.1, US-1.6, US-1.7, US-1.8). A
+ * session whose program exits with code 0 is closed; one that failed stays, showing why (US-1.10.7).
  */
 export class WorkspaceController {
     /** The read model the UI subscribes to. */
@@ -173,8 +176,14 @@ export class WorkspaceController {
             }
         });
         this.#client.onMessage(hostId, (message) => {
-            if (message.type === 'sessionEvent') {
-                this.#update((workspace) => sessionChanged(workspace, hostId, message.change));
+            if (message.type !== 'sessionEvent') {
+                return;
+            }
+            this.#update((workspace) => sessionChanged(workspace, hostId, message.change));
+            if (message.change.kind === 'updated') {
+                this.#closeIfClean(hostId, [message.change.session]);
+            } else if (message.change.kind === 'closed') {
+                this.#terminals.closeSession(sessionKey(hostId, message.change.sessionId));
             }
         });
     }
@@ -183,6 +192,13 @@ export class WorkspaceController {
         const reply = await this.#client.request(hostId, { type: 'listSessions' }).catch(() => undefined);
         if (reply?.type === 'sessions') {
             this.#update((workspace) => sessionsListed(workspace, hostId, reply.sessions));
+            this.#closeIfClean(hostId, reply.sessions);
+        }
+    }
+
+    #closeIfClean(hostId: string, sessions: readonly SessionInfo[]): void {
+        for (const session of sessions.filter(exitedCleanly)) {
+            this.#client.request(hostId, { type: 'close', session: session.id }).catch(() => undefined);
         }
     }
 
@@ -203,4 +219,8 @@ export class WorkspaceController {
     #update(change: (workspace: Workspace) => Workspace): void {
         this.store.setState(change(this.store.getState()), true);
     }
+}
+
+function exitedCleanly(session: SessionInfo): boolean {
+    return session.state === 'exited' && session.exit?.code === 0;
 }
