@@ -25,6 +25,7 @@ export function release(options: ReleaseOptions): void {
     const range = last === '0.0.0' ? ['HEAD'] : [`v${last}..HEAD`];
     const notes = releaseNotes(version, capture('git', ['log', ...range, '--format=%s']).split('\n'));
     process.stdout.write(`release ${version} (last ${last}), then ${devVersion(version)}\n\n${notes}\n`);
+    versionEdits(devVersion(version));
     if (options.dryRun) {
         return;
     }
@@ -63,13 +64,19 @@ function preflight(): void {
 }
 
 function setVersion(version: string): void {
-    for (const manifest of PACKAGE_MANIFESTS) {
-        const path = join(ROOT, manifest);
-        writeFileSync(path, setPackageVersion(readFileSync(path, 'utf8'), version));
+    for (const [path, text] of versionEdits(version)) {
+        writeFileSync(path, text);
     }
-    const cargo = join(ROOT, 'Cargo.toml');
-    writeFileSync(cargo, setCargoVersion(readFileSync(cargo, 'utf8'), version));
     run('cargo', ['update', '--workspace', '--offline']);
+}
+
+function versionEdits(version: string): readonly (readonly [string, string])[] {
+    const manifests = PACKAGE_MANIFESTS.map((manifest) => {
+        const path = join(ROOT, manifest);
+        return [path, setPackageVersion(readFileSync(path, 'utf8'), version)] as const;
+    });
+    const cargo = join(ROOT, 'Cargo.toml');
+    return [...manifests, [cargo, setCargoVersion(readFileSync(cargo, 'utf8'), version)] as const];
 }
 
 function releaseAssets(version: string): readonly string[] {
