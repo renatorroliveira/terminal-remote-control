@@ -36,6 +36,10 @@ export interface TerminalLabel {
     readonly outputBelow: string;
     /** Review mode's name (A11Y-03). */
     readonly review: string;
+    /** The terminal's name while its host is disconnected (US-1.14.1). */
+    readonly disconnected: string;
+    /** What a keystroke shows while the host is disconnected (US-1.14.2). */
+    readonly inputRefused: string;
 }
 
 interface FindState {
@@ -101,6 +105,7 @@ export class TerminalView {
     readonly #options: TerminalViewOptions;
     readonly #hint: HTMLElement;
     readonly #outputBelow: HTMLButtonElement;
+    readonly #inputRefused: HTMLElement;
     readonly #ats: AtsSurface;
     readonly #scheduler: UpdateScheduler;
     readonly #credit: CreditTracker;
@@ -109,7 +114,8 @@ export class TerminalView {
     readonly #links: TerminalLinks;
     readonly #blink: CursorBlink;
     #review: ReviewField | undefined;
-    #reviewLabel = '';
+    #label: TerminalLabel | undefined;
+    #connected = true;
     #find: FindState | undefined;
     #wantsBlink = false;
     #reducedMotion = false;
@@ -138,6 +144,7 @@ export class TerminalView {
         this.surface = createSurface(options.fontSize ?? TERMINAL_FONT_SIZE);
         this.#hint = createHint();
         this.#outputBelow = createOutputBelow();
+        this.#inputRefused = createInputRefused();
         this.#measurer = createMeasurer(options.fontSize ?? TERMINAL_FONT_SIZE);
         this.#ats = new AtsSurface(this.terminal, this.surface);
         this.#scheduler = new UpdateScheduler(() => this.#ats.update(), options.assistiveTechnology);
@@ -162,7 +169,7 @@ export class TerminalView {
         host.className = styles['host'] ?? '';
         const canvas = document.createElement('div');
         canvas.className = styles['canvas'] ?? '';
-        host.append(canvas, this.surface, this.#hint, this.#measurer, this.#outputBelow);
+        host.append(canvas, this.surface, this.#hint, this.#measurer, this.#outputBelow, this.#inputRefused);
         this.#review = new ReviewField(host, () => bufferText(this.terminal), {
             onClose: () => this.toggleReview(),
             onNewOutput: () => this.#options.onNotice?.({ kind: 'review-output' }),
@@ -198,10 +205,34 @@ export class TerminalView {
 
     /** Sets the accessible name (session, host and state) and the shortcut hint (A11Y-01.1, A11Y-01.2). */
     setLabel(label: TerminalLabel): void {
-        this.surface.setAttribute('aria-label', label.name);
+        this.#label = label;
         this.#hint.textContent = label.hint;
         this.#outputBelow.textContent = label.outputBelow;
-        this.#reviewLabel = label.review;
+        this.#inputRefused.textContent = label.inputRefused;
+        this.#showConnection();
+    }
+
+    /**
+     * Records whether the host is connected. While it is not, input is refused and never buffered: each keystroke
+     * shows and reports that it was not sent (US-1.14.2).
+     */
+    setConnected(connected: boolean): void {
+        this.#connected = connected;
+        this.#inputRefused.hidden = true;
+        this.#showConnection();
+    }
+
+    /**
+     * Starts over for a re-attach: the screen, pending credit, waiting speech and the search are dropped, as the
+     * daemon sends the session's screen again (US-1.14.3).
+     */
+    restart(): void {
+        this.#announcer?.restart();
+        this.#credit.reset();
+        this.endFind();
+        this.terminal.reset();
+        this.#outputBelow.hidden = true;
+        this.#scheduler.request();
     }
 
     /** Opens review mode on the cursor's line, or closes it and returns to the terminal (A11Y-03.1). */
@@ -210,7 +241,7 @@ export class TerminalView {
             this.#review.close();
             this.surface.focus();
         } else {
-            this.#review?.open(this.#reviewLabel);
+            this.#review?.open(this.#label?.review ?? '');
         }
     }
 
@@ -528,6 +559,21 @@ export class TerminalView {
         this.terminal.scrollToLine(Math.max(0, start.row - Math.floor(this.terminal.rows / 2)));
     }
 
+    #showConnection(): void {
+        const label = this.#label;
+        if (label !== undefined) {
+            this.surface.setAttribute('aria-label', this.#connected ? label.name : label.disconnected);
+        }
+        if (this.#connected) {
+            this.#inputRefused.hidden = true;
+        }
+    }
+
+    #refuseInput(): void {
+        this.#inputRefused.hidden = false;
+        this.#options.onNotice?.({ kind: 'input-refused' });
+    }
+
     #noticeOutputBelow(): void {
         const buffer = this.terminal.buffer.active;
         if (buffer.viewportY < buffer.baseY && this.#outputBelow.hidden) {
@@ -549,11 +595,21 @@ export class TerminalView {
 
     #forwardTerminalData(data: string): void {
         if (data !== FOCUS_IN && data !== FOCUS_OUT) {
-            this.#options.onInput(data);
+            this.#deliver(data);
+        }
+    }
+
+    #deliver(text: string): void {
+        if (this.#connected) {
+            this.#options.onInput(text);
         }
     }
 
     #send(text: string): void {
+        if (!this.#connected) {
+            this.#refuseInput();
+            return;
+        }
         this.#scheduler.input();
         this.#blink.input();
         this.#announcer?.input(text);
@@ -586,14 +642,14 @@ export class TerminalView {
         const onFocus = (): void => {
             this.terminal.options.cursorInactiveStyle = 'block';
             if (this.terminal.modes.sendFocusMode) {
-                this.#options.onInput(FOCUS_IN);
+                this.#deliver(FOCUS_IN);
             }
             request();
         };
         const onBlur = (): void => {
             this.terminal.options.cursorInactiveStyle = 'outline';
             if (this.terminal.modes.sendFocusMode) {
-                this.#options.onInput(FOCUS_OUT);
+                this.#deliver(FOCUS_OUT);
             }
         };
         this.surface.addEventListener('focus', onFocus);
@@ -658,6 +714,14 @@ function createOutputBelow(): HTMLButtonElement {
     button.dataset['outputBelow'] = '';
     button.className = styles['outputBelow'] ?? '';
     return button;
+}
+
+function createInputRefused(): HTMLElement {
+    const notice = document.createElement('p');
+    notice.hidden = true;
+    notice.dataset['inputRefused'] = '';
+    notice.className = styles['inputRefused'] ?? '';
+    return notice;
 }
 
 function createMeasurer(fontSize: number): HTMLElement {

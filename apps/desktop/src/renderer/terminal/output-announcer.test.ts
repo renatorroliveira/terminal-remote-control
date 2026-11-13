@@ -90,6 +90,21 @@ describe('OutputAnnouncer: the open session’s output is spoken (A11Y-02, NFR-0
         expect(spoken).toEqual(['make\nbuilt\n$']);
     });
 
+    it('drops waiting output on a restart, and does not speak the screen restored after it (US-1.14.3)', async () => {
+        const { terminal, clock, spoken, state, announcer, write, primed } = setUp();
+        await primed();
+        await write('lost line\r\n$ ');
+        announcer.restart();
+        expect(state.cancels).toBe(1);
+        terminal.reset();
+        await write('restored again\r\n$ ');
+        clock.advance(1_000);
+        expect(spoken).toEqual([]);
+        await write('next\r\n$ ');
+        clock.advance(1_000);
+        expect(spoken).toEqual(['next\n$']);
+    });
+
     it('speaks within 250 ms while output keeps coming', async () => {
         const { clock, spoken, write, primed } = setUp();
         await primed();

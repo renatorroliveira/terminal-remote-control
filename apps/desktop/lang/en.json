@@ -35,6 +35,10 @@
     "defaultMessage": "Couldn’t connect to {host}. {problem}",
     "description": "Announced and listed when a connection fails."
   },
+  "announce.inputRefused": {
+    "defaultMessage": "Disconnected — input not sent.",
+    "description": "Announced assertively when the user types while the host is disconnected."
+  },
   "announce.muted": {
     "defaultMessage": "Output announcements off for {session}.",
     "description": "Announced when output announcements are muted for a session."
@@ -851,6 +855,10 @@
     "defaultMessage": "Stop",
     "description": "Session action."
   },
+  "session.disconnected": {
+    "defaultMessage": "Disconnected",
+    "description": "Session state while its host is not connected."
+  },
   "session.exited": {
     "defaultMessage": "Exited",
     "description": "Session state, exit status unknown."
@@ -1031,9 +1039,17 @@
     "defaultMessage": "Option F1: accessibility help.",
     "description": "Hint read after the terminal name."
   },
+  "terminal.inputRefused": {
+    "defaultMessage": "Disconnected — input not sent",
+    "description": "Shown and announced when the user types while the host is disconnected; nothing was sent."
+  },
   "terminal.label": {
     "defaultMessage": "{session}, {host}",
     "description": "Accessible name of a terminal: the session name, then its host."
+  },
+  "terminal.labelDisconnected": {
+    "defaultMessage": "{session}, {host}, disconnected",
+    "description": "Accessible name of a terminal whose host is not connected."
   },
   "terminal.outputBelow": {
     "defaultMessage": "New output below",

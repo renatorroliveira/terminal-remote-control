@@ -10,6 +10,11 @@ export class CreditTracker {
         this.#grant = grant;
     }
 
+    /** Forgets credit not yet granted, which belonged to a stream that is gone. */
+    reset(): void {
+        this.#pending = 0;
+    }
+
     /** Records bytes xterm has parsed. */
     parsed(bytes: number): void {
         const accrual = accrueCredit(this.#pending, bytes);

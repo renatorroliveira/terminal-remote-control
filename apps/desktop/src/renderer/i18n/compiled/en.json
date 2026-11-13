@@ -115,6 +115,12 @@
       "value": "problem"
     }
   ],
+  "announce.inputRefused": [
+    {
+      "type": 0,
+      "value": "Disconnected — input not sent."
+    }
+  ],
   "announce.muted": [
     {
       "type": 0,
@@ -1975,6 +1981,12 @@
       "value": "Stop"
     }
   ],
+  "session.disconnected": [
+    {
+      "type": 0,
+      "value": "Disconnected"
+    }
+  ],
   "session.exited": [
     {
       "type": 0,
@@ -2301,6 +2313,12 @@
       "value": "Option F1: accessibility help."
     }
   ],
+  "terminal.inputRefused": [
+    {
+      "type": 0,
+      "value": "Disconnected — input not sent"
+    }
+  ],
   "terminal.label": [
     {
       "type": 1,
@@ -2313,6 +2331,24 @@
     {
       "type": 1,
       "value": "host"
+    }
+  ],
+  "terminal.labelDisconnected": [
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": ", "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ", disconnected"
     }
   ],
   "terminal.outputBelow": [

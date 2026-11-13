@@ -753,6 +753,22 @@ As built:
 - A Reconnect action lists the sessions and re-attaches.
 - Tests: `docker pause` and killing ssh, with detection in ≤ 30 s.
 
+As built:
+
+- A lost or failed connection keeps the host's sessions in the tree, each named "<session>, Disconnected", and
+  the host's loss is announced assertively and listed in the notifications (A11Y-12.2). A disconnect the user
+  asked for still closes the host's terminals.
+- The host's terminals are named "<session>, <host>, disconnected" and refuse every keystroke and paste without
+  buffering it. Each refusal shows "Disconnected — input not sent" over the terminal and announces it assertively,
+  merged per session. Mouse and focus reports are dropped silently.
+- The host's Connect button is the Reconnect action. Once connected, the app lists the sessions again and
+  re-attaches every open terminal: the screen resets, the daemon sends the session's screen again, and that
+  restored screen is not spoken, as on the first attach. Credit owed to the old stream is dropped. E2 adds
+  reconnecting on its own.
+- Tests: unit and component tests for the model, controller, registry, link, view and shell, and an e2e that
+  kills the app's ssh, checks the Disconnected names, the refusal and its announcement, reconnects and types
+  again. The `docker pause` integration test from ST-8 covers detection within NFR-07.
+
 **ST-18 Accessibility help, settings and user docs** (A11Y-01.2, A11Y-10.1/3/4/5, A11Y-12.4, NFR-10)
 
 - Option+F1 opens accessibility help, which lists the shortcuts for the current context. Also in the Help menu.
@@ -875,7 +891,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-14 | Done        | —      |
 | ST-15 | Done        | —      |
 | ST-16 | Done        | —      |
-| ST-17 | Not started | —      |
+| ST-17 | Done        | —      |
 | ST-18 | Not started | —      |
 | ST-19 | Not started | —      |
 | ST-20 | In progress | —      |
