@@ -2,7 +2,7 @@ import type { IntlShape, MessageDescriptor } from 'react-intl';
 import { settingDescriptionMessages, settingGroupMessages, settingLabelMessages } from './settings-messages';
 
 /** The settings page's sections, in order. */
-export const SETTING_GROUPS = ['speech', 'display', 'keyboard', 'sessions', 'hosts'] as const;
+export const SETTING_GROUPS = ['speech', 'sound', 'display', 'keyboard', 'sessions', 'hosts'] as const;
 
 /** One section of the settings page. */
 export type SettingGroup = (typeof SETTING_GROUPS)[number];
@@ -23,6 +23,8 @@ const GROUP_OF: Readonly<Record<SettingId, SettingGroup>> = {
     verbosity: 'speech',
     hints: 'speech',
     floodThreshold: 'speech',
+    audioCues: 'sound',
+    audioVolume: 'sound',
     theme: 'display',
     minimumContrast: 'display',
     terminalZoom: 'display',

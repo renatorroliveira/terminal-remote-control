@@ -16,6 +16,7 @@ import type { AnnounceOptions } from './announcer';
 import { NotificationCenter } from './notifications';
 import { SettingsStore } from './settings/settings-store';
 import { type LinkControls, type ScreenReaderControls, Shell } from './shell';
+import type { AudioCue } from './sound/audio-cues';
 import { paletteActions } from './workspace-actions';
 
 /** Link checks and opens as the main process would do them. */
@@ -105,9 +106,11 @@ async function setup(narrow = false, stored: Partial<Settings> = {}) {
     source.stored = { ...source.stored, ...stored };
     const settings = new SettingsStore(source);
     const intl = createIntl({ locale: 'en', messages: messagesFor('en') });
+    const cues: AudioCue[] = [];
     const shell = new Shell({
         workspace,
         terminals,
+        cues: { play: (cue) => cues.push(cue) },
         sidebar: {
             width: () => Promise.resolve(400),
             setWidth: () => Promise.resolve(),
@@ -134,7 +137,7 @@ async function setup(narrow = false, stored: Partial<Settings> = {}) {
     await settings.load();
     await workspace.addHost('devbox-1');
     const zooms = (): (number | undefined)[] => source.changes.map((change) => change.terminalZoom);
-    return { client, terminals, workspace, shell, spoken, saved, screenReader, intl, links, zooms, source };
+    return { client, terminals, workspace, shell, spoken, saved, screenReader, intl, links, zooms, source, cues };
 }
 
 describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
@@ -473,6 +476,17 @@ describe('Shell connection progress (US-1.4.5, US-1.3.2)', () => {
             '! Touch your security key for devbox-1',
             'devbox-1: Uploading the daemon.',
         ]);
+    });
+});
+
+describe('Shell sound cues (A11Y-12.4)', () => {
+    it('plays a cue beside each connection report and refused keystroke', async () => {
+        const { client, shell, cues } = await setup();
+        client.push('host-0', CONNECTED);
+        client.push('host-0', { status: 'disconnected', reason: { kind: 'timeout' } } as never);
+        client.push('host-0', { status: 'failed', failure: { kind: 'dns', host: 'devbox-1', details: '' } });
+        shell.terminalNotice('host-0/a', { kind: 'input-refused' });
+        expect(cues).toEqual(['connected', 'disconnected', 'failed', 'input-refused']);
     });
 });
 

@@ -52,6 +52,10 @@ export interface Settings {
     readonly shortcuts: Readonly<Partial<Record<CommandId, string>>>;
     /** Whether plain F6 and Shift+F6 also move between regions (A11Y-05.2). */
     readonly plainF6: boolean;
+    /** Whether short tones play beside announcements (A11Y-12.4). */
+    readonly audioCues: boolean;
+    /** The sound cues' volume, in percent. */
+    readonly audioVolume: number;
 }
 
 /** The ranges the numeric settings accept. */
@@ -59,6 +63,7 @@ export const SETTINGS_LIMITS = {
     floodThreshold: { min: 5, max: 100 },
     scrollbackLines: { min: 1_000, max: 100_000 },
     stopGraceSeconds: { min: 1, max: 60 },
+    audioVolume: { min: 0, max: 100 },
 } as const;
 
 /** The settings of a new install. */
@@ -78,6 +83,8 @@ export const DEFAULT_SETTINGS: Settings = {
     newSessionFolder: 'home',
     shortcuts: {},
     plainF6: false,
+    audioCues: false,
+    audioVolume: 50,
 };
 
 /** The keymap the settings put in force: the user's shortcuts, and plain F6 when on (A11Y-05.2, A11Y-05.7). */

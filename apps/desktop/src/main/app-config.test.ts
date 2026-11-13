@@ -18,6 +18,8 @@ const SETTINGS_DEFAULTS = {
     newSessionFolder: 'home',
     shortcuts: {},
     plainF6: false,
+    audioCues: false,
+    audioVolume: 50,
 };
 
 function home(): string {

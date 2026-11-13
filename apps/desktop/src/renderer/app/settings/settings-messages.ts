@@ -26,6 +26,7 @@ export const settingsPageMessages = {
 /** The settings page's sections. */
 export const settingGroupMessages = defineMessages({
     speech: { id: 'settings.group.speech', defaultMessage: 'Speech and announcements', description: 'Section.' },
+    sound: { id: 'settings.group.sound', defaultMessage: 'Sound', description: 'Section.' },
     display: { id: 'settings.group.display', defaultMessage: 'Terminal display', description: 'Section.' },
     keyboard: { id: 'settings.group.keyboard', defaultMessage: 'Keyboard', description: 'Section.' },
     sessions: { id: 'settings.group.sessions', defaultMessage: 'Sessions', description: 'Section.' },
@@ -42,6 +43,8 @@ export const settingLabelMessages = defineMessages({
         defaultMessage: 'Lines a second before output is summarized',
         description: 'Setting.',
     },
+    audioCues: { id: 'setting.audioCues', defaultMessage: 'Sound cues', description: 'Setting.' },
+    audioVolume: { id: 'setting.audioVolume', defaultMessage: 'Sound cue volume, percent', description: 'Setting.' },
     theme: { id: 'setting.theme', defaultMessage: 'Theme', description: 'Setting.' },
     minimumContrast: {
         id: 'setting.minimumContrast',
@@ -104,6 +107,17 @@ export const settingDescriptionMessages = defineMessages({
     hints: {
         id: 'setting.hints.description',
         defaultMessage: 'VoiceOver reads it after the terminal’s name: Option F1, accessibility help.',
+        description: 'Setting description.',
+    },
+    audioCues: {
+        id: 'setting.audioCues.description',
+        defaultMessage:
+            'Short tones for the bell, a host connecting, a lost or failed connection, and typing that was not sent. Each is also announced or shown.',
+        description: 'Setting description.',
+    },
+    audioVolume: {
+        id: 'setting.audioVolume.description',
+        defaultMessage: 'Changing it plays the bell tone.',
         description: 'Setting description.',
     },
     minimumContrast: {

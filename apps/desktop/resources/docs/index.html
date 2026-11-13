@@ -10,7 +10,7 @@
 <main>
 <h1 id="terminal-remote-control-user-guide">Terminal Remote Control user guide</h1>
 <p>Terminal Remote Control (TRC) runs terminal sessions on your Linux hosts and shows them in one accessible macOS window. The sessions belong to a small daemon, <code>trcd</code>, that the app installs on each host for your user, so a session keeps running when you quit the app or lose the network.</p>
-<p>This guide covers version 0.1, the first milestone of Epic 1. <a href="#whats-not-there-yet">What's not there yet</a> lists what later releases add.</p>
+<p>This guide covers Epic 1, which version 0.2 completes. <a href="#whats-not-there-yet">What's not there yet</a> lists what later releases add.</p>
 <h2 id="contents">Contents</h2>
 <ul>
 <li><a href="#requirements">Requirements</a></li>
@@ -129,7 +129,7 @@
 <p>Programs can't read your clipboard, and by default they can't write it either. To let a host's programs write it (for example tmux or Neovim copying over OSC 52), turn on that host's switch in Settings, under Hosts; TRC then says each time a program puts text on the clipboard.</p>
 <p>A selection of more than 5,000 lines still copies whole; VoiceOver sees its first 5,000 lines, and TRC says so. Pasting more than one line shows the text and asks first, because the shell may run each line. Programs that ask for bracketed paste, such as bash and zsh, then wait for Return before they run anything.</p>
 <p>When you scroll back, the terminal stays where you are while output arrives, and a &quot;New output below&quot; button appears (TRC says so once). Click it, press Shift-Page Down to the end, or type to return to the bottom.</p>
-<p>The bell never flashes: the status bar shows &quot;Bell&quot; for a few seconds and TRC says it. A session in the background gets a &quot;bell&quot; badge in the session list instead, until you open it.</p>
+<p>The bell never flashes: the status bar shows &quot;Bell&quot; for a few seconds and TRC says it, with a short tone when sound cues are on. A session in the background gets a &quot;bell&quot; badge in the session list instead, until you open it.</p>
 <h3 id="review-mode-and-find">Review mode and Find</h3>
 <p>Option-F2 opens review mode: the whole scrollback and screen as a read-only text field over the terminal, with the caret on the cursor's line. VoiceOver reads it by character, word, line and paragraph, a braille display follows the caret, and Shift with the arrow keys selects text for Command-C. Command-Up and Command-Down go to the start and the end; output that arrives meanwhile doesn't move you, TRC says &quot;New output&quot; once, and Command-Down brings it in. Option-F2 or Escape returns to the terminal; review mode never sends keys to the program.</p>
 <p>Command-F opens Find above the terminal. Type to search, from the most recent output back; Return finds the previous match and Shift-Return the next. Match case and Regular expression narrow it. TRC selects each match, says &quot;Match 3 of 17&quot;, and in review mode moves the caret to it. Escape closes Find and returns where you were.</p>
@@ -169,8 +169,9 @@
 <thead><tr><th scope="col">Section</th><th scope="col">Settings</th></tr></thead>
 <tbody>
 <tr><td>Speech and announcements</td><td>Screen-reader mode (automatic, on or off); Announcements (Detailed, or Brief, which leaves out the steps of connecting); the shortcut hint VoiceOver reads after the terminal's name; the flood threshold (5 to 100 lines a second, 20 by default)</td></tr>
+<tr><td>Sound</td><td>Sound cues, off by default: short tones for the bell, a host connecting, a lost or failed connection, and typing that was not sent, each also announced or shown; their volume</td></tr>
 <tr><td>Terminal display</td><td>Theme; minimum text contrast (4.5 to 1, or 7 to 1); text size; line height; letter spacing; cursor shape, bar width and blinking</td></tr>
-<tr><td>Keyboard</td><td>Tab moves focus out of the terminal, from launch on</td></tr>
+<tr><td>Keyboard</td><td>Tab moves focus out of the terminal, from launch on; plain F6 and Shift-F6 move between regions; every command's shortcut (Change, then press the new shortcut; Reset gives the default back)</td></tr>
 <tr><td>Sessions</td><td>Where new sessions start (the home folder, or the open session's folder); scrollback lines for new sessions (1,000 to 100,000); the seconds Stop waits; closing sessions that exit cleanly; asking before a paste of more than one line</td></tr>
 <tr><td>Hosts</td><td>For each host, whether its programs may write the clipboard (OSC 52)</td></tr>
 </tbody>
@@ -238,10 +239,6 @@
 <p>If the app doesn't open after you download it, see <a href="#install">Install</a>, step 3.</p>
 <p><code>ssh -G &lt;host&gt;</code> shows the settings ssh will use for a host, and <code>ssh -v &lt;host&gt;</code> shows each connection step.</p>
 <h2 id="whats-not-there-yet">What's not there yet</h2>
-<p>Later releases of Epic 1 add:</p>
-<ul>
-<li>Changing shortcuts, plain F6 to move between regions, and sound cues, in the settings page.</li>
-</ul>
 <p>Later epics add sessions that survive a host reboot, local sessions on the Mac, macOS hosts, and the Windows and Linux apps. <a href="https://github.com/renatorroliveira/terminal-remote-control/blob/main/docs/PRD.md">The PRD</a> has the full plan.</p>
 </main>
 </body>

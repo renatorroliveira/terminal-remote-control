@@ -15,7 +15,14 @@ describe('SettingsDialog: one searchable settings page (A11Y-10.3)', () => {
         await userEvent.keyboard('{Meta>},{/Meta}');
         const dialog = screen.getByRole('dialog', { name: 'Settings' });
         await expect.element(dialog.getByRole('searchbox', { name: 'Search settings' })).toHaveFocus();
-        for (const section of ['Speech and announcements', 'Terminal display', 'Keyboard', 'Sessions', 'Hosts']) {
+        for (const section of [
+            'Speech and announcements',
+            'Sound',
+            'Terminal display',
+            'Keyboard',
+            'Sessions',
+            'Hosts',
+        ]) {
             await expect.element(dialog.getByRole('heading', { level: 3, name: section })).toBeVisible();
         }
         const results = await axe.run(document.body, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] });
