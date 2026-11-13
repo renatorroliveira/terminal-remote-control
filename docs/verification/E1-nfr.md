@@ -66,8 +66,9 @@ the text surface. It passed three runs in a row.
   2.6 to 12 ms, is in Electron's message delivery between the renderer and the connection host's utility process,
   since the same round trip without those hops measures 7.3 ms at p95. On screen the echo appears at the next
   display frame, one more 10 ms frame at 100 Hz, which no app can avoid and which the target cannot have meant to
-  include. **For the owner:** accept this for E1, or keep NFR-02 open for E2 (the port path between the renderer and
-  the utility process).
+  include. **The owner accepted this for E1 on 2026-11-13.** The UI test keeps the PRD's 10 ms on the 100 ms host
+  and guards the local link at 15 ms against regressions; E2 may revisit the port path between the renderer and the
+  utility process.
 - **S3b tuned the credit window from 256 KiB to 1 MiB.** At 100 ms RTT the window bounds throughput at about the
   window over the round trip: 256 KiB gave 2.2 MiB/s and 1 MiB gives 8.4 MiB/s, while Ctrl+C under a flood still
   arrives within 11 ms at p95. OpenSSH's 2 MiB channel window bounds it beyond that.
