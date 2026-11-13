@@ -243,6 +243,12 @@
       "value": "Screen reader mode on."
     }
   ],
+  "announce.settingsNotSaved": [
+    {
+      "type": 0,
+      "value": "Couldn’t save the settings, so they are back as they were."
+    }
+  ],
   "announce.sidebarHidden": [
     {
       "type": 0,
@@ -899,6 +905,30 @@
     {
       "type": 0,
       "value": "."
+    }
+  ],
+  "failure.noAnswer.problem": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " stopped answering while the app set up its daemon."
+    }
+  ],
+  "failure.noAnswer.remedy": [
+    {
+      "type": 0,
+      "value": "Check that the shell startup files on "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " don’t wait for input or run a long command, then connect again."
     }
   ],
   "failure.noexec.problem": [

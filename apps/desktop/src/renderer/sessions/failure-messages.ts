@@ -309,6 +309,19 @@ const FAILURE_MESSAGES: Readonly<
             description: 'How to fix a failed connection.',
         }),
     },
+    'no-answer': {
+        problem: defineMessage<FailureValues>({
+            id: 'failure.noAnswer.problem',
+            defaultMessage: '{name} stopped answering while the app set up its daemon.',
+            description: 'What went wrong when a connection failed.',
+        }),
+        remedy: defineMessage<FailureValues>({
+            id: 'failure.noAnswer.remedy',
+            defaultMessage:
+                'Check that the shell startup files on {name} don’t wait for input or run a long command, then connect again.',
+            description: 'How to fix a failed connection.',
+        }),
+    },
     install: {
         problem: defineMessage<FailureValues>({
             id: 'failure.install.problem',

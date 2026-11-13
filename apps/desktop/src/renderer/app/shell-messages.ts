@@ -296,6 +296,13 @@ export const failedActionMessages = defineMessages<FailedAction>({
     },
 });
 
+/** A settings change `config.json` refused, which the app undid (A11Y-10.3, WCAG 3.3.1). */
+export const settingsNotSavedMessage = defineMessage({
+    id: 'announce.settingsNotSaved',
+    defaultMessage: 'Couldn’t save the settings, so they are back as they were.',
+    description: 'Announced and listed when a settings change could not be saved.',
+});
+
 /** Why an action failed, after what failed (US-1.10, WCAG 3.3.1). */
 export const failureReasonMessages = defineMessages<ActionFailureCode>({
     disconnected: {

@@ -48,6 +48,7 @@ export type ConnectionFailureKind =
     | { readonly kind: 'update-app'; readonly installedVersion: string }
     | { readonly kind: 'install'; readonly code: string }
     | { readonly kind: 'incompatible'; readonly minProto: number; readonly maxProto: number }
+    | { readonly kind: 'no-answer' }
     | { readonly kind: 'other' };
 
 /** The daemon a connection reached. */

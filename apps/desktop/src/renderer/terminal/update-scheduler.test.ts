@@ -128,3 +128,24 @@ describe('UpdateScheduler: typing echo (NFR-02, A11Y-06)', () => {
         expect(updates).toBe(1);
     });
 });
+
+describe('UpdateScheduler: disposal (NFR-09)', () => {
+    useFakeClock();
+
+    it('cancels the pending update and ignores requests once disposed', () => {
+        let updates = 0;
+        const scheduler = new UpdateScheduler(
+            () => {
+                updates += 1;
+            },
+            () => true,
+        );
+        scheduler.output(100 * 1024);
+        scheduler.request();
+        scheduler.dispose();
+        scheduler.request();
+        vi.advanceTimersByTime(2_000);
+        vi.advanceTimersToNextFrame();
+        expect(updates).toBe(0);
+    });
+});

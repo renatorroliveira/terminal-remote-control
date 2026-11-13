@@ -6,11 +6,9 @@ import {
     decodeServerMessage,
     encodeClientMessage,
     encodeCredit,
-    encodeFrame,
     type Frame,
     FrameDecoder,
     FrameKind,
-    MAX_PAYLOAD,
     MIN_PROTOCOL_VERSION,
     PROTOCOL_VERSION,
     type ServerMessage,
@@ -39,6 +37,7 @@ import { type EffectiveConfig, supportsKnownHostsCommand } from '../ssh/client-c
 import type { HelperLine } from '../ssh/helper-lines';
 import { appendKnownHost, fingerprintOf, knownHostsLine } from '../ssh/known-hosts';
 import { fromBootstrap, fromSsh } from './failures';
+import { writeInputFrames } from './input-frames';
 import { type LifecycleEvent, reduceConnection } from './lifecycle';
 import { Pinger } from './pinger';
 import { type SshProcess, startSsh } from './ssh-process';
@@ -121,10 +120,7 @@ export class HostConnection implements HostConnectionLike {
         if (this.#state.status !== 'connected') {
             return false;
         }
-        for (let offset = 0; offset < data.length; offset += MAX_PAYLOAD) {
-            this.#write(encodeFrame(FrameKind.Input, stream, data.subarray(offset, offset + MAX_PAYLOAD)));
-        }
-        return true;
+        return writeInputFrames(stream, data, (frame) => this.#write(frame));
     }
 
     /** Grants output credit on a session stream. */
@@ -255,10 +251,11 @@ export class HostConnection implements HostConnectionLike {
 
     async #handshake(process: SshProcess, remainder: Uint8Array): Promise<void> {
         this.#dispatch({ type: 'step', step: 'handshake' });
+        let deadline: ReturnType<typeof setTimeout> | undefined;
         const answered = new Promise<Answer | undefined>((resolve) => {
             this.#answer = resolve;
-            setTimeout(() => resolve(undefined), HANDSHAKE_TIMEOUT_MS);
-        });
+            deadline = setTimeout(() => resolve(undefined), HANDSHAKE_TIMEOUT_MS);
+        }).finally(() => clearTimeout(deadline));
         this.#readFrames(process, remainder);
         this.#write(
             encodeClientMessage({

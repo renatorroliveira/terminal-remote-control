@@ -64,3 +64,16 @@ describe('EchoFilter: the shell echo of typed characters is not spoken again (A1
         expect(filter.strip('q')).toBe('q');
     });
 });
+
+describe('EchoFilter: bounded memory (NFR-09)', () => {
+    it('forgets old typing as new typing arrives, even when no output is ever read, and keeps at most 4,096', () => {
+        let now = 0;
+        const filter = new EchoFilter(() => now);
+        filter.typed('abc');
+        now = 2_500;
+        filter.typed('d');
+        expect(filter.pending).toBe(1);
+        filter.typed('x'.repeat(10_000));
+        expect(filter.pending).toBe(4_096);
+    });
+});

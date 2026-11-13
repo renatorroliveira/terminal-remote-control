@@ -84,6 +84,8 @@ export class WorkspaceController {
     readonly #tests = new Map<string, (passed: boolean) => void>();
     /** Hosts the user forgot, whose late state changes are ignored. */
     readonly #forgotten = new Set<string>();
+    /** Stops following each host's connection states and daemon messages. */
+    readonly #unfollow = new Map<string, () => void>();
     /** The host a session was last opened or created on (US-1.7.1). */
     #lastHost: string | undefined;
 
@@ -169,6 +171,8 @@ export class WorkspaceController {
             this.#client.disconnect(hostId);
         }
         this.#forgotten.add(hostId);
+        this.#unfollow.get(hostId)?.();
+        this.#unfollow.delete(hostId);
         this.#terminals.closeHost(hostId);
         this.#update((workspace) => hostRemoved(workspace, hostId));
         await this.#attempt('forget', hostId, () => this.#hosts.remove(hostId));
@@ -400,7 +404,7 @@ export class WorkspaceController {
     }
 
     #follow(hostId: string): void {
-        this.#client.onState(hostId, (state) => {
+        const stopStates = this.#client.onState(hostId, (state) => {
             if (this.#forgotten.has(hostId)) {
                 return;
             }
@@ -412,8 +416,8 @@ export class WorkspaceController {
             this.#finishTest(hostId, state);
             this.#followTerminals(hostId, state);
         });
-        this.#client.onMessage(hostId, (message) => {
-            if (message.type !== 'sessionEvent') {
+        const stopMessages = this.#client.onMessage(hostId, (message) => {
+            if (message.type !== 'sessionEvent' || this.#forgotten.has(hostId)) {
                 return;
             }
             this.#update((workspace) => sessionChanged(workspace, hostId, message.change));
@@ -422,6 +426,10 @@ export class WorkspaceController {
             } else if (message.change.kind === 'closed') {
                 this.#terminals.closeSession(sessionKey(hostId, message.change.sessionId));
             }
+        });
+        this.#unfollow.set(hostId, () => {
+            stopStates();
+            stopMessages();
         });
     }
 

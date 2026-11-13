@@ -24,7 +24,7 @@ import type { TerminalLink } from '../terminal/hyperlinks';
 import type { TerminalNotice } from '../terminal/notices';
 import { pastedLines } from '../terminal/paste';
 import type { Announcer } from './announcer';
-import { reportActionFailures } from './failure-reporter';
+import { reportActionFailures, reportSettingsFailures } from './failure-reporter';
 import { type HelpContext, helpContext } from './help/help-context';
 import { linkAnnouncements } from './link-messages';
 import type { NotificationCenter } from './notifications';
@@ -220,6 +220,7 @@ export class Shell {
     /** Where focus returns when the palette, help or the settings page closes (A11Y-05.8). */
     #focusReturn: HTMLElement | undefined;
     #keymap: Keymap;
+    #bellTimer: number | undefined;
 
     /** Builds the shell and registers its commands. */
     constructor(options: ShellOptions) {
@@ -248,13 +249,16 @@ export class Shell {
                   });
         const stopRegions = this.#regions.start();
         const stopHosts = this.#watchHosts();
-        const stopFailures = reportActionFailures({
-            store: this.#options.workspace.store,
+        const reporting = {
             intl: this.#options.intl,
             announcer: this.#options.announcer,
             notifications: this.#options.notifications,
-            playCue: (cue) => this.playCue(cue),
-        });
+            playCue: (cue: AudioCue) => this.playCue(cue),
+        };
+        const stopFailures = reportActionFailures({ ...reporting, store: this.#options.workspace.store });
+        const settings = this.#options.settings;
+        const stopSettingsFailures =
+            settings === undefined ? () => undefined : reportSettingsFailures(settings, reporting);
         const stopScreenReader =
             this.#options.screenReader?.onScreenReaderChanged((on) => this.#announceScreenReader(on)) ??
             (() => undefined);
@@ -265,6 +269,7 @@ export class Shell {
             stopRegions();
             stopHosts();
             stopFailures();
+            stopSettingsFailures();
             stopScreenReader();
             stopSettings();
         };
@@ -431,7 +436,7 @@ export class Shell {
         this.#options.guide?.open(section);
     }
 
-    /** Opens the find bar for the open session (US-1.13). */
+    /** Opens the find bar for the open session, re-running and announcing a search it still holds (US-1.13). */
     openFind(): void {
         if (this.#options.workspace.store.getState().open === undefined) {
             this.#announce(shellAnnouncements.noSession);
@@ -441,6 +446,9 @@ export class Shell {
         this.state.setState({
             find: { query: '', caseSensitive: false, regex: false, ...previous, result: undefined },
         });
+        if (previous !== undefined && previous.query !== '') {
+            this.updateFind({});
+        }
     }
 
     /** Changes the search and runs it, announcing the selected match (US-1.13.2). */
@@ -633,7 +641,9 @@ export class Shell {
         announcer.announce(intl.formatMessage(terminalAnnouncements.bell, { session: item?.label ?? key }), {
             group: 'bell',
         });
-        document.defaultView?.setTimeout(() => this.state.setState({ bell: false }), BELL_SHOWN_MS);
+        const view = document.defaultView;
+        view?.clearTimeout(this.#bellTimer);
+        this.#bellTimer = view?.setTimeout(() => this.state.setState({ bell: false }), BELL_SHOWN_MS);
     }
 
     #zoom(change: ZoomChange): void {

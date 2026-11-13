@@ -33,6 +33,9 @@ export function fromBootstrap(failure: Exclude<BootstrapFailure, { kind: 'closed
     if (failure.kind === 'host') {
         return { kind: 'install', code: failure.code, details: failure.detail };
     }
+    if (failure.kind === 'silent') {
+        return { kind: 'no-answer', details: '' };
+    }
     const { plan } = failure;
     switch (plan.kind) {
         case 'unsupported':

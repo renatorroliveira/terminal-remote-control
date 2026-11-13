@@ -30,3 +30,11 @@ describe('detectLinks: URLs in terminal text (US-1.12.3)', () => {
         expect(detectLinks('example.com and /home/dev/notes.md and C: drive')).toEqual([]);
     });
 });
+
+describe('detectLinks: untrusted text (SEC-06.4)', () => {
+    it('ends a URL at a bidirectional formatting character, so it cannot read as another', () => {
+        expect(detectLinks('https://good.example\u202elave/moc.live//:sptth').map((link) => link.target)).toEqual([
+            'https://good.example',
+        ]);
+    });
+});

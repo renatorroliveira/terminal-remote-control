@@ -13,6 +13,7 @@ export class Pinger {
     readonly #send: (requestId: number) => void;
     readonly #onTimeout: () => void;
     #timer: ReturnType<typeof setInterval> | undefined;
+    #watchdogTimer: ReturnType<typeof setTimeout> | undefined;
     #next = RESERVED_REQUEST_IDS;
     #outstanding: { readonly id: number; readonly sentAt: number } | undefined;
 
@@ -37,7 +38,9 @@ export class Pinger {
     /** Stops pinging. */
     stop(): void {
         clearInterval(this.#timer);
+        clearTimeout(this.#watchdogTimer);
         this.#timer = undefined;
+        this.#watchdogTimer = undefined;
     }
 
     #tick(): void {
@@ -51,7 +54,8 @@ export class Pinger {
 
     #watchdog(): void {
         const sent = this.#outstanding;
-        setTimeout(() => {
+        clearTimeout(this.#watchdogTimer);
+        this.#watchdogTimer = setTimeout(() => {
             if (this.#timer !== undefined && this.#outstanding === sent) {
                 this.stop();
                 this.#onTimeout();

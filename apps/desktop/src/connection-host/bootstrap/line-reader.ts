@@ -1,6 +1,16 @@
 import type { Readable } from 'node:stream';
 
 const NEWLINE = 0x0a;
+const MAX_PENDING_BYTES = 1024 * 1024;
+
+/** The stream sent more than 1 MiB without a newline, far more than any bootstrap line (SEC-06). */
+export class LineTooLongError extends Error {
+    /** Creates the error. */
+    constructor() {
+        super('the host sent a line longer than 1 MiB');
+        this.name = 'LineTooLongError';
+    }
+}
 
 /**
  * Reads newline-terminated lines from a stream without consuming more than it was given, so the stream can be
@@ -11,6 +21,7 @@ export class LineReader {
     #buffer: Buffer = Buffer.alloc(0);
     #ended = false;
     #released = false;
+    #overflowed = false;
     #wake: (() => void) | undefined;
 
     /** Starts reading `stream`. */
@@ -21,7 +32,7 @@ export class LineReader {
         stream.on('close', this.#onEnd);
     }
 
-    /** The next line without its newline, or `undefined` once the stream has ended. */
+    /** The next line without its newline, or `undefined` once the stream has ended; throws {@link LineTooLongError}. */
     async next(): Promise<string | undefined> {
         for (;;) {
             const newline = this.#buffer.indexOf(NEWLINE);
@@ -29,6 +40,9 @@ export class LineReader {
                 const line = this.#buffer.subarray(0, newline).toString('utf8');
                 this.#buffer = this.#buffer.subarray(newline + 1);
                 return line.endsWith('\r') ? line.slice(0, -1) : line;
+            }
+            if (this.#overflowed) {
+                throw new LineTooLongError();
             }
             if (this.#ended) {
                 return undefined;
@@ -53,7 +67,13 @@ export class LineReader {
 
     readonly #onData = (chunk: Buffer | string): void => {
         const bytes = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
-        this.#buffer = Buffer.concat([this.#buffer, bytes]);
+        if (this.#buffer.length + bytes.length > MAX_PENDING_BYTES) {
+            this.#overflowed = true;
+            this.release();
+            this.#buffer = Buffer.alloc(0);
+        } else {
+            this.#buffer = Buffer.concat([this.#buffer, bytes]);
+        }
         this.#notify();
     };
 

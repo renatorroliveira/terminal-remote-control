@@ -1,4 +1,6 @@
 import type { IBuffer, IDisposable, ILink, IMarker, Terminal } from '@xterm/xterm';
+import { MAX_LINK_LENGTH } from '../../shared/links';
+import { hasBidiControls, stripBidiControls, stripControlCharacters } from '../../shared/text';
 import { type BufferCell, LogicalText, logicalEnd, logicalStart } from './buffer-lines';
 import { detectLinks } from './link-detector';
 
@@ -103,7 +105,7 @@ export class TerminalLinks {
         if (open !== undefined) {
             this.#record({ ...open, end: this.#anchor() });
         }
-        if (target !== '') {
+        if (usableTarget(target)) {
             this.#open = { target, start: this.#anchor() };
         }
         return false;
@@ -155,7 +157,7 @@ export class TerminalLinks {
             const end = row === this.#row(link.end) ? link.end.column : this.#terminal.cols;
             text += buffer.getLine(row)?.translateToString(false, start, end) ?? '';
         }
-        return text.trim();
+        return stripBidiControls(stripControlCharacters(text)).trim();
     }
 
     #providedLinks(row: number, modifier: LinkModifier, onActivate: (link: TerminalLink) => void): ILink[] {
@@ -188,4 +190,17 @@ function unique(links: readonly TerminalLink[]): readonly TerminalLink[] {
         seen.add(key);
         return fresh;
     });
+}
+
+/**
+ * Whether an OSC 8 target can become a link: not empty, no longer than the app opens, and free of control and
+ * bidirectional formatting characters, so the List links dialog never shows a target that reads as another (SEC-06.4).
+ */
+function usableTarget(target: string): boolean {
+    return (
+        target !== '' &&
+        target.length <= MAX_LINK_LENGTH &&
+        stripControlCharacters(target) === target &&
+        !hasBidiControls(target)
+    );
 }

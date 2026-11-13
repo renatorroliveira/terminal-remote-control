@@ -129,3 +129,30 @@ describe('runBootstrap failures', () => {
         await expect(outcome).resolves.toEqual({ kind: 'failed', failure: { kind: 'closed' } });
     });
 });
+
+describe('runBootstrap limits (SEC-06, US-1.4.5)', () => {
+    it('fails with a protocol error when the host sends a line longer than the reader keeps', async () => {
+        const host = fakeHost();
+        const outcome = runBootstrap(host, options([]));
+        host.output.write(Buffer.alloc(1_100_000, 0x61));
+        await expect(outcome).resolves.toEqual({
+            kind: 'failed',
+            failure: { kind: 'host', code: 'protocol', detail: 'the host sent a line longer than 1 MiB' },
+        });
+    });
+
+    it('fails when the host does not answer in time, even while it keeps sending progress', async () => {
+        const silent = fakeHost();
+        const timing = { helloMs: 30, stepMs: 30, uploadBytesPerSecond: 1_000_000 };
+        await expect(runBootstrap(silent, { ...options([]), timing })).resolves.toEqual({
+            kind: 'failed',
+            failure: { kind: 'silent' },
+        });
+        const chatty = fakeHost();
+        const outcome = runBootstrap(chatty, { ...options([]), timing });
+        say(chatty, 'HELLO os=Linux arch=arm64 checksum=sha256sum installed=-');
+        const ticker = setInterval(() => say(chatty, 'PROGRESS receiving'), 5);
+        await expect(outcome).resolves.toEqual({ kind: 'failed', failure: { kind: 'silent' } });
+        clearInterval(ticker);
+    });
+});

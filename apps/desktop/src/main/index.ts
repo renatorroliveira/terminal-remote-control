@@ -11,6 +11,7 @@ import { relayAccessibility } from './accessibility-relay';
 import { AppConfigFile, settingsOf } from './app-config';
 import { appIconPath } from './app-icon';
 import { contentTypeFor, resolveAppRequest } from './app-protocol';
+import { writeHostClipboard } from './clipboard-writes';
 import { startConnectionHost } from './connection-host';
 import { refuseRemoteDebugging } from './debugging-guard';
 import { DisplayRelay } from './display-relay';
@@ -97,10 +98,12 @@ async function start(): Promise<void> {
                 return undefined;
             },
             ...menuHandlers(display, config),
-            'clipboard:write': async (text) => {
-                clipboard.writeText(text);
-                return undefined;
-            },
+            'clipboard:write': (hostId, text) =>
+                writeHostClipboard(
+                    { hosts: () => knownHosts.list(), writeText: (written) => clipboard.writeText(written) },
+                    hostId,
+                    text,
+                ),
             'links:check': (target) => links.check(target),
             'links:open': async (target, trustOrigin) => {
                 await links.open(target, trustOrigin);

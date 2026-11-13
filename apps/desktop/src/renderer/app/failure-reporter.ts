@@ -3,7 +3,13 @@ import type { StoreApi } from 'zustand/vanilla';
 import type { ActionFailure, Workspace } from '../sessions/workspace-model';
 import type { Announcer } from './announcer';
 import type { NotificationCenter } from './notifications';
-import { actionFailedMessage, failedActionMessages, failureReasonMessages } from './shell-messages';
+import type { SettingsStore } from './settings/settings-store';
+import {
+    actionFailedMessage,
+    failedActionMessages,
+    failureReasonMessages,
+    settingsNotSavedMessage,
+} from './shell-messages';
 import type { AudioCue } from './sound/audio-cues';
 
 /** What the failure reporter needs from the shell. */
@@ -13,6 +19,19 @@ export interface FailureReporterOptions {
     readonly announcer: Pick<Announcer, 'announce'>;
     readonly notifications: Pick<NotificationCenter, 'add'>;
     readonly playCue: (cue: AudioCue) => void;
+}
+
+/** Reports each settings change that could not be kept, as an action failure is reported (A11Y-10.3, WCAG 3.3.1). */
+export function reportSettingsFailures(
+    settings: Pick<SettingsStore, 'failures'>,
+    options: Omit<FailureReporterOptions, 'store'>,
+): () => void {
+    return settings.failures.subscribe(() => {
+        const text = options.intl.formatMessage(settingsNotSavedMessage);
+        options.playCue('failed');
+        options.notifications.add({ text, level: 'error' });
+        options.announcer.announce(text, { group: 'settings-failure', politeness: 'assertive' });
+    });
 }
 
 /**
