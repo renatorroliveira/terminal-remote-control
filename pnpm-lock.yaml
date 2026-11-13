@@ -163,7 +163,8 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@xterm/addon-webgl@0.19.0': 7adb7217d8478234aa6c1f1cf13f1ac5cbafe30b17e5880801022bef9eb1f47b
+  '@xterm/addon-webgl@0.19.0': d7ad1d91f29c73c91506bcd3b27df8404fc4aa4479fd29842e1db2abd0c47f7e
+  '@xterm/xterm@6.0.0': ac7f5aee47a1c4a38aae2683b46be9807162466cd4250e081b9d098036eacb3b
 
 importers:
 
@@ -216,10 +217,10 @@ importers:
         version: 0.4.0
       '@xterm/addon-webgl':
         specifier: 0.19.0
-        version: 0.19.0(patch_hash=7adb7217d8478234aa6c1f1cf13f1ac5cbafe30b17e5880801022bef9eb1f47b)
+        version: 0.19.0(patch_hash=d7ad1d91f29c73c91506bcd3b27df8404fc4aa4479fd29842e1db2abd0c47f7e)
       '@xterm/xterm':
         specifier: 6.0.0
-        version: 6.0.0
+        version: 6.0.0(patch_hash=ac7f5aee47a1c4a38aae2683b46be9807162466cd4250e081b9d098036eacb3b)
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -3411,11 +3412,11 @@ snapshots:
 
   '@xterm/addon-unicode-graphemes@0.4.0': {}
 
-  '@xterm/addon-webgl@0.19.0(patch_hash=7adb7217d8478234aa6c1f1cf13f1ac5cbafe30b17e5880801022bef9eb1f47b)': {}
+  '@xterm/addon-webgl@0.19.0(patch_hash=d7ad1d91f29c73c91506bcd3b27df8404fc4aa4479fd29842e1db2abd0c47f7e)': {}
 
   '@xterm/headless@6.0.0': {}
 
-  '@xterm/xterm@6.0.0': {}
+  '@xterm/xterm@6.0.0(patch_hash=ac7f5aee47a1c4a38aae2683b46be9807162466cd4250e081b9d098036eacb3b)': {}
 
   abbrev@4.0.0: {}
 
