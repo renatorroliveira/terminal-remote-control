@@ -24,14 +24,16 @@ export interface TestHostApp {
     readonly window: Page;
 }
 
-/** Launches the test build with the test hosts' ssh config and known hosts. */
-export async function launchWithTestHosts(): Promise<TestHostApp> {
+/** Launches the test build with the test hosts' ssh config and known hosts; hosts it adds install under `installRoot`. */
+export async function launchWithTestHosts(installRoot?: string): Promise<TestHostApp> {
     const scratch = mkdtempSync(join(tmpdir(), 'trc-e2e-'));
     const knownHosts = join(scratch, 'known_hosts');
     copyFileSync(join(run, 'known_hosts.smoke'), knownHosts);
     const app = await launchApp([`--user-data-dir=${join(scratch, 'user-data')}`], {
         TRC_TEST_SSH_CONFIG: join(run, 'ssh_config'),
         TRC_TEST_KNOWN_HOSTS: knownHosts,
+        TRC_HOME: join(scratch, 'home'),
+        ...(installRoot === undefined ? {} : { TRC_TEST_INSTALL_ROOT: installRoot }),
     });
     return { app, window: await app.firstWindow() };
 }
@@ -68,12 +70,11 @@ export function removeInstall(alias: string, root: string): void {
 }
 
 /**
- * Adds `destination` as a known host installing under `installRoot`, connects it from its badge, creates a session,
- * and returns the session's text surface once it opens.
+ * Adds `destination` as a known host, connects it from its badge, creates a session, and returns the session's text
+ * surface once it opens.
  */
-export async function openTerminal(window: Page, destination: string, installRoot: string): Promise<Locator> {
+export async function openTerminal(window: Page, destination: string): Promise<Locator> {
     await window.getByRole('textbox', { name: 'New host' }).fill(destination);
-    await window.getByRole('textbox', { name: 'Install location' }).fill(installRoot);
     await window.getByRole('button', { name: 'Add host' }).click();
     await window.getByRole('button', { name: `Connect ${destination}` }).click();
     await window.getByRole('button', { name: `Disconnect ${destination}` }).waitFor({ timeout: 60_000 });

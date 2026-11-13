@@ -6,10 +6,9 @@ export interface InvokeContract {
     readonly 'display:get': { readonly args: readonly []; readonly result: DisplaySettings };
     readonly 'accessibility:get': { readonly args: readonly []; readonly result: boolean };
     readonly 'hosts:list': { readonly args: readonly []; readonly result: readonly KnownHost[] };
-    readonly 'hosts:add': {
-        readonly args: readonly [address: string, installRoot: string];
-        readonly result: KnownHost;
-    };
+    readonly 'hosts:add': { readonly args: readonly [address: string]; readonly result: KnownHost };
+    readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
+    readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
 }
 
 /** One invoke channel. */
@@ -46,7 +45,13 @@ export interface TrcBridge {
         /** The hosts the user added, in order. */
         list(): Promise<readonly KnownHost[]>;
         /** Adds a host from what the user typed; rejects an address ssh could not use. */
-        add(address: string, installRoot: string): Promise<KnownHost>;
+        add(address: string): Promise<KnownHost>;
+    };
+    readonly sidebar: {
+        /** The sidebar width the user last chose, in CSS pixels. */
+        width(): Promise<number>;
+        /** Keeps a new sidebar width in `config.json`. */
+        setWidth(width: number): Promise<void>;
     };
     readonly commands: {
         /** Calls `listener` with each menu command; returns a function that stops listening. */

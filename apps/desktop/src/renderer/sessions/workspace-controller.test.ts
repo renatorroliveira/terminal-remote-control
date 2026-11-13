@@ -103,12 +103,12 @@ class FakeHosts implements KnownHostStore {
         return Promise.resolve(this.hosts);
     }
 
-    add(address: string, installRoot: string): Promise<KnownHost> {
+    add(address: string): Promise<KnownHost> {
         const parsed = parseHostAddress(address);
         if (parsed === undefined) {
             return Promise.reject(new Error('not a host address'));
         }
-        const host = { id: `host-${this.hosts.length}`, address: parsed, installRoot };
+        const host = { id: `host-${this.hosts.length}`, address: parsed, installRoot: '~/.trc' };
         this.hosts.push(host);
         return Promise.resolve(host);
     }

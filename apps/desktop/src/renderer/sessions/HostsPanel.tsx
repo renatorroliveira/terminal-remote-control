@@ -12,14 +12,12 @@ import {
     hostStateMessages,
     sidebarMessages,
 } from './messages';
-import { DEFAULT_INSTALL_ROOT, type WorkspaceController } from './workspace-controller';
+import type { WorkspaceController } from './workspace-controller';
 import type { HostEntry } from './workspace-model';
 
 /** What the hosts area needs. */
 export interface HostsPanelProps {
     readonly workspace: WorkspaceController;
-    /** Test builds also ask where the daemon installs (P-14). */
-    readonly askInstallLocation: boolean;
 }
 
 type Badge = 'connected' | 'disconnected' | 'busy';
@@ -28,7 +26,7 @@ type Badge = 'connected' | 'disconnected' | 'busy';
  * The known hosts (US-1.1, US-1.5): each with an icon-only connection button whose name says what pressing it does
  * and whose description gives the state; a host-key question when one waits; and the field that adds a host.
  */
-export function HostsPanel({ workspace, askInstallLocation }: HostsPanelProps) {
+export function HostsPanel({ workspace }: HostsPanelProps) {
     const intl = useIntl();
     const hosts = useStore(workspace.store, (state) => state.hosts);
     return (
@@ -50,7 +48,7 @@ export function HostsPanel({ workspace, askInstallLocation }: HostsPanelProps) {
                     <HostKeyQuestion key={host.id} host={host} workspace={workspace} />
                 ) : null,
             )}
-            <AddHostForm workspace={workspace} askInstallLocation={askInstallLocation} />
+            <AddHostForm workspace={workspace} />
         </section>
     );
 }
@@ -115,10 +113,9 @@ function HostKeyQuestion({ host, workspace }: { readonly host: HostEntry; readon
     );
 }
 
-function AddHostForm({ workspace, askInstallLocation }: HostsPanelProps) {
+function AddHostForm({ workspace }: HostsPanelProps) {
     const intl = useIntl();
     const [address, setAddress] = useState('');
-    const [installRoot, setInstallRoot] = useState(DEFAULT_INSTALL_ROOT);
     const [invalid, setInvalid] = useState(false);
     const shown = useRef(address);
     shown.current = address;
@@ -126,7 +123,7 @@ function AddHostForm({ workspace, askInstallLocation }: HostsPanelProps) {
         event.preventDefault();
         const submitted = address;
         const stillShown = (): boolean => shown.current === submitted;
-        workspace.addHost(submitted, installRoot).then(
+        workspace.addHost(submitted).then(
             () => stillShown() && setAddress(''),
             () => stillShown() && setInvalid(true),
         );
@@ -144,7 +141,12 @@ function AddHostForm({ workspace, askInstallLocation }: HostsPanelProps) {
                 className={styles['field'] ?? ''}
             >
                 <Label>{intl.formatMessage(sidebarMessages.newHost)}</Label>
-                <Input className={styles['input'] ?? ''} />
+                <div className={styles['entry']}>
+                    <Input className={styles['input'] ?? ''} />
+                    <Button type="submit" className={PRIMARY_BUTTON}>
+                        {intl.formatMessage(sidebarMessages.addHost)}
+                    </Button>
+                </div>
                 <Text slot="description" className={styles['hint']}>
                     {intl.formatMessage(sidebarMessages.newHostHint)}
                 </Text>
@@ -152,15 +154,6 @@ function AddHostForm({ workspace, askInstallLocation }: HostsPanelProps) {
                     {intl.formatMessage(sidebarMessages.badAddress)}
                 </FieldError>
             </TextField>
-            {askInstallLocation && (
-                <TextField value={installRoot} onChange={setInstallRoot} isRequired className={styles['field'] ?? ''}>
-                    <Label>Install location</Label>
-                    <Input className={styles['input'] ?? ''} />
-                </TextField>
-            )}
-            <Button type="submit" className={`${PRIMARY_BUTTON} ${styles['submit'] ?? ''}`}>
-                {intl.formatMessage(sidebarMessages.addHost)}
-            </Button>
         </form>
     );
 }

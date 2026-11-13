@@ -1,7 +1,7 @@
 import type { ServerMessage, SessionInfo } from '@trc/protocol';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import { parseHostAddress } from '../../shared/host-address';
-import type { KnownHost } from '../../shared/hosts';
+import { DEFAULT_INSTALL_ROOT, type KnownHost } from '../../shared/hosts';
 import type { KnownHostStore, TerminalHost, WorkspaceClient } from './workspace-controller';
 
 /** A login bash session for tests. */
@@ -133,12 +133,16 @@ export class FakeKnownHostStore implements KnownHostStore {
     }
 
     /** Adds a host, or rejects an address ssh could not use. */
-    add(address: string, installRoot: string): Promise<KnownHost> {
+    add(address: string): Promise<KnownHost> {
         const parsed = parseHostAddress(address);
         if (parsed === undefined) {
             return Promise.reject(new Error('not a host address'));
         }
-        const host: KnownHost = { id: `host-${this.#hosts.length}`, address: parsed, installRoot };
+        const host: KnownHost = {
+            id: `host-${this.#hosts.length}`,
+            address: parsed,
+            installRoot: DEFAULT_INSTALL_ROOT,
+        };
         this.#hosts.push(host);
         return Promise.resolve(host);
     }

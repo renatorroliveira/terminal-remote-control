@@ -24,14 +24,14 @@ const HOST_SCHEMA: z.ZodType<KnownHost> = z
 
 const FILE_SCHEMA: z.ZodType<HostsFile> = z.object({ hosts: z.array(HOST_SCHEMA).max(1000) }).strict();
 
-/** The hosts the user added, in the order added, kept in `userData/hosts.json` (US-1.1.1, P-18). */
+/** The hosts the user added, in the order added, kept in the TRC home's `hosts.json` (US-1.1.1, P-18). */
 export class KnownHosts {
     readonly #store: JsonStore<HostsFile>;
     #last: Promise<unknown> = Promise.resolve();
 
-    /** The hosts kept under `userData`. */
-    constructor(userData: string) {
-        this.#store = new JsonStore(join(userData, 'hosts.json'), FILE_SCHEMA, { hosts: [] });
+    /** The hosts kept in `home`. */
+    constructor(home: string) {
+        this.#store = new JsonStore(join(home, 'hosts.json'), FILE_SCHEMA, { hosts: [] });
     }
 
     /** Every known host. */

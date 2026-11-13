@@ -101,8 +101,14 @@
         font: inherit;
     }
 
-    .submit {
-        align-self: start;
+    .entry {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .entry .input {
+        flex: 1;
+        min-width: 0;
     }
 
     .hint {

@@ -13,7 +13,7 @@ async function renderPanel(hosts: KnownHostStore = new FakeKnownHostStore()) {
     const workspace = new WorkspaceController(client, new FakeTerminalHost(), hosts);
     const screen = await render(
         <AppProviders locale="en">
-            <HostsPanel workspace={workspace} askInstallLocation={false} />
+            <HostsPanel workspace={workspace} />
         </AppProviders>,
     );
     return { client, workspace, screen };
@@ -28,9 +28,9 @@ class SlowKnownHostStore implements KnownHostStore {
         return this.#hosts.list();
     }
 
-    add(address: string, installRoot: string): Promise<KnownHost> {
+    add(address: string): Promise<KnownHost> {
         return new Promise((resolve, reject) => {
-            this.#waiting.push(() => void this.#hosts.add(address, installRoot).then(resolve, reject));
+            this.#waiting.push(() => void this.#hosts.add(address).then(resolve, reject));
         });
     }
 
@@ -60,6 +60,15 @@ describe('HostsPanel (US-1.1.1, US-1.2, US-1.5)', () => {
             )
             .toBeVisible();
         await expect.element(screen.getByRole('textbox', { name: 'New host' })).toHaveValue('');
+    });
+
+    it('puts Add host to the right of the field, on its row, and asks for nothing else', async () => {
+        const { screen } = await renderPanel();
+        const field = screen.getByRole('textbox', { name: 'New host' }).element().getBoundingClientRect();
+        const button = screen.getByRole('button', { name: 'Add host' }).element().getBoundingClientRect();
+        expect(button.left).toBeGreaterThanOrEqual(field.right);
+        expect(Math.abs(button.top + button.height / 2 - (field.top + field.height / 2))).toBeLessThan(2);
+        expect(screen.container.querySelectorAll('input')).toHaveLength(1);
     });
 
     it('keeps what the user typed while an earlier add was still saving', async () => {

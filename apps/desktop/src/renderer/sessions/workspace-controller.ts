@@ -45,9 +45,6 @@ export interface TerminalHost {
 /** What pressing a host's connection button does now. */
 export type ConnectionAction = 'connect' | 'disconnect' | 'cancel' | 'review-key';
 
-/** Where the daemon installs on a host unless the user picks another place (US-1.4.3). */
-export const DEFAULT_INSTALL_ROOT = '~/.trc';
-
 /**
  * Keeps the workspace read model current from the connection host, and carries out what the sidebar asks: add,
  * connect and disconnect hosts, open and create sessions, collapse host groups (US-1.1, US-1.6, US-1.7, US-1.8). A
@@ -76,8 +73,8 @@ export class WorkspaceController {
     }
 
     /** Adds a host from what the user typed; rejects an address ssh could not use (US-1.1.1). */
-    async addHost(address: string, installRoot = DEFAULT_INSTALL_ROOT): Promise<KnownHost> {
-        const host = await this.#hosts.add(address, installRoot);
+    async addHost(address: string): Promise<KnownHost> {
+        const host = await this.#hosts.add(address);
         this.#add(host);
         return host;
     }
