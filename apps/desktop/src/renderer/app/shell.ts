@@ -4,7 +4,7 @@ import type { ScreenReaderMode } from '../../shared/accessibility';
 import type { GuideSection } from '../../shared/guide';
 import type { CommandId, Keymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
-import type { Settings } from '../../shared/settings';
+import { keymapFor, type Settings } from '../../shared/settings';
 import { nextZoom, TERMINAL_ZOOM, type ZoomChange } from '../../shared/terminal-zoom';
 import { CommandRegistry } from '../commands/command-registry';
 import { installShortcuts } from '../commands/shortcuts';
@@ -171,6 +171,8 @@ export interface ShellOptions {
     readonly settings?: SettingsStore;
     /** Opens the user guide; without it, the guide commands do nothing. */
     readonly guide?: GuideControls;
+    /** Lets the page receive the menus' shortcuts while it records one (A11Y-05.7). */
+    readonly menus?: { readonly ignoreShortcuts: (ignore: boolean) => void };
 }
 
 /** Opens the bundled user guide in its own window (A11Y-10.4). */
@@ -206,7 +208,6 @@ const BELL_SHOWN_MS = 3_000;
 export class Shell {
     readonly state: StoreApi<ShellState> = createStore<ShellState>(() => INITIAL_STATE);
     readonly commands = new CommandRegistry();
-    readonly keymap: Keymap;
     readonly notifications: NotificationCenter;
     /** Where the sidebar's width and visibility are kept. */
     readonly sidebar: SidebarSettings;
@@ -214,11 +215,12 @@ export class Shell {
     readonly #regions: RegionCycler;
     /** Where focus returns when the palette, help or the settings page closes (A11Y-05.8). */
     #focusReturn: HTMLElement | undefined;
+    #keymap: Keymap;
 
     /** Builds the shell and registers its commands. */
     constructor(options: ShellOptions) {
         this.#options = options;
-        this.keymap = options.keymap;
+        this.#keymap = options.keymap;
         this.notifications = options.notifications;
         this.sidebar = options.sidebar;
         this.#regions = new RegionCycler(options.document, { terminal: () => options.terminals.focusOpen() });
@@ -235,7 +237,7 @@ export class Shell {
             view === null
                 ? () => undefined
                 : installShortcuts(view, {
-                      keymap: this.keymap,
+                      keymap: () => this.#keymap,
                       commands: this.commands,
                       passNextKey: () => this.#options.terminals.passingNextKey(),
                       blocked: () => this.#modalOpen(),
@@ -363,6 +365,16 @@ export class Shell {
                 });
                 break;
         }
+    }
+
+    /** The shortcuts in force: the defaults, or the user's (A11Y-05.7). */
+    get keymap(): Keymap {
+        return this.#keymap;
+    }
+
+    /** Lets the page receive the menus' own shortcuts, or gives them back to the menus. */
+    ignoreMenuShortcuts(ignore: boolean): void {
+        this.#options.menus?.ignoreShortcuts(ignore);
     }
 
     /** The settings page's settings, when the app keeps them. */
@@ -650,7 +662,12 @@ export class Shell {
         if (settings === undefined) {
             return () => undefined;
         }
+        let applied: Settings | undefined;
         const apply = (now: Settings): void => {
+            if (now.shortcuts !== applied?.shortcuts || now.plainF6 !== applied.plainF6) {
+                this.#keymap = keymapFor(now);
+            }
+            applied = now;
             if (now.terminalZoom !== this.state.getState().terminalZoom) {
                 this.#applyZoom(now.terminalZoom);
             }

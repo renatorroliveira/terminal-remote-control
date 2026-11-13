@@ -25,6 +25,7 @@ export interface InvokeContract {
         readonly result: undefined;
     };
     readonly 'menus:terminal': { readonly args: readonly [canCopy: boolean]; readonly result: undefined };
+    readonly 'menus:ignore-shortcuts': { readonly args: readonly [ignore: boolean]; readonly result: undefined };
     readonly 'clipboard:write': { readonly args: readonly [text: string]; readonly result: undefined };
     readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
@@ -101,6 +102,8 @@ export interface TrcBridge {
     readonly menus: {
         /** Shows the terminal's context menu: Copy when `canCopy`, Paste, List Links and Look Up (A11Y-11.11). */
         terminal(canCopy: boolean): Promise<void>;
+        /** Lets the page receive the menus' shortcuts instead, while it records a new shortcut (A11Y-05.7). */
+        ignoreShortcuts(ignore: boolean): Promise<void>;
     };
     readonly sidebar: {
         /** The sidebar width the user last chose, in CSS pixels. */

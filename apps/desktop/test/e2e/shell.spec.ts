@@ -131,3 +131,27 @@ test('Command+, opens the searchable settings page, and a theme change applies a
     await expect(window.getByRole('combobox', { name: 'New host' })).toBeFocused();
     await app.close();
 });
+
+test('rebinds a command from the settings page, and the menus and the keyboard follow (A11Y-05.7)', async () => {
+    const app = await launchApp();
+    const window = await app.firstWindow();
+    await window.getByRole('combobox', { name: 'New host' }).focus();
+    await window.keyboard.press('Meta+Comma');
+    const settings = window.getByRole('dialog', { name: 'Settings' });
+    await settings.getByRole('button', { name: 'Change Show command palette' }).click();
+    await expect(settings.getByRole('button', { name: /^Press the new shortcut/ })).toBeFocused();
+    await window.keyboard.press('Control+Meta+Y');
+    await expect(settings.getByText('Show command palette: Ctrl+Cmd+Y.')).toBeVisible();
+    await expect(settings.getByRole('button', { name: 'Change Show command palette' })).toBeFocused();
+    await window.keyboard.press('Escape');
+    await expect(settings).toHaveCount(0);
+    const accelerator = (): Promise<string | undefined> =>
+        app.evaluate(({ Menu }) => {
+            const items = Menu.getApplicationMenu()?.items.flatMap((item) => item.submenu?.items ?? []) ?? [];
+            return items.find((item) => item.label === 'Command Palette…')?.accelerator ?? undefined;
+        });
+    await expect.poll(accelerator).toBe('Control+Command+Y');
+    await window.keyboard.press('Control+Meta+Y');
+    await expect(window.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
+    await app.close();
+});

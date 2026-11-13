@@ -32,6 +32,7 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'links:check': z.tuple([LINK]),
     'links:open': z.tuple([LINK, z.boolean()]),
     'menus:terminal': z.tuple([z.boolean()]),
+    'menus:ignore-shortcuts': z.tuple([z.boolean()]),
     'clipboard:write': z.tuple([z.string().max(MAX_CLIPBOARD_WRITE)]),
     'sidebar:get-width': z.tuple([]),
     'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),

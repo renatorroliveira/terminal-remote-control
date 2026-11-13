@@ -1,4 +1,5 @@
 import { DEFAULT_THEME_PREFERENCE, type ThemePreference } from './display';
+import { type CommandId, type Keymap, resolveKeymap } from './keymap';
 import { DEFAULT_TERMINAL_APPEARANCE, type TerminalAppearance } from './terminal-appearance';
 import { TERMINAL_ZOOM } from './terminal-zoom';
 
@@ -47,6 +48,10 @@ export interface Settings {
     readonly pasteConfirmation: boolean;
     /** Where a new session starts (US-1.7.1). */
     readonly newSessionFolder: NewSessionFolder;
+    /** The user's own shortcuts, such as `Ctrl+Cmd+G`, by command (A11Y-05.7). */
+    readonly shortcuts: Readonly<Partial<Record<CommandId, string>>>;
+    /** Whether plain F6 and Shift+F6 also move between regions (A11Y-05.2). */
+    readonly plainF6: boolean;
 }
 
 /** The ranges the numeric settings accept. */
@@ -71,4 +76,11 @@ export const DEFAULT_SETTINGS: Settings = {
     autoClose: true,
     pasteConfirmation: true,
     newSessionFolder: 'home',
+    shortcuts: {},
+    plainF6: false,
 };
+
+/** The keymap the settings put in force: the user's shortcuts, and plain F6 when on (A11Y-05.2, A11Y-05.7). */
+export function keymapFor(settings: Pick<Settings, 'shortcuts' | 'plainF6'>): Keymap {
+    return resolveKeymap(settings.shortcuts, { plainF6: settings.plainF6 });
+}

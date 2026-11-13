@@ -1,7 +1,7 @@
 import { createIntl } from 'react-intl';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import type { ScreenReaderMode } from '../../shared/accessibility';
-import { resolveKeymap } from '../../shared/keymap';
+import { formatChord, resolveKeymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings';
 import { messagesFor } from '../i18n/locale';
@@ -75,6 +75,8 @@ class FakeScreenReader implements ScreenReaderControls {
 }
 
 const CONNECTED = { status: 'connected', daemon: { version: '0.2.0', sha256: 'ab', proto: 1 } } as const;
+
+const NO_CHORD = { ctrl: false, option: false, shift: false, cmd: false, key: '' } as const;
 
 class FakeSettingsSource {
     stored: Settings = { ...DEFAULT_SETTINGS, terminalZoom: 190 };
@@ -171,7 +173,9 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
         shell.run('terminal.toggleTabFocus');
         expect(spoken).toEqual(['Tab moves focus out of the terminal.', 'Tab goes to the terminal.']);
     });
+});
 
+describe('Shell: next key and mute (A11Y-05.3, A11Y-02.4)', () => {
     it('sends the next key only to an open session, and mutes that session’s output', async () => {
         const { shell, client, workspace, terminals, spoken } = await setup();
         shell.run('terminal.sendNextKey');
@@ -437,6 +441,16 @@ describe('Shell settings (A11Y-05.4, A11Y-10.3)', () => {
         shell.run('terminal.toggleTabFocus');
         expect(terminals.tabFocusMode).toBe(false);
         expect(source.changes).toEqual([{ tabFocusMode: false }]);
+    });
+
+    it('puts the kept shortcuts and plain F6 in force, and follows changes to them (A11Y-05.2, A11Y-05.7)', async () => {
+        const { shell } = await setup(false, { shortcuts: { 'terminal.find': 'Ctrl+Cmd+G' } });
+        expect(formatChord(shell.keymap.chordFor('terminal.find') ?? NO_CHORD)).toBe('Ctrl+Cmd+G');
+        await shell.settings?.update({ plainF6: true });
+        const regions: string[] = [];
+        shell.commands.register({ id: 'region.next', label: 'Next region', run: () => regions.push('next') });
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F6', bubbles: true, cancelable: true }));
+        expect(regions).toEqual(['next']);
     });
 
     it('in brief verbosity, announces no connection steps but still a security-key touch', async () => {

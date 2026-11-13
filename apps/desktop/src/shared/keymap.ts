@@ -62,6 +62,9 @@ export interface Keymap {
     readonly refused: readonly RefusedBinding[];
 }
 
+/** A keymap that binds nothing, for menus that must leave every key to the page for a while. */
+export const UNBOUND_KEYMAP: Keymap = { commandFor: () => undefined, chordFor: () => undefined, refused: [] };
+
 /** The default shortcuts on macOS (docs/design/keymap.md). Commands without one run from menus and the palette. */
 export const DEFAULT_KEYMAP: Readonly<Partial<Record<CommandId, string>>> = {
     'region.next': 'Cmd+F6',
@@ -150,11 +153,21 @@ export function bindingProblem(chord: Chord): BindingProblem | undefined {
     return RESERVED.has(formatChord(chord)) ? 'reserved' : undefined;
 }
 
+/** How the keymap is built beyond the user's bindings. */
+export interface KeymapOptions {
+    /** Whether plain F6 and Shift+F6 also move between regions, as on Windows (A11Y-05.2). */
+    readonly plainF6?: boolean;
+}
+
 /**
  * The shortcuts in force: the defaults, with each of the user's bindings applied unless it is unreadable, breaks a
  * rule or repeats another command's chord, in which case the command keeps its default and the refusal is listed.
+ * With `plainF6`, F6 and Shift+F6 also move between regions unless a command already took them.
  */
-export function resolveKeymap(overrides: Readonly<Partial<Record<CommandId, string>>>): Keymap {
+export function resolveKeymap(
+    overrides: Readonly<Partial<Record<CommandId, string>>>,
+    options: KeymapOptions = {},
+): Keymap {
     const choices = COMMAND_IDS.map((command) => choose(command, overrides[command]));
     const refused = choices.flatMap((choice) => choice.refused ?? []);
     const chosen = withoutDuplicates(choices, (command, chord) =>
@@ -164,10 +177,16 @@ export function resolveKeymap(overrides: Readonly<Partial<Record<CommandId, stri
     return keymapOf(
         chosen,
         refused.sort((a, b) => order(a.command) - order(b.command)),
+        options.plainF6 === true ? PLAIN_F6 : [],
     );
 }
 
 type Modifier = 'ctrl' | 'option' | 'shift' | 'cmd';
+
+const PLAIN_F6: readonly (readonly [string, CommandId])[] = [
+    ['F6', 'region.next'],
+    ['Shift+F6', 'region.previous'],
+];
 
 const MODIFIER_ORDER: readonly Modifier[] = ['ctrl', 'option', 'shift', 'cmd'];
 const MODIFIER_LABELS: Readonly<Record<Modifier, string>> = {
@@ -336,8 +355,17 @@ function withoutDuplicates(
     return chosen;
 }
 
-function keymapOf(chosen: ReadonlyMap<CommandId, Chord>, refused: readonly RefusedBinding[]): Keymap {
+function keymapOf(
+    chosen: ReadonlyMap<CommandId, Chord>,
+    refused: readonly RefusedBinding[],
+    alternates: readonly (readonly [string, CommandId])[],
+): Keymap {
     const byChord = new Map([...chosen].map(([command, chord]) => [formatChord(chord), command] as const));
+    for (const [chord, command] of alternates) {
+        if (!byChord.has(chord)) {
+            byChord.set(chord, command);
+        }
+    }
     return {
         commandFor: (chord) => byChord.get(formatChord(chord)),
         chordFor: (command) => chosen.get(command),

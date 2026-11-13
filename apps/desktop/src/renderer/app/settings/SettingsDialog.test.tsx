@@ -38,7 +38,9 @@ describe('SettingsDialog: one searchable settings page (A11Y-10.3)', () => {
         await screen.getByRole('searchbox', { name: 'Search settings' }).fill('zzz');
         await expect.element(screen.getByText('No setting matches.')).toBeVisible();
     });
+});
 
+describe('SettingsDialog: changes (A11Y-10.3)', () => {
     it('keeps each change: numbers, switches and choices', async () => {
         const { shell, settingsSource, rendered } = renderApp();
         const screen = await rendered;
@@ -59,6 +61,40 @@ describe('SettingsDialog: one searchable settings page (A11Y-10.3)', () => {
                 { terminalAppearance: { ...settingsSource.stored.terminalAppearance, cursorStyle: 'bar' } },
             ]);
         expect(shell.settings?.current.terminalAppearance.cursorStyle).toBe('bar');
+    });
+});
+
+describe('SettingsDialog: shortcuts (A11Y-05.7)', () => {
+    it('records a new shortcut, refuses one that breaks a rule, and resets it (A11Y-05.7)', async () => {
+        const { shell, settingsSource, rendered } = renderApp();
+        const screen = await rendered;
+        shell.run('settings.show');
+        const dialog = screen.getByRole('dialog', { name: 'Settings' });
+        await dialog.getByRole('button', { name: 'Change Find…' }).click();
+        await expect.element(dialog.getByRole('button', { name: /^Press the new shortcut for Find…/ })).toHaveFocus();
+        await userEvent.keyboard('{Control>}c{/Control}');
+        await expect.element(dialog.getByText('The terminal uses Control with that key.')).toBeVisible();
+        await userEvent.keyboard('{F7}');
+        await expect.element(dialog.getByText('Find…: F7.')).toBeVisible();
+        await expect.element(dialog.getByRole('row', { name: /^Find… F7/ })).toBeVisible();
+        expect(settingsSource.changes.at(-1)).toEqual({ shortcuts: { 'terminal.find': 'F7' } });
+        expect(shell.keymap.commandFor({ ctrl: false, option: false, shift: false, cmd: false, key: 'F7' })).toBe(
+            'terminal.find',
+        );
+        await dialog.getByRole('button', { name: 'Reset Find…' }).click();
+        expect(settingsSource.changes.at(-1)).toEqual({ shortcuts: {} });
+        await expect.element(dialog.getByText('Find…: back to Cmd+F.')).toBeVisible();
+    });
+
+    it('cancels recording with Escape without closing the page', async () => {
+        const { shell, rendered } = renderApp();
+        const screen = await rendered;
+        shell.run('settings.show');
+        const dialog = screen.getByRole('dialog', { name: 'Settings' });
+        await dialog.getByRole('button', { name: 'Change Find…' }).click();
+        await userEvent.keyboard('{Escape}');
+        await expect.element(dialog).toBeVisible();
+        await expect.element(dialog.getByRole('button', { name: 'Change Find…' })).toHaveFocus();
     });
 
     it('lets each host’s programs write the clipboard (SEC-06.1)', async () => {
