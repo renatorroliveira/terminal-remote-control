@@ -62,6 +62,7 @@ describe('SessionList (US-1.6.4, US-1.8.1, US-1.9.3)', () => {
         const screen = await renderList();
         const border = (name: string) =>
             getComputedStyle(screen.getByRole('option', { name }).element()).borderTopColor;
+        await screen.getByRole('option', { name: 'logs, Exited' }).hover();
         expect(border('build, Running')).toBe('rgba(0, 0, 0, 0)');
         expect(border('logs, Exited')).not.toBe('rgba(0, 0, 0, 0)');
         await screen.getByRole('option', { name: 'deploy, Running' }).hover();
