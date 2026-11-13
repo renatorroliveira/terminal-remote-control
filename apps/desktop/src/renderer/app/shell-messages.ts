@@ -1,0 +1,197 @@
+import { defineMessage, defineMessages } from 'react-intl';
+import type { CommandId } from '../../shared/keymap';
+
+/** Each command's name in the palette and in accessibility help (docs/design/keymap.md). */
+export const commandMessages = defineMessages<CommandId>({
+    'region.next': { id: 'command.regionNext', defaultMessage: 'Next region', description: 'Command name.' },
+    'region.previous': {
+        id: 'command.regionPrevious',
+        defaultMessage: 'Previous region',
+        description: 'Command name.',
+    },
+    'palette.show': {
+        id: 'command.paletteShow',
+        defaultMessage: 'Show command palette',
+        description: 'Command name.',
+    },
+    'sidebar.toggle': {
+        id: 'command.sidebarToggle',
+        defaultMessage: 'Show or hide the sidebar',
+        description: 'Command name.',
+    },
+    'terminal.toggleTabFocus': {
+        id: 'command.terminalToggleTabFocus',
+        defaultMessage: 'Tab moves focus',
+        description: 'Command name: toggles whether Tab leaves the terminal.',
+    },
+    'terminal.sendNextKey': {
+        id: 'command.terminalSendNextKey',
+        defaultMessage: 'Send next key to terminal',
+        description: 'Command name.',
+    },
+    'announcements.toggleMute': {
+        id: 'command.announcementsToggleMute',
+        defaultMessage: 'Mute output announcements',
+        description: 'Command name: toggles spoken output for the open session.',
+    },
+    'notifications.show': {
+        id: 'command.notificationsShow',
+        defaultMessage: 'Show notifications',
+        description: 'Command name.',
+    },
+    'help.accessibility': {
+        id: 'command.helpAccessibility',
+        defaultMessage: 'Accessibility help',
+        description: 'Command name.',
+    },
+    'help.userGuide': { id: 'command.helpUserGuide', defaultMessage: 'User guide', description: 'Command name.' },
+});
+
+/** What the shell announces when a command changes something (A11Y-05.4, A11Y-12.1). */
+export const shellAnnouncements = defineMessages({
+    tabMovesFocus: {
+        id: 'announce.tabMovesFocus',
+        defaultMessage: 'Tab moves focus out of the terminal.',
+        description: 'Announced when Tab focus mode turns on.',
+    },
+    tabToTerminal: {
+        id: 'announce.tabToTerminal',
+        defaultMessage: 'Tab goes to the terminal.',
+        description: 'Announced when Tab focus mode turns off.',
+    },
+    nextKey: {
+        id: 'announce.nextKey',
+        defaultMessage: 'The next key goes to the terminal.',
+        description: 'Announced after the send-next-key command.',
+    },
+    noSession: {
+        id: 'announce.noSession',
+        defaultMessage: 'No session is open.',
+        description: 'Announced when a command needs an open session.',
+    },
+    sidebarHidden: { id: 'announce.sidebarHidden', defaultMessage: 'Sidebar hidden.', description: 'Announcement.' },
+    sidebarShown: { id: 'announce.sidebarShown', defaultMessage: 'Sidebar shown.', description: 'Announcement.' },
+});
+
+/** Mute state announcements, naming the session. */
+export const muteAnnouncements = {
+    muted: defineMessage<{ session: string }>({
+        id: 'announce.muted',
+        defaultMessage: 'Output announcements off for {session}.',
+        description: 'Announced when output announcements are muted for a session.',
+    }),
+    unmuted: defineMessage<{ session: string }>({
+        id: 'announce.unmuted',
+        defaultMessage: 'Output announcements on for {session}.',
+        description: 'Announced when output announcements are unmuted for a session.',
+    }),
+};
+
+/** Host connection changes, announced and kept in the notification list (A11Y-12.2). */
+export const hostAnnouncements = {
+    connected: defineMessage<{ host: string }>({
+        id: 'announce.hostConnected',
+        defaultMessage: '{host} connected.',
+        description: 'Announced when a host connects.',
+    }),
+    disconnected: defineMessage<{ host: string }>({
+        id: 'announce.hostDisconnected',
+        defaultMessage: 'Connection to {host} lost.',
+        description: 'Announced and listed when a working connection ends.',
+    }),
+    failed: defineMessage<{ host: string; problem: string }>({
+        id: 'announce.hostFailed',
+        defaultMessage: 'Couldn’t connect to {host}. {problem}',
+        description: 'Announced and listed when a connection fails.',
+    }),
+};
+
+/** The status bar (US-1.6.1). */
+export const statusMessages = {
+    region: defineMessage({ id: 'status.region', defaultMessage: 'Status bar', description: 'Landmark name.' }),
+    hostState: defineMessage<{ host: string; state: string }>({
+        id: 'status.hostState',
+        defaultMessage: '{host}: {state}',
+        description: 'The open session’s host and its connection state.',
+    }),
+    hostsConnected: defineMessage<{ connected: number; total: number }>({
+        id: 'status.hostsConnected',
+        defaultMessage: '{connected} of {total} hosts connected',
+        description: 'Shown while no session is open.',
+    }),
+    noHosts: defineMessage({ id: 'status.noHosts', defaultMessage: 'No hosts', description: 'Status bar text.' }),
+    daemon: defineMessage<{ version: string }>({
+        id: 'status.daemon',
+        defaultMessage: 'Daemon {version}',
+        description: 'The version of the daemon the open session’s host runs.',
+    }),
+    noDaemon: defineMessage({
+        id: 'status.noDaemon',
+        defaultMessage: 'Daemon not reached',
+        description: 'Shown while the open session’s host is not connected.',
+    }),
+    tabMovesFocus: defineMessage({
+        id: 'status.tabMovesFocus',
+        defaultMessage: 'Tab moves focus',
+        description: 'Toggle button: whether Tab leaves the terminal.',
+    }),
+    mute: defineMessage({
+        id: 'status.mute',
+        defaultMessage: 'Mute output',
+        description: 'Toggle button: mutes spoken output for the open session.',
+    }),
+    notifications: defineMessage<{ count: number }>({
+        id: 'status.notifications',
+        defaultMessage: 'Notifications {count}',
+        description: 'Button that opens the notification list, with how many it holds.',
+    }),
+};
+
+/** The command palette (A11Y-11.11). */
+export const paletteMessages = {
+    title: defineMessage({ id: 'palette.title', defaultMessage: 'Command palette', description: 'Dialog name.' }),
+    search: defineMessage({ id: 'palette.search', defaultMessage: 'Command', description: 'Search field label.' }),
+    empty: defineMessage({ id: 'palette.empty', defaultMessage: 'No matching command.', description: 'Empty list.' }),
+    newSession: defineMessage<{ host: string }>({
+        id: 'palette.newSession',
+        defaultMessage: 'New session on {host}',
+        description: 'Palette entry.',
+    }),
+    openSession: defineMessage<{ session: string; host: string }>({
+        id: 'palette.openSession',
+        defaultMessage: 'Open {session} on {host}',
+        description: 'Palette entry.',
+    }),
+};
+
+/** The notification list (TECH_STACK §4.3). */
+export const notificationMessages = {
+    title: defineMessage({ id: 'notifications.title', defaultMessage: 'Notifications', description: 'Dialog name.' }),
+    empty: defineMessage({
+        id: 'notifications.empty',
+        defaultMessage: 'No notifications.',
+        description: 'Shown when the list is empty.',
+    }),
+    dismiss: defineMessage({
+        id: 'notifications.dismiss',
+        defaultMessage: 'Dismiss',
+        description: 'Button that removes one notification.',
+    }),
+    dismissNamed: defineMessage<{ text: string }>({
+        id: 'notifications.dismissNamed',
+        defaultMessage: 'Dismiss: {text}',
+        description: 'Accessible name of the Dismiss button; starts with its visible label and names the notification.',
+    }),
+    clear: defineMessage({ id: 'notifications.clear', defaultMessage: 'Clear all', description: 'Button.' }),
+    close: defineMessage({ id: 'notifications.close', defaultMessage: 'Close', description: 'Button.' }),
+};
+
+/** Context menus (A11Y-11.11). */
+export const contextMenuMessages = {
+    label: defineMessage<{ target: string }>({
+        id: 'contextMenu.label',
+        defaultMessage: 'Actions for {target}',
+        description: 'Context menu name.',
+    }),
+    open: defineMessage({ id: 'contextMenu.open', defaultMessage: 'Open', description: 'Context menu item.' }),
+};

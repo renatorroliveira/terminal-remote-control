@@ -121,6 +121,31 @@ export class FakeTerminalHost implements TerminalHost {
     closeSession(key: string): void {
         this.closed.push(key);
     }
+
+    /** Whether Tab focus mode is on, and how often send-next-key was asked for. */
+    tabFocusMode = false;
+    nextKeys = 0;
+
+    /** Reports that a terminal took focus once a session was shown. */
+    focusOpen(): boolean {
+        return this.shown.length > 0;
+    }
+
+    /** Records Tab focus mode. */
+    setTabFocusMode(on: boolean): void {
+        this.tabFocusMode = on;
+    }
+
+    /** Counts the request, when a session is shown. */
+    sendNextKey(): boolean {
+        this.nextKeys += this.shown.length > 0 ? 1 : 0;
+        return this.shown.length > 0;
+    }
+
+    /** Never waits for a key. */
+    passingNextKey(): boolean {
+        return false;
+    }
 }
 
 /** A known-host store in memory, numbering hosts `host-0`, `host-1`, ... */

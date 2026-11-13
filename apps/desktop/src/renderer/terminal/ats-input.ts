@@ -37,6 +37,9 @@ const BEFORE_INPUT_BYTES: Readonly<Record<string, string>> = {
     insertParagraph: '\r',
 };
 
+/** Keys that only modify the next one; pressing one alone sends nothing and keeps send-next-key armed. */
+const MODIFIER_KEYS: ReadonlySet<string> = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Fn', 'AltGraph']);
+
 /**
  * Turns the ATS's keyboard, text-input, composition and paste events into bytes for the process. Every edit is
  * cancelled, so the DOM only ever holds the terminal's text (D-22); IME text is sent once, on `compositionend`.
@@ -44,7 +47,7 @@ const BEFORE_INPUT_BYTES: Readonly<Record<string, string>> = {
 export function attachInput(target: InputTarget, sink: InputSink): () => void {
     const { element, terminal, modes, isMac, keyboardFlags } = target;
     const onKeyDown = (event: KeyboardEvent): void => {
-        if (event.isComposing) {
+        if (event.isComposing || MODIFIER_KEYS.has(event.key)) {
             return;
         }
         const passThrough = modes.sendNextKey;

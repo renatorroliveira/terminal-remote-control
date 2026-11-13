@@ -1,15 +1,20 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { createIntl } from 'react-intl';
 import { themeFor } from '../shared/display';
+import { resolveKeymap } from '../shared/keymap';
 import { windowTitle } from '../shared/window-title';
 import { App } from './app/App';
 import { AppProviders } from './app/AppProviders';
+import { Announcer, LiveRegionSink } from './app/announcer';
 import { AssistiveTechnology } from './app/assistive-technology';
 import { type ComposedWorkspace, composeWorkspace } from './app/compose-workspace';
 import { applyDisplaySettings, applyLocale } from './app/display';
+import { NotificationCenter } from './app/notifications';
+import { Shell } from './app/shell';
 import { receiveConnectionPorts } from './connection/connection-port';
 import { HostClient } from './connection/host-client';
-import { DEFAULT_LOCALE } from './i18n/locale';
+import { DEFAULT_LOCALE, messagesFor } from './i18n/locale';
 import { type TerminalPalette, THEMES, themeStyleSheet } from './ui/themes';
 import './ui/fonts.css';
 import './ui/base.css';
@@ -32,6 +37,15 @@ window.trc.display.onChanged(onDisplay);
 void window.trc.display.get().then(onDisplay);
 
 const assistiveTechnology = new AssistiveTechnology(window.trc.accessibility);
+const intl = createIntl({ locale: DEFAULT_LOCALE, messages: messagesFor(DEFAULT_LOCALE) });
+const announcements = document.createElement('div');
+document.body.append(announcements);
+const announcer = new Announcer(new LiveRegionSink(announcements));
+const notifications = new NotificationCenter();
+const keymap = resolveKeymap({});
+const narrow = window.matchMedia('(max-width: 800px)');
+let shell: Shell | undefined;
+window.trc.commands.onCommand((command) => shell?.run(command));
 const container = document.getElementById('root');
 if (container !== null) {
     const reactRoot = createRoot(container);
@@ -45,11 +59,22 @@ if (container !== null) {
             hosts: window.trc.hosts,
         });
         const { workspace, terminals } = composed;
+        shell = new Shell({
+            workspace,
+            terminals,
+            sidebar: window.trc.sidebar,
+            announcer,
+            notifications,
+            keymap,
+            intl,
+            document,
+            isNarrow: () => narrow.matches,
+        });
         void workspace.load().then(() => workspace.connectAll());
         reactRoot.render(
             <StrictMode>
                 <AppProviders locale={DEFAULT_LOCALE}>
-                    <App workspace={workspace} terminals={terminals} sidebar={window.trc.sidebar} />
+                    <App workspace={workspace} terminals={terminals} shell={shell} />
                 </AppProviders>
             </StrictMode>,
         );

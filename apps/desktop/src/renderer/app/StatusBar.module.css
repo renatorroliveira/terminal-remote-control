@@ -1,0 +1,30 @@
+@layer components {
+    .bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 1rem;
+        min-height: 2.25rem;
+        padding: 0.25rem 0.75rem;
+        border-block-start: 1px solid var(--trc-color-border);
+        background: var(--trc-color-surface);
+        color: var(--trc-color-text);
+    }
+
+    .item {
+        overflow-wrap: anywhere;
+    }
+
+    .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-inline-start: auto;
+    }
+
+    .toggle[data-selected] {
+        border-color: var(--trc-color-primary-border);
+        background: var(--trc-color-primary);
+        color: var(--trc-color-primary-text);
+    }
+}

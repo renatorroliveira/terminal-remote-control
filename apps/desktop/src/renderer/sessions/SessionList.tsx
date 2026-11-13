@@ -34,6 +34,7 @@ export function SessionList(props: SessionListProps) {
                     key={item.key}
                     ref={(element) => focus.register(item.key, element)}
                     role="option"
+                    data-session-key={item.key}
                     tabIndex={item.key === focus.current?.key ? 0 : -1}
                     aria-selected={item.key === props.open}
                     aria-label={intl.formatMessage(sessionRowMessage, {

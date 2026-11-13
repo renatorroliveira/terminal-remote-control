@@ -33,6 +33,8 @@ const bridge: TrcBridge = {
     sidebar: {
         width: () => ipcRenderer.invoke('sidebar:get-width') as Promise<number>,
         setWidth: (width) => ipcRenderer.invoke('sidebar:set-width', width) as Promise<void>,
+        collapsed: () => ipcRenderer.invoke('sidebar:get-collapsed') as Promise<boolean>,
+        setCollapsed: (collapsed) => ipcRenderer.invoke('sidebar:set-collapsed', collapsed) as Promise<void>,
     },
     commands: {
         onCommand: (listener) => subscribe<AppCommand>(APP_COMMAND_CHANNEL, listener),

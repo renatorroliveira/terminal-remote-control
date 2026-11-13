@@ -1,5 +1,6 @@
 import { useIntl } from 'react-intl';
 import { useStore } from 'zustand';
+import { REGION_ATTRIBUTE } from '../app/regions';
 import { HostSessions } from './HostSessions';
 import { HostsPanel } from './HostsPanel';
 import { sidebarMessages } from './messages';
@@ -23,7 +24,12 @@ export interface SidebarProps {
 export function Sidebar({ id, className, workspace, onOpened }: SidebarProps) {
     const intl = useIntl();
     return (
-        <nav id={id} aria-label={intl.formatMessage(sidebarMessages.region)} className={className}>
+        <nav
+            id={id}
+            {...{ [REGION_ATTRIBUTE]: 'sidebar' }}
+            aria-label={intl.formatMessage(sidebarMessages.region)}
+            className={className}
+        >
             <div className={styles['layout']}>
                 <SessionsPanel workspace={workspace} onOpened={onOpened} />
                 <div className={styles['hosts']}>

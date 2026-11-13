@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, Menu, protocol } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL } from '../shared/contract';
+import { resolveKeymap } from '../shared/keymap';
 import { aboutPanelOptions } from './about-panel';
 import { relayAccessibilitySupport } from './accessibility-relay';
 import { AppConfigFile } from './app-config';
@@ -68,6 +69,11 @@ async function start(): Promise<void> {
                 await config.update({ sidebarWidth: width });
                 return undefined;
             },
+            'sidebar:get-collapsed': async () => (await config.read()).sidebarCollapsed,
+            'sidebar:set-collapsed': async (collapsed) => {
+                await config.update({ sidebarCollapsed: collapsed });
+                return undefined;
+            },
         },
         (event) => isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
     );
@@ -75,6 +81,7 @@ async function start(): Promise<void> {
         Menu.buildFromTemplate(
             menuTemplate({
                 appName: APP_IDENTITY.productName,
+                keymap: resolveKeymap({}),
                 onCommand: (command) => mainWindow?.webContents.send(APP_COMMAND_CHANNEL, command),
                 onLookUp: () => mainWindow?.webContents.showDefinitionForSelection(),
                 themePreference: theme,

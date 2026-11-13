@@ -96,6 +96,25 @@ test.describe('a live terminal on a Linux host (M1)', () => {
     });
 });
 
+test.describe('a live terminal on a Linux host: leaving the terminal (A11Y-05)', () => {
+    const install = liveHost();
+
+    test('lets Tab leave the terminal in Tab focus mode, and passes an app shortcut on after send-next-key', async () => {
+        const { app, window } = await launchWithTestHosts(install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
+        await terminal.focus();
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await window.keyboard.press('Shift+Meta+K');
+        await window.keyboard.press('Meta+F6');
+        await expect(terminal).toBeFocused();
+        await window.keyboard.press('Shift+Meta+M');
+        await expect(window.getByRole('button', { name: 'Tab moves focus' })).toHaveAttribute('aria-pressed', 'true');
+        await window.keyboard.press('Tab');
+        await expect(terminal).not.toBeFocused();
+        await app.close();
+    });
+});
+
 test.describe('a live terminal on a Linux host: size and keys (M1)', () => {
     const install = liveHost();
 

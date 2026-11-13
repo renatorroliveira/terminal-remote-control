@@ -150,3 +150,33 @@ describe('TerminalRegistry (US-1.8)', () => {
         expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(1);
     });
 });
+
+describe('TerminalRegistry controls (A11Y-05.3, A11Y-05.4)', () => {
+    it('focuses the open terminal, applies Tab focus mode to every terminal, and arms send-next-key', async () => {
+        const { area, registry } = setup();
+        expect(registry.focusOpen()).toBe(false);
+        expect(registry.sendNextKey()).toBe(false);
+        registry.show('h1/a', 'h1', info('a'));
+        registry.setTabFocusMode(true);
+        registry.show('h1/b', 'h1', info('b'));
+        (document.activeElement as HTMLElement | null)?.blur();
+        expect(registry.focusOpen()).toBe(true);
+        const open = area.querySelectorAll<HTMLElement>('[role="textbox"]')[1];
+        expect(document.activeElement).toBe(open);
+        open?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+        expect(registry.passingNextKey()).toBe(false);
+        expect(registry.sendNextKey()).toBe(true);
+        expect(registry.passingNextKey()).toBe(true);
+        open?.dispatchEvent(new KeyboardEvent('keydown', { key: 'F6', code: 'F6', bubbles: true, cancelable: true }));
+        expect(registry.passingNextKey()).toBe(false);
+    });
+
+    it('keeps the open terminal focused when the same area is attached again', () => {
+        const { area, registry } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        const surface = area.querySelector<HTMLElement>('[role="textbox"]');
+        expect(document.activeElement).toBe(surface);
+        registry.attach(area);
+        expect(document.activeElement).toBe(surface);
+    });
+});

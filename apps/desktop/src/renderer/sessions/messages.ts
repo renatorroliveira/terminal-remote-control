@@ -138,6 +138,11 @@ export const splitterMessages = {
         defaultMessage: '{width} pixels',
         description: 'The sidebar width the splitter reports.',
     }),
+    hidden: defineMessage({
+        id: 'sidebar.splitterHidden',
+        defaultMessage: 'Sidebar hidden',
+        description: 'The splitter’s value while the sidebar is hidden; Enter shows it again.',
+    }),
 };
 
 /** A session state after the shell exited with a status code. */
