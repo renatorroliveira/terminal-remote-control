@@ -9,18 +9,17 @@ const base = {
 
 describe('connectionHostInit', () => {
     it('passes the paths and version without any test seam in release builds (P-14)', () => {
-        const env = { TRC_TEST_SSH_CONFIG: '/t/ssh_config', TRC_TEST_KNOWN_HOSTS: '/t/known_hosts' };
-        expect(connectionHostInit({ ...base, env, seamEnabled: false })).toEqual({ type: 'init', ...base });
+        expect(connectionHostInit({ ...base, seam: { background: false } })).toEqual({ type: 'init', ...base });
     });
 
-    it('adds the seam in test builds when both variables are set', () => {
-        const env = { TRC_TEST_SSH_CONFIG: '/t/ssh_config', TRC_TEST_KNOWN_HOSTS: '/t/known_hosts' };
-        expect(connectionHostInit({ ...base, env, seamEnabled: true })).toEqual({
+    it('adds the seam in test builds when both files are set', () => {
+        const seam = { background: false, sshConfig: '/t/ssh_config', knownHosts: '/t/known_hosts' };
+        expect(connectionHostInit({ ...base, seam })).toEqual({
             type: 'init',
             ...base,
             seam: { sshConfig: '/t/ssh_config', knownHosts: '/t/known_hosts' },
         });
-        expect(connectionHostInit({ ...base, env: { TRC_TEST_SSH_CONFIG: '/t' }, seamEnabled: true })).toEqual({
+        expect(connectionHostInit({ ...base, seam: { background: false, sshConfig: '/t' } })).toEqual({
             type: 'init',
             ...base,
         });

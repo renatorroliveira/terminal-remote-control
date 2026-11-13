@@ -171,11 +171,17 @@ Electron app (macOS in E1)                                    Host (Linux in E1)
     - Off: `RunAsNode`, `EnableNodeOptionsEnvironmentVariable`,
       `EnableNodeCliInspectArguments`, `GrantFileProtocolExtraPrivileges`.
     - On: `EnableEmbeddedAsarIntegrityValidation` and `OnlyLoadAppFromAsar`.
-    - CI checks the release artifact with `npx @electron/fuses read`.
-- **No debugging listener in releases.** Release builds never pass
-  `--remote-debugging-port`; it is a Chromium switch, not a fuse. The SEC-01
-  "no listening sockets" test runs against the signed release artifact, not
-  the Playwright test build.
+    - `pnpm verify:artifact` reads them from the packaged app with
+      `@electron/fuses` (ST-20).
+- **No debugging listener in releases.** `--remote-debugging-port` is a
+  Chromium switch, not a fuse, so the main process of a release build removes
+  it, `--remote-debugging-pipe` and `--remote-allow-origins` before the browser
+  starts its DevTools server; test builds keep them for Playwright. The SEC-01
+  "no listening sockets" check (`pnpm verify:artifact`) launches the packaged
+  app with every debugging switch, not the Playwright test build.
+- **The test seam is absent from releases.** Only test builds call
+  `readTestSeam`, so release builds drop it with every `TRC_TEST_*` name, and
+  `pnpm verify:artifact` fails on any that remains (P-14).
 - **No login-shell environment read.**
     - macOS GUI apps already receive launchd's `SSH_AUTH_SOCK`.
     - ssh reads `IdentityAgent` from its own config.

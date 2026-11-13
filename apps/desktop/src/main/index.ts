@@ -11,8 +11,8 @@ import { relayAccessibility } from './accessibility-relay';
 import { AppConfigFile, settingsOf } from './app-config';
 import { appIconPath } from './app-icon';
 import { contentTypeFor, resolveAppRequest } from './app-protocol';
-import { isBackgroundLaunch } from './background-launch';
 import { startConnectionHost } from './connection-host';
+import { refuseRemoteDebugging } from './debugging-guard';
 import { DisplayRelay } from './display-relay';
 import { GuideWindow } from './guide-window';
 import { suggestedAddresses } from './host-suggestions';
@@ -22,12 +22,16 @@ import { KnownHosts } from './known-hosts';
 import { migrateLegacyState } from './legacy-state';
 import { LinkService } from './link-service';
 import { type MenuOptions, menuTemplate, terminalContextMenu } from './menu';
+import { refuseNavigation } from './navigation-guard';
 import { openExternalFor } from './open-external';
 import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, GUIDE_CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
 import { sshConfigFilesFor, sshConfigHosts } from './ssh-config-hosts';
+import { NO_TEST_SEAM, readTestSeam } from './test-seam';
 import { trcHome } from './trc-home';
 import { isAppPage } from './trusted-sender';
+
+refuseRemoteDebugging(app.commandLine, { testBuild: __TRC_TEST_SEAM__ });
 
 const rendererRoot = join(import.meta.dirname, '../renderer');
 const resources = app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources');
@@ -37,7 +41,8 @@ let mainWindow: BrowserWindow | undefined;
 let keymap: Keymap = keymapFor({ shortcuts: {}, plainF6: false });
 /** Whether the settings page records a shortcut, so the menus give up theirs (A11Y-05.7). */
 let recordingShortcut = false;
-const background = isBackgroundLaunch({ seamEnabled: __TRC_TEST_SEAM__, env: process.env });
+const testSeam = __TRC_TEST_SEAM__ ? readTestSeam(process.env) : NO_TEST_SEAM;
+const background = testSeam.background;
 
 if (background && process.platform === 'darwin') {
     app.setActivationPolicy('accessory');
@@ -77,8 +82,7 @@ async function start(): Promise<void> {
     });
     const knownHosts = new KnownHosts(home);
     const openExternal = openExternalFor({
-        seamEnabled: __TRC_TEST_SEAM__,
-        env: process.env,
+        openedLinks: testSeam.openedLinks,
         shellOpen: (url) => shell.openExternal(url),
     });
     const links = new LinkService(home, openExternal);
@@ -128,8 +132,8 @@ type HostHandlers = Pick<
 
 function hostHandlers(knownHosts: KnownHosts): HostHandlers {
     const home = app.getPath('home');
-    const installRoot = installRootFor({ seamEnabled: __TRC_TEST_SEAM__, env: process.env });
-    const sshConfigFiles = sshConfigFilesFor({ seamEnabled: __TRC_TEST_SEAM__, env: process.env, home });
+    const installRoot = installRootFor(testSeam.installRoot);
+    const sshConfigFiles = sshConfigFilesFor({ testConfig: testSeam.sshConfig, home });
     return {
         'hosts:list': () => knownHosts.list(),
         'hosts:add': (address) => knownHosts.add(address, installRoot),
@@ -269,7 +273,8 @@ function createWindow(display: DisplayRelay, screenReader: ScreenReaderSetting):
     if (background) {
         window.once('ready-to-show', () => window.showInactive());
     }
-    startConnectionHost(window, resources);
+    refuseNavigation(window.webContents);
+    startConnectionHost(window, resources, testSeam);
     display.attach(window);
     relayAccessibility(window, screenReader);
     void window.loadURL(devServer ?? `${APP_IDENTITY.appScheme}://${APP_IDENTITY.appHost}/index.html`);

@@ -122,7 +122,8 @@ the app does today.
 | `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                               |
 | `pnpm icons`                      | Renders the app icons in `apps/desktop/resources/icons` from `tools/icons`                 |
 | `pnpm dist`                       | Builds the ad-hoc signed arm64 and x64 dmg and zip into `apps/desktop/dist`                |
-| `pnpm release <level>`            | Cuts a release; see below                                                                  |
+| `pnpm verify:artifact <app>`      | Checks a packaged app before it ships (launches it in the background)                      |
+| `pnpm release <level>`            | Starts the release workflow on GitHub; see below                                           |
 | `cargo nextest run`               | Rust tests                                                                                 |
 
 Single tests: `pnpm exec vitest run <file> -t <name>` and `cargo nextest run <name>`.
@@ -130,18 +131,21 @@ Single tests: `pnpm exec vitest run <file> -t <name>` and `cargo nextest run <na
 ### Releases
 
 Versions follow [semver](https://semver.org/). Between releases, `main` carries the next minor version with a
-`-dev` suffix (`0.2.0-dev`). A release runs from a clean, up-to-date `main` with `gh` logged in:
+`-dev` suffix (`0.2.0-dev`). Releases run entirely in GitHub Actions (`.github/workflows/release.yml`): start one
+from the Actions tab's **Run workflow** button, or with `gh` logged in:
 
 ```sh
-pnpm release minor --dry-run   # prints the next version and the release notes
+pnpm release minor --dry-run   # builds and checks everything, pushes and publishes nothing
 pnpm release minor             # or patch, or major
 ```
 
-It computes the version from the last `v*` tag, runs `pnpm check`, sets the version in every manifest, commits
-`chore(release): v<version>`, builds the daemons and the macOS artifacts from that commit, tags and pushes it,
-publishes the [GitHub Release](https://github.com/renatorroliveira/terminal-remote-control/releases) `TRC v<version>`
-with the notes, the dmg and zip files and `SHA256SUMS.txt`, then commits and pushes the next `-dev` version. If a
-build fails after the release commit, run `git reset --hard origin/main` before trying again.
+The workflow computes the version from the last `v*` tag and commits it, runs CI on that commit, builds both Linux
+daemons on Ubuntu and the arm64 and x64 dmg and zip on macOS, then checks each package on its own architecture's
+runner with `pnpm verify:artifact` (signature, fuses, no test seam, the daemons against their manifest, and no
+listening sockets). Only when all of that passes does it tag and push the release commit, publish the
+[GitHub Release](https://github.com/renatorroliveira/terminal-remote-control/releases) `TRC v<version>` with the
+notes, the four packages and `SHA256SUMS.txt`, and push the next `-dev` version. If `main` moved during the run,
+the push is refused and nothing is published.
 
 CI builds the project and runs the unit tests on every push to `main` and every pull request. The integration, e2e
 and accessibility-tree suites need the local test hosts and macOS permissions, so they run locally.

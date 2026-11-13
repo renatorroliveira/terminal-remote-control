@@ -6,8 +6,8 @@ export type SshConfigEntry = { readonly host: string } | { readonly include: str
 
 /** Where the configuration files come from. */
 export interface SshConfigSources {
-    readonly seamEnabled: boolean;
-    readonly env: Readonly<Record<string, string | undefined>>;
+    /** The test seam's SSH config (P-14); release builds have none. */
+    readonly testConfig: string | undefined;
     readonly home: string;
 }
 
@@ -29,10 +29,9 @@ export async function sshConfigHosts(files: readonly string[], home: string): Pr
     return [...found];
 }
 
-/** The files to read: `~/.ssh/config`, after the P-14 seam's file (`TRC_TEST_SSH_CONFIG`) in a test build. */
-export function sshConfigFilesFor({ seamEnabled, env, home }: SshConfigSources): readonly string[] {
-    const seam = seamEnabled ? env['TRC_TEST_SSH_CONFIG'] : undefined;
-    return [...(seam === undefined || seam === '' ? [] : [seam]), join(home, '.ssh', 'config')];
+/** The files to read: `~/.ssh/config`, after the P-14 seam's file in a test build. */
+export function sshConfigFilesFor({ testConfig, home }: SshConfigSources): readonly string[] {
+    return [...(testConfig === undefined ? [] : [testConfig]), join(home, '.ssh', 'config')];
 }
 
 /** The `Host` names and `Include` paths in one configuration file's text, in order. */

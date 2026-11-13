@@ -1,133 +1,59 @@
-import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { parseArguments, type ReleaseOptions } from './arguments.ts';
-import { releaseNotes, releaseTitle } from './notes.ts';
-import { bumpVersion, devVersion, lastRelease, setCargoVersion, setPackageVersion } from './versions.ts';
-
-/** The repository root. */
-const ROOT = resolve(import.meta.dirname, '../..');
-/** Every manifest whose version moves with a release. */
-const PACKAGE_MANIFESTS = ['package.json', 'apps/desktop/package.json', 'packages/protocol/package.json'] as const;
-const DIST = join(ROOT, 'apps/desktop/dist');
-const REPOSITORY_FILES = [...PACKAGE_MANIFESTS, 'Cargo.toml', 'Cargo.lock'] as const;
-
 /**
- * Cuts a release on GitHub (semver from the last `v*` tag): checks the tree, runs `pnpm check`, sets the version in
- * every manifest and commits it, builds the daemons and the ad-hoc signed macOS dmg and zip for arm64 and x64 from
- * that commit, tags, pushes, publishes the GitHub release `TRC v<version>` with notes and SHA-256 sums, then moves
- * `main` to the next `-dev` version. A failed build leaves the release commit local: `git reset --hard origin/main`
- * before trying again.
+ * Starts the release workflow on GitHub and watches it (P-21, D-42): `pnpm release <major|minor|patch> [--dry-run]`.
+ * The workflow does the rest; a dry run builds and checks everything without pushing or publishing. The same run
+ * starts from the Actions tab's Run workflow button.
  */
-export function release(options: ReleaseOptions): void {
-    const last = lastRelease(capture('git', ['tag', '--list', 'v*']).split('\n'));
-    const version = bumpVersion(last, options.bump);
-    const range = last === '0.0.0' ? ['HEAD'] : [`v${last}..HEAD`];
-    const notes = releaseNotes(version, capture('git', ['log', ...range, '--format=%s']).split('\n'));
-    process.stdout.write(`release ${version} (last ${last}), then ${devVersion(version)}\n\n${notes}\n`);
-    versionEdits(devVersion(version));
-    if (options.dryRun) {
-        return;
-    }
-    preflight();
-    run('pnpm', ['check']);
-    setVersion(version);
-    commit(`chore(release): v${version}`, `Release Terminal Remote Control ${version}.`);
-    run('pnpm', ['build:daemon']);
-    rmSync(DIST, { recursive: true, force: true });
-    run('pnpm', ['dist']);
-    const assets = releaseAssets(version);
-    run('git', ['tag', '-a', `v${version}`, '-m', releaseTitle(version)]);
-    run('git', ['push', 'origin', 'main', `v${version}`]);
-    publish(version, notes, assets);
-    setVersion(devVersion(version));
-    commit(
-        `chore(release): start ${devVersion(version)}`,
-        `Development continues toward the release after ${version}.`,
-    );
-    run('git', ['push', 'origin', 'main']);
-}
+import { setTimeout as delay } from 'node:timers/promises';
+import { parseArguments, type ReleaseOptions } from './arguments.ts';
+import { capture, run } from './repository.ts';
 
-function preflight(): void {
-    const branch = capture('git', ['branch', '--show-current']);
-    if (branch !== 'main') {
-        throw new Error(`release from main, not ${branch}`);
-    }
-    if (capture('git', ['status', '--porcelain']) !== '') {
-        throw new Error('the working tree has uncommitted changes');
-    }
-    run('git', ['fetch', 'origin', 'main', '--tags']);
-    if (capture('git', ['rev-parse', 'HEAD']) !== capture('git', ['rev-parse', 'origin/main'])) {
-        throw new Error('main and origin/main differ; pull or push first');
-    }
+const WORKFLOW = 'release.yml';
+
+/** Dispatches the workflow from `main` and follows its run to the end. */
+export async function release(options: ReleaseOptions): Promise<void> {
     run('gh', ['auth', 'status']);
-}
-
-function setVersion(version: string): void {
-    for (const [path, text] of versionEdits(version)) {
-        writeFileSync(path, text);
-    }
-    run('cargo', ['update', '--workspace', '--offline']);
-}
-
-function versionEdits(version: string): readonly (readonly [string, string])[] {
-    const manifests = PACKAGE_MANIFESTS.map((manifest) => {
-        const path = join(ROOT, manifest);
-        return [path, setPackageVersion(readFileSync(path, 'utf8'), version)] as const;
-    });
-    const cargo = join(ROOT, 'Cargo.toml');
-    return [...manifests, [cargo, setCargoVersion(readFileSync(cargo, 'utf8'), version)] as const];
-}
-
-function releaseAssets(version: string): readonly string[] {
-    const prefix = `TRC-${version}-mac-`;
-    const files = readdirSync(DIST).filter((file) => file.startsWith(prefix) && /\.(dmg|zip)$/.test(file));
-    if (files.length === 0) {
-        throw new Error(`no ${prefix}* packages in ${DIST}`);
-    }
-    const sums = files.map(
-        (file) =>
-            `${createHash('sha256')
-                .update(readFileSync(join(DIST, file)))
-                .digest('hex')}  ${file}`,
-    );
-    const sumsFile = join(DIST, 'SHA256SUMS.txt');
-    writeFileSync(sumsFile, `${sums.join('\n')}\n`);
-    return [...files.map((file) => join(DIST, file)), sumsFile];
-}
-
-function publish(version: string, notes: string, assets: readonly string[]): void {
-    const notesFile = join(mkdtempSync(join(tmpdir(), 'trc-release-')), 'notes.md');
-    writeFileSync(notesFile, notes);
-    const title = releaseTitle(version);
+    const before = latestRun();
     run('gh', [
-        'release',
-        'create',
-        `v${version}`,
-        '--verify-tag',
-        '--title',
-        title,
-        '--notes-file',
-        notesFile,
-        ...assets,
+        'workflow',
+        'run',
+        WORKFLOW,
+        '--ref',
+        'main',
+        '-f',
+        `bump=${options.bump}`,
+        '-f',
+        `dry-run=${options.dryRun}`,
+    ]);
+    const started = await newRun(before);
+    run('gh', ['run', 'watch', started, '--exit-status']);
+}
+
+function latestRun(): string {
+    return capture('gh', [
+        'run',
+        'list',
+        '--workflow',
+        WORKFLOW,
+        '--limit',
+        '1',
+        '--json',
+        'databaseId',
+        '--jq',
+        '.[0].databaseId // ""',
     ]);
 }
 
-function commit(subject: string, body: string): void {
-    run('git', ['add', ...REPOSITORY_FILES]);
-    run('git', ['commit', '--allow-empty', '-m', subject, '-m', body]);
-}
-
-function run(command: string, args: readonly string[]): void {
-    execFileSync(command, args, { cwd: ROOT, stdio: 'inherit' });
-}
-
-function capture(command: string, args: readonly string[]): string {
-    return execFileSync(command, args, { cwd: ROOT, encoding: 'utf8' }).trim();
+async function newRun(before: string): Promise<string> {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+        const latest = latestRun();
+        if (latest !== '' && latest !== before) {
+            return latest;
+        }
+        await delay(2_000);
+    }
+    throw new Error(`the ${WORKFLOW} run did not start within a minute`);
 }
 
 if (import.meta.main) {
-    release(parseArguments(process.argv.slice(2)));
+    await release(parseArguments(process.argv.slice(2)));
 }
