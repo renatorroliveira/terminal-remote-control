@@ -23,6 +23,8 @@ export interface Workspace {
     readonly open: SessionKey | undefined;
     /** Host groups the user collapsed. */
     readonly collapsed: ReadonlySet<string>;
+    /** The host whose failed connection waits for the user to acknowledge it (US-1.3.3). */
+    readonly failureNotice: string | undefined;
 }
 
 /** One row of the session tree. */
@@ -44,6 +46,7 @@ export const EMPTY_WORKSPACE: Workspace = {
     sessions: new Map(),
     open: undefined,
     collapsed: new Set(),
+    failureNotice: undefined,
 };
 
 /** The key of a host's session. */
@@ -65,9 +68,15 @@ export function hostAdded(workspace: Workspace, host: KnownHost): Workspace {
     return { ...workspace, hosts: [...workspace.hosts, entry] };
 }
 
-/** Records a host's new connection state; a closed connection takes its sessions out of the sidebar. */
+/**
+ * Records a host's new connection state. A failure waits for the user to acknowledge it, unless the user caused it
+ * by rejecting the host key; a closed connection takes its sessions out of the sidebar.
+ */
 export function hostStateChanged(workspace: Workspace, hostId: string, state: ConnectionState): Workspace {
     const hosts = workspace.hosts.map((host) => (host.id === hostId ? { ...host, state } : host));
+    if (state.status === 'failed' && state.failure.kind !== 'host-key-rejected') {
+        return { ...workspace, hosts, failureNotice: hostId };
+    }
     if (state.status !== 'closed') {
         return { ...workspace, hosts };
     }
@@ -75,6 +84,11 @@ export function hostStateChanged(workspace: Workspace, hostId: string, state: Co
     sessions.delete(hostId);
     const open = workspace.open?.startsWith(`${hostId}/`) === true ? undefined : workspace.open;
     return { ...workspace, hosts, sessions, open };
+}
+
+/** The user has read the failure notice. */
+export function failureAcknowledged(workspace: Workspace): Workspace {
+    return { ...workspace, failureNotice: undefined };
 }
 
 /** Whether a host has a working connection. */

@@ -1,7 +1,8 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useRef, useState } from 'react';
 import { Button, FieldError, Input, Label, Text, TextField } from 'react-aria-components';
 import { type IntlShape, useIntl } from 'react-intl';
 import { useStore } from 'zustand';
+import { BUTTON, PRIMARY_BUTTON } from '../ui/buttons';
 import { BusyIcon, ConnectedIcon, DisconnectedIcon } from '../ui/icons';
 import styles from './HostsPanel.module.css';
 import {
@@ -102,12 +103,12 @@ function HostKeyQuestion({ host, workspace }: { readonly host: HostEntry; readon
             </legend>
             <Button
                 id={`${host.id}-trust`}
-                className={styles['button'] ?? ''}
+                className={BUTTON}
                 onPress={() => workspace.acceptHostKey(host.id, key.fingerprint)}
             >
                 {intl.formatMessage(sidebarMessages.trust)}
             </Button>
-            <Button className={styles['button'] ?? ''} onPress={() => workspace.rejectHostKey(host.id)}>
+            <Button className={BUTTON} onPress={() => workspace.rejectHostKey(host.id)}>
                 {intl.formatMessage(sidebarMessages.reject)}
             </Button>
         </fieldset>
@@ -119,14 +120,15 @@ function AddHostForm({ workspace, askInstallLocation }: HostsPanelProps) {
     const [address, setAddress] = useState('');
     const [installRoot, setInstallRoot] = useState(DEFAULT_INSTALL_ROOT);
     const [invalid, setInvalid] = useState(false);
+    const shown = useRef(address);
+    shown.current = address;
     const submit = (event: FormEvent): void => {
         event.preventDefault();
-        workspace.addHost(address, installRoot).then(
-            () => {
-                setAddress('');
-                setInvalid(false);
-            },
-            () => setInvalid(true),
+        const submitted = address;
+        const stillShown = (): boolean => shown.current === submitted;
+        workspace.addHost(submitted, installRoot).then(
+            () => stillShown() && setAddress(''),
+            () => stillShown() && setInvalid(true),
         );
     };
     return (
@@ -156,7 +158,7 @@ function AddHostForm({ workspace, askInstallLocation }: HostsPanelProps) {
                     <Input className={styles['input'] ?? ''} />
                 </TextField>
             )}
-            <Button type="submit" className={styles['button'] ?? ''}>
+            <Button type="submit" className={`${PRIMARY_BUTTON} ${styles['submit'] ?? ''}`}>
                 {intl.formatMessage(sidebarMessages.addHost)}
             </Button>
         </form>

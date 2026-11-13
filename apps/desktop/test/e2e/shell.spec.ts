@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { expect, test } from '@playwright/test';
-import { APP_DIRECTORY, launchApp, testEnvironment } from './support/launch';
+import { APP_DIRECTORY, launchApp, scratchProfile, testEnvironment } from './support/launch';
 
 const electronBinary = createRequire(import.meta.url)('electron') as string;
 
@@ -26,9 +26,10 @@ test('starts in Midnight, relays the OS display settings and exposes the UI lang
 });
 
 test('a second launch focuses the running app and exits (US-1.6.5)', async () => {
-    const app = await launchApp();
+    const profile = scratchProfile();
+    const app = await launchApp([profile]);
     await app.firstWindow();
-    const second = spawn(electronBinary, [APP_DIRECTORY], { env: testEnvironment(), stdio: 'ignore' });
+    const second = spawn(electronBinary, [APP_DIRECTORY, profile], { env: testEnvironment(), stdio: 'ignore' });
     const code = await new Promise<number | null>((resolve) => second.on('exit', resolve));
     expect(code).toBe(0);
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);

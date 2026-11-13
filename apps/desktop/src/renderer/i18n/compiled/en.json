@@ -1,4 +1,510 @@
 {
+  "failure.authenticationAgentEmpty.problem": [
+    {
+      "type": 0,
+      "value": "Your SSH agent holds no keys, so ssh had no key to offer "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "failure.authenticationAgentEmpty.remedy": [
+    {
+      "type": 0,
+      "value": "Add your key with ssh-add, then connect again."
+    }
+  ],
+  "failure.authenticationCertificateExpired.problem": [
+    {
+      "type": 0,
+      "value": "Your SSH certificate has expired, so "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " refused it."
+    }
+  ],
+  "failure.authenticationCertificateExpired.remedy": [
+    {
+      "type": 0,
+      "value": "Renew your certificate, then connect again."
+    }
+  ],
+  "failure.authenticationKeyRejected.problem": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " refused every key ssh offered."
+    }
+  ],
+  "failure.authenticationKeyRejected.remedy": [
+    {
+      "type": 0,
+      "value": "Check that your public key is in the host’s authorized_keys for the right user, then connect again."
+    }
+  ],
+  "failure.authenticationNoAgent.problem": [
+    {
+      "type": 0,
+      "value": "No SSH agent is running, so ssh had no key to offer "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "failure.authenticationNoAgent.remedy": [
+    {
+      "type": 0,
+      "value": "Start ssh-agent and add your key with ssh-add, then connect again."
+    }
+  ],
+  "failure.authenticationPassphraseNotLoaded.problem": [
+    {
+      "type": 0,
+      "value": "Your key needs its passphrase, and it isn’t loaded in your SSH agent."
+    }
+  ],
+  "failure.authenticationPassphraseNotLoaded.remedy": [
+    {
+      "type": 0,
+      "value": "Add the key with ssh-add, which asks for the passphrase, then connect again."
+    }
+  ],
+  "failure.authenticationPinRequired.problem": [
+    {
+      "type": 0,
+      "value": "Your security key needs its PIN, which the app can’t ask for."
+    }
+  ],
+  "failure.authenticationPinRequired.remedy": [
+    {
+      "type": 0,
+      "value": "Add the key to your SSH agent with ssh-add, which asks for the PIN, then connect again."
+    }
+  ],
+  "failure.details": [
+    {
+      "type": 0,
+      "value": "Details"
+    }
+  ],
+  "failure.dns.problem": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " couldn’t be found."
+    }
+  ],
+  "failure.dns.remedy": [
+    {
+      "type": 0,
+      "value": "Check the host name, your network and your DNS, then connect again."
+    }
+  ],
+  "failure.hostKeyChanged.problem": [
+    {
+      "type": 0,
+      "value": "The host key of "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " has changed. Someone may be intercepting the connection, or the host was reinstalled."
+    }
+  ],
+  "failure.hostKeyChanged.remedy": [
+    {
+      "type": 0,
+      "value": "Ask the host’s administrator for its new key fingerprint. Only if it matches, remove the old key with ssh-keygen -R "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ", then connect again."
+    }
+  ],
+  "failure.hostKeyRejected.problem": [
+    {
+      "type": 0,
+      "value": "You didn’t trust the host key of "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": ", so the app didn’t connect."
+    }
+  ],
+  "failure.hostKeyRejected.remedy": [
+    {
+      "type": 0,
+      "value": "Connect again to review the key."
+    }
+  ],
+  "failure.incompatible.problem": [
+    {
+      "type": 0,
+      "value": "The daemon on "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " speaks protocol versions "
+    },
+    {
+      "type": 1,
+      "value": "minProto"
+    },
+    {
+      "type": 0,
+      "value": " to "
+    },
+    {
+      "type": 1,
+      "value": "maxProto"
+    },
+    {
+      "type": 0,
+      "value": ", which this app doesn’t."
+    }
+  ],
+  "failure.incompatible.remedy": [
+    {
+      "type": 0,
+      "value": "Update the app, then connect again."
+    }
+  ],
+  "failure.install.problem": [
+    {
+      "type": 0,
+      "value": "The daemon couldn’t be installed on "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " ("
+    },
+    {
+      "type": 1,
+      "value": "code"
+    },
+    {
+      "type": 0,
+      "value": ")."
+    }
+  ],
+  "failure.install.remedy": [
+    {
+      "type": 0,
+      "value": "Check the install location’s free space and permissions, then connect again."
+    }
+  ],
+  "failure.jumpFailedDns.problem": [
+    {
+      "type": 0,
+      "value": "The jump host "
+    },
+    {
+      "type": 1,
+      "value": "jump"
+    },
+    {
+      "type": 0,
+      "value": " couldn’t be found."
+    }
+  ],
+  "failure.jumpFailedDns.remedy": [
+    {
+      "type": 0,
+      "value": "Check the jump host in your SSH config, then connect again."
+    }
+  ],
+  "failure.jumpFailedTimeout.problem": [
+    {
+      "type": 0,
+      "value": "The jump host "
+    },
+    {
+      "type": 1,
+      "value": "jump"
+    },
+    {
+      "type": 0,
+      "value": " didn’t answer in time."
+    }
+  ],
+  "failure.jumpFailedTimeout.remedy": [
+    {
+      "type": 0,
+      "value": "Check your network and the jump host, then connect again."
+    }
+  ],
+  "failure.jumpFailedUnreachable.problem": [
+    {
+      "type": 0,
+      "value": "The jump host "
+    },
+    {
+      "type": 1,
+      "value": "jump"
+    },
+    {
+      "type": 0,
+      "value": " refused or dropped the connection."
+    }
+  ],
+  "failure.jumpFailedUnreachable.remedy": [
+    {
+      "type": 0,
+      "value": "Check that the jump host is running and reachable, then connect again."
+    }
+  ],
+  "failure.ok": [
+    {
+      "type": 0,
+      "value": "OK"
+    }
+  ],
+  "failure.other.problem": [
+    {
+      "type": 0,
+      "value": "The connection to "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " failed."
+    }
+  ],
+  "failure.other.remedy": [
+    {
+      "type": 0,
+      "value": "Read the details, then connect again."
+    }
+  ],
+  "failure.sshMissing.problem": [
+    {
+      "type": 0,
+      "value": "This Mac has no OpenSSH client."
+    }
+  ],
+  "failure.sshMissing.remedy": [
+    {
+      "type": 0,
+      "value": "Install OpenSSH 8.5 or later, then connect again."
+    }
+  ],
+  "failure.sshTooOld.problem": [
+    {
+      "type": 0,
+      "value": "This Mac’s OpenSSH is version "
+    },
+    {
+      "type": 1,
+      "value": "version"
+    },
+    {
+      "type": 0,
+      "value": ", and the app needs 8.5 or later."
+    }
+  ],
+  "failure.sshTooOld.remedy": [
+    {
+      "type": 0,
+      "value": "Update OpenSSH, then connect again."
+    }
+  ],
+  "failure.timeout.problem": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " didn’t answer on port "
+    },
+    {
+      "type": 1,
+      "value": "port"
+    },
+    {
+      "type": 0,
+      "value": " within 15 seconds."
+    }
+  ],
+  "failure.timeout.remedy": [
+    {
+      "type": 0,
+      "value": "Check your network, your VPN or proxy settings, and that the host is running, then connect again."
+    }
+  ],
+  "failure.title": [
+    {
+      "type": 0,
+      "value": "Couldn’t connect to "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "failure.unreachable.problem": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " refused or dropped the connection on port "
+    },
+    {
+      "type": 1,
+      "value": "port"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "failure.unreachable.remedy": [
+    {
+      "type": 0,
+      "value": "Check that the host is running and that SSH listens on port "
+    },
+    {
+      "type": 1,
+      "value": "port"
+    },
+    {
+      "type": 0,
+      "value": ", then connect again."
+    }
+  ],
+  "failure.unsupportedArch.problem": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " has a "
+    },
+    {
+      "type": 1,
+      "value": "arch"
+    },
+    {
+      "type": 0,
+      "value": " processor, which the daemon doesn’t support."
+    }
+  ],
+  "failure.unsupportedArch.remedy": [
+    {
+      "type": 0,
+      "value": "Connect to a Linux host on x86_64 or arm64."
+    }
+  ],
+  "failure.unsupportedChecksumTool.problem": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " has neither sha256sum nor shasum, so the app can’t verify the daemon it uploads."
+    }
+  ],
+  "failure.unsupportedChecksumTool.remedy": [
+    {
+      "type": 0,
+      "value": "Install sha256sum or shasum on the host, then connect again."
+    }
+  ],
+  "failure.unsupportedOs.problem": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " runs "
+    },
+    {
+      "type": 1,
+      "value": "os"
+    },
+    {
+      "type": 0,
+      "value": ", which the daemon doesn’t support yet."
+    }
+  ],
+  "failure.unsupportedOs.remedy": [
+    {
+      "type": 0,
+      "value": "Connect to a Linux host on x86_64 or arm64."
+    }
+  ],
+  "failure.updateApp.problem": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " runs a newer daemon, version "
+    },
+    {
+      "type": 1,
+      "value": "installedVersion"
+    },
+    {
+      "type": 0,
+      "value": ", than this app."
+    }
+  ],
+  "failure.updateApp.remedy": [
+    {
+      "type": 0,
+      "value": "Update the app, then connect again."
+    }
+  ],
   "host.action.cancel": [
     {
       "type": 0,

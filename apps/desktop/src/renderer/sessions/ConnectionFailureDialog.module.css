@@ -1,0 +1,61 @@
+@layer components {
+    .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        background: rgb(0 0 0 / 70%);
+    }
+
+    .modal {
+        width: min(32rem, 100%);
+        max-height: 100%;
+        overflow: auto;
+        border: 1px solid var(--trc-color-border);
+        border-radius: 6px;
+        background: var(--trc-color-surface);
+        color: var(--trc-color-text);
+    }
+
+    .dialog {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1.25rem;
+        outline: none;
+    }
+
+    .heading {
+        margin: 0;
+        font-size: 1.125rem;
+    }
+
+    .text {
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .detailsText {
+        min-height: 4.5rem;
+        padding: 0.5rem;
+        border: 1px solid var(--trc-color-border);
+        border-radius: 4px;
+        background: var(--trc-color-background);
+        color: var(--trc-color-text);
+        font-family: var(--trc-font-terminal);
+        resize: vertical;
+    }
+
+    .actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+}

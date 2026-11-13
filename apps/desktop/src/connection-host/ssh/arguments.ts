@@ -14,7 +14,7 @@ export interface SshTarget {
     readonly port?: number;
 }
 
-/** The P-14 test seam: a test SSH config and known_hosts file instead of the user's. Test builds only. */
+/** The P-14 test seam: a test SSH config and known_hosts file read ahead of the user's. Test builds only. */
 export interface TestSeam {
     readonly sshConfig: string;
     readonly knownHosts: string;
@@ -39,6 +39,8 @@ export interface WrapperConfigOptions {
 
 const UNQUOTABLE = /["\n\r\0]/;
 const MAX_PORT = 65_535;
+/** OpenSSH's default user known_hosts files, read after the test file in test builds. */
+const USER_KNOWN_HOSTS_FILES = ['~/.ssh/known_hosts', '~/.ssh/known_hosts2'] as const;
 
 /**
  * The ssh command line: the wrapper config, then every security option again with `-o`, so they take precedence
@@ -47,7 +49,7 @@ const MAX_PORT = 65_535;
 export function sshArguments(options: SshArgumentOptions): string[] {
     const security = securityOptions(options.helpers).flatMap(([name, value]) => ['-o', `${name}=${value}`]);
     const seam =
-        options.seam === undefined ? [] : ['-o', `UserKnownHostsFile=${quoteIfSpaced(options.seam.knownHosts)}`];
+        options.seam === undefined ? [] : ['-o', `UserKnownHostsFile=${knownHostsFiles(options.seam, quoteIfSpaced)}`];
     return [
         '-F',
         options.wrapper,
@@ -69,14 +71,23 @@ export function effectiveConfigArguments(wrapper: string, target: SshTarget): st
 /**
  * The per-connection wrapper config (D-21): a `Host *` block with every security option, then the user's and the
  * system config. ssh keeps the first value it obtains, so jump connections, which get only `-F`, are protected too.
+ * Test builds put the test config and known_hosts file ahead of the user's, never in their place (P-14).
  */
 export function wrapperConfig(options: WrapperConfigOptions): string {
     const block = securityOptions(options.helpers).map(([name, value]) => `    ${name} ${value}`);
-    const knownHosts = options.seam === undefined ? [] : [`    UserKnownHostsFile ${quote(options.seam.knownHosts)}`];
-    const userConfig = options.seam === undefined ? '~/.ssh/config' : quote(options.seam.sshConfig);
-    return ['Host *', ...block, ...knownHosts, '', `Include ${userConfig}`, 'Include /etc/ssh/ssh_config', ''].join(
-        '\n',
-    );
+    const { seam } = options;
+    const knownHosts = seam === undefined ? [] : [`    UserKnownHostsFile ${knownHostsFiles(seam, quote)}`];
+    const testConfig = seam === undefined ? [] : [`Include ${quote(seam.sshConfig)}`];
+    return [
+        'Host *',
+        ...block,
+        ...knownHosts,
+        '',
+        ...testConfig,
+        'Include ~/.ssh/config',
+        'Include /etc/ssh/ssh_config',
+        '',
+    ].join('\n');
 }
 
 /** The environment for ssh: the app's, plus the forced askpass helper and the helpers' nonce. */
@@ -128,6 +139,10 @@ function quote(path: string): string {
         throw new Error(`The path cannot be quoted for ssh: ${JSON.stringify(path)}`);
     }
     return `"${path}"`;
+}
+
+function knownHostsFiles(seam: TestSeam, quoted: (path: string) => string): string {
+    return [quoted(seam.knownHosts), ...USER_KNOWN_HOSTS_FILES].join(' ');
 }
 
 function quoteIfSpaced(path: string): string {

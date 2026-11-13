@@ -3,36 +3,34 @@ interface IconProps {
     readonly className?: string | undefined;
 }
 
-const SIZE = 16;
+const SIZE = 20;
+const RADIUS = 6.5;
+const STROKE = 1.8;
 
-/** A connected host: a filled disc with a check mark. */
+/** A connected host: a filled dot. */
 export function ConnectedIcon({ className }: IconProps) {
     return (
-        <svg aria-hidden="true" focusable="false" width={SIZE} height={SIZE} viewBox="0 0 16 16" className={className}>
-            <circle cx="8" cy="8" r="7" fill="currentColor" />
-            <path d="M4.5 8.2 7 10.6 11.6 5.6" fill="none" stroke="var(--trc-color-background)" strokeWidth="1.8" />
+        <svg aria-hidden="true" focusable="false" width={SIZE} height={SIZE} viewBox="0 0 20 20" className={className}>
+            <circle cx="10" cy="10" r={RADIUS} fill="currentColor" />
         </svg>
     );
 }
 
-/** A disconnected host: a ring with a slash through it. */
+/** A disconnected host: a hollow ring. */
 export function DisconnectedIcon({ className }: IconProps) {
     return (
-        <svg aria-hidden="true" focusable="false" width={SIZE} height={SIZE} viewBox="0 0 16 16" className={className}>
-            <circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            <path d="M3.6 12.4 12.4 3.6" stroke="currentColor" strokeWidth="1.8" />
+        <svg aria-hidden="true" focusable="false" width={SIZE} height={SIZE} viewBox="0 0 20 20" className={className}>
+            <circle cx="10" cy="10" r={RADIUS} fill="none" stroke="currentColor" strokeWidth={STROKE} />
         </svg>
     );
 }
 
-/** A host that is connecting or waits for the user: a ring with three dots. */
+/** A host that is connecting or waits for the user: a ring filled halfway, between the other two. */
 export function BusyIcon({ className }: IconProps) {
     return (
-        <svg aria-hidden="true" focusable="false" width={SIZE} height={SIZE} viewBox="0 0 16 16" className={className}>
-            <circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            <circle cx="5" cy="8" r="1.2" fill="currentColor" />
-            <circle cx="8" cy="8" r="1.2" fill="currentColor" />
-            <circle cx="11" cy="8" r="1.2" fill="currentColor" />
+        <svg aria-hidden="true" focusable="false" width={SIZE} height={SIZE} viewBox="0 0 20 20" className={className}>
+            <circle cx="10" cy="10" r={RADIUS} fill="none" stroke="currentColor" strokeWidth={STROKE} />
+            <path d="M10 3.5A6.5 6.5 0 0 1 10 16.5Z" fill="currentColor" />
         </svg>
     );
 }

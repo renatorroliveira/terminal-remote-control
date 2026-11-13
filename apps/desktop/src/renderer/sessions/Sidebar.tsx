@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, Label, ListBox, ListBoxItem, Popover, Select, SelectValue } from 'react-aria-components';
 import { useIntl } from 'react-intl';
 import { useStore } from 'zustand';
+import { PRIMARY_BUTTON } from '../ui/buttons';
 import { HostsPanel } from './HostsPanel';
 import { sidebarMessages } from './messages';
 import { SessionTree } from './SessionTree';
@@ -93,7 +94,7 @@ function SessionsPanel({ workspace, onOpened }: Pick<SidebarProps, 'workspace' |
                     </Popover>
                 </Select>
                 <Button
-                    className={styles['button'] ?? ''}
+                    className={PRIMARY_BUTTON}
                     isDisabled={target === undefined}
                     onPress={() => void workspace.newSession(target).then(onOpened)}
                 >

@@ -4,6 +4,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { useStore } from 'zustand';
 import { APP_IDENTITY } from '../../shared/app-identity';
 import { shellMessages } from '../i18n/messages';
+import { ConnectionFailureDialog } from '../sessions/ConnectionFailureDialog';
 import { sidebarMessages } from '../sessions/messages';
 import { Sidebar } from '../sessions/Sidebar';
 import type { WorkspaceController } from '../sessions/workspace-controller';
@@ -59,6 +60,7 @@ export function App({ workspace, terminals, askInstallLocation = false }: AppPro
                     </p>
                 )}
             </main>
+            <ConnectionFailureDialog workspace={workspace} />
         </div>
     );
 }

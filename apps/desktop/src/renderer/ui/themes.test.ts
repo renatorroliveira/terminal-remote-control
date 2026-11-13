@@ -47,6 +47,22 @@ describe('the Midnight theme', () => {
     });
 });
 
+describe('primary buttons', () => {
+    it('draw their text at AA contrast on their fill, and their border at 3:1 against the page (A11Y-07.1)', () => {
+        expect(UI_CONTRAST_PAIRS).toContainEqual({ foreground: 'primaryText', background: 'primary', minimum: 4.5 });
+        expect(UI_CONTRAST_PAIRS).toContainEqual({ foreground: 'primaryBorder', background: 'background', minimum: 3 });
+        expect(UI_CONTRAST_PAIRS).toContainEqual({ foreground: 'primaryBorder', background: 'surface', minimum: 3 });
+    });
+
+    it('are white on dark green with the bright green edge in Midnight', () => {
+        expect(THEMES.midnight.ui).toMatchObject({
+            primary: '#004d1a',
+            primaryText: '#ffffff',
+            primaryBorder: '#00ad2c',
+        });
+    });
+});
+
 describe('themeStyleSheet', () => {
     it('declares the layers and one custom property per UI and terminal token and theme', () => {
         const css = themeStyleSheet();
@@ -55,6 +71,7 @@ describe('themeStyleSheet', () => {
             expect(css).toContain(`:root[data-theme="${name}"]`);
         }
         expect(css).toContain('--trc-color-focus-ring:');
+        expect(css).toContain('--trc-color-primary-border:');
         expect(css).toContain('--trc-color-terminal-background:');
     });
 });

@@ -9,6 +9,11 @@ export interface UiPalette {
     readonly border: string;
     readonly accent: string;
     readonly accentText: string;
+    /** The fill of the primary button of a view. */
+    readonly primary: string;
+    readonly primaryText: string;
+    /** The primary button's edge, which must stand out from the page (non-text contrast). */
+    readonly primaryBorder: string;
     readonly focusRing: string;
     readonly selectionBackground: string;
     readonly selectionText: string;
@@ -77,6 +82,9 @@ const MIDNIGHT: Theme = {
         border: '#00ad2c',
         accent: '#00f33e',
         accentText: '#000000',
+        primary: '#004d1a',
+        primaryText: '#ffffff',
+        primaryBorder: '#00ad2c',
         focusRing: '#ffb000',
         selectionBackground: '#00ad2c',
         selectionText: '#000000',
@@ -124,6 +132,9 @@ export const THEMES: Readonly<Record<ThemeName, Theme>> = {
             border: '#767676',
             accent: '#0b5cad',
             accentText: '#ffffff',
+            primary: '#0b5cad',
+            primaryText: '#ffffff',
+            primaryBorder: '#0b5cad',
             focusRing: '#0b5cad',
             selectionBackground: '#0b5cad',
             selectionText: '#ffffff',
@@ -149,6 +160,9 @@ export const THEMES: Readonly<Record<ThemeName, Theme>> = {
             border: '#8c8c8c',
             accent: '#6cb6ff',
             accentText: '#0b1a2a',
+            primary: '#0e639c',
+            primaryText: '#ffffff',
+            primaryBorder: '#6cb6ff',
             focusRing: '#6cb6ff',
             selectionBackground: '#6cb6ff',
             selectionText: '#0b1a2a',
@@ -174,6 +188,9 @@ export const THEMES: Readonly<Record<ThemeName, Theme>> = {
             border: '#000000',
             accent: '#0033a0',
             accentText: '#ffffff',
+            primary: '#0033a0',
+            primaryText: '#ffffff',
+            primaryBorder: '#0033a0',
             focusRing: '#0033a0',
             selectionBackground: '#000000',
             selectionText: '#ffffff',
@@ -199,6 +216,9 @@ export const THEMES: Readonly<Record<ThemeName, Theme>> = {
             border: '#ffffff',
             accent: '#8fd4ff',
             accentText: '#000000',
+            primary: '#8fd4ff',
+            primaryText: '#000000',
+            primaryBorder: '#ffffff',
             focusRing: '#ffff00',
             selectionBackground: '#ffff00',
             selectionText: '#000000',
@@ -226,6 +246,9 @@ export const UI_CONTRAST_PAIRS: readonly ContrastPair<UiPalette>[] = [
         (['background', 'surface'] as const).map((background) => ({ foreground, background, minimum: TEXT })),
     ),
     { foreground: 'accentText', background: 'accent', minimum: TEXT },
+    { foreground: 'primaryText', background: 'primary', minimum: TEXT },
+    { foreground: 'primaryBorder', background: 'background', minimum: NON_TEXT },
+    { foreground: 'primaryBorder', background: 'surface', minimum: NON_TEXT },
     { foreground: 'selectionText', background: 'selectionBackground', minimum: TEXT },
     { foreground: 'border', background: 'background', minimum: NON_TEXT },
     { foreground: 'border', background: 'surface', minimum: NON_TEXT },
