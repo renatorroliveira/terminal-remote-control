@@ -229,3 +229,10 @@ export const failureDialogMessages = {
         },
     }),
 };
+
+/** Review mode's accessible name, naming the session and host (A11Y-03). */
+export const terminalReviewMessage = defineMessage<{ session: string; host: string }>({
+    id: 'terminal.review',
+    defaultMessage: 'Review {session}, {host}',
+    description: 'Name of review mode, the read-only text field holding the whole buffer.',
+});

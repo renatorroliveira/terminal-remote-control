@@ -15,6 +15,14 @@
     "defaultMessage": "{host}: {step}.",
     "description": "Announced politely at each step of connecting."
   },
+  "announce.findMatch": {
+    "defaultMessage": "Match {index, number} of {count, number}.",
+    "description": "Announced as find selects a match."
+  },
+  "announce.findNone": {
+    "defaultMessage": "No matches.",
+    "description": "Announcement."
+  },
   "announce.hostConnected": {
     "defaultMessage": "{host} connected.",
     "description": "Announced when a host connects."
@@ -54,6 +62,10 @@
   "announce.outputBelow": {
     "defaultMessage": "New output below.",
     "description": "Announced once when output arrives while the user has scrolled the terminal back."
+  },
+  "announce.reviewOutput": {
+    "defaultMessage": "New output. Command-Down Arrow goes to the end.",
+    "description": "Announced once when output arrives while review mode is open."
   },
   "announce.screenReaderOff": {
     "defaultMessage": "Screen reader mode off.",
@@ -143,6 +155,10 @@
     "defaultMessage": "Previous region",
     "description": "Command name."
   },
+  "command.reviewToggle": {
+    "defaultMessage": "Review mode",
+    "description": "Command name: opens or closes review mode, a read-only text field with the whole buffer."
+  },
   "command.sessionNew": {
     "defaultMessage": "New session",
     "description": "Command name."
@@ -161,6 +177,10 @@
   },
   "command.sidebarToggle": {
     "defaultMessage": "Show or hide the sidebar",
+    "description": "Command name."
+  },
+  "command.terminalFind": {
+    "defaultMessage": "Find…",
     "description": "Command name."
   },
   "command.terminalListLinks": {
@@ -402,6 +422,50 @@
   "failure.updateApp.remedy": {
     "defaultMessage": "Update the app, then connect again.",
     "description": "How to fix a failed connection."
+  },
+  "find.close": {
+    "defaultMessage": "Close find",
+    "description": "Button."
+  },
+  "find.count": {
+    "defaultMessage": "{index, number} of {count, number}",
+    "description": "Which match of how many is selected."
+  },
+  "find.field": {
+    "defaultMessage": "Find",
+    "description": "Search field label."
+  },
+  "find.hint": {
+    "defaultMessage": "Return finds the previous match, Shift-Return the next, Escape closes.",
+    "description": "Instructions under the find field."
+  },
+  "find.invalid": {
+    "defaultMessage": "Not a valid regular expression.",
+    "description": "Field error."
+  },
+  "find.matchCase": {
+    "defaultMessage": "Match case",
+    "description": "Toggle button."
+  },
+  "find.next": {
+    "defaultMessage": "Next match",
+    "description": "Button."
+  },
+  "find.none": {
+    "defaultMessage": "No matches",
+    "description": "Shown when nothing matches."
+  },
+  "find.previous": {
+    "defaultMessage": "Previous match",
+    "description": "Button."
+  },
+  "find.regex": {
+    "defaultMessage": "Regular expression",
+    "description": "Toggle button."
+  },
+  "find.region": {
+    "defaultMessage": "Find in terminal",
+    "description": "Search landmark."
   },
   "forget.body": {
     "defaultMessage": "TRC removes {host} from your hosts and closes its connection. Its sessions keep running on the host, and adding it again shows them.",
@@ -974,6 +1038,10 @@
   "terminal.outputBelow": {
     "defaultMessage": "New output below",
     "description": "Indicator on a terminal scrolled back while new output arrives; clicking it jumps to the end."
+  },
+  "terminal.review": {
+    "defaultMessage": "Review {session}, {host}",
+    "description": "Name of review mode, the read-only text field holding the whole buffer."
   },
   "tree.bell": {
     "defaultMessage": "bell",

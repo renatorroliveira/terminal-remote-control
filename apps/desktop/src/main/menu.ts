@@ -87,6 +87,8 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
                 command(options, 'terminal.sendNextKey', MAIN_STRINGS.sendNextKey),
                 command(options, 'announcements.toggleMute', MAIN_STRINGS.muteAnnouncements),
                 command(options, 'terminal.listLinks', MAIN_STRINGS.listLinks),
+                command(options, 'review.toggle', MAIN_STRINGS.reviewMode),
+                command(options, 'terminal.find', MAIN_STRINGS.find),
                 { type: 'separator' },
                 command(options, 'terminal.zoomIn', MAIN_STRINGS.biggerText),
                 command(options, 'terminal.zoomOut', MAIN_STRINGS.smallerText),

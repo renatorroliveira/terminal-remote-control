@@ -17,6 +17,7 @@ import { sessionStateText } from '../sessions/session-state-text';
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import { type HostEntry, hostGroups, type SessionKey, sessionName, type Workspace } from '../sessions/workspace-model';
 import { SELECTION_CAP } from '../terminal/ats-surface';
+import type { FindOptions, FindResult } from '../terminal/find';
 import type { TerminalLink } from '../terminal/hyperlinks';
 import type { TerminalNotice } from '../terminal/notices';
 import { pastedLines } from '../terminal/paste';
@@ -27,6 +28,7 @@ import { clipboardWrittenMessage, copyCappedMessage } from './paste-messages';
 import { RegionCycler } from './regions';
 import {
     commandMessages,
+    findAnnouncements,
     hostAnnouncements,
     muteAnnouncements,
     openAnnouncements,
@@ -48,6 +50,21 @@ export interface TerminalControls {
     paste(key: SessionKey, text: string): void;
     /** Sets every terminal's text size, in percent (A11Y-07.4). */
     setZoom(zoom: number): void;
+    /** Opens or closes the open terminal's review mode; false when no session is open (A11Y-03.1). */
+    toggleReview(): boolean;
+    /** Searches the open terminal; undefined when no session is open (US-1.13). */
+    find(query: string, options: FindOptions): FindResult | undefined;
+    /** Selects the next or previous match. */
+    findStep(direction: 'next' | 'previous'): FindResult | undefined;
+    /** Ends the search and clears its selection. */
+    endFind(): void;
+}
+
+/** The find bar's state (US-1.13). */
+export interface FindState extends FindOptions {
+    readonly query: string;
+    /** The selected match of how many, or an unreadable expression; undefined before a search. */
+    readonly result: FindResult | undefined;
 }
 
 /** Where the terminal text size is kept: `config.json` in the TRC home. */
@@ -117,6 +134,8 @@ export interface ShellState {
     readonly terminalZoom: number;
     /** Whether the status bar shows that the open session just rang its bell (A11Y-08.2). */
     readonly bell: boolean;
+    /** The find bar, while it is open (US-1.13). */
+    readonly find: FindState | undefined;
 }
 
 /** A dialog about a session, or the New session dialog. */
@@ -163,6 +182,7 @@ const INITIAL_STATE: ShellState = {
     pasteDialog: undefined,
     terminalZoom: TERMINAL_ZOOM.initial,
     bell: false,
+    find: undefined,
 };
 
 /** How long the status bar shows the bell. */
@@ -328,7 +348,52 @@ export class Shell {
             case 'output-below':
                 announcer.announce(intl.formatMessage(terminalAnnouncements.outputBelow), { group: `below:${key}` });
                 break;
+            case 'review-output':
+                announcer.announce(intl.formatMessage(findAnnouncements.reviewOutput), { group: `review:${key}` });
+                break;
         }
+    }
+
+    /** Opens the find bar for the open session (US-1.13). */
+    openFind(): void {
+        if (this.#options.workspace.store.getState().open === undefined) {
+            this.#announce(shellAnnouncements.noSession);
+            return;
+        }
+        const previous = this.state.getState().find;
+        this.state.setState({
+            find: { query: '', caseSensitive: false, regex: false, ...previous, result: undefined },
+        });
+    }
+
+    /** Changes the search and runs it, announcing the selected match (US-1.13.2). */
+    updateFind(change: Partial<Omit<FindState, 'result'>>): void {
+        const find = this.state.getState().find;
+        if (find === undefined) {
+            return;
+        }
+        const next = { ...find, ...change };
+        const result = next.query === '' ? undefined : this.#options.terminals.find(next.query, next);
+        this.state.setState({ find: { ...next, result } });
+        this.#announceFind(result);
+    }
+
+    /** Selects the next or the previous match. */
+    stepFind(direction: 'next' | 'previous'): void {
+        const find = this.state.getState().find;
+        if (find === undefined || find.query === '') {
+            return;
+        }
+        const result = this.#options.terminals.findStep(direction);
+        this.state.setState({ find: { ...find, result } });
+        this.#announceFind(result);
+    }
+
+    /** Closes the find bar and returns focus to the terminal or review mode (US-1.13.4). */
+    closeFind(): void {
+        this.#options.terminals.endFind();
+        this.state.setState({ find: undefined });
+        this.#options.terminals.focusOpen();
     }
 
     /** Opens a link dialog, or closes it. */
@@ -439,6 +504,8 @@ export class Shell {
             'terminal.zoomIn': () => this.#zoom('in'),
             'terminal.zoomOut': () => this.#zoom('out'),
             'terminal.zoomReset': () => this.#zoom('reset'),
+            'review.toggle': () => this.#toggleReview(),
+            'terminal.find': () => this.openFind(),
         };
         for (const [id, run] of Object.entries(actions) as [CommandId, () => void][]) {
             this.commands.register({ id, label: this.#options.intl.formatMessage(commandMessages[id]), run });
@@ -451,6 +518,24 @@ export class Shell {
             return;
         }
         void this.#options.workspace.newSessionHere();
+    }
+
+    #toggleReview(): void {
+        if (!this.#options.terminals.toggleReview()) {
+            this.#announce(shellAnnouncements.noSession);
+        }
+    }
+
+    #announceFind(result: FindResult | undefined): void {
+        if (result === undefined || result === 'invalid') {
+            return;
+        }
+        const { intl, announcer } = this.#options;
+        const text =
+            result.count === 0
+                ? intl.formatMessage(findAnnouncements.none)
+                : intl.formatMessage(findAnnouncements.match, { index: result.index + 1, count: result.count });
+        announcer.announce(text, { group: 'find' });
     }
 
     #bell(key: SessionKey): void {

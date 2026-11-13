@@ -194,6 +194,38 @@ test.describe('a live terminal on a Linux host: paste (US-1.12.2)', () => {
     });
 });
 
+test.describe('a live terminal on a Linux host: review mode and find (A11Y-03, US-1.13)', () => {
+    const install = liveHost();
+
+    test('reads the buffer in review mode, finds matches, and returns to the terminal each time', async () => {
+        const { app, window } = await launchWithTestHosts(install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
+        await terminal.focus();
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        const printed = ['needle-one', 'hay', 'needle-two'];
+        const needles = printed.filter((line) => line.startsWith('needle-'));
+        await window.keyboard.type(String.raw`printf 'ne%sle-one\nhay\nne%sle-two\n' ed ed`);
+        await window.keyboard.press('Enter');
+        await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('needle-two');
+        await window.keyboard.press('Alt+F2');
+        const review = window.getByRole('textbox', { name: /^Review / });
+        await expect(review).toBeFocused();
+        await expect(review).toHaveValue(new RegExp(printed.join('\n')));
+        await window.keyboard.press('Escape');
+        await expect(terminal).toBeFocused();
+        await window.keyboard.press('Meta+F');
+        const search = window.getByRole('searchbox', { name: 'Find' });
+        await expect(search).toBeFocused();
+        await search.fill('needle-');
+        await expect(window.getByText(`${needles.length} of ${needles.length}`)).toBeVisible();
+        await window.keyboard.press('Enter');
+        await expect(window.getByText(`${needles.length - 1} of ${needles.length}`)).toBeVisible();
+        await window.keyboard.press('Escape');
+        await expect(terminal).toBeFocused();
+        await app.close();
+    });
+});
+
 test.describe('a live terminal on a Linux host: leaving the terminal (A11Y-05)', () => {
     const install = liveHost();
 

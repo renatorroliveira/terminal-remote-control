@@ -51,6 +51,8 @@ defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
 | Bigger terminal text       | Command+=         | The text-size shortcut of Terminal and every browser (A11Y-07.4)                   |
 | Smaller terminal text      | Command+-         | The same, smaller                                                                  |
 | Default terminal text size | Command+0         | The same, back to 100%                                                             |
+| Review mode (toggle)       | Option+F2         | The PRD's proposal, VS Code's Accessible View (A11Y-03.1)                          |
+| Find in the terminal       | Command+F         | Every app's find shortcut (US-1.13)                                                |
 
 Plain F6 for the next region, the Windows convention, becomes an option in settings (A11Y-05.2). It is off by
 default because htop and mc use F6.

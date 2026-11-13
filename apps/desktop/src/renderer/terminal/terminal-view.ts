@@ -5,15 +5,19 @@ import type { TerminalAppearance } from '../../shared/terminal-appearance';
 import type { TerminalPalette } from '../ui/themes';
 import { attachInput, type InputModes } from './ats-input';
 import { AtsSurface, SELECTION_CAP } from './ats-surface';
+import { LogicalText } from './buffer-lines';
+import { type BufferText, bufferText } from './buffer-text';
 import { parseClipboardRequest } from './clipboard-write';
 import { CreditTracker } from './credit-tracker';
 import { CursorBlink } from './cursor-blink';
+import { type FindMatch, type FindOptions, type FindResult, findMatches } from './find';
 import { type TerminalLink, TerminalLinks } from './hyperlinks';
 import { KittyKeyboard } from './kitty-keyboard';
 import type { TerminalNotice } from './notices';
 import { OutputAnnouncer, type OutputSpeech } from './output-announcer';
 import { encodePaste, pastedLines } from './paste';
 import { registerQueryFilters } from './query-filter';
+import { ReviewField } from './review-field';
 import { SCROLLBAR_WIDTH, TerminalGeometry } from './terminal-geometry';
 import { xtermTheme } from './terminal-theme';
 import { UpdateScheduler } from './update-scheduler';
@@ -21,6 +25,24 @@ import { showCursor } from './xterm-cursor';
 import '@xterm/xterm/css/xterm.css';
 import '../ui/fonts.css';
 import styles from './terminal-view.module.css';
+
+/** A terminal's accessible names and texts (A11Y-01.1, A11Y-01.2). */
+export interface TerminalLabel {
+    /** The terminal's name: session, host and state. */
+    readonly name: string;
+    /** The shortcut hint that describes it. */
+    readonly hint: string;
+    /** The text of the indicator on a scrolled-back terminal while new output arrives (A11Y-08.4). */
+    readonly outputBelow: string;
+    /** Review mode's name (A11Y-03). */
+    readonly review: string;
+}
+
+interface FindState {
+    readonly text: BufferText;
+    readonly matches: readonly FindMatch[];
+    index: number;
+}
 
 /** What a terminal view needs from its session. */
 export interface TerminalViewOptions {
@@ -86,6 +108,9 @@ export class TerminalView {
     readonly #announcer: OutputAnnouncer | undefined;
     readonly #links: TerminalLinks;
     readonly #blink: CursorBlink;
+    #review: ReviewField | undefined;
+    #reviewLabel = '';
+    #find: FindState | undefined;
     #wantsBlink = false;
     #reducedMotion = false;
     readonly #modes: InputModes = { tabFocusMode: false, sendNextKey: false };
@@ -138,6 +163,10 @@ export class TerminalView {
         const canvas = document.createElement('div');
         canvas.className = styles['canvas'] ?? '';
         host.append(canvas, this.surface, this.#hint, this.#measurer, this.#outputBelow);
+        this.#review = new ReviewField(host, () => bufferText(this.terminal), {
+            onClose: () => this.toggleReview(),
+            onNewOutput: () => this.#options.onNotice?.({ kind: 'review-output' }),
+        });
         frame.append(host);
         container.append(frame);
         this.surface.setAttribute('aria-describedby', this.#hint.id);
@@ -168,10 +197,57 @@ export class TerminalView {
     }
 
     /** Sets the accessible name (session, host and state) and the shortcut hint (A11Y-01.1, A11Y-01.2). */
-    setLabel(name: string, hint: string, outputBelow: string): void {
-        this.surface.setAttribute('aria-label', name);
-        this.#hint.textContent = hint;
-        this.#outputBelow.textContent = outputBelow;
+    setLabel(label: TerminalLabel): void {
+        this.surface.setAttribute('aria-label', label.name);
+        this.#hint.textContent = label.hint;
+        this.#outputBelow.textContent = label.outputBelow;
+        this.#reviewLabel = label.review;
+    }
+
+    /** Opens review mode on the cursor's line, or closes it and returns to the terminal (A11Y-03.1). */
+    toggleReview(): void {
+        if (this.#review?.isOpen === true) {
+            this.#review.close();
+            this.surface.focus();
+        } else {
+            this.#review?.open(this.#reviewLabel);
+        }
+    }
+
+    /** Whether review mode is open. */
+    get reviewOpen(): boolean {
+        return this.#review?.isOpen === true;
+    }
+
+    /** Finds `query` in the buffer and selects the most recent match (US-1.13, A11Y-03.6). */
+    find(query: string, options: FindOptions): FindResult {
+        const text = bufferText(this.terminal);
+        const matches = findMatches(text.lines, query, options);
+        if (matches === 'invalid') {
+            this.endFind();
+            return 'invalid';
+        }
+        this.#find = { text, matches, index: matches.length - 1 };
+        this.#showMatch();
+        return { index: this.#find.index, count: matches.length };
+    }
+
+    /** Selects the next or the previous match, wrapping around. */
+    findStep(direction: 'next' | 'previous'): FindResult {
+        const find = this.#find;
+        if (find === undefined || find.matches.length === 0) {
+            return { index: -1, count: 0 };
+        }
+        const step = direction === 'next' ? 1 : -1;
+        find.index = (find.index + step + find.matches.length) % find.matches.length;
+        this.#showMatch();
+        return { index: find.index, count: find.matches.length };
+    }
+
+    /** Ends a search and clears its selection. */
+    endFind(): void {
+        this.#find = undefined;
+        this.terminal.clearSelection();
     }
 
     /** Applies a theme's terminal colors. */
@@ -233,15 +309,20 @@ export class TerminalView {
         this.#send(encodePaste(text, this.terminal.modes.bracketedPasteMode));
     }
 
-    /** Moves keyboard focus to the surface. */
+    /** Moves keyboard focus to the surface, or to review mode while it is open. */
     focus(): void {
-        this.surface.focus();
+        if (this.#review?.isOpen === true) {
+            this.#review.focus();
+        } else {
+            this.surface.focus();
+        }
     }
 
     /** Releases the terminal and its listeners. */
     dispose(): void {
         this.#disposed = true;
         this.#announcer?.dispose();
+        this.#review?.close();
         this.#blink.dispose();
         this.#links.dispose();
         this.#geometry?.dispose();
@@ -299,6 +380,7 @@ export class TerminalView {
             this.terminal.onWriteParsed(() => {
                 this.#syncPointerMode();
                 this.#noticeOutputBelow();
+                this.#review?.output();
                 request();
             }),
             this.terminal.onScroll(() => {
@@ -424,6 +506,26 @@ export class TerminalView {
             this.#options.onClipboardWrite?.(request.text);
         }
         return true;
+    }
+
+    #showMatch(): void {
+        const find = this.#find;
+        const match = find?.matches[find.index];
+        if (find === undefined || match === undefined) {
+            this.terminal.clearSelection();
+            return;
+        }
+        if (this.#review?.isOpen === true) {
+            this.#review.select(match.line, match.start, match.end);
+            return;
+        }
+        const buffer = this.terminal.buffer.active;
+        const line = new LogicalText(buffer, find.text.firstRows[match.line] ?? 0, this.terminal.cols);
+        const start = line.cellOf(match.start);
+        const last = line.cellOf(match.end - 1);
+        const length = (last.row - start.row) * this.terminal.cols + last.column - start.column + 1;
+        this.terminal.select(start.column, start.row, length);
+        this.terminal.scrollToLine(Math.max(0, start.row - Math.floor(this.terminal.rows / 2)));
     }
 
     #noticeOutputBelow(): void {

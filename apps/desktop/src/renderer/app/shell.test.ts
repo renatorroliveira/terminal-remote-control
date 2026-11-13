@@ -140,6 +140,8 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'Bigger terminal text',
             'Smaller terminal text',
             'Default terminal text size',
+            'Review mode',
+            'Find…',
         ]);
     });
 
@@ -293,6 +295,57 @@ describe('Shell bell and new output below (A11Y-08.2, A11Y-08.4)', () => {
         const { shell, spoken } = await setup();
         shell.terminalNotice('host-0/a', { kind: 'output-below' });
         expect(spoken).toEqual(['New output below.']);
+    });
+});
+
+describe('Shell review mode and find (A11Y-03, US-1.13)', () => {
+    async function withSession() {
+        const harness = await setup();
+        harness.client.push('host-0', CONNECTED);
+        await expect.poll(() => harness.workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
+        harness.workspace.open('host-0/a');
+        harness.spoken.length = 0;
+        return harness;
+    }
+
+    it('toggles review mode for the open session, and says when there is none', async () => {
+        const plain = await setup();
+        plain.shell.run('review.toggle');
+        expect(plain.spoken).toEqual(['No session is open.']);
+        const { shell, terminals } = await withSession();
+        shell.run('review.toggle');
+        expect(terminals.reviewOpen).toBe(true);
+    });
+
+    it('searches as the user types, announces "match 3 of 17", steps, and ends the search on close', async () => {
+        const { shell, terminals, spoken } = await withSession();
+        terminals.matches = 17;
+        shell.run('terminal.find');
+        expect(shell.state.getState().find).toEqual({
+            query: '',
+            caseSensitive: false,
+            regex: false,
+            result: undefined,
+        });
+        shell.updateFind({ query: 'err' });
+        expect(shell.state.getState().find?.result).toEqual({ index: 16, count: 17 });
+        shell.stepFind('previous');
+        shell.stepFind('previous');
+        expect(spoken).toEqual(['Match 17 of 17.', 'Match 16 of 17.', 'Match 15 of 17.']);
+        shell.updateFind({ regex: true, query: '(' });
+        expect(shell.state.getState().find?.result).toBe('invalid');
+        terminals.matches = 0;
+        shell.updateFind({ regex: false, query: 'nothing' });
+        expect(spoken.at(-1)).toBe('No matches.');
+        shell.closeFind();
+        expect(shell.state.getState().find).toBeUndefined();
+        expect(terminals.searches.at(-1)).toBe('<end>');
+    });
+
+    it('announces output that arrives in review mode', async () => {
+        const { shell, spoken } = await withSession();
+        shell.terminalNotice('host-0/a', { kind: 'review-output' });
+        expect(spoken).toEqual(['New output. Command-Down Arrow goes to the end.']);
     });
 });
 
