@@ -534,18 +534,18 @@ either way.
 
 ### 5.2 Crates
 
-| Need                                               | Crate (version, license)                                         | Fallback (spike that decides)    |
-| -------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------- |
-| Async runtime, sockets, named pipes, processes     | tokio 1.54 (MIT); tokio-util 0.7 (MIT) for framing               | —                                |
-| PTY                                                | our own spawn on rustix 1.1 (D-23); ConPTY on windows-sys (E6)   | —                                |
-| VT emulator, snapshots, persistence format         | libghostty-vt 1.0.1 (MIT) through our own thin FFI crate         | alacritty_terminal 0.26 (S1, S9) |
-| Unix calls (PTYs, setsid, modes, flock, fdatasync) | rustix 1.1 (Apache-2.0/MIT)                                      | —                                |
-| Windows calls (pipe client PID, SIDs, ACLs, jobs)  | windows-sys 0.61 (MIT/Apache-2.0)                                | —                                |
-| Control messages and metadata                      | serde 1.0 + serde_json 1.0 (MIT/Apache-2.0)                      | —                                |
-| TypeScript types generated from Rust               | ts-rs 12 (MIT)                                                   | —                                |
-| Checksums                                          | sha2 0.11 (binaries), crc32fast 1.5 (log records)                | —                                |
-| Logging                                            | tracing 0.1, tracing-subscriber 0.3 (JSON), tracing-appender 0.2 | —                                |
-| Errors                                             | thiserror 2                                                      | —                                |
+| Need                                                            | Crate (version, license)                                         | Fallback (spike that decides)    |
+| --------------------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------- |
+| Async runtime, sockets, named pipes, processes                  | tokio 1.54 (MIT); tokio-util 0.7 (MIT) for framing               | —                                |
+| PTY                                                             | our own spawn on rustix 1.1 (D-23); ConPTY on windows-sys (E6)   | —                                |
+| VT emulator, snapshots, persistence format                      | libghostty-vt 1.0.1 (MIT) through our own thin FFI crate         | alacritty_terminal 0.26 (S1, S9) |
+| Unix calls (PTYs, setsid, modes, flock, fdatasync, poll, pipes) | rustix 1.1 (Apache-2.0/MIT)                                      | —                                |
+| Windows calls (pipe client PID, SIDs, ACLs, jobs)               | windows-sys 0.61 (MIT/Apache-2.0)                                | —                                |
+| Control messages and metadata                                   | serde 1.0 + serde_json 1.0 (MIT/Apache-2.0)                      | —                                |
+| TypeScript types generated from Rust                            | ts-rs 12 (MIT)                                                   | —                                |
+| Checksums                                                       | sha2 0.11 (binaries), crc32fast 1.5 (log records)                | —                                |
+| Logging                                                         | tracing 0.1, tracing-subscriber 0.3 (JSON), tracing-appender 0.2 | —                                |
+| Errors                                                          | thiserror 2                                                      | —                                |
 
 Not used:
 

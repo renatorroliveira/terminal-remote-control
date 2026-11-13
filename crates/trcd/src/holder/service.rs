@@ -21,6 +21,7 @@ use super::output_gate::OutputGate;
 use super::protocol::{HolderCommand, HolderEvent, HolderSpec, HolderStatus, SESSION_STREAM};
 use super::pty::{Pty, SpawnSpec};
 use super::stop_plan::{DEFAULT_GRACE, StopSignal, stop_plan};
+use crate::accept_backoff::AcceptBackoff;
 use crate::frame_io::{FrameReader, FrameSender};
 use crate::peer::is_same_user;
 use crate::time::{format_utc, now_millis};
@@ -47,6 +48,7 @@ pub struct Holder {
     after_exit: AfterExit,
     status_dirty: bool,
     finished: bool,
+    accepting: AcceptBackoff,
 }
 
 struct Stopping {
@@ -97,6 +99,7 @@ impl Holder {
             after_exit: AfterExit::Report,
             status_dirty: false,
             finished: false,
+            accepting: AcceptBackoff::default(),
         }
     }
 
@@ -118,20 +121,23 @@ impl Holder {
         let wants_output = self.gate.wants_output();
         tokio::select! {
             biased;
-            accepted = listener.accept() => self.on_accept(accepted.map(|(stream, _)| stream)),
             frame = next_frame(&mut self.reader) => self.on_frame(frame),
-            () = stop_deadline(&self.stopping) => self.escalate(),
+            accepted = listener.accept(), if self.accepting.ready() => {
+                self.on_accept(accepted.map(|(stream, _)| stream));
+            }
+            () = self.accepting.rested() => self.accepting.resume(),
             status = wait_exit(&mut self.exit) => self.on_exit(status),
+            () = stop_deadline(&self.stopping) => self.escalate(),
             chunk = next_chunk(&mut self.output), if wants_output => self.on_output(chunk),
             _ = status_tick.tick() => self.flush_status(),
         }
     }
 
     fn on_accept(&mut self, accepted: io::Result<UnixStream>) {
-        if let Ok(stream) = accepted
-            && is_same_user(&stream)
-        {
-            self.connect(stream);
+        match accepted {
+            Ok(stream) if is_same_user(&stream) => self.connect(stream),
+            Ok(_) => {}
+            Err(_) => self.accepting.failed(),
         }
     }
 
@@ -255,18 +261,25 @@ impl Holder {
         self.gate.attach(credit, snapshot);
     }
 
+    /// Resizes the emulator first and the PTY only once it has, so a resize the emulator refuses leaves both, and
+    /// the size reported, as they were (US-1.11.3).
     fn resize(&mut self, size: TerminalSize) {
         if size.cols == 0 || size.rows == 0 {
             return;
         }
+        let resized = self.terminal.as_mut().is_none_or(|terminal| {
+            terminal
+                .resize(trc_vt::TerminalSize {
+                    cols: size.cols,
+                    rows: size.rows,
+                })
+                .is_ok()
+        });
+        if !resized {
+            return;
+        }
         if let Some(pty) = &self.pty {
             let _ = pty.resize(size);
-        }
-        if let Some(terminal) = &mut self.terminal {
-            let _ = terminal.resize(trc_vt::TerminalSize {
-                cols: size.cols,
-                rows: size.rows,
-            });
         }
         self.status.size = size;
         self.send_status();

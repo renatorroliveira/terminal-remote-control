@@ -1,7 +1,7 @@
 //! [`TerminalState`] on libghostty-vt.
 
 use std::ffi::c_void;
-use std::ptr::{null, null_mut};
+use std::ptr::{NonNull, null, null_mut};
 
 use ghostty_vt_sys as sys;
 use sys::GhosttyFormatterFormat::{GHOSTTY_FORMATTER_FORMAT_PLAIN, GHOSTTY_FORMATTER_FORMAT_VT};
@@ -24,7 +24,9 @@ const SNAPSHOT_EXTRAS: sys::GhosttyFormatterExtras = 0xfff & !1;
 /// scrollback, and query replies collected as [`TerminalEvent::Reply`].
 pub struct GhosttyTerminal {
     raw: sys::GhosttyTerminal,
-    effects: Box<Effects>,
+    /// Owned through a raw pointer, from `Box::into_raw`, because libghostty's callbacks write through the same
+    /// pointer: a `Box` would claim unique access that those writes break. Freed in `Drop`.
+    effects: NonNull<Effects>,
     size: TerminalSize,
 }
 
@@ -34,10 +36,10 @@ impl GhosttyTerminal {
         let mut raw: sys::GhosttyTerminal = null_mut();
         // SAFETY: a null allocator selects the default allocator, and `raw` is a valid out pointer.
         check(unsafe { sys::ghostty_terminal_new(null(), &mut raw, config.size.cols, config.size.rows) })?;
-        let effects = Box::new(Effects {
+        let effects = NonNull::from(Box::leak(Box::new(Effects {
             pending: Vec::new(),
             xtversion: config.xtversion.clone().into_bytes(),
-        });
+        })));
         let mut terminal = Self {
             raw,
             effects,
@@ -48,7 +50,7 @@ impl GhosttyTerminal {
     }
 
     fn configure(&mut self, config: &TerminalConfig) -> Result<(), VtError> {
-        let userdata: *mut Effects = &raw mut *self.effects;
+        let userdata: *mut Effects = self.effects.as_ptr();
         self.set_raw(Opt::GHOSTTY_TERMINAL_OPT_USERDATA, userdata.cast_const().cast())?;
         let write_pty: sys::GhosttyTerminalWritePtyFn = Some(on_write_pty);
         let title: sys::GhosttyTerminalTitleChangedFn = Some(on_title_changed);
@@ -132,7 +134,8 @@ impl GhosttyTerminal {
     }
 
     fn take_events(&mut self) -> Vec<TerminalEvent> {
-        let pending = std::mem::take(&mut self.effects.pending);
+        // SAFETY: `effects` is live until `Drop`, and no callback runs outside `feed`, so nothing else touches it here.
+        let pending = std::mem::take(&mut unsafe { self.effects.as_mut() }.pending);
         pending
             .into_iter()
             .filter_map(|effect| match effect {
@@ -209,6 +212,8 @@ impl Drop for GhosttyTerminal {
     fn drop(&mut self) {
         // SAFETY: `raw` was created by `ghostty_terminal_new` and is not used after this.
         unsafe { sys::ghostty_terminal_free(self.raw) };
+        // SAFETY: `effects` came from `Box::leak` in `new`; the terminal that called back into it is freed above.
+        drop(unsafe { Box::from_raw(self.effects.as_ptr()) });
     }
 }
 
@@ -250,8 +255,10 @@ impl Formatter {
             // SAFETY: the formatter returned `len` initialized bytes at `ptr`.
             unsafe { std::slice::from_raw_parts(ptr, len) }.to_vec()
         };
-        // SAFETY: `ptr` came from `ghostty_formatter_format_alloc` with the default allocator.
-        unsafe { sys::ghostty_free(null(), ptr, len) };
+        if !ptr.is_null() {
+            // SAFETY: `ptr` came from `ghostty_formatter_format_alloc` with the default allocator.
+            unsafe { sys::ghostty_free(null(), ptr, len) };
+        }
         Ok(bytes)
     }
 }

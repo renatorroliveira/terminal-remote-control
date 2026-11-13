@@ -6,6 +6,7 @@ use trc_protocol::{
     SessionChange, SessionId, TerminalSize, negotiate,
 };
 
+use super::size::size_problem;
 use super::{Attachment, ClientId, Core};
 use crate::core::profiles::detect_profiles;
 use crate::core::registry::SessionRecord;
@@ -131,8 +132,8 @@ impl Core {
     }
 
     fn create(&mut self, request_id: u32, spec: CreateSessionSpec) -> ServerMessage {
-        if spec.size.cols == 0 || spec.size.rows == 0 {
-            return error(Some(request_id), ErrorCode::BadRequest, "the size must not be zero");
+        if let Some(problem) = size_problem(spec.size) {
+            return error(Some(request_id), ErrorCode::BadRequest, problem);
         }
         let profiles = detect_profiles(&self.context.account.shell);
         let profile = match &spec.profile_id {
@@ -278,8 +279,8 @@ impl Core {
     }
 
     fn resize(&mut self, request_id: u32, session: &SessionId, size: TerminalSize) -> ServerMessage {
-        if size.cols == 0 || size.rows == 0 {
-            return error(Some(request_id), ErrorCode::BadRequest, "the size must not be zero");
+        if let Some(problem) = size_problem(size) {
+            return error(Some(request_id), ErrorCode::BadRequest, problem);
         }
         self.command_session(request_id, session, &HolderCommand::Resize { size })
     }
