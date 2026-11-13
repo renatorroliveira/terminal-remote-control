@@ -49,6 +49,7 @@ pnpm-debug.log*
 dist/
 out/
 build/
+!/crates/*/build/
 *.dmg
 *.zip
 *.tgz
