@@ -1,4 +1,4 @@
-# Term Remote Control bootstrap (US-1.4, TECH_STACK §7). The app pipes this
+# Terminal Remote Control bootstrap (US-1.4, TECH_STACK §7). The app pipes this
 # script to `exec /bin/sh -s` over `ssh -T`, after two lines that set TRC_NONCE
 # and TRC_ROOT. Every line for the app starts with the nonce; anything else,
 # such as startup-file noise, is ignored. The app sends one command per line:

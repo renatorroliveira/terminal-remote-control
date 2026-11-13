@@ -8,7 +8,7 @@ function labels(items: readonly MenuItemConstructorOptions[]): (string | undefin
 
 function options(): MenuOptions {
     return {
-        appName: 'Term Remote Control',
+        appName: 'Terminal Remote Control',
         onCommand: () => undefined,
         onLookUp: () => undefined,
         themePreference: 'midnight',
@@ -19,7 +19,7 @@ function options(): MenuOptions {
 describe('menuTemplate', () => {
     it('has the standard macOS menus, including Help', () => {
         const template = menuTemplate(options());
-        expect(labels(template)).toEqual(['Term Remote Control', 'Edit', 'View', 'windowMenu', 'help']);
+        expect(labels(template)).toEqual(['Terminal Remote Control', 'Edit', 'View', 'windowMenu', 'help']);
     });
 
     it('sends the help commands to the renderer', () => {
@@ -27,7 +27,7 @@ describe('menuTemplate', () => {
         const template = menuTemplate({ ...options(), onCommand: (id) => commands.push(id) });
         const help = template.at(-1)?.submenu as MenuItemConstructorOptions[];
         expect(help.map((item) => [item.label, item.accelerator])).toEqual([
-            ['Term Remote Control Help', undefined],
+            ['Terminal Remote Control Help', undefined],
             ['Accessibility Help', 'Alt+F1'],
         ]);
         for (const item of help) {

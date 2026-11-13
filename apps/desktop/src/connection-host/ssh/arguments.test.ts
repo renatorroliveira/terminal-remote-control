@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { effectiveConfigArguments, sshArguments, sshEnvironment, wrapperConfig } from './arguments';
 
 const helpers = {
-    askpass: '/Apps/Term Remote Control.app/bin/askpass',
-    knownHosts: '/Apps/Term Remote Control.app/bin/known-hosts',
+    askpass: '/Apps/Terminal Remote Control.app/bin/askpass',
+    knownHosts: '/Apps/Terminal Remote Control.app/bin/known-hosts',
 };
 
 const EXPECTED_ARGUMENTS = [
@@ -17,7 +17,7 @@ const EXPECTED_ARGUMENTS = [
     '-o',
     'StrictHostKeyChecking=yes',
     '-o',
-    'KnownHostsCommand="/Apps/Term Remote Control.app/bin/known-hosts" %I %H %t %K %f',
+    'KnownHostsCommand="/Apps/Terminal Remote Control.app/bin/known-hosts" %I %H %t %K %f',
     '-o',
     'PreferredAuthentications=publickey',
     '-o',
@@ -92,7 +92,7 @@ describe('wrapperConfig (D-21)', () => {
                 'Host *',
                 '    BatchMode yes',
                 '    StrictHostKeyChecking yes',
-                '    KnownHostsCommand "/Apps/Term Remote Control.app/bin/known-hosts" %I %H %t %K %f',
+                '    KnownHostsCommand "/Apps/Terminal Remote Control.app/bin/known-hosts" %I %H %t %K %f',
                 '    PreferredAuthentications publickey',
                 '    PasswordAuthentication no',
                 '    KbdInteractiveAuthentication no',

@@ -1,11 +1,9 @@
-# Term Remote Control
+# Terminal Remote Control
 
 An accessible desktop terminal manager whose sessions outlive the app, the network and the client computer.
 
 > **Status: pre-release.** Epic 1 (an accessible macOS app connected to Linux hosts) is in progress. Nothing is
 > installable yet. See the [E1 implementation plan](docs/plans/epic-01-implementation-plan.md) for progress.
-
-_Term Remote Control_ is a working name until the product is named.
 
 ## Why
 
@@ -14,7 +12,7 @@ between desktop terminals, whose shells die when the app quits, and multiplexers
 every host and draw their UI as characters that screen readers read as noise. Neither works well with assistive
 technology.
 
-Term Remote Control combines persistent local and remote sessions, zero per-host setup and first-class support for
+Terminal Remote Control combines persistent local and remote sessions, zero per-host setup and first-class support for
 screen readers, magnifiers, voice control and keyboard-only use.
 
 ## Features

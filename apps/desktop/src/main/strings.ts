@@ -11,6 +11,6 @@ export const MAIN_STRINGS = {
     themeDark: 'Dark',
     themeHighContrastLight: 'High Contrast Light',
     themeHighContrastDark: 'High Contrast Dark',
-    userGuide: 'Term Remote Control Help',
+    userGuide: 'Terminal Remote Control Help',
     accessibilityHelp: 'Accessibility Help',
 } as const;
