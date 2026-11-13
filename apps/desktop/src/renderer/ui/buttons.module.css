@@ -1,0 +1,37 @@
+@layer components {
+    .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 28px;
+        padding: 0.25rem 0.75rem;
+        border: 1px solid var(--trc-color-border);
+        border-radius: 4px;
+        background: var(--trc-color-background);
+        color: var(--trc-color-text);
+        font: inherit;
+    }
+
+    .button[data-disabled] {
+        color: var(--trc-color-text-muted);
+    }
+
+    .primary {
+        border-color: var(--trc-color-primary-border);
+        background: var(--trc-color-primary);
+        color: var(--trc-color-primary-text);
+    }
+
+    .primary[data-hovered],
+    .primary[data-pressed] {
+        filter: brightness(1.25);
+    }
+
+    .primary[data-disabled] {
+        border-color: var(--trc-color-border);
+        background: var(--trc-color-background);
+        color: var(--trc-color-text-muted);
+        filter: none;
+    }
+}

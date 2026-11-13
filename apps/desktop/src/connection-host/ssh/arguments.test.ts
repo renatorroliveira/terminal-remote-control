@@ -56,7 +56,7 @@ describe('sshArguments', () => {
         expect(args).toEqual(EXPECTED_ARGUMENTS);
     });
 
-    it('adds a typed port and the test known_hosts file', () => {
+    it("adds a typed port, and the test known_hosts file ahead of the user's (P-14)", () => {
         const args = sshArguments({
             wrapper: '/w',
             helpers,
@@ -64,7 +64,7 @@ describe('sshArguments', () => {
             command: 'true',
             seam: { sshConfig: '/t/ssh_config', knownHosts: '/t/known_hosts' },
         });
-        expect(args).toContain('UserKnownHostsFile=/t/known_hosts');
+        expect(args).toContain('UserKnownHostsFile=/t/known_hosts ~/.ssh/known_hosts ~/.ssh/known_hosts2');
         expect(args.join(' ')).toContain('-p 2222 -- me@10.0.0.5 true');
     });
 
@@ -112,11 +112,10 @@ describe('wrapperConfig (D-21)', () => {
         );
     });
 
-    it('includes the test config and known_hosts file instead in test builds (P-14)', () => {
+    it("puts the test config and known_hosts file ahead of the user's in test builds, never instead (P-14)", () => {
         const text = wrapperConfig({ helpers, seam: { sshConfig: '/t/my config', knownHosts: '/t/known_hosts' } });
-        expect(text).toContain('    UserKnownHostsFile "/t/known_hosts"\n');
-        expect(text).toContain('Include "/t/my config"\nInclude /etc/ssh/ssh_config\n');
-        expect(text).not.toContain('~/.ssh/config');
+        expect(text).toContain('    UserKnownHostsFile "/t/known_hosts" ~/.ssh/known_hosts ~/.ssh/known_hosts2\n');
+        expect(text).toContain('Include "/t/my config"\nInclude ~/.ssh/config\nInclude /etc/ssh/ssh_config\n');
     });
 
     it('refuses paths it cannot quote', () => {

@@ -188,3 +188,24 @@ export const hostKeyMessage = defineMessage<{ host: string; type: string; finger
     defaultMessage: '{host} presented an unknown {type} host key, {fingerprint}. Trust it?',
     description: 'Question shown when a host presents a key the user has not trusted yet.',
 });
+
+/** The dialog that reports a failed connection (US-1.3). */
+export const failureDialogMessages = {
+    title: defineMessage<{ host: string }>({
+        id: 'failure.title',
+        defaultMessage: 'Couldn’t connect to {host}',
+        description: 'Title of the dialog that reports a failed connection.',
+    }),
+    ...defineMessages({
+        details: {
+            id: 'failure.details',
+            defaultMessage: 'Details',
+            description: 'Label of the read-only field with what ssh or the host reported.',
+        },
+        ok: {
+            id: 'failure.ok',
+            defaultMessage: 'OK',
+            description: 'Button that closes the failed-connection dialog.',
+        },
+    }),
+};

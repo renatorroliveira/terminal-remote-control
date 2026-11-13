@@ -35,7 +35,7 @@ only subagents are the two reviewers that run at the end of the epic.
 | P-11 | E1 builds are **ad-hoc signed** (`codesign -s -`, which Apple silicon and the fuse flip require) and not notarized. The PRD records an E1-only exception to SEC-04.1. SEC-04.2–4 still apply in full.                                                                                                                                                                                              |
 | P-12 | App identity: name "Term Remote Control", bundle ID `dev.trc.desktop`, npm scope `@trc/*`. These are constants in one file, so OQ-5 is a one-line change.                                                                                                                                                                                                                                          |
 | P-13 | E1 defers PRD §11.4 (user research) and §11.5 (VPAT), which the PRD records as an E1 note. Done means automated checks plus the owner's manual AT passes (§11.3).                                                                                                                                                                                                                                  |
-| P-14 | SSH test seam: test builds accept `TRC_TEST_SSH_CONFIG` and `TRC_TEST_KNOWN_HOSTS`, passed as `-F` and `UserKnownHostsFile`. An electron-vite define compiles the seam out of release builds, and a release-artifact test asserts it is absent.                                                                                                                                                    |
+| P-14 | SSH test seam: test builds accept `TRC_TEST_SSH_CONFIG` and `TRC_TEST_KNOWN_HOSTS`, read ahead of the user's `~/.ssh/config` and known_hosts files, never in their place (owner, M1). An electron-vite define compiles the seam out of release builds, and a release-artifact test asserts it is absent.                                                                                           |
 | P-15 | The daemon also builds and runs nextest natively on macOS, for development only. Linux-only code sits behind `cfg(target_os = "linux")`. Integration and e2e tests run the musl binary in the containers. E1 ships Linux daemons only.                                                                                                                                                             |
 | P-16 | E1 flow control is backpressure: E1 has one attached client per session, and when its credit runs out the holder pauses PTY reads. Programs block as in any terminal, and `INPUT` never queues behind `OUTPUT` (NFR-03). E2 adds "never block", `Resync` and `ReadRows`, together with multiple clients (US-2.6). No line is ever skipped in E1, so A11Y-02.3 and A11Y-03 hold without a backfill. |
 | P-17 | In E1, `trcd bridge` starts the core detached (double fork plus `setsid`, under a lock) when its socket is absent. E2 adds service-manager registration and kill-scope isolation.                                                                                                                                                                                                                  |
@@ -351,8 +351,8 @@ SEC-03)
 - The utilityProcess entry.
 - An argument builder with exactly the arguments in TECH_STACK §7, plus the wrapper config of D-21: a `Host *`
   block with the same options, then `Include ~/.ssh/config` and `Include /etc/ssh/ssh_config`, passed with `-F`.
-  In test builds, the P-14 seam replaces the user include with `TRC_TEST_SSH_CONFIG` and sets
-  `UserKnownHostsFile` from `TRC_TEST_KNOWN_HOSTS`.
+  In test builds, the P-14 seam includes `TRC_TEST_SSH_CONFIG` ahead of the user's config and lists
+  `TRC_TEST_KNOWN_HOSTS` first in `UserKnownHostsFile`, so accepted test keys go there.
 - Checks: `ssh -V` ≥ 8.5, and `ssh -G` for the effective settings.
 - Production `askpass` and `known-hosts` helpers.
 - A nonce filter for startup-file noise.
@@ -486,6 +486,23 @@ A11Y-06.1–5, A11Y-09.3–4, US-1.11.3, SEC-06)
       hosts persist in `hosts.json` (P-18). The ST-12 dialog, `~/.ssh/config` suggestions, Test connection and
       Forget host are still to come.
     - The unknown host-key question sits under the list, and its badge moves focus to it (US-1.2).
+
+**ST-10 follow-up: the owner’s third M1 test round** (US-1.1, US-1.3, A11Y-07.1, A11Y-07.2, P-14)
+
+- A failed connection opens a modal alert over the dimmed app: what went wrong and how to fix it, one message per
+  US-1.3 cause, then the copyable details in a read-only field, and OK. Focus returns to where it was. This is the
+  first part of the ST-12 error messages; the assertive announcement comes with ST-11's announcer.
+- The connection badges are a presence set that differs by shape as well as color: a hollow ring when
+  disconnected or failed, a half-filled ring while busy, a filled dot when connected.
+- New session, Add host and OK are primary buttons: a `primary` fill with `primaryText` and a `primaryBorder` edge
+  that keeps 3:1 against the page in every theme (Midnight: white on `#004d1a`, with the `#00ad2c` edge).
+- The test seam no longer hides the user's SSH config: a corporate host behind a `ProxyCommand` timed out in a
+  test build. P-14 now reads the test config and known_hosts ahead of the user's. A live run against the owner's
+  Amazon Linux 2023 arm64 host connected in 2.4 s on first install, and its typing echo measured 31.5 ms p50 and
+  37 ms p95 through the proxy.
+- Found along the way: e2e launches without a profile shared the developer's own and exited as second instances
+  while the developer's app ran, so every test launch now gets a scratch profile. Adding a host no longer clears
+  what the user typed while the add was saving.
 
 ### Phase 5 — Features
 

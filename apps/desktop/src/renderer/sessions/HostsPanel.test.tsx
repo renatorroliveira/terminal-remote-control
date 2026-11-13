@@ -2,20 +2,43 @@ import axe from 'axe-core';
 import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
+import type { KnownHost } from '../../shared/hosts';
 import { AppProviders } from '../app/AppProviders';
 import { HostsPanel } from './HostsPanel';
-import { WorkspaceController } from './workspace-controller';
+import { type KnownHostStore, WorkspaceController } from './workspace-controller';
 import { FakeKnownHostStore, FakeTerminalHost, FakeWorkspaceClient } from './workspace-test-doubles';
 
-async function renderPanel() {
+async function renderPanel(hosts: KnownHostStore = new FakeKnownHostStore()) {
     const client = new FakeWorkspaceClient();
-    const workspace = new WorkspaceController(client, new FakeTerminalHost(), new FakeKnownHostStore());
+    const workspace = new WorkspaceController(client, new FakeTerminalHost(), hosts);
     const screen = await render(
         <AppProviders locale="en">
             <HostsPanel workspace={workspace} askInstallLocation={false} />
         </AppProviders>,
     );
     return { client, workspace, screen };
+}
+
+/** A store whose adds wait until the test lets them finish. */
+class SlowKnownHostStore implements KnownHostStore {
+    readonly #hosts = new FakeKnownHostStore();
+    readonly #waiting: (() => void)[] = [];
+
+    list(): Promise<readonly KnownHost[]> {
+        return this.#hosts.list();
+    }
+
+    add(address: string, installRoot: string): Promise<KnownHost> {
+        return new Promise((resolve, reject) => {
+            this.#waiting.push(() => void this.#hosts.add(address, installRoot).then(resolve, reject));
+        });
+    }
+
+    finish(): void {
+        for (const done of this.#waiting.splice(0)) {
+            done();
+        }
+    }
 }
 
 describe('HostsPanel (US-1.1.1, US-1.2, US-1.5)', () => {
@@ -37,6 +60,19 @@ describe('HostsPanel (US-1.1.1, US-1.2, US-1.5)', () => {
             )
             .toBeVisible();
         await expect.element(screen.getByRole('textbox', { name: 'New host' })).toHaveValue('');
+    });
+
+    it('keeps what the user typed while an earlier add was still saving', async () => {
+        const hosts = new SlowKnownHostStore();
+        const { screen } = await renderPanel(hosts);
+        const field = screen.getByRole('textbox', { name: 'New host' });
+        await field.fill('devbox-1');
+        await screen.getByRole('button', { name: 'Add host' }).click();
+        await field.fill('devbox-2');
+        hosts.finish();
+        await expect.element(screen.getByRole('button', { name: 'Connect devbox-1' })).toBeVisible();
+        await new Promise((settled) => setTimeout(settled, 50));
+        expect((field.element() as HTMLInputElement).value).toBe('devbox-2');
     });
 
     it('names each badge by what it does, describes the state, and connects or disconnects on press', async () => {

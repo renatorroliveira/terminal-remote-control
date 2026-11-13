@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     applySessionChange,
     EMPTY_WORKSPACE,
+    failureAcknowledged,
     hostAdded,
     hostStateChanged,
     sessionKey,
@@ -73,6 +74,24 @@ describe('the workspace model (US-1.6, US-1.9)', () => {
         expect(treeItems(workspace)).toEqual([]);
         expect(workspace.open).toBeUndefined();
         expect(workspace.hosts).toHaveLength(2);
+    });
+
+    it('keeps a failed connection for the user to acknowledge (US-1.3.3)', () => {
+        const failed = hostStateChanged(workspaceWithTwoHosts(), 'h2', {
+            status: 'failed',
+            failure: { kind: 'timeout', host: 'devbox-2', port: 2222, details: 'Connection timed out' },
+        });
+        expect(failed.failureNotice).toBe('h2');
+        expect(hostStateChanged(failed, 'h1', { status: 'idle' }).failureNotice).toBe('h2');
+        expect(failureAcknowledged(failed).failureNotice).toBeUndefined();
+    });
+
+    it('raises no notice when the user rejected the host key themselves', () => {
+        const rejected = hostStateChanged(workspaceWithTwoHosts(), 'h2', {
+            status: 'failed',
+            failure: { kind: 'host-key-rejected', host: 'devbox-2', details: '' },
+        });
+        expect(rejected.failureNotice).toBeUndefined();
     });
 
     it('hides the sessions of a collapsed host', () => {

@@ -1,4 +1,6 @@
-import { resolve } from 'node:path';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { type ElectronApplication, _electron as electron } from '@playwright/test';
 
 /** The app's directory, which Electron loads. */
@@ -9,10 +11,16 @@ export function testEnvironment(extra: Readonly<Record<string, string>> = {}): R
     return { ...(process.env as Record<string, string>), TRC_TEST_BACKGROUND: '1', ...extra };
 }
 
-/** Launches the test build without taking the developer's focus. */
+/** A fresh, empty app profile, so a test launch never shares the developer's profile or their running app. */
+export function scratchProfile(): string {
+    return `--user-data-dir=${mkdtempSync(join(tmpdir(), 'trc-e2e-profile-'))}`;
+}
+
+/** Launches the test build without taking the developer's focus, in a scratch profile unless `args` names one. */
 export function launchApp(
     args: readonly string[] = [],
     env: Readonly<Record<string, string>> = {},
 ): Promise<ElectronApplication> {
-    return electron.launch({ args: [APP_DIRECTORY, ...args], env: testEnvironment(env) });
+    const profile = args.some((arg) => arg.startsWith('--user-data-dir=')) ? [] : [scratchProfile()];
+    return electron.launch({ args: [APP_DIRECTORY, ...profile, ...args], env: testEnvironment(env) });
 }

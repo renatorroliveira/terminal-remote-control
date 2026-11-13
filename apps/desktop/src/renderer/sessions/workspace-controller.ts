@@ -5,6 +5,7 @@ import type { KnownHost } from '../../shared/hosts';
 import type { HostClient } from '../connection/host-client';
 import {
     EMPTY_WORKSPACE,
+    failureAcknowledged,
     type HostEntry,
     hostAdded,
     hostStateChanged,
@@ -114,6 +115,11 @@ export class WorkspaceController {
     /** Refuses the presented host key. */
     rejectHostKey(hostId: string): void {
         this.#client.rejectHostKey(hostId);
+    }
+
+    /** Closes the failure notice the user has read. */
+    acknowledgeFailure(): void {
+        this.#update(failureAcknowledged);
     }
 
     /** Shows a session in the terminal area and moves focus to it (US-1.8.1, US-1.8.3). */
