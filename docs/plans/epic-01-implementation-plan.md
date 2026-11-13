@@ -448,6 +448,26 @@ A11Y-06.1–5, A11Y-09.3–4, US-1.11.3, SEC-06)
 - Open with the owner: the M1 VoiceOver check, including whether VoiceOver speaks the `aria-describedby` hint
   (A11Y-01.2), and a `pnpm test:ax` run from a terminal that holds the Accessibility permission.
 
+**ST-10 follow-up: the owner’s first M1 test round** (A11Y-04, A11Y-06.3, A11Y-07, US-1.6, US-1.7.1, US-1.8.1)
+
+- Bugs the owner found, each with a test that fails without its fix:
+    - Pointer selection collapsed at once: xterm's link-layer canvas sat above the ATS, because xterm's internal
+      z-indexes shared the host's stacking context. The canvas now has its own stacking context below the ATS.
+    - Zoom tracked a point left of the cursor: the ATS letter spacing came from a canvas measurement in the wrong
+      font (−3.7 px). The ATS now measures a run of glyphs in its own font, its rows take the cell height, and the
+      AX probe test checks that the caret bounds sit on the cursor cell.
+    - Found along the way: every glyph was drawn in 10px sans-serif (D-26).
+- The owner's improvements:
+    - A 350 px sidebar that scrolls on its own beside the terminal area, collapsing into a toggled panel under
+      720 px (A11Y-07.5). The grid is at most 120 columns, centered (D-24).
+    - The session tree of ST-13, first part: hosts and sessions with their state as text, the APG keys,
+      type-ahead, Enter or click to open, and New session on the open session's host. Rename, stop, close and
+      reorder stay in ST-13. The read model is the TECH_STACK §4.4 Zustand store.
+    - Midnight and the theme preference in View > Theme (D-25, PRD v0.6), stored in `settings.json` (P-18).
+    - Embedded fonts at 14 px (D-24).
+- Test builds open behind the focused app (D-27); e2e and AX runs install under a scratch location on the test
+  host and remove it afterwards.
+
 ### Phase 5 — Features
 
 **ST-11 Workspace layout and commands** (US-1.6.1/3, A11Y-05.1–8, A11Y-07.5–6, A11Y-11.2/3/5/7/10/11,

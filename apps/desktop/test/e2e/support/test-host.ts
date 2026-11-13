@@ -1,12 +1,14 @@
+import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { copyFileSync, existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { type ElectronApplication, _electron as electron, type Locator, type Page } from '@playwright/test';
+import type { ElectronApplication, Locator, Page } from '@playwright/test';
+import { launchApp } from './launch';
 
 const repository = resolve(import.meta.dirname, '../../../../..');
 const run = join(repository, 'tools/test-hosts/.run');
 const manifest = join(repository, 'apps/desktop/resources/daemon/manifest.json');
-const appDirectory = resolve(import.meta.dirname, '../../..');
 
 /** Why the test hosts cannot be used, or `undefined` when they can. */
 export function testHostsMissing(): string | undefined {
@@ -27,19 +29,56 @@ export async function launchWithTestHosts(): Promise<TestHostApp> {
     const scratch = mkdtempSync(join(tmpdir(), 'trc-e2e-'));
     const knownHosts = join(scratch, 'known_hosts');
     copyFileSync(join(run, 'known_hosts.smoke'), knownHosts);
-    const app = await electron.launch({
-        args: [appDirectory, `--user-data-dir=${join(scratch, 'user-data')}`],
-        env: { ...process.env, TRC_TEST_SSH_CONFIG: join(run, 'ssh_config'), TRC_TEST_KNOWN_HOSTS: knownHosts },
+    const app = await launchApp([`--user-data-dir=${join(scratch, 'user-data')}`], {
+        TRC_TEST_SSH_CONFIG: join(run, 'ssh_config'),
+        TRC_TEST_KNOWN_HOSTS: knownHosts,
     });
     return { app, window: await app.firstWindow() };
 }
 
-/** Connects the test host panel to `destination` and returns the terminal's text surface once it opens. */
-export async function openTerminal(window: Page, destination: string): Promise<Locator> {
+/** A fresh install location on the test hosts, removed by {@link removeInstall}. */
+export function scratchInstallRoot(): string {
+    return `~/.trc-e2e-${randomBytes(4).toString('hex')}`;
+}
+
+/** Stops the daemon a test installed under `root` on `alias`, and removes the install. */
+export function removeInstall(alias: string, root: string): void {
+    const path = root.replace('~', '$HOME');
+    const script = `kill $(cat "${path}/run/core.lock" 2>/dev/null) 2>/dev/null; pkill -f "${path}/" ; rm -rf "${path}"`;
+    try {
+        execFileSync(
+            'ssh',
+            [
+                '-F',
+                join(run, 'ssh_config'),
+                '-o',
+                'BatchMode=yes',
+                '-o',
+                'StrictHostKeyChecking=yes',
+                '-o',
+                `UserKnownHostsFile=${join(run, 'known_hosts.smoke')}`,
+                alias,
+                script,
+            ],
+            { stdio: 'ignore' },
+        );
+    } catch {
+        return;
+    }
+}
+
+/**
+ * Connects `destination` from the test host form, installing under `installRoot`, creates a session, and returns
+ * its text surface once it opens.
+ */
+export async function openTerminal(window: Page, destination: string, installRoot: string): Promise<Locator> {
     await window.getByLabel('Destination').fill(destination);
+    await window.getByLabel('Install location').fill(installRoot);
     await window.getByRole('button', { name: 'Connect' }).click();
-    const terminal = window.getByRole('textbox', { name: `shell, ${destination}` });
-    await terminal.waitFor({ timeout: 60_000 });
+    await window.getByRole('treeitem', { name: `${destination}, Connected` }).waitFor({ timeout: 60_000 });
+    await window.getByRole('button', { name: 'New session' }).click();
+    const terminal = window.getByRole('textbox', { name: new RegExp(`, ${destination}$`) });
+    await terminal.waitFor({ timeout: 30_000 });
     return terminal;
 }
 

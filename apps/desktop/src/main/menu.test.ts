@@ -7,7 +7,13 @@ function labels(items: readonly MenuItemConstructorOptions[]): (string | undefin
 }
 
 function options(): MenuOptions {
-    return { appName: 'Term Remote Control', onCommand: () => undefined, onLookUp: () => undefined };
+    return {
+        appName: 'Term Remote Control',
+        onCommand: () => undefined,
+        onLookUp: () => undefined,
+        themePreference: 'midnight',
+        onThemePreference: () => undefined,
+    };
 }
 
 describe('menuTemplate', () => {
@@ -29,11 +35,15 @@ describe('menuTemplate', () => {
         }
         expect(commands).toEqual(['help.userGuide', 'help.accessibility']);
     });
+});
 
+describe('menuTemplate: View', () => {
     it('offers zoom from the View menu (A11Y-07.4)', () => {
         const template = menuTemplate(options());
         const view = template[2]?.submenu as MenuItemConstructorOptions[];
-        expect(view.map((item) => item.role ?? item.type)).toEqual([
+        expect(view.map((item) => item.role ?? item.label ?? item.type)).toEqual([
+            'Theme',
+            'separator',
             'resetZoom',
             'zoomIn',
             'zoomOut',
@@ -41,7 +51,9 @@ describe('menuTemplate', () => {
             'togglefullscreen',
         ]);
     });
+});
 
+describe('menuTemplate: Edit', () => {
     it('has the macOS text services in Edit: Look Up and Speech (US-1.12, A11Y-04)', () => {
         let lookedUp = 0;
         const template = menuTemplate({ ...options(), onLookUp: () => (lookedUp += 1) });
@@ -65,5 +77,24 @@ describe('menuTemplate', () => {
         expect(lookedUp).toBe(1);
         const speech = edit.at(-1)?.submenu as MenuItemConstructorOptions[];
         expect(speech.map((item) => item.role)).toEqual(['startSpeaking', 'stopSpeaking']);
+    });
+
+    it('picks the theme from View, Midnight checked by default (A11Y-07.3)', () => {
+        const picked: string[] = [];
+        const template = menuTemplate({ ...options(), onThemePreference: (theme) => picked.push(theme) });
+        const view = template[2]?.submenu as MenuItemConstructorOptions[];
+        const themes = view[0]?.submenu as MenuItemConstructorOptions[];
+        expect(themes.map((item) => [item.label ?? item.type, item.type, item.checked])).toEqual([
+            ['Midnight', 'radio', true],
+            ['Match System', 'radio', false],
+            ['separator', 'separator', undefined],
+            ['Light', 'radio', false],
+            ['Dark', 'radio', false],
+            ['High Contrast Light', 'radio', false],
+            ['High Contrast Dark', 'radio', false],
+        ]);
+        themes[1]?.click?.(undefined as never, undefined, undefined as never);
+        themes[5]?.click?.(undefined as never, undefined, undefined as never);
+        expect(picked).toEqual(['system', 'hc-light']);
     });
 });

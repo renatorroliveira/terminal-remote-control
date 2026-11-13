@@ -12,6 +12,7 @@ describe('applyDisplaySettings', () => {
             reducedTransparency: true,
             reducedMotion: true,
             differentiateWithoutColor: false,
+            themePreference: 'system',
         });
         expect(root.dataset).toMatchObject({
             theme: 'hc-dark',

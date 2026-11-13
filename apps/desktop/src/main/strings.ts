@@ -4,6 +4,13 @@ export const MAIN_STRINGS = {
     lookUp: 'Look Up',
     speech: 'Speech',
     viewMenu: 'View',
+    theme: 'Theme',
+    themeMidnight: 'Midnight',
+    themeSystem: 'Match System',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeHighContrastLight: 'High Contrast Light',
+    themeHighContrastDark: 'High Contrast Dark',
     userGuide: 'Term Remote Control Help',
     accessibilityHelp: 'Accessibility Help',
 } as const;

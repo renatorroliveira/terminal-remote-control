@@ -1,0 +1,11 @@
+@layer components {
+    .frame {
+        position: absolute;
+        inset: 0;
+    }
+
+    .frame[hidden] {
+        display: block;
+        visibility: hidden;
+    }
+}

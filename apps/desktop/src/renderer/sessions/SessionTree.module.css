@@ -1,0 +1,47 @@
+@layer components {
+    .tree {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .row {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1.25rem 1fr;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 28px;
+        padding: 0.25rem 0.5rem;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        cursor: default;
+    }
+
+    .row[data-kind='session'] {
+        padding-inline-start: 1.75rem;
+    }
+
+    .row[aria-selected='true'] {
+        border-color: var(--trc-color-border);
+    }
+
+    .row:hover {
+        border-color: var(--trc-color-border);
+    }
+
+    .text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .state {
+        color: var(--trc-color-text-muted);
+        font-size: 0.875rem;
+    }
+
+    .icon {
+        text-align: center;
+    }
+}

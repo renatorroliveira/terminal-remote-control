@@ -1,8 +1,170 @@
 {
+  "host.closed": [
+    {
+      "type": 0,
+      "value": "Closed"
+    }
+  ],
+  "host.connected": [
+    {
+      "type": 0,
+      "value": "Connected"
+    }
+  ],
+  "host.connecting": [
+    {
+      "type": 0,
+      "value": "Connecting"
+    }
+  ],
+  "host.disconnected": [
+    {
+      "type": 0,
+      "value": "Disconnected"
+    }
+  ],
+  "host.failed": [
+    {
+      "type": 0,
+      "value": "Connection failed"
+    }
+  ],
+  "host.hostKey": [
+    {
+      "type": 0,
+      "value": "Host key needs confirmation"
+    }
+  ],
+  "host.idle": [
+    {
+      "type": 0,
+      "value": "Not connected"
+    }
+  ],
+  "session.exited": [
+    {
+      "type": 0,
+      "value": "Exited"
+    }
+  ],
+  "session.exitedCode": [
+    {
+      "type": 0,
+      "value": "Exited with code "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    }
+  ],
+  "session.exitedSignal": [
+    {
+      "type": 0,
+      "value": "Exited by signal "
+    },
+    {
+      "type": 1,
+      "value": "signal"
+    }
+  ],
+  "session.failedToStart": [
+    {
+      "type": 0,
+      "value": "Failed to start"
+    }
+  ],
+  "session.running": [
+    {
+      "type": 0,
+      "value": "Running"
+    }
+  ],
+  "session.starting": [
+    {
+      "type": 0,
+      "value": "Starting"
+    }
+  ],
+  "session.stopped": [
+    {
+      "type": 0,
+      "value": "Stopped"
+    }
+  ],
+  "session.unspecified": [
+    {
+      "type": 0,
+      "value": "Unknown state"
+    }
+  ],
   "shell.noSession": [
     {
       "type": 0,
       "value": "No session is open."
+    }
+  ],
+  "sidebar.empty": [
+    {
+      "type": 0,
+      "value": "No hosts yet."
+    }
+  ],
+  "sidebar.item": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": ", "
+    },
+    {
+      "type": 1,
+      "value": "state"
+    }
+  ],
+  "sidebar.newSession": [
+    {
+      "type": 0,
+      "value": "New session"
+    }
+  ],
+  "sidebar.region": [
+    {
+      "type": 0,
+      "value": "Sessions"
+    }
+  ],
+  "sidebar.toggle": [
+    {
+      "type": 0,
+      "value": "Sessions"
+    }
+  ],
+  "sidebar.tree": [
+    {
+      "type": 0,
+      "value": "Hosts and sessions"
+    }
+  ],
+  "terminal.hint": [
+    {
+      "type": 0,
+      "value": "Option F1: accessibility help."
+    }
+  ],
+  "terminal.label": [
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": ", "
+    },
+    {
+      "type": 1,
+      "value": "host"
     }
   ]
 }

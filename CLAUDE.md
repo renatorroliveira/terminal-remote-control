@@ -27,8 +27,10 @@ tooling (`tools/*`).
 - End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax` (needs the
   macOS Accessibility permission). Both build a test build
   (`pnpm --filter @trc/desktop build:test`, `TRC_TEST_BUILD=1`), which compiles
-  in the P-14 seam and the test host panel; their live-terminal tests skip
-  unless the test hosts are up and the daemons are built.
+  in the P-14 seam and the test host form; their live-terminal tests skip
+  unless the test hosts are up and the daemons are built. Test launches open
+  behind the focused app (`TRC_TEST_BACKGROUND=1`, D-27), but `pnpm test:ax`
+  must take focus, so warn the owner before running it.
 - The git hooks install with `pnpm install` into `.git/hooks`; a global
   `core.hooksPath` hook manager runs them. Never bypass hooks with
   `--no-verify`.

@@ -23,7 +23,8 @@ Planned for the first release (P0), delivered in seven epics:
 
 - **Accessible first.** WCAG 2.2 AA, with native integration for VoiceOver, JAWS, NVDA, Narrator, Orca, screen
   magnifiers, Speak Selection and voice control. Terminal text is real, selectable text that the operating system
-  can read, and the OS tracks focus and the text cursor.
+  can read, and the OS tracks focus and the text cursor. The default Midnight theme is high contrast (AAA), and the
+  app embeds Atkinson Hyperlegible Next and Intel One Mono.
 - **Sessions that never die.** A per-user daemon on each host owns the sessions. Quitting or crashing the app,
   losing the network or rebooting the client ends no session. After a host reboot, the daemon respawns each
   session's shell and restores its scrollback, without ever re-running commands.

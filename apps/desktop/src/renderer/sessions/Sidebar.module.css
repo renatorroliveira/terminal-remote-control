@@ -1,0 +1,33 @@
+@layer components {
+    .body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+
+    .heading {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .button {
+        align-self: start;
+        min-height: 28px;
+        padding: 0.25rem 0.75rem;
+        border: 1px solid var(--trc-color-border);
+        border-radius: 4px;
+        background: var(--trc-color-background);
+        color: var(--trc-color-text);
+        font: inherit;
+    }
+
+    .button[data-disabled] {
+        color: var(--trc-color-text-muted);
+    }
+
+    .empty {
+        margin: 0;
+        color: var(--trc-color-text-muted);
+    }
+}

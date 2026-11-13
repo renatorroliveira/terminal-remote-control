@@ -14,16 +14,19 @@
     :root {
         --trc-focus-ring-width: 2px;
         --trc-focus-ring-offset: 2px;
+        --trc-font-ui: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+        --trc-font-terminal: 'Intel One Mono', monospace;
         color-scheme: light;
-        font-family:
-            system-ui,
-            -apple-system,
-            sans-serif;
+        font-family: var(--trc-font-ui);
+        font-size: 14px;
+        line-height: 1.5;
         background: var(--trc-color-background);
         color: var(--trc-color-text);
     }
 
-    :root[data-color-scheme='dark'] {
+    :root[data-theme='midnight'],
+    :root[data-theme='dark'],
+    :root[data-theme='hc-dark'] {
         color-scheme: dark;
     }
 

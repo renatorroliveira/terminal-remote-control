@@ -13,6 +13,7 @@ describe('readDisplaySettings', () => {
                 shouldDifferentiateWithoutColor: true,
             },
             { prefersReducedMotion: true },
+            'midnight',
         );
         expect(settings).toEqual({
             colorScheme: 'dark',
@@ -22,6 +23,7 @@ describe('readDisplaySettings', () => {
             reducedTransparency: true,
             reducedMotion: true,
             differentiateWithoutColor: true,
+            themePreference: 'midnight',
         });
     });
 });

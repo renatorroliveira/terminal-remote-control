@@ -1,0 +1,164 @@
+import type { SessionChange, SessionId, SessionInfo } from '@trc/protocol';
+import type { ConnectionState } from '../../shared/connection';
+
+/** A host in the sidebar. */
+export interface HostEntry {
+    readonly id: string;
+    /** What the user typed or picked: an SSH config alias or `[user@]host`. */
+    readonly destination: string;
+    readonly state: ConnectionState;
+}
+
+/** Identifies a session across hosts. */
+export type SessionKey = string;
+
+/** The renderer's read model of hosts and sessions (TECH_STACK §4.4). */
+export interface Workspace {
+    /** Hosts in the order they were added. */
+    readonly hosts: readonly HostEntry[];
+    /** Each host's sessions, in the daemon's order. */
+    readonly sessions: ReadonlyMap<string, readonly SessionInfo[]>;
+    /** The session shown in the terminal area. */
+    readonly open: SessionKey | undefined;
+    /** Host groups the user collapsed. */
+    readonly collapsed: ReadonlySet<string>;
+}
+
+/** One row of the session tree. */
+export type TreeItem =
+    | (TreeItemBase & { readonly kind: 'host'; readonly host: HostEntry; readonly expanded: boolean })
+    | (TreeItemBase & { readonly kind: 'session'; readonly host: HostEntry; readonly session: SessionInfo });
+
+interface TreeItemBase {
+    readonly key: string;
+    readonly level: 1 | 2;
+    readonly posinset: number;
+    readonly setsize: number;
+    readonly label: string;
+}
+
+/** A workspace with no hosts. */
+export const EMPTY_WORKSPACE: Workspace = {
+    hosts: [],
+    sessions: new Map(),
+    open: undefined,
+    collapsed: new Set(),
+};
+
+/** The key of a host's session. */
+export function sessionKey(hostId: string, sessionId: SessionId): SessionKey {
+    return `${hostId}/${sessionId}`;
+}
+
+/** A session's display name: the user's name, then the program's title, then the shell's name (US-1.10). */
+export function sessionName(session: SessionInfo): string {
+    return session.customName ?? session.title ?? session.profile.name;
+}
+
+/** Adds a host that is not connected yet; adding a known host keeps it. */
+export function hostAdded(
+    workspace: Workspace,
+    host: { readonly id: string; readonly destination: string },
+): Workspace {
+    if (workspace.hosts.some((entry) => entry.id === host.id)) {
+        return workspace;
+    }
+    return { ...workspace, hosts: [...workspace.hosts, { ...host, state: { status: 'idle' } }] };
+}
+
+/** Records a host's new connection state. */
+export function hostStateChanged(workspace: Workspace, hostId: string, state: ConnectionState): Workspace {
+    return {
+        ...workspace,
+        hosts: workspace.hosts.map((host) => (host.id === hostId ? { ...host, state } : host)),
+    };
+}
+
+/** Replaces a host's sessions with the daemon's list. */
+export function sessionsListed(workspace: Workspace, hostId: string, sessions: readonly SessionInfo[]): Workspace {
+    return withSessions(workspace, hostId, sortByOrder(sessions));
+}
+
+/** Applies one daemon session event to a host's sessions. */
+export function sessionChanged(workspace: Workspace, hostId: string, change: SessionChange): Workspace {
+    return withSessions(workspace, hostId, applySessionChange(workspace.sessions.get(hostId) ?? [], change));
+}
+
+/** Applies one daemon session event to a session list. */
+export function applySessionChange(sessions: readonly SessionInfo[], change: SessionChange): readonly SessionInfo[] {
+    switch (change.kind) {
+        case 'created':
+        case 'updated':
+            return sortByOrder([...sessions.filter((entry) => entry.id !== change.session.id), change.session]);
+        case 'closed':
+            return sessions.filter((entry) => entry.id !== change.sessionId);
+        case 'reordered':
+            return reorder(sessions, change.order);
+    }
+}
+
+/** Opens a session in the terminal area. */
+export function sessionOpened(workspace: Workspace, key: SessionKey | undefined): Workspace {
+    return { ...workspace, open: key };
+}
+
+/** Collapses or expands a host group (US-1.6.2). */
+export function hostToggled(workspace: Workspace, hostId: string): Workspace {
+    const collapsed = new Set(workspace.collapsed);
+    if (!collapsed.delete(hostId)) {
+        collapsed.add(hostId);
+    }
+    return { ...workspace, collapsed };
+}
+
+/** The visible rows of the session tree: each host, then its sessions unless it is collapsed. */
+export function treeItems(workspace: Workspace): readonly TreeItem[] {
+    const hostCount = workspace.hosts.length;
+    return workspace.hosts.flatMap((host, index) => {
+        const expanded = !workspace.collapsed.has(host.id);
+        const hostItem: TreeItem = {
+            kind: 'host',
+            key: host.id,
+            level: 1,
+            posinset: index + 1,
+            setsize: hostCount,
+            label: host.destination,
+            host,
+            expanded,
+        };
+        return expanded ? [hostItem, ...sessionItems(workspace, host)] : [hostItem];
+    });
+}
+
+function sessionItems(workspace: Workspace, host: HostEntry): readonly TreeItem[] {
+    const sessions = workspace.sessions.get(host.id) ?? [];
+    return sessions.map((session, index) => ({
+        kind: 'session',
+        key: sessionKey(host.id, session.id),
+        level: 2,
+        posinset: index + 1,
+        setsize: sessions.length,
+        label: sessionName(session),
+        host,
+        session,
+    }));
+}
+
+function withSessions(workspace: Workspace, hostId: string, sessions: readonly SessionInfo[]): Workspace {
+    const next = new Map(workspace.sessions);
+    next.set(hostId, sessions);
+    return { ...workspace, sessions: next };
+}
+
+function sortByOrder(sessions: readonly SessionInfo[]): readonly SessionInfo[] {
+    return [...sessions].sort((left, right) => left.order - right.order);
+}
+
+function reorder(sessions: readonly SessionInfo[], order: readonly SessionId[]): readonly SessionInfo[] {
+    const byId = new Map(sessions.map((entry) => [entry.id, entry]));
+    const ordered = order.flatMap((id) => {
+        const entry = byId.get(id);
+        return entry === undefined ? [] : [entry];
+    });
+    return [...ordered, ...sessions.filter((entry) => !order.includes(entry.id))];
+}

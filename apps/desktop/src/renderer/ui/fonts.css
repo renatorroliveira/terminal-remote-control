@@ -1,0 +1,31 @@
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('./fonts/atkinson-hyperlegible-next.ttf') format('truetype');
+    font-weight: 200 800;
+    font-style: normal;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('./fonts/atkinson-hyperlegible-next-italic.ttf') format('truetype');
+    font-weight: 200 800;
+    font-style: italic;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Intel One Mono';
+    src: url('./fonts/intel-one-mono.ttf') format('truetype');
+    font-weight: 300 700;
+    font-style: normal;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Intel One Mono';
+    src: url('./fonts/intel-one-mono-italic.ttf') format('truetype');
+    font-weight: 300 700;
+    font-style: italic;
+    font-display: block;
+}

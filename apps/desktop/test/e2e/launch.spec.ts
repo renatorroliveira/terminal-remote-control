@@ -1,8 +1,9 @@
-import { _electron as electron, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { axeViolations } from './support/axe';
+import { launchApp } from './support/launch';
 
 test('the window opens on the app scheme with an accessible main region', async () => {
-    const app = await electron.launch({ args: ['.'] });
+    const app = await launchApp();
     const window = await app.firstWindow();
 
     await expect(window).toHaveTitle('Term Remote Control');
@@ -14,7 +15,7 @@ test('the window opens on the app scheme with an accessible main region', async 
 });
 
 test('starts the connection host as a utility process (US-1.5)', async () => {
-    const app = await electron.launch({ args: ['.'] });
+    const app = await launchApp();
     await app.firstWindow();
     await expect.poll(() => app.evaluate(processNames)).toContain('Term Remote Control connection host');
     await app.close();

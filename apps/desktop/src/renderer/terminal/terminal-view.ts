@@ -1,19 +1,22 @@
-import { FitAddon } from '@xterm/addon-fit';
 import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { type IDisposable, Terminal } from '@xterm/xterm';
-import type { Palette } from '../ui/themes';
+import type { TerminalPalette } from '../ui/themes';
 import { attachInput, type InputModes } from './ats-input';
-import { AtsSurface, type CellSize } from './ats-surface';
+import { AtsSurface } from './ats-surface';
 import { CreditTracker } from './credit-tracker';
 import { registerQueryFilters } from './query-filter';
+import { SCROLLBAR_WIDTH, TerminalGeometry } from './terminal-geometry';
+import { xtermTheme } from './terminal-theme';
 import { UpdateScheduler } from './update-scheduler';
 import '@xterm/xterm/css/xterm.css';
+import '../ui/fonts.css';
 import styles from './terminal-view.module.css';
 
 /** What a terminal view needs from its session. */
 export interface TerminalViewOptions {
-    readonly palette: Palette;
+    /** The terminal colors, apart from the UI's. */
+    readonly palette: TerminalPalette;
     readonly isMac: boolean;
     /** Whether assistive technology is active, which slows the ATS cadence (S3a). */
     readonly assistiveTechnology: () => boolean;
@@ -23,10 +26,16 @@ export interface TerminalViewOptions {
     readonly onCredit: (bytes: number) => void;
     /** The terminal's size changed; the PTY follows (US-1.11.3). */
     readonly onResize: (size: { readonly cols: number; readonly rows: number }) => void;
+    /** The widest the grid gets; narrower spaces get fewer columns (A11Y-07.5). */
+    readonly maxColumns?: number;
 }
 
-const FONT_FAMILY = 'Menlo, Monaco, "Courier New", monospace';
-const FONT_SIZE = 14;
+/** The terminal font, embedded in the app. */
+export const TERMINAL_FONT_FAMILY = '"Intel One Mono", monospace';
+/** The terminal font size, in CSS pixels. */
+export const TERMINAL_FONT_SIZE = 14;
+/** The grid's default maximum width. */
+export const DEFAULT_MAX_COLUMNS = 120;
 const SCROLLBACK_LINES = 10_000;
 const FOCUS_IN = '\u001b[I';
 const FOCUS_OUT = '\u001b[O';
@@ -47,46 +56,65 @@ export class TerminalView {
     readonly #ats: AtsSurface;
     readonly #scheduler: UpdateScheduler;
     readonly #credit: CreditTracker;
-    readonly #fit = new FitAddon();
+    readonly #measurer: HTMLElement;
     readonly #modes: InputModes = { tabFocusMode: false, sendNextKey: false };
     readonly #cleanups: (() => void)[] = [];
-    #resizeObserver: ResizeObserver | undefined;
+    #geometry: TerminalGeometry | undefined;
+    #ready: Promise<void> = Promise.resolve();
+    #disposed = false;
 
     /** Creates a view; call {@link TerminalView.mount} to show it. */
     constructor(options: TerminalViewOptions) {
         this.#options = options;
         this.terminal = new Terminal({
             allowProposedApi: true,
-            fontFamily: FONT_FAMILY,
-            fontSize: FONT_SIZE,
+            fontFamily: TERMINAL_FONT_FAMILY,
+            fontSize: TERMINAL_FONT_SIZE,
             scrollback: SCROLLBACK_LINES,
             cursorStyle: 'block',
             cursorInactiveStyle: 'outline',
             minimumContrastRatio: 4.5,
             screenReaderMode: false,
             macOptionIsMeta: false,
+            overviewRuler: { width: SCROLLBAR_WIDTH },
             theme: xtermTheme(options.palette),
         });
         this.surface = createSurface();
         this.#hint = createHint();
+        this.#measurer = createMeasurer();
         this.#ats = new AtsSurface(this.terminal, this.surface);
         this.#scheduler = new UpdateScheduler(() => this.#ats.update(), options.assistiveTechnology);
         this.#credit = new CreditTracker(options.onCredit);
     }
 
-    /** Opens the terminal in `host` and starts the surface, input and fitting. */
-    mount(host: HTMLElement): void {
-        host.classList.add(styles['host'] ?? '');
+    /**
+     * Shows the terminal in `container`, which it fills, centered and at most `maxColumns` wide. Input and output work at once; the
+     * canvas opens once the terminal font has loaded, and {@link TerminalView.ready} settles then.
+     */
+    mount(container: HTMLElement): void {
+        const frame = document.createElement('div');
+        frame.className = styles['frame'] ?? '';
+        const host = document.createElement('div');
+        host.className = styles['host'] ?? '';
         const canvas = document.createElement('div');
         canvas.className = styles['canvas'] ?? '';
-        host.append(canvas, this.surface, this.#hint);
+        host.append(canvas, this.surface, this.#hint, this.#measurer);
+        frame.append(host);
+        container.append(frame);
         this.surface.setAttribute('aria-describedby', this.#hint.id);
-        this.terminal.open(canvas);
-        this.terminal.element?.setAttribute('aria-hidden', 'true');
-        this.#loadAddons();
-        this.#tameXtermFocus(canvas);
         this.#listen();
-        this.#observeSize(host);
+        this.#geometry = new TerminalGeometry(
+            this.terminal,
+            { frame, host, surface: this.surface, measurer: this.#measurer },
+            this.#ats,
+            this.#options.maxColumns ?? DEFAULT_MAX_COLUMNS,
+        );
+        this.#ready = loadTerminalFonts().then(() => this.#open(canvas));
+    }
+
+    /** Settles once the canvas is open and the grid fits its frame. */
+    get ready(): Promise<void> {
+        return this.#ready;
     }
 
     /** Feeds output from the daemon; resolves once xterm has parsed it. */
@@ -107,7 +135,7 @@ export class TerminalView {
     }
 
     /** Applies a theme's terminal colors. */
-    setPalette(palette: Palette): void {
+    setPalette(palette: TerminalPalette): void {
         this.terminal.options.theme = xtermTheme(palette);
     }
 
@@ -133,18 +161,31 @@ export class TerminalView {
 
     /** Releases the terminal and its listeners. */
     dispose(): void {
-        this.#resizeObserver?.disconnect();
+        this.#disposed = true;
+        this.#geometry?.dispose();
         for (const cleanup of this.#cleanups.splice(0)) {
             cleanup();
         }
         this.terminal.dispose();
     }
 
+    #open(canvas: HTMLElement): Promise<void> {
+        if (this.#disposed) {
+            return Promise.resolve();
+        }
+        this.terminal.open(canvas);
+        this.terminal.element?.setAttribute('aria-hidden', 'true');
+        this.#loadAddons();
+        this.#tameXtermFocus(canvas);
+        const fitted = this.#geometry?.observe() ?? Promise.resolve();
+        this.#scheduler.request();
+        return fitted.then(() => this.#options.onResize({ cols: this.terminal.cols, rows: this.terminal.rows }));
+    }
+
     #loadAddons(): void {
         const graphemes = new UnicodeGraphemesAddon();
         this.terminal.loadAddon(graphemes);
         this.terminal.unicode.activeVersion = '15-graphemes';
-        this.terminal.loadAddon(this.#fit);
         try {
             const webgl = new WebglAddon();
             webgl.onContextLoss(() => webgl.dispose());
@@ -176,7 +217,7 @@ export class TerminalView {
             this.terminal.onScroll(request),
             this.terminal.onSelectionChange(request),
             this.terminal.onResize((size) => {
-                this.#measure();
+                this.#geometry?.align();
                 this.#options.onResize(size);
                 request();
             }),
@@ -257,29 +298,6 @@ export class TerminalView {
         this.surface.addEventListener('wheel', onWheel, { passive: false });
         this.#cleanups.push(() => this.surface.removeEventListener('wheel', onWheel));
     }
-
-    #observeSize(host: HTMLElement): void {
-        const fit = (): void => {
-            this.#fit.fit();
-            this.#measure();
-        };
-        this.#resizeObserver = new ResizeObserver(fit);
-        this.#resizeObserver.observe(host);
-        fit();
-        this.#options.onResize({ cols: this.terminal.cols, rows: this.terminal.rows });
-    }
-
-    #measure(): void {
-        const screen = this.terminal.element?.querySelector('.xterm-screen');
-        if (screen === null || screen === undefined) {
-            return;
-        }
-        const box = screen.getBoundingClientRect();
-        const cell: CellSize = { width: box.width / this.terminal.cols, height: box.height / this.terminal.rows };
-        this.#ats.setCellSize(cell);
-        this.surface.style.letterSpacing = `${cell.width - glyphAdvance()}px`;
-        this.#scheduler.request();
-    }
 }
 
 function createSurface(): HTMLElement {
@@ -293,8 +311,8 @@ function createSurface(): HTMLElement {
     surface.setAttribute('autocorrect', 'off');
     surface.setAttribute('translate', 'no');
     surface.tabIndex = 0;
-    surface.style.fontFamily = FONT_FAMILY;
-    surface.style.fontSize = `${FONT_SIZE}px`;
+    surface.style.fontFamily = TERMINAL_FONT_FAMILY;
+    surface.style.fontSize = `${TERMINAL_FONT_SIZE}px`;
     return surface;
 }
 
@@ -306,23 +324,19 @@ function createHint(): HTMLElement {
     return hint;
 }
 
-function glyphAdvance(): number {
-    const context = document.createElement('canvas').getContext('2d');
-    if (context === null) {
-        return 0;
-    }
-    context.font = `${FONT_SIZE}px ${FONT_FAMILY}`;
-    return context.measureText('W').width;
+function createMeasurer(): HTMLElement {
+    const measurer = document.createElement('span');
+    measurer.className = styles['measurer'] ?? '';
+    measurer.setAttribute('aria-hidden', 'true');
+    measurer.style.fontFamily = TERMINAL_FONT_FAMILY;
+    measurer.style.fontSize = `${TERMINAL_FONT_SIZE}px`;
+    return measurer;
 }
 
-function xtermTheme(palette: Palette) {
-    return {
-        background: palette.terminalBackground,
-        foreground: palette.terminalForeground,
-        cursor: palette.terminalCursor,
-        cursorAccent: palette.terminalBackground,
-        selectionBackground: palette.selectionBackground,
-        selectionForeground: palette.selectionText,
-        selectionInactiveBackground: palette.selectionBackground,
-    };
+function loadTerminalFonts(): Promise<void> {
+    const fonts = [`${TERMINAL_FONT_SIZE}px "Intel One Mono"`, `italic ${TERMINAL_FONT_SIZE}px "Intel One Mono"`];
+    return Promise.all(fonts.map((font) => document.fonts.load(font))).then(
+        () => undefined,
+        () => undefined,
+    );
 }

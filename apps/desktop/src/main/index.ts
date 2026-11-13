@@ -5,8 +5,10 @@ import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL } from '../shared/contract';
 import { relayAccessibilitySupport } from './accessibility-relay';
 import { contentTypeFor, resolveAppRequest } from './app-protocol';
+import { type AppSettings, appSettingsStore } from './app-settings';
+import { isBackgroundLaunch } from './background-launch';
 import { startConnectionHost } from './connection-host';
-import { currentDisplaySettings, relayDisplaySettings } from './display-relay';
+import { DisplayRelay } from './display-relay';
 import { registerHandlers } from './ipc';
 import { menuTemplate } from './menu';
 import { CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
@@ -15,6 +17,11 @@ import { isAppPage } from './trusted-sender';
 const rendererRoot = join(import.meta.dirname, '../renderer');
 const devServer = process.env['ELECTRON_RENDERER_URL'];
 let mainWindow: BrowserWindow | undefined;
+const background = isBackgroundLaunch({ seamEnabled: __TRC_TEST_SEAM__, env: process.env });
+
+if (background && process.platform === 'darwin') {
+    app.setActivationPolicy('accessory');
+}
 
 protocol.registerSchemesAsPrivileged([
     { scheme: APP_IDENTITY.appScheme, privileges: { standard: true, secure: true, supportFetchAPI: true } },
@@ -22,18 +29,21 @@ protocol.registerSchemesAsPrivileged([
 
 if (app.requestSingleInstanceLock()) {
     app.on('second-instance', focusMainWindow);
-    app.whenReady().then(start);
+    void app.whenReady().then(start);
     app.on('window-all-closed', () => app.quit());
 } else {
     app.quit();
 }
 
-function start(): void {
+async function start(): Promise<void> {
     protocol.handle(APP_IDENTITY.appScheme, serveAppRequest);
+    const store = appSettingsStore(app.getPath('userData'));
+    let settings: AppSettings = await store.read();
+    const display = new DisplayRelay(settings.theme);
     registerHandlers(
         ipcMain,
         {
-            'display:get': async () => currentDisplaySettings(),
+            'display:get': async () => display.current(),
             'accessibility:get': async () => app.isAccessibilitySupportEnabled(),
         },
         (event) => isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
@@ -44,10 +54,16 @@ function start(): void {
                 appName: APP_IDENTITY.productName,
                 onCommand: (command) => mainWindow?.webContents.send(APP_COMMAND_CHANNEL, command),
                 onLookUp: () => mainWindow?.webContents.showDefinitionForSelection(),
+                themePreference: settings.theme,
+                onThemePreference: (theme) => {
+                    settings = { ...settings, theme };
+                    display.setPreference(theme);
+                    void store.write(settings);
+                },
             }),
         ),
     );
-    mainWindow = createWindow();
+    mainWindow = createWindow(display);
 }
 
 function focusMainWindow(): void {
@@ -56,6 +72,10 @@ function focusMainWindow(): void {
     }
     if (mainWindow.isMinimized()) {
         mainWindow.restore();
+    }
+    if (background) {
+        mainWindow.showInactive();
+        return;
     }
     mainWindow.focus();
 }
@@ -74,15 +94,19 @@ async function serveAppRequest(request: Request): Promise<Response> {
     });
 }
 
-function createWindow(): BrowserWindow {
+function createWindow(display: DisplayRelay): BrowserWindow {
     const window = new BrowserWindow({
         width: 1200,
         height: 800,
         title: APP_IDENTITY.productName,
+        show: !background,
         webPreferences: secureWebPreferences(join(import.meta.dirname, '../preload/index.cjs')),
     });
+    if (background) {
+        window.once('ready-to-show', () => window.showInactive());
+    }
     startConnectionHost(window);
-    relayDisplaySettings(window);
+    display.attach(window);
     relayAccessibilitySupport(window);
     void window.loadURL(devServer ?? `${APP_IDENTITY.appScheme}://${APP_IDENTITY.appHost}/index.html`);
     return window;

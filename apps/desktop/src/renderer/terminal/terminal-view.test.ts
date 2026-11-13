@@ -28,7 +28,7 @@ function mount(): Harness {
     const credits: number[] = [];
     const sizes: { cols: number; rows: number }[] = [];
     const view = new TerminalView({
-        palette: THEMES.light,
+        palette: THEMES.midnight.terminal,
         isMac: true,
         assistiveTechnology: () => false,
         onInput: (text) => inputs.push(text),
@@ -42,6 +42,7 @@ function mount(): Harness {
 }
 
 async function written(view: TerminalView, text: string): Promise<void> {
+    await view.ready;
     await view.write(new TextEncoder().encode(text));
     await frames();
 }
@@ -67,8 +68,9 @@ function beforeInput(target: HTMLElement, inputType: string, data: string | null
 }
 
 describe('TerminalView: the Accessible Text Surface (A11Y-01, A11Y-04, A11Y-06)', () => {
-    it('is one named, multiline, editable text box over a canvas hidden from assistive technology', () => {
+    it('is one named, multiline, editable text box over a canvas hidden from assistive technology', async () => {
         const { view, host } = mount();
+        await view.ready;
         const surface = view.surface;
         expect(surface.getAttribute('role')).toBe('textbox');
         expect(surface.getAttribute('aria-multiline')).toBe('true');
@@ -188,6 +190,22 @@ describe('TerminalView: focus and pointer (A11Y-05, A11Y-06)', () => {
         expect(inputs).toEqual(['\t', '\t']);
     });
 
+    it('keeps the text surface above every xterm layer, so the pointer selects real text (A11Y-04)', async () => {
+        const { view } = mount();
+        await written(view, 'hello world');
+        const box = view.surface.getBoundingClientRect();
+        const points = [
+            [box.left + 5, box.top + 5],
+            [box.left + box.width / 2, box.top + box.height / 2],
+            [Math.min(box.right, window.innerWidth) - 30, Math.min(box.bottom, window.innerHeight) - 5],
+        ] as const;
+        const hits = points.map(([x, y]) => {
+            const element = document.elementFromPoint(x, y);
+            return view.surface.contains(element) ? 'surface' : `${element?.tagName}.${element?.className}`;
+        });
+        expect(hits).toEqual(['surface', 'surface', 'surface']);
+    });
+
     it('lets the pointer reach the program while it tracks the mouse', async () => {
         const { view } = mount();
         expect(getComputedStyle(view.surface).pointerEvents).toBe('auto');
@@ -203,6 +221,54 @@ describe('TerminalView: focus and pointer (A11Y-05, A11Y-06)', () => {
         view.surface.focus();
         view.surface.blur();
         expect(inputs).toEqual(['\u001b[I', '\u001b[O']);
+    });
+});
+
+function textRect(view: TerminalView, row: number, start: number, end: number): DOMRect {
+    const node = view.surface.querySelector(`[data-row="${row}"]`)?.firstChild;
+    const range = document.createRange();
+    if (node instanceof Text) {
+        range.setStart(node, start);
+        range.setEnd(node, end);
+    }
+    return range.getBoundingClientRect();
+}
+
+describe('TerminalView: grid alignment (A11Y-04.5, A11Y-06.3)', () => {
+    it('renders the terminal in Intel One Mono at 14 px', async () => {
+        const { view } = mount();
+        await view.ready;
+        expect(view.terminal.options.fontFamily).toContain('Intel One Mono');
+        expect(view.terminal.options.fontSize).toBe(14);
+        expect(document.fonts.check('14px "Intel One Mono"')).toBe(true);
+        expect(getComputedStyle(view.surface).fontFamily).toContain('Intel One Mono');
+    });
+
+    it('lays every surface row over its terminal row, one character per cell', async () => {
+        const { view } = mount();
+        await view.ready;
+        await written(view, `${'x'.repeat(60)}\r\n${'y'.repeat(10)}\r\nz`);
+        const screen = view.terminal.element?.querySelector('.xterm-screen')?.getBoundingClientRect();
+        const cellWidth = (screen?.width ?? 0) / view.terminal.cols;
+        const cellHeight = (screen?.height ?? 0) / view.terminal.rows;
+        const wide = textRect(view, 0, 0, 60);
+        expect(Math.abs(wide.left - (screen?.left ?? 0))).toBeLessThan(1);
+        expect(Math.abs(wide.width - 60 * cellWidth)).toBeLessThan(cellWidth / 2);
+        const third = textRect(view, 2, 0, 1);
+        expect(Math.abs(third.top - ((screen?.top ?? 0) + 2 * cellHeight))).toBeLessThan(cellHeight / 4);
+        expect(Math.abs(third.height - cellHeight)).toBeLessThan(cellHeight / 4);
+    });
+
+    it('puts the caret on the cursor cell, where Zoom and the IME window follow it', async () => {
+        const { view } = mount();
+        await view.ready;
+        view.surface.focus();
+        await written(view, 'prompt$ ');
+        const screen = view.terminal.element?.querySelector('.xterm-screen')?.getBoundingClientRect();
+        const cellWidth = (screen?.width ?? 0) / view.terminal.cols;
+        const caret = getSelection()?.getRangeAt(0).getBoundingClientRect();
+        expect(Math.abs((caret?.left ?? 0) - ((screen?.left ?? 0) + 8 * cellWidth))).toBeLessThan(cellWidth / 2);
+        expect(caret?.height ?? 0).toBeGreaterThan(0);
     });
 });
 
@@ -228,8 +294,27 @@ describe('TerminalView: output (US-1.11, SEC-06, D-19)', () => {
         expect(view.terminal.options.cursorInactiveStyle).toBe('outline');
     });
 
+    it('caps the grid at 120 columns, centered in a wide frame, and drops columns in a narrow one (A11Y-07.5)', async () => {
+        const { view, host, sizes } = mount();
+        host.style.width = '1800px';
+        await view.ready;
+        await frames();
+        expect(view.terminal.cols).toBe(120);
+        const frameBox = host.getBoundingClientRect();
+        const gridBox = view.surface.parentElement?.getBoundingClientRect();
+        const leftGap = (gridBox?.left ?? 0) - frameBox.left;
+        const rightGap = frameBox.right - (gridBox?.right ?? 0);
+        expect(Math.abs(leftGap - rightGap)).toBeLessThan(2);
+        host.style.width = '400px';
+        await frames();
+        await frames();
+        expect(view.terminal.cols).toBeLessThan(60);
+        expect(sizes.at(-1)?.cols).toBe(view.terminal.cols);
+    });
+
     it('fits the terminal to its host and reports the size', async () => {
-        const { sizes } = mount();
+        const { view, sizes } = mount();
+        await view.ready;
         await frames();
         expect(sizes.at(-1)?.cols).toBeGreaterThan(40);
         expect(sizes.at(-1)?.rows).toBeGreaterThan(10);

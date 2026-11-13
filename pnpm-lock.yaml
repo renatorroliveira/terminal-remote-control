@@ -162,6 +162,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@xterm/addon-webgl@0.19.0': 7adb7217d8478234aa6c1f1cf13f1ac5cbafe30b17e5880801022bef9eb1f47b
+
 importers:
 
   .:
@@ -208,15 +211,12 @@ importers:
       '@trc/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@xterm/addon-fit':
-        specifier: 0.11.0
-        version: 0.11.0
       '@xterm/addon-unicode-graphemes':
         specifier: 0.4.0
         version: 0.4.0
       '@xterm/addon-webgl':
         specifier: 0.19.0
-        version: 0.19.0
+        version: 0.19.0(patch_hash=7adb7217d8478234aa6c1f1cf13f1ac5cbafe30b17e5880801022bef9eb1f47b)
       '@xterm/xterm':
         specifier: 6.0.0
         version: 6.0.0
@@ -235,6 +235,9 @@ importers:
       zod:
         specifier: 4.6.7
         version: 4.6.7
+      zustand:
+        specifier: 5.1.0
+        version: 5.1.0(@types/react@19.3.0)(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1))
     devDependencies:
       '@axe-core/playwright':
         specifier: 4.14.0
@@ -980,9 +983,6 @@ packages:
   '@vitest/utils@5.1.0':
     resolution: {integrity: sha512-V+qgCwkvVw+s1t1S5TaoBHsLi5Sz/YmohCMoOu0mZ8ZQst2bKhRYARAQucWpVg8D0mv0x5MHcWXY5QdOsoiGBQ==}
 
-  '@xterm/addon-fit@0.11.0':
-    resolution: {integrity: sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==}
-
   '@xterm/addon-unicode-graphemes@0.4.0':
     resolution: {integrity: sha512-9+/CqwbKcnlkJU4d3wIgO+wjsL8f6vyz+UwUWLu6nADQz8Gr8ONqGCJfdDjIdI+yYZLABQqQy47FzEM6AWELjw==}
 
@@ -1727,6 +1727,24 @@ packages:
   zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
+  zustand@5.1.0:
+    resolution: {integrity: sha512-ciJZlP48M1PTQbVQq81CGVFxHTLpZNrFjKqwjtCU34AWuXTZT/jrF3p9+fI84Cf1eSCMLapxqBy/SNTfwOBuqA==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
+
 snapshots:
 
   '@axe-core/playwright@4.14.0(playwright-core@1.65.0)':
@@ -2348,11 +2366,9 @@ snapshots:
       convert-source-map: 2.0.0
       tinyrainbow: 3.2.0
 
-  '@xterm/addon-fit@0.11.0': {}
-
   '@xterm/addon-unicode-graphemes@0.4.0': {}
 
-  '@xterm/addon-webgl@0.19.0': {}
+  '@xterm/addon-webgl@0.19.0(patch_hash=7adb7217d8478234aa6c1f1cf13f1ac5cbafe30b17e5880801022bef9eb1f47b)': {}
 
   '@xterm/headless@6.0.0': {}
 
@@ -2939,3 +2955,9 @@ snapshots:
       yargs-parser: 22.0.0
 
   zod@4.6.7: {}
+
+  zustand@5.1.0(@types/react@19.3.0)(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1)):
+    optionalDependencies:
+      '@types/react': 19.3.0
+      react: 19.3.1
+      use-sync-external-store: 1.7.0(react@19.3.1)

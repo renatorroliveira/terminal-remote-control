@@ -1,6 +1,98 @@
 {
+  "host.closed": {
+    "defaultMessage": "Closed",
+    "description": "Host connection state."
+  },
+  "host.connected": {
+    "defaultMessage": "Connected",
+    "description": "Host connection state."
+  },
+  "host.connecting": {
+    "defaultMessage": "Connecting",
+    "description": "Host connection state."
+  },
+  "host.disconnected": {
+    "defaultMessage": "Disconnected",
+    "description": "Host connection state."
+  },
+  "host.failed": {
+    "defaultMessage": "Connection failed",
+    "description": "Host connection state."
+  },
+  "host.hostKey": {
+    "defaultMessage": "Host key needs confirmation",
+    "description": "Host connection state while an unknown host key waits for the user."
+  },
+  "host.idle": {
+    "defaultMessage": "Not connected",
+    "description": "Host connection state."
+  },
+  "session.exited": {
+    "defaultMessage": "Exited",
+    "description": "Session state, exit status unknown."
+  },
+  "session.exitedCode": {
+    "defaultMessage": "Exited with code {code}",
+    "description": "Session state after the shell exited with a status code."
+  },
+  "session.exitedSignal": {
+    "defaultMessage": "Exited by signal {signal}",
+    "description": "Session state after a signal ended the shell."
+  },
+  "session.failedToStart": {
+    "defaultMessage": "Failed to start",
+    "description": "Session state."
+  },
+  "session.running": {
+    "defaultMessage": "Running",
+    "description": "Session state."
+  },
+  "session.starting": {
+    "defaultMessage": "Starting",
+    "description": "Session state."
+  },
+  "session.stopped": {
+    "defaultMessage": "Stopped",
+    "description": "Session state."
+  },
+  "session.unspecified": {
+    "defaultMessage": "Unknown state",
+    "description": "Session state."
+  },
   "shell.noSession": {
     "defaultMessage": "No session is open.",
     "description": "Shown in the terminal area while no session is open."
+  },
+  "sidebar.empty": {
+    "defaultMessage": "No hosts yet.",
+    "description": "Shown in the sidebar before any host is added."
+  },
+  "sidebar.item": {
+    "defaultMessage": "{name}, {state}",
+    "description": "Accessible name of a host or session row: its name, then its state."
+  },
+  "sidebar.newSession": {
+    "defaultMessage": "New session",
+    "description": "Button that creates a session on the current host."
+  },
+  "sidebar.region": {
+    "defaultMessage": "Sessions",
+    "description": "Name of the sidebar region and its heading."
+  },
+  "sidebar.toggle": {
+    "defaultMessage": "Sessions",
+    "description": "Button that shows or hides the sidebar when the window is narrow."
+  },
+  "sidebar.tree": {
+    "defaultMessage": "Hosts and sessions",
+    "description": "Accessible name of the tree of hosts and their sessions."
+  },
+  "terminal.hint": {
+    "defaultMessage": "Option F1: accessibility help.",
+    "description": "Hint read after the terminal name."
+  },
+  "terminal.label": {
+    "defaultMessage": "{session}, {host}",
+    "description": "Accessible name of a terminal: the session name, then its host."
   }
 }

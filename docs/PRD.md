@@ -2,9 +2,9 @@
 
 | Field        | Value                                        |
 | ------------ | -------------------------------------------- |
-| Status       | Draft v0.5                                   |
+| Status       | Draft v0.6                                   |
 | Owner        | Renato Oliveira                              |
-| Last updated | 2026-11-11                                   |
+| Last updated | 2026-11-12                                   |
 | Scope        | P0 (first release), delivered in seven epics |
 | Working name | Term Remote Control (final name TBD)         |
 
@@ -375,10 +375,11 @@ The terminal and UI MUST stay readable at any size and contrast setting.
    foreground and background — default 4.5:1, user-adjustable, can be turned
    off — by adjusting program-supplied colors. Low-contrast ANSI colors chosen by
    programs stay readable.
-3. Built-in themes: light, dark, high-contrast light and high-contrast dark. The
+3. Built-in themes: Midnight (the default, a high-contrast dark theme), light,
+   dark, high-contrast light and high-contrast dark. With "Match System", the
    app follows the OS light/dark setting, Windows contrast themes (forced
    colors: system colors in UI and terminal), macOS Increase Contrast and GNOME
-   High Contrast.
+   High Contrast. The UI and the terminal have separate palettes in every theme.
 4. Terminal font size and app zoom scale to at least 200% by shortcut and
    setting without loss of content or function. The terminal recomputes rows and
    columns and resizes the PTY.
