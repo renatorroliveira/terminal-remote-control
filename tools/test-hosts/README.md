@@ -22,6 +22,8 @@ pass to ssh with `-F`. Ports are published on `127.0.0.1` only.
 | `trc-alpine`                                | Alpine 3.23, busybox only                                 |
 | `trc-rocky`                                 | Rocky Linux 9                                             |
 | `trc-noexec`                                | Ubuntu with the home directory mounted `noexec`           |
+| `trc-latency`                               | Ubuntu behind a 100 ms delay (`tc netem`, `NET_ADMIN`)    |
+| `trc-scale-01` … `trc-scale-25`             | 25 users (`u01` … `u25`) on one Ubuntu host               |
 | `trc-jump`                                  | the only host that allows forwarding                      |
 | `trc-behind`                                | reachable only through `trc-jump` (`ProxyJump`)           |
 | `trc-cert`                                  | certificate login signed by the run's test CA             |

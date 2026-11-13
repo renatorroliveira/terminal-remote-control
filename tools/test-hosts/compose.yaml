@@ -28,6 +28,21 @@ services:
         depends_on: [ubuntu]
         tmpfs: ['/home/tester:rw,noexec,nosuid,mode=0755']
         ports: ['127.0.0.1:2224:22']
+    latency:
+        <<: *host
+        image: trc-test-ubuntu
+        depends_on: [ubuntu]
+        cap_add: [NET_ADMIN]
+        environment: { TRC_NETEM_DELAY: 100ms }
+        ports: ['127.0.0.1:2226:22']
+    scale:
+        <<: *host
+        image: trc-test-ubuntu
+        depends_on: [ubuntu]
+        environment:
+            TRC_CREATE_USERS: u01 u02 u03 u04 u05 u06 u07 u08 u09 u10 u11 u12 u13 u14 u15 u16 u17 u18 u19 u20 u21 u22 u23 u24 u25
+            TRC_MAX_STARTUPS: '100:30:200'
+        ports: ['127.0.0.1:2227:22']
     jump:
         <<: *host
         image: trc-test-alpine

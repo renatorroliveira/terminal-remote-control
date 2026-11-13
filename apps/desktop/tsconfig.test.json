@@ -4,5 +4,5 @@
         "lib": ["es2025", "dom", "dom.iterable"],
         "types": ["node"]
     },
-    "include": ["test/e2e", "test/ax", "src/shared"]
+    "include": ["test/e2e", "test/ax", "test/nfr", "src/shared"]
 }

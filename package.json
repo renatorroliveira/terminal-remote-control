@@ -25,6 +25,7 @@
         "verify:artifact": "node tools/verify-artifact/verify-artifact.ts",
         "test:daemon": "sh tools/test-hosts/rust-tests.sh",
         "test:e2e": "pnpm --filter @trc/desktop test:e2e",
+        "test:nfr": "vitest run --project nfr",
         "test:ax": "swift build -c release --package-path tools/ax-probe && pnpm --filter @trc/desktop build:test && vitest run --project ax",
         "gen": "cargo test -p trc-protocol --quiet export_bindings",
         "rust:check": "cargo fmt --all --check && cargo clippy --workspace --all-targets --quiet -- -D warnings && cargo nextest run --workspace --cargo-quiet",
