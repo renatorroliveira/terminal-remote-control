@@ -65,7 +65,7 @@ async fn attach(client: &mut AppClient, request_id: u32, id: &SessionId) -> u32 
     else {
         unreachable!()
     };
-    assert_eq!(credit, 256 * 1024);
+    assert_eq!(credit, 1024 * 1024);
     stream
 }
 
