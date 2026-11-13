@@ -3,7 +3,8 @@ name: release
 # Cuts a release entirely in GitHub Actions (P-21, D-42), from the Run workflow button or `pnpm release <bump>`. The
 # prepare job commits the version; CI, the daemons, the macOS packages and a smoke test on each architecture's own
 # runner all check that commit; only then does the publish job tag, push and publish it. A dry run stops before
-# publish, and pushes nothing.
+# publish, and pushes nothing. Installs skip dependency lifecycle scripts wherever a job commits or pushes. A failed
+# publish resumes when the job is re-run (tools/release/publish.ts).
 on:
     workflow_dispatch:
         inputs:
@@ -35,6 +36,7 @@ jobs:
         name: prepare the release commit
         if: github.ref == 'refs/heads/main'
         runs-on: ubuntu-24.04
+        timeout-minutes: 10
         outputs:
             version: ${{ steps.prepare.outputs.version }}
         steps:
@@ -46,7 +48,8 @@ jobs:
               with:
                   node-version: 24
             - run: corepack enable pnpm
-            - run: pnpm install --frozen-lockfile
+            - run: pnpm install --frozen-lockfile --ignore-scripts
+            - run: sh tools/git-hooks/install.sh
             - id: prepare
               run: node tools/release/prepare.ts "$BUMP" "$RUNNER_TEMP/release"
               env:
@@ -68,6 +71,7 @@ jobs:
         name: daemons (Linux x86_64 and arm64)
         needs: prepare
         runs-on: ubuntu-24.04
+        timeout-minutes: 30
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -99,6 +103,7 @@ jobs:
         name: macOS packages (arm64 and x64)
         needs: daemon
         runs-on: macos-15
+        timeout-minutes: 45
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -135,6 +140,7 @@ jobs:
                     - runner: macos-15-intel
                       arch: x64
         runs-on: ${{ matrix.runner }}
+        timeout-minutes: 20
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -154,12 +160,20 @@ jobs:
                   VERSION: ${{ needs.prepare.outputs.version }}
                   ARCH: ${{ matrix.arch }}
             - run: pnpm verify:artifact "$RUNNER_TEMP/app/Terminal Remote Control.app"
+            - run: hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg" "$RUNNER_TEMP/packages/TRC-$VERSION-mac-$ARCH.dmg"
+              env:
+                  VERSION: ${{ needs.prepare.outputs.version }}
+                  ARCH: ${{ matrix.arch }}
+            - run: pnpm verify:artifact "$RUNNER_TEMP/dmg/Terminal Remote Control.app"
+            - if: always()
+              run: hdiutil detach "$RUNNER_TEMP/dmg" || true
 
     publish:
         name: publish
         needs: [prepare, checks, smoke]
-        if: ${{ !inputs.dry-run }}
+        if: ${{ format('{0}', inputs.dry-run) == 'false' }}
         runs-on: ubuntu-24.04
+        timeout-minutes: 15
         permissions:
             contents: write
         steps:
@@ -171,7 +185,8 @@ jobs:
               with:
                   node-version: 24
             - run: corepack enable pnpm
-            - run: pnpm install --frozen-lockfile
+            - run: pnpm install --frozen-lockfile --ignore-scripts
+            - run: sh tools/git-hooks/install.sh
             - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
               with:
                   name: packages

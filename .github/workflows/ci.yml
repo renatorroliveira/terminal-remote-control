@@ -27,6 +27,8 @@ jobs:
         runs-on: ubuntu-24.04
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
             - if: inputs.release-commit
               uses: ./.github/actions/release-commit
             - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -48,6 +50,8 @@ jobs:
         runs-on: ubuntu-24.04
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
             - if: inputs.release-commit
               uses: ./.github/actions/release-commit
             - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
@@ -71,3 +75,4 @@ jobs:
             - run: corepack enable pnpm
             - run: pnpm install --frozen-lockfile --ignore-scripts
             - run: pnpm notices:check
+            - run: pnpm gen:check

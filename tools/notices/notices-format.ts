@@ -48,23 +48,62 @@ interface PnpmLicense {
 const RULE = '='.repeat(80);
 const LICENSE_FILE = /^(licen[cs]e|copying|notice)([-._].*)?$/i;
 const OWN_SCOPE = '@trc/';
+const OFL_SUFFIX = '.OFL.txt';
+const FONT_FILE = /\.(ttf|otf|woff2?)$/;
 
-/** The production npm packages in `pnpm licenses list --prod --json`, one per version, without the app's own. */
-export function npmPackages(licensesJson: string): readonly ShippedPackage[] {
+/**
+ * The production npm packages in `pnpm licenses list --prod --json`, one per version, without the app's own. Each
+ * version is paired with the folder whose `package.json` holds it (`versionAt`), since pnpm does not promise that
+ * its versions and paths line up.
+ */
+export function npmPackages(
+    licensesJson: string,
+    versionAt: (folder: string) => string | undefined,
+): readonly ShippedPackage[] {
     const groups = Object.values(JSON.parse(licensesJson) as Record<string, readonly PnpmLicense[]>);
-    return byName(
-        groups
-            .flat()
-            .filter((entry) => !entry.name.startsWith(OWN_SCOPE))
-            .flatMap((entry) =>
-                entry.versions.map((version, index) => ({
-                    name: entry.name,
-                    version,
-                    license: entry.license,
-                    folder: entry.paths[index] ?? entry.paths[0] ?? '',
-                })),
-            ),
-    );
+    const shipped = groups
+        .flat()
+        .filter((entry) => !entry.name.startsWith(OWN_SCOPE))
+        .flatMap((entry) => entry.paths.map((folder) => installed(entry, folder, versionAt(folder))));
+    return byName([...new Map(shipped.map((entry) => [`${entry.name}@${entry.version}`, entry])).values()]);
+}
+
+/** The MIT license with `holder`'s copyright, for a package that declares MIT but ships no license file. */
+export function mitLicense(holder: string): string {
+    return [
+        'MIT License',
+        '',
+        `Copyright (c) ${holder}`,
+        '',
+        'Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated',
+        'documentation files (the "Software"), to deal in the Software without restriction, including without limitation',
+        'the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and',
+        'to permit persons to whom the Software is furnished to do so, subject to the following conditions:',
+        '',
+        'The above copyright notice and this permission notice shall be included in all copies or substantial portions',
+        'of the Software.',
+        '',
+        'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO',
+        'THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE',
+        'AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF',
+        'CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS',
+        'IN THE SOFTWARE.',
+    ].join('\n');
+}
+
+/**
+ * The OFL license files of the bundled fonts, in name order, from the fonts folder's file names. Every font file must
+ * have its family's `<family>.OFL.txt` beside it, so a new font cannot ship without its notice.
+ */
+export function fontLicenses(files: readonly string[]): readonly string[] {
+    const licenses = files.filter((file) => file.endsWith(OFL_SUFFIX)).sort();
+    const families = licenses.map((file) => file.slice(0, -OFL_SUFFIX.length));
+    for (const font of files.filter((file) => FONT_FILE.test(file))) {
+        if (!families.some((family) => font.startsWith(`${family}.`) || font.startsWith(`${family}-`))) {
+            throw new Error(`the font ${font} has no ${font.replace(FONT_FILE, '')}${OFL_SUFFIX} beside it`);
+        }
+    }
+    return licenses;
 }
 
 /** The registry crates linked into `root`: its normal dependencies, transitively, without build or dev ones. */
@@ -119,6 +158,13 @@ export function formatNotices(product: string, notices: readonly Notice[]): stri
         '',
         ...sections,
     ].join('\n');
+}
+
+function installed(entry: PnpmLicense, folder: string, version: string | undefined): ShippedPackage {
+    if (version === undefined || !entry.versions.includes(version)) {
+        throw new Error(`${entry.name} in ${folder} is ${version}, not one of ${entry.versions.join(', ')}`);
+    }
+    return { name: entry.name, version, license: entry.license, folder };
 }
 
 function byName(packages: readonly ShippedPackage[]): readonly ShippedPackage[] {

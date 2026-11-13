@@ -6,6 +6,7 @@ import {
     expectedFuses,
     fuseProblems,
     listenerProblems,
+    lsofVisibilityProblems,
     manifestProblems,
     seamProblems,
     signatureProblems,
@@ -24,6 +25,14 @@ describe('expectedFuses', () => {
             enableEmbeddedAsarIntegrityValidation: true,
             onlyLoadAppFromAsar: true,
         });
+    });
+
+    it('refuses a config that sets no fuses, so the check can never pass on nothing', () => {
+        expect(() => expectedFuses('appId: dev.trc.desktop\n')).toThrow(/sets no electronFuses/);
+        expect(() => expectedFuses('electronFuses:\nmac:\n')).toThrow(/sets no electronFuses/);
+        expect(() =>
+            expectedFuses('electronFuses:\n    runAsNode: false\n    # note\n    onlyLoadAppFromAsar: maybe\n'),
+        ).toThrow(/line 3 under electronFuses/);
     });
 });
 
@@ -82,11 +91,30 @@ describe('manifestProblems', () => {
 });
 
 describe('listenerProblems', () => {
-    it('reports every socket lsof lists, and nothing for an empty list (SEC-01)', () => {
-        const lsof =
-            'COMMAND   PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\nTerminal 22778 me 32u IPv4 0x6f 0t0 TCP 127.0.0.1:9333 (LISTEN)\n';
-        expect(listenerProblems(lsof)).toEqual(['socket open: Terminal 22778 TCP 127.0.0.1:9333 (LISTEN)']);
-        expect(listenerProblems('')).toEqual([]);
+    it('reports every socket an lsof -F pcn run lists, and nothing when it found none (SEC-01)', () => {
+        const stdout = 'p22778\ncTerminal\nf32\nn127.0.0.1:9333\nf33\nn*:5353\np22779\ncHelper\nn[::1]:4000\n';
+        expect(listenerProblems({ status: 0, stdout, stderr: '' })).toEqual([
+            'socket open: Terminal 22778 127.0.0.1:9333',
+            'socket open: Terminal 22778 *:5353',
+            'socket open: Helper 22779 [::1]:4000',
+        ]);
+        expect(listenerProblems({ status: 1, stdout: '', stderr: '' })).toEqual([]);
+    });
+
+    it('fails an lsof run that errored, so a broken lsof never reads as no sockets', () => {
+        expect(listenerProblems({ status: 1, stdout: '', stderr: 'lsof: illegal option' })).toEqual([
+            'lsof failed (exit 1): lsof: illegal option',
+        ]);
+        expect(listenerProblems({ status: null, stdout: '', stderr: '' })).toEqual(['lsof failed (exit null): ']);
+    });
+});
+
+describe('lsofVisibilityProblems', () => {
+    it('passes when lsof lists the process’s working directory, and fails when it cannot see the process', () => {
+        expect(lsofVisibilityProblems({ status: 0, stdout: 'p10\nfcwd\nn/\n', stderr: '' }, 10)).toEqual([]);
+        expect(lsofVisibilityProblems({ status: 1, stdout: '', stderr: '' }, 10)).toEqual([
+            'lsof cannot see the app’s process 10, so the socket check would prove nothing',
+        ]);
     });
 });
 

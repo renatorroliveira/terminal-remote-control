@@ -28,6 +28,17 @@ export function devVersion(release: string): string {
     return `${bumpVersion(release, 'minor')}-dev`;
 }
 
+/**
+ * Refuses a release numbered below the development version `main` carries, such as a patch of the last release once
+ * `main` moved on to the next minor: its notes and `-dev` bump would go backwards.
+ */
+export function checkReleaseVersion(release: string, current: string): void {
+    const target = current.replace(/-dev$/, '');
+    if (compare(release, target) < 0) {
+        throw new Error(`${release} is below ${current}, the version main carries; set main's version first`);
+    }
+}
+
 /** The highest release among git tags such as `v0.1.0`, or `0.0.0` before the first release. */
 export function lastRelease(tags: readonly string[]): string {
     const releases = tags.flatMap((tag) => RELEASE_TAG.exec(tag)?.[1] ?? []);

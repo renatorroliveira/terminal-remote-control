@@ -40,7 +40,7 @@ export function buildDaemons(repository: string, output: string): void {
 }
 
 function buildTarget(repository: string, output: string, target: DaemonTarget): BuiltBinary {
-    execFileSync('cargo', ['zigbuild', '--quiet', '--release', '--target', target.triple, '-p', 'trcd'], {
+    execFileSync('cargo', ['zigbuild', '--locked', '--quiet', '--release', '--target', target.triple, '-p', 'trcd'], {
         cwd: repository,
         stdio: 'inherit',
     });
@@ -52,7 +52,7 @@ function buildTarget(repository: string, output: string, target: DaemonTarget): 
 }
 
 function daemonVersion(repository: string): string {
-    const metadata = execFileSync('cargo', ['metadata', '--format-version', '1', '--no-deps'], {
+    const metadata = execFileSync('cargo', ['metadata', '--locked', '--format-version', '1', '--no-deps'], {
         cwd: repository,
         encoding: 'utf8',
     });

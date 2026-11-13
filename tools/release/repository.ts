@@ -9,7 +9,8 @@ export const ROOT = resolve(import.meta.dirname, '../..');
 
 /** Every manifest whose version moves with a release. */
 const PACKAGE_MANIFESTS = ['package.json', 'apps/desktop/package.json', 'packages/protocol/package.json'] as const;
-const VERSION_FILES = [...PACKAGE_MANIFESTS, 'Cargo.toml', 'Cargo.lock'] as const;
+/** Every file a release's version commits change. */
+export const VERSION_FILES = [...PACKAGE_MANIFESTS, 'Cargo.toml', 'Cargo.lock'] as const;
 
 /** Sets `version` in every package manifest, the Cargo workspace and Cargo.lock. */
 export function setVersion(version: string): void {
@@ -29,6 +30,15 @@ export function commitVersion(subject: string, body: string): void {
 /** Runs a command in the repository, its output shown. */
 export function run(command: string, args: readonly string[]): void {
     execFileSync(command, args, { cwd: ROOT, stdio: 'inherit' });
+}
+
+/** Runs a command in the repository and returns its trimmed output, or undefined when it fails. */
+export function query(command: string, args: readonly string[]): string | undefined {
+    try {
+        return capture(command, args);
+    } catch {
+        return undefined;
+    }
 }
 
 /** Runs a command in the repository and returns its trimmed output. */

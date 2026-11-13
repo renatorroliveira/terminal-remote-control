@@ -3,11 +3,11 @@
  * writes the release notes, commits the version, and keeps that commit in a git bundle for the jobs that build,
  * check and publish it. Run `node tools/release/prepare.ts <major|minor|patch> <output folder>` in GitHub Actions.
  */
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { releaseNotes } from './notes.ts';
-import { capture, commitVersion, run, setVersion } from './repository.ts';
-import { type Bump, bumpVersion, lastRelease } from './versions.ts';
+import { capture, commitVersion, ROOT, run, setVersion } from './repository.ts';
+import { type Bump, bumpVersion, checkReleaseVersion, lastRelease } from './versions.ts';
 
 const BUMPS: readonly string[] = ['major', 'minor', 'patch'];
 
@@ -15,6 +15,10 @@ const BUMPS: readonly string[] = ['major', 'minor', 'patch'];
 export function prepare(bump: Bump, output: string): string {
     const last = lastRelease(capture('git', ['tag', '--list', 'v*']).split('\n'));
     const version = bumpVersion(last, bump);
+    checkReleaseVersion(
+        version,
+        (JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as { version: string }).version,
+    );
     const range = last === '0.0.0' ? ['HEAD'] : [`v${last}..HEAD`];
     const notes = releaseNotes(version, capture('git', ['log', ...range, '--format=%s']).split('\n'));
     setVersion(version);
