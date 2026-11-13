@@ -1,0 +1,42 @@
+# Packaging for Terminal Remote Control (ST-20, P-11, P-19, TECH_STACK §4.5).
+appId: dev.trc.desktop
+productName: Terminal Remote Control
+copyright: Copyright © 2026 Renato Oliveira
+directories:
+    output: dist
+    buildResources: resources/icons
+files:
+    - out/**/*
+    - package.json
+    - '!**/node_modules/**/*'
+extraResources:
+    - from: resources/bin
+      to: bin
+    - from: resources/daemon
+      to: daemon
+    - from: resources/icons/icon.png
+      to: icons/icon.png
+asar: true
+electronFuses:
+    runAsNode: false
+    enableNodeOptionsEnvironmentVariable: false
+    enableNodeCliInspectArguments: false
+    grantFileProtocolExtraPrivileges: false
+    enableEmbeddedAsarIntegrityValidation: true
+    onlyLoadAppFromAsar: true
+mac:
+    category: public.app-category.developer-tools
+    icon: resources/icons/icon.icns
+    identity: '-'
+    hardenedRuntime: true
+    entitlements: resources/entitlements.mac.plist
+    entitlementsInherit: resources/entitlements.mac.plist
+    target:
+        - target: dmg
+          arch: [arm64, x64]
+        - target: zip
+          arch: [arm64, x64]
+    artifactName: TRC-${version}-mac-${arch}.${ext}
+dmg:
+    artifactName: TRC-${version}-mac-${arch}.${ext}
+publish: null

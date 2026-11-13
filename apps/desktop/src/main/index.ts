@@ -47,7 +47,7 @@ async function start(): Promise<void> {
         app.dock?.setIcon(appIconPath(resources));
     }
     const home = trcHome(process.env, app.getPath('home'));
-    await migrateLegacyState({ userData: app.getPath('userData'), home });
+    await migrateLegacyState({ appData: app.getPath('appData'), home });
     const config = new AppConfigFile(home);
     const { theme } = await config.read();
     const display = new DisplayRelay(theme);

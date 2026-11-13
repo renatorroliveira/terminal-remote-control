@@ -13,6 +13,7 @@
         "lint": "biome check --reporter=concise .",
         "docs:ids": "node tools/doc-ids/check-doc-ids.ts",
         "icons": "node tools/icons/render-icons.ts",
+        "release": "node tools/release/release.ts",
         "typecheck": "tsc -p tools --pretty false && tsc -p crates --pretty false && pnpm -r --parallel run typecheck",
         "test": "vitest run --project node-unit --project browser",
         "test:integration": "pnpm build:daemon && pnpm test:daemon && vitest run --project node-integration",
