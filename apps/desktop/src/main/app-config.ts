@@ -3,6 +3,12 @@ import { z } from 'zod';
 import { SCREEN_READER_MODES, type ScreenReaderMode } from '../shared/accessibility';
 import { DEFAULT_THEME_PREFERENCE, type ThemePreference } from '../shared/display';
 import { SIDEBAR_WIDTH } from '../shared/layout';
+import {
+    CURSOR_STYLES,
+    DEFAULT_TERMINAL_APPEARANCE,
+    TERMINAL_APPEARANCE_LIMITS,
+    type TerminalAppearance,
+} from '../shared/terminal-appearance';
 import { TERMINAL_ZOOM } from '../shared/terminal-zoom';
 import { JsonStore } from './json-store';
 
@@ -17,6 +23,8 @@ export interface AppConfig {
     readonly screenReaderMode: ScreenReaderMode;
     /** The terminal text size, in percent (A11Y-07.4). */
     readonly terminalZoom: number;
+    /** How the terminal grid and cursor look (A11Y-07.6, A11Y-07.8, A11Y-08.1). */
+    readonly terminalAppearance: TerminalAppearance;
 }
 
 /** The configuration of a new install. */
@@ -26,7 +34,19 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
     sidebarCollapsed: false,
     screenReaderMode: 'auto',
     terminalZoom: TERMINAL_ZOOM.initial,
+    terminalAppearance: DEFAULT_TERMINAL_APPEARANCE,
 };
+
+const LIMITS = TERMINAL_APPEARANCE_LIMITS;
+const DEFAULTS = DEFAULT_TERMINAL_APPEARANCE;
+
+const APPEARANCE_SCHEMA: z.ZodType<TerminalAppearance> = z.object({
+    lineHeight: z.number().min(LIMITS.lineHeight.min).max(LIMITS.lineHeight.max).catch(DEFAULTS.lineHeight),
+    letterSpacing: z.number().min(LIMITS.letterSpacing.min).max(LIMITS.letterSpacing.max).catch(DEFAULTS.letterSpacing),
+    cursorStyle: z.enum(CURSOR_STYLES).catch(DEFAULTS.cursorStyle),
+    cursorWidth: z.number().int().min(LIMITS.cursorWidth.min).max(LIMITS.cursorWidth.max).catch(DEFAULTS.cursorWidth),
+    cursorBlink: z.boolean().catch(DEFAULTS.cursorBlink),
+});
 
 const THEME_PREFERENCES = ['midnight', 'system', 'light', 'dark', 'hc-light', 'hc-dark'] as const;
 const THEME_SCHEMA = z.enum(THEME_PREFERENCES);
@@ -37,6 +57,7 @@ const CONFIG_SCHEMA: z.ZodType<AppConfig> = z.object({
     sidebarCollapsed: z.boolean().catch(DEFAULT_APP_CONFIG.sidebarCollapsed),
     screenReaderMode: z.enum(SCREEN_READER_MODES).catch(DEFAULT_APP_CONFIG.screenReaderMode),
     terminalZoom: z.number().int().min(TERMINAL_ZOOM.min).max(TERMINAL_ZOOM.max).catch(DEFAULT_APP_CONFIG.terminalZoom),
+    terminalAppearance: APPEARANCE_SCHEMA.catch(DEFAULT_APP_CONFIG.terminalAppearance),
 });
 
 /** The theme preference in `value`, when it names one. */

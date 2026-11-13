@@ -33,6 +33,7 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'menus:terminal': z.tuple([z.boolean()]),
     'clipboard:write': z.tuple([z.string().max(MAX_CLIPBOARD_WRITE)]),
     'terminal:get-zoom': z.tuple([]),
+    'terminal:get-appearance': z.tuple([]),
     'terminal:set-zoom': z.tuple([z.number().int().min(TERMINAL_ZOOM.min).max(TERMINAL_ZOOM.max)]),
     'sidebar:get-width': z.tuple([]),
     'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),

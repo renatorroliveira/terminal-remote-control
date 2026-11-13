@@ -28,10 +28,13 @@ document.title = windowTitle(undefined);
 
 let palette: TerminalPalette = THEMES.midnight.terminal;
 let composed: ComposedWorkspace | undefined;
+let reducedMotion = false;
 const onDisplay = (settings: Parameters<typeof applyDisplaySettings>[1]): void => {
     applyDisplaySettings(root, settings);
     palette = THEMES[themeFor(settings)].terminal;
+    reducedMotion = settings.reducedMotion;
     composed?.terminals.setPalette(palette);
+    composed?.terminals.setReducedMotion(reducedMotion);
 };
 window.trc.display.onChanged(onDisplay);
 void window.trc.display.get().then(onDisplay);
@@ -72,6 +75,8 @@ if (container !== null) {
             },
         });
         const { workspace, terminals } = composed;
+        terminals.setReducedMotion(reducedMotion);
+        void window.trc.terminal.appearance().then((appearance) => terminals.setAppearance(appearance));
         shell = new Shell({
             workspace,
             terminals,

@@ -30,6 +30,7 @@ export class TerminalGeometry {
     readonly #maxColumns: number;
     #observer: ResizeObserver | undefined;
     #fitted: () => void = () => undefined;
+    #extraSpacing = 0;
 
     /** Binds the geometry to a terminal and its elements. */
     constructor(terminal: Terminal, elements: GeometryElements, ats: AtsSurface, maxColumns: number) {
@@ -58,9 +59,15 @@ export class TerminalGeometry {
         return fitted;
     }
 
+    /** Adds space between columns, in CSS pixels, on top of the spacing that aligns glyphs to device pixels. */
+    setExtraSpacing(spacing: number): void {
+        this.#extraSpacing = spacing;
+        this.fit();
+    }
+
     /** Resizes the grid to the frame, then realigns the surface. */
     fit(): void {
-        const spacing = glyphSpacing(this.#advance(), window.devicePixelRatio);
+        const spacing = glyphSpacing(this.#advance(), window.devicePixelRatio) + this.#extraSpacing;
         if (this.#terminal.options.letterSpacing !== spacing) {
             this.#terminal.options.letterSpacing = spacing;
         }

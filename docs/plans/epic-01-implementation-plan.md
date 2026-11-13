@@ -710,6 +710,9 @@ As built so far (links first, by the owner's request on 2026-11-13):
 - Command+=, Command+- and Command+0 set every terminal's text size from 50% to 200%, kept in `config.json` and
   announced; the PTY follows. Window zoom moved to Control+Command+=, - and 0, because Option+Command+= and - are
   macOS Zoom's (the plan first named those).
+- `terminalAppearance` in `config.json` sets line height, extra letter spacing, the cursor's shape and bar width, and
+  blinking; ST-18's settings page edits it. A blinking cursor stops after 5 seconds without input and never blinks
+  under Reduce motion. xterm.js never draws SGR 5 blinking text.
 - Fixed on the way: Add host's suggestions now narrow as the user types (US-1.1.1).
 
 **ST-16 Review mode and find** (A11Y-03.1–8, US-1.13)

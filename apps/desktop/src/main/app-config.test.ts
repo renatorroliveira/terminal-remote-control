@@ -18,6 +18,13 @@ describe('AppConfigFile: config.json in the TRC home (P-18)', () => {
             sidebarCollapsed: false,
             screenReaderMode: 'auto',
             terminalZoom: 100,
+            terminalAppearance: {
+                lineHeight: 1,
+                letterSpacing: 0,
+                cursorStyle: 'block',
+                cursorWidth: 2,
+                cursorBlink: false,
+            },
         };
         expect(await config.read()).toEqual(defaults);
         expect(DEFAULT_APP_CONFIG).toEqual(defaults);
@@ -32,11 +39,20 @@ describe('AppConfigFile: config.json in the TRC home (P-18)', () => {
             sidebarCollapsed: true,
             screenReaderMode: 'on',
             terminalZoom: 150,
+            terminalAppearance: {
+                lineHeight: 1,
+                letterSpacing: 0,
+                cursorStyle: 'block',
+                cursorWidth: 2,
+                cursorBlink: false,
+            },
         };
         expect(await new AppConfigFile(directory).read()).toEqual(changed);
         expect(JSON.parse(readFileSync(join(directory, 'config.json'), 'utf8'))).toEqual(changed);
     });
+});
 
+describe('AppConfigFile: values it cannot use', () => {
     it('falls back to the default of each field it cannot use, and keeps the others', async () => {
         const directory = home();
         writeFileSync(
@@ -47,6 +63,7 @@ describe('AppConfigFile: config.json in the TRC home (P-18)', () => {
                 sidebarCollapsed: 'yes',
                 screenReaderMode: 'loud',
                 terminalZoom: 250,
+                terminalAppearance: { lineHeight: 1.5, letterSpacing: 99, cursorStyle: 'beam', cursorBlink: true },
             }),
         );
         expect(await new AppConfigFile(directory).read()).toEqual({
@@ -55,6 +72,7 @@ describe('AppConfigFile: config.json in the TRC home (P-18)', () => {
             sidebarCollapsed: false,
             screenReaderMode: 'auto',
             terminalZoom: 100,
+            terminalAppearance: expect.objectContaining({ cursorStyle: 'block' }),
         });
         writeFileSync(join(directory, 'config.json'), JSON.stringify({ theme: 'dark', sidebarWidth: 9000 }));
         expect(await new AppConfigFile(directory).read()).toEqual({
@@ -63,6 +81,7 @@ describe('AppConfigFile: config.json in the TRC home (P-18)', () => {
             sidebarCollapsed: false,
             screenReaderMode: 'auto',
             terminalZoom: 100,
+            terminalAppearance: expect.objectContaining({ cursorStyle: 'block' }),
         });
     });
 });
@@ -77,6 +96,26 @@ describe('AppConfigFile: updates', () => {
             sidebarCollapsed: false,
             screenReaderMode: 'auto',
             terminalZoom: 100,
+            terminalAppearance: expect.objectContaining({ cursorStyle: 'block' }),
+        });
+    });
+});
+
+describe('AppConfigFile: terminal appearance (A11Y-07.6, A11Y-07.8, A11Y-08.1)', () => {
+    it('keeps each appearance setting it can use and falls back field by field', async () => {
+        const directory = home();
+        writeFileSync(
+            join(directory, 'config.json'),
+            JSON.stringify({
+                terminalAppearance: { lineHeight: 1.5, letterSpacing: 99, cursorStyle: 'beam', cursorBlink: true },
+            }),
+        );
+        expect((await new AppConfigFile(directory).read()).terminalAppearance).toEqual({
+            lineHeight: 1.5,
+            letterSpacing: 0,
+            cursorStyle: 'block',
+            cursorWidth: 2,
+            cursorBlink: true,
         });
     });
 });

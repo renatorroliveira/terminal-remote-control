@@ -25,6 +25,13 @@ describe('migrateLegacyState: settings and hosts from the old @trc/desktop profi
             sidebarCollapsed: false,
             screenReaderMode: 'auto',
             terminalZoom: 100,
+            terminalAppearance: {
+                lineHeight: 1,
+                letterSpacing: 0,
+                cursorStyle: 'block',
+                cursorWidth: 2,
+                cursorBlink: false,
+            },
         });
         expect(JSON.parse(readFileSync(join(home, 'hosts.json'), 'utf8'))).toEqual(HOSTS);
         expect(statSync(join(home, 'hosts.json')).mode & 0o777).toBe(0o600);
