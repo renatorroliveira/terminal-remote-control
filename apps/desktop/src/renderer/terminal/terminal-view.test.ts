@@ -3,7 +3,7 @@ import { page } from 'vitest/browser';
 import { THEMES } from '../ui/themes';
 import { SELECTION_CAP } from './ats-surface';
 import type { TerminalLink } from './hyperlinks';
-import { TerminalView, type TerminalViewOptions } from './terminal-view';
+import { TERMINAL_FONT_SIZE, TerminalView, type TerminalViewOptions } from './terminal-view';
 
 interface Harness {
     readonly view: TerminalView;
@@ -642,5 +642,18 @@ describe('TerminalView: OSC 52 clipboard writes (SEC-06.1)', () => {
         await written(view, `\u001b]52;c;${btoa('second')}\u0007\u001b]52;c;?\u0007`);
         expect(writes).toEqual(['second']);
         expect(inputs).toEqual([]);
+    });
+});
+
+describe('TerminalView: text size (A11Y-07.4, US-1.11.3)', () => {
+    it('grows the terminal font and the text surface together, and fits fewer columns', async () => {
+        const { view, sizes } = mount();
+        await written(view, 'hello');
+        const before = view.terminal.cols;
+        view.setFontSize(TERMINAL_FONT_SIZE * 2);
+        expect(view.terminal.options.fontSize).toBe(TERMINAL_FONT_SIZE * 2);
+        expect(view.surface.style.fontSize).toBe(`${TERMINAL_FONT_SIZE * 2}px`);
+        await expect.poll(() => view.terminal.cols).toBeLessThan(before);
+        expect(sizes.at(-1)?.cols).toBe(view.terminal.cols);
     });
 });

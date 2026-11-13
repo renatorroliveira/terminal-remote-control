@@ -82,6 +82,7 @@ async function setup(narrow = false) {
     const saved: boolean[] = [];
     const screenReader = new FakeScreenReader();
     const links = new FakeLinks();
+    const zooms: number[] = [];
     const intl = createIntl({ locale: 'en', messages: messagesFor('en') });
     const shell = new Shell({
         workspace,
@@ -106,10 +107,17 @@ async function setup(narrow = false) {
         isNarrow: () => narrow,
         screenReader,
         links,
+        terminalZoom: {
+            get: () => Promise.resolve(190),
+            set: (zoom) => {
+                zooms.push(zoom);
+                return Promise.resolve();
+            },
+        },
     });
     onTestFinished(shell.start());
     await workspace.addHost('devbox-1');
-    return { client, terminals, workspace, shell, spoken, saved, screenReader, intl, links };
+    return { client, terminals, workspace, shell, spoken, saved, screenReader, intl, links, zooms };
 }
 
 describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
@@ -129,6 +137,9 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'Next session',
             'Previous session',
             'List links…',
+            'Bigger terminal text',
+            'Smaller terminal text',
+            'Default terminal text size',
         ]);
     });
 
@@ -259,6 +270,26 @@ describe('Shell paste and copy (US-1.12.1, US-1.12.2, A11Y-04.7)', () => {
         const { shell, spoken } = await setup();
         shell.terminalNotice('host-0/a', { kind: 'clipboard-written' });
         expect(spoken).toEqual(['A program on devbox-1 put text on the clipboard.']);
+    });
+});
+
+describe('Shell terminal text size (A11Y-07.4)', () => {
+    it('applies the saved size, steps it by 10% up to 200%, keeps and announces it, and resets it', async () => {
+        const { shell, terminals, spoken, zooms } = await setup();
+        await expect.poll(() => terminals.zoom).toBe(190);
+        shell.run('terminal.zoomIn');
+        shell.run('terminal.zoomIn');
+        expect(terminals.zoom).toBe(200);
+        shell.run('terminal.zoomReset');
+        shell.run('terminal.zoomOut');
+        expect(terminals.zoom).toBe(90);
+        expect(zooms).toEqual([200, 200, 100, 90]);
+        expect(spoken).toEqual([
+            'Terminal text 200%, the largest.',
+            'Terminal text 200%, the largest.',
+            'Terminal text 100%.',
+            'Terminal text 90%.',
+        ]);
     });
 });
 

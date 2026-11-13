@@ -15,6 +15,9 @@ export const COMMAND_IDS = [
     'session.next',
     'session.previous',
     'terminal.listLinks',
+    'terminal.zoomIn',
+    'terminal.zoomOut',
+    'terminal.zoomReset',
 ] as const;
 
 /** A command's ID. */
@@ -72,6 +75,9 @@ export const DEFAULT_KEYMAP: Readonly<Partial<Record<CommandId, string>>> = {
     'session.next': 'Shift+Cmd+]',
     'session.previous': 'Shift+Cmd+[',
     'terminal.listLinks': 'Shift+Cmd+O',
+    'terminal.zoomIn': 'Cmd+=',
+    'terminal.zoomOut': 'Cmd+-',
+    'terminal.zoomReset': 'Cmd+0',
 };
 
 /** Reads a chord such as `Shift+Cmd+P`; modifiers come in any order, as `Ctrl`, `Control`, `Option`, `Alt`, `Cmd`. */
@@ -234,7 +240,8 @@ const RESERVED: ReadonlySet<string> = new Set([
     'Option+Cmd+8',
     'Option+Cmd+=',
     'Option+Cmd+-',
-    ...['Z', 'X', 'C', 'V', 'A', 'H', 'M', 'Q', '0', '=', '-'].map((key) => `Cmd+${key}`),
+    ...['Z', 'X', 'C', 'V', 'A', 'H', 'M', 'Q'].map((key) => `Cmd+${key}`),
+    ...['0', '=', '-'].map((key) => `Ctrl+Cmd+${key}`),
     'Shift+Cmd+Z',
     'Option+Cmd+H',
     'Ctrl+Cmd+F',

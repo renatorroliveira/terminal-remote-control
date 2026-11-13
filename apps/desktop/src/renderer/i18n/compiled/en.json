@@ -205,6 +205,48 @@
       "value": "."
     }
   ],
+  "announce.zoom": [
+    {
+      "type": 0,
+      "value": "Terminal text "
+    },
+    {
+      "type": 1,
+      "value": "zoom"
+    },
+    {
+      "type": 0,
+      "value": "%."
+    }
+  ],
+  "announce.zoomLargest": [
+    {
+      "type": 0,
+      "value": "Terminal text "
+    },
+    {
+      "type": 1,
+      "value": "zoom"
+    },
+    {
+      "type": 0,
+      "value": "%, the largest."
+    }
+  ],
+  "announce.zoomSmallest": [
+    {
+      "type": 0,
+      "value": "Terminal text "
+    },
+    {
+      "type": 1,
+      "value": "zoom"
+    },
+    {
+      "type": 0,
+      "value": "%, the smallest."
+    }
+  ],
   "clipboard.written": [
     {
       "type": 0,
@@ -355,6 +397,24 @@
     {
       "type": 0,
       "value": "Tab moves focus"
+    }
+  ],
+  "command.terminalZoomIn": [
+    {
+      "type": 0,
+      "value": "Bigger terminal text"
+    }
+  ],
+  "command.terminalZoomOut": [
+    {
+      "type": 0,
+      "value": "Smaller terminal text"
+    }
+  ],
+  "command.terminalZoomReset": [
+    {
+      "type": 0,
+      "value": "Default terminal text size"
     }
   ],
   "contextMenu.label": [

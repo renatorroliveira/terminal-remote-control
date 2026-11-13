@@ -172,6 +172,14 @@ export class FakeTerminalHost implements TerminalHost {
         return this.links;
     }
 
+    /** The terminal text size, in percent. */
+    zoom = 100;
+
+    /** Records the text size. */
+    setZoom(zoom: number): void {
+        this.zoom = zoom;
+    }
+
     /** Every paste, as session and text. */
     readonly pasted: (readonly [string, string])[] = [];
 

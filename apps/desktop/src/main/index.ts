@@ -101,6 +101,11 @@ async function start(): Promise<void> {
             },
             ...hostHandlers(knownHosts),
             ...sidebarHandlers(config),
+            'terminal:get-zoom': async () => (await config.read()).terminalZoom,
+            'terminal:set-zoom': async (zoom) => {
+                await config.update({ terminalZoom: zoom });
+                return undefined;
+            },
         },
         (event) => isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
     );

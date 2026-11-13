@@ -84,6 +84,7 @@ if (container !== null) {
             isNarrow: () => narrow.matches,
             screenReader: assistiveTechnology,
             links: window.trc.links,
+            terminalZoom: { get: () => window.trc.terminal.zoom(), set: (zoom) => window.trc.terminal.setZoom(zoom) },
         });
         void workspace.load().then(() => workspace.connectAll());
         reactRoot.render(

@@ -683,7 +683,7 @@ As built:
 - Control characters stripped from titles and announcements.
 - Minimum contrast 4.5:1, including the dim-text fix.
 - Font size and zoom up to 200%, resizing the PTY: Command+=, Command+- and Command+0 change only the terminal font
-  (owner's choice); the View menu's page zoom moves to Option+Command+= and -.
+  (owner's choice); the View menu's page zoom moves to Control+Command+=, - and 0.
 - Line-height and letter-spacing.
 - Cursor shape and thickness.
 - Blink: off under reduce motion, and stops after 5 s without input.
@@ -706,6 +706,10 @@ As built so far (links first, by the owner's request on 2026-11-13):
 - OSC 52 writes reach the clipboard (through the main process, at most 1 MiB) only for a host with
   `allowClipboardWrites` in `hosts.json`, and each write is announced; reads are never answered. Titles and every
   announcement lose their control characters (SEC-06.4).
+- Dim text keeps the full 4.5:1 floor through pnpm patches on xterm.js's two renderers (D-39).
+- Command+=, Command+- and Command+0 set every terminal's text size from 50% to 200%, kept in `config.json` and
+  announced; the PTY follows. Window zoom moved to Control+Command+=, - and 0, because Option+Command+= and - are
+  macOS Zoom's (the plan first named those).
 - Fixed on the way: Add host's suggestions now narrow as the user types (US-1.1.1).
 
 **ST-16 Review mode and find** (A11Y-03.1–8, US-1.13)

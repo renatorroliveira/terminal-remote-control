@@ -37,6 +37,8 @@ export interface TerminalViewOptions {
     readonly maxColumns?: number;
     /** Where new output is spoken (A11Y-02); without it, output is not spoken. */
     readonly speech?: OutputSpeech;
+    /** The terminal font size in CSS pixels; {@link TERMINAL_FONT_SIZE} without it (A11Y-07.4). */
+    readonly fontSize?: number;
     /** The user opened a link with Command+click, or Control+click off macOS (US-1.12.3). */
     readonly onLink?: (link: TerminalLink) => void;
     /** The user pasted more than one line, which waits for a confirmation (US-1.12.2); without it, it is sent. */
@@ -92,7 +94,7 @@ export class TerminalView {
         this.terminal = new Terminal({
             allowProposedApi: true,
             fontFamily: TERMINAL_FONT_FAMILY,
-            fontSize: TERMINAL_FONT_SIZE,
+            fontSize: options.fontSize ?? TERMINAL_FONT_SIZE,
             scrollback: SCROLLBACK_LINES,
             cursorStyle: 'block',
             cursorInactiveStyle: 'outline',
@@ -102,9 +104,9 @@ export class TerminalView {
             overviewRuler: { width: SCROLLBAR_WIDTH },
             theme: xtermTheme(options.palette),
         });
-        this.surface = createSurface();
+        this.surface = createSurface(options.fontSize ?? TERMINAL_FONT_SIZE);
         this.#hint = createHint();
-        this.#measurer = createMeasurer();
+        this.#measurer = createMeasurer(options.fontSize ?? TERMINAL_FONT_SIZE);
         this.#ats = new AtsSurface(this.terminal, this.surface);
         this.#scheduler = new UpdateScheduler(() => this.#ats.update(), options.assistiveTechnology);
         this.#credit = new CreditTracker(options.onCredit);
@@ -191,6 +193,14 @@ export class TerminalView {
     /** The links on the screen, for the List links command (US-1.12.3). */
     visibleLinks(): readonly TerminalLink[] {
         return this.#links.visible();
+    }
+
+    /** Changes the terminal font size; the grid refits and the PTY follows (A11Y-07.4, US-1.11.3). */
+    setFontSize(size: number): void {
+        this.terminal.options.fontSize = size;
+        this.surface.style.fontSize = `${size}px`;
+        this.#measurer.style.fontSize = `${size}px`;
+        this.#geometry?.fit();
     }
 
     /** Sends pasted text to the process, as bracketed paste when the program asked for it (US-1.12.2). */
@@ -457,7 +467,7 @@ export class TerminalView {
     }
 }
 
-function createSurface(): HTMLElement {
+function createSurface(fontSize: number): HTMLElement {
     const surface = document.createElement('div');
     surface.className = styles['surface'] ?? '';
     surface.contentEditable = 'true';
@@ -469,7 +479,7 @@ function createSurface(): HTMLElement {
     surface.setAttribute('translate', 'no');
     surface.tabIndex = 0;
     surface.style.fontFamily = TERMINAL_FONT_FAMILY;
-    surface.style.fontSize = `${TERMINAL_FONT_SIZE}px`;
+    surface.style.fontSize = `${fontSize}px`;
     return surface;
 }
 
@@ -481,12 +491,12 @@ function createHint(): HTMLElement {
     return hint;
 }
 
-function createMeasurer(): HTMLElement {
+function createMeasurer(fontSize: number): HTMLElement {
     const measurer = document.createElement('span');
     measurer.className = styles['measurer'] ?? '';
     measurer.setAttribute('aria-hidden', 'true');
     measurer.style.fontFamily = TERMINAL_FONT_FAMILY;
-    measurer.style.fontSize = `${TERMINAL_FONT_SIZE}px`;
+    measurer.style.fontSize = `${fontSize}px`;
     return measurer;
 }
 

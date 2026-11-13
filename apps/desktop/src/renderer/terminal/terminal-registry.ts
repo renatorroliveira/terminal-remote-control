@@ -6,7 +6,7 @@ import type { TerminalNotice } from './notices';
 import type { OutputSpeech } from './output-announcer';
 import { SessionLink, type SessionTransport } from './session-link';
 import styles from './terminal-registry.module.css';
-import { TerminalView } from './terminal-view';
+import { TERMINAL_FONT_SIZE, TerminalView } from './terminal-view';
 
 /** A terminal's accessible name and shortcut hint (A11Y-01.1, A11Y-01.2). */
 export interface TerminalLabel {
@@ -70,6 +70,7 @@ export class TerminalRegistry implements TerminalHost {
     #palette: TerminalPalette;
     #open: SessionKey | undefined;
     #tabFocusMode = false;
+    #fontSize = TERMINAL_FONT_SIZE;
 
     /** Creates an empty registry. */
     constructor(options: TerminalRegistryOptions) {
@@ -129,6 +130,14 @@ export class TerminalRegistry implements TerminalHost {
     /** Whether the open terminal waits for a key to pass to its process. */
     passingNextKey(): boolean {
         return this.#openEntry()?.view.passingNextKey ?? false;
+    }
+
+    /** Sets every terminal's text size, in percent of the default (A11Y-07.4). */
+    setZoom(zoom: number): void {
+        this.#fontSize = Math.round((TERMINAL_FONT_SIZE * zoom) / 100);
+        for (const entry of this.#entries.values()) {
+            entry.view.setFontSize(this.#fontSize);
+        }
     }
 
     /** Pastes text into a session's terminal and focuses it (US-1.12.2). */
@@ -249,6 +258,7 @@ export class TerminalRegistry implements TerminalHost {
         const speech = this.#speechFor(() => link);
         view = new TerminalView({
             palette: this.#palette,
+            fontSize: this.#fontSize,
             isMac: this.#options.isMac,
             assistiveTechnology: this.#options.assistiveTechnology,
             onInput: (text) => link.input(text),

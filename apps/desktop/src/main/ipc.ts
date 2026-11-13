@@ -4,6 +4,7 @@ import { MAX_CLIPBOARD_WRITE } from '../shared/clipboard';
 import type { InvokeChannel, InvokeContract } from '../shared/contract';
 import { SIDEBAR_WIDTH } from '../shared/layout';
 import { MAX_LINK_LENGTH } from '../shared/links';
+import { TERMINAL_ZOOM } from '../shared/terminal-zoom';
 
 /** The part of `ipcMain` the registry uses. */
 export interface IpcMainLike {
@@ -31,6 +32,8 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'links:open': z.tuple([LINK, z.boolean()]),
     'menus:terminal': z.tuple([z.boolean()]),
     'clipboard:write': z.tuple([z.string().max(MAX_CLIPBOARD_WRITE)]),
+    'terminal:get-zoom': z.tuple([]),
+    'terminal:set-zoom': z.tuple([z.number().int().min(TERMINAL_ZOOM.min).max(TERMINAL_ZOOM.max)]),
     'sidebar:get-width': z.tuple([]),
     'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),
     'sidebar:get-collapsed': z.tuple([]),

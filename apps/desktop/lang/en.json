@@ -75,6 +75,18 @@
     "defaultMessage": "Output announcements on for {session}.",
     "description": "Announced when output announcements are unmuted for a session."
   },
+  "announce.zoom": {
+    "defaultMessage": "Terminal text {zoom}%.",
+    "description": "Announced after the terminal text size changes."
+  },
+  "announce.zoomLargest": {
+    "defaultMessage": "Terminal text {zoom}%, the largest.",
+    "description": "Announced when the terminal text cannot grow any more."
+  },
+  "announce.zoomSmallest": {
+    "defaultMessage": "Terminal text {zoom}%, the smallest.",
+    "description": "Announced when the terminal text cannot shrink any more."
+  },
   "clipboard.written": {
     "defaultMessage": "A program on {host} put text on the clipboard.",
     "description": "Announced when a program on a host that allows it writes the clipboard with OSC 52."
@@ -154,6 +166,18 @@
   "command.terminalToggleTabFocus": {
     "defaultMessage": "Tab moves focus",
     "description": "Command name: toggles whether Tab leaves the terminal."
+  },
+  "command.terminalZoomIn": {
+    "defaultMessage": "Bigger terminal text",
+    "description": "Command name."
+  },
+  "command.terminalZoomOut": {
+    "defaultMessage": "Smaller terminal text",
+    "description": "Command name."
+  },
+  "command.terminalZoomReset": {
+    "defaultMessage": "Default terminal text size",
+    "description": "Command name."
   },
   "contextMenu.label": {
     "defaultMessage": "Actions for {target}",
