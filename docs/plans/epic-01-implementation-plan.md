@@ -504,6 +504,22 @@ A11Y-06.1–5, A11Y-09.3–4, US-1.11.3, SEC-06)
   while the developer's app ran, so every test launch now gets a scratch profile. Adding a host no longer clears
   what the user typed while the add was saving.
 
+**ST-10 follow-up: the owner’s fourth M1 test round, with Claude Code on a remote host** (US-1.10.7, US-1.11,
+A11Y-04, A11Y-05, A11Y-07.1)
+
+- The PTY kept its creation size: xterm's resize event also carries `colsChanged` and `rowsChanged`, and the
+  connection host's strict schema refused every resize after the first. The renderer now sends only columns and
+  rows, and an e2e test checks `stty size` after a window resize.
+- Shift+Enter: the daemon's emulator answers the kitty keyboard query, so Claude Code turned the protocol on, but
+  the key encoder ignored it. The renderer now follows the flags and encodes the disambiguate level (D-30).
+- The holder marks every PTY `IUTF8`, so erase removes whole characters. A running core keeps spawning holders
+  from its own binary until it restarts.
+- A pointer selection dragged past the top or bottom edge scrolls the terminal and grows with it, faster the
+  farther the pointer is.
+- Buttons: every non-primary button is light text on `#333333` with a `#8c8c8c` edge, and every enabled button
+  shows the pointer.
+- A session that exits with code 0 closes (PRD v0.7, D-29); if it was open, focus moves to New session.
+
 ### Phase 5 — Features
 
 **ST-11 Workspace layout and commands** (US-1.6.1/3, A11Y-05.1–8, A11Y-07.5–6, A11Y-11.2/3/5/7/10/11,

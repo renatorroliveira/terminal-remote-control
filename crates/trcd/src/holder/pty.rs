@@ -17,7 +17,7 @@ use std::sync::mpsc as std_mpsc;
 
 use rustix::process::{Pid, Signal, ioctl_tiocsctty, kill_process, kill_process_group, setsid};
 use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
-use rustix::termios::{Winsize, tcsetwinsize};
+use rustix::termios::{InputModes, OptionalActions, Winsize, tcgetattr, tcsetattr, tcsetwinsize};
 use thiserror::Error;
 use tokio::sync::{mpsc, oneshot};
 use trc_protocol::{ExitStatus, TerminalSize};
@@ -91,6 +91,7 @@ impl Pty {
         unlockpt(&master)?;
         let slave = open_slave(&master)?;
         tcsetwinsize(&slave, winsize(spec.size))?;
+        mark_utf8(&slave)?;
         let mut child = command(spec, &slave)?.spawn()?;
         drop(slave);
         let pid = child.id();
@@ -209,6 +210,13 @@ fn working_directory(spec: &SpawnSpec) -> String {
         .unwrap_or_else(|| "/".into())
 }
 
+/// Tells the line discipline that input is UTF-8, so erase in canonical mode removes a whole character (`IUTF8`).
+fn mark_utf8(slave: &OwnedFd) -> Result<(), SpawnError> {
+    let mut termios = tcgetattr(slave)?;
+    termios.input_modes.insert(InputModes::IUTF8);
+    Ok(tcsetattr(slave, OptionalActions::Now, &termios)?)
+}
+
 fn winsize(size: TerminalSize) -> Winsize {
     Winsize {
         ws_row: size.rows,
@@ -320,6 +328,13 @@ mod tests {
                 signal: None
             }
         );
+    }
+
+    #[tokio::test]
+    async fn marks_the_pty_as_utf_8_so_erase_removes_whole_characters() {
+        let (_pty, mut output) = Pty::spawn(&spec("stty -a")).unwrap();
+        let (text, _) = run(&mut output).await;
+        assert!(text.split_whitespace().any(|flag| flag == "iutf8"), "{text:?}");
     }
 
     #[tokio::test]

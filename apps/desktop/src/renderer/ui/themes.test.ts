@@ -63,6 +63,30 @@ describe('primary buttons', () => {
     });
 });
 
+describe('secondary buttons', () => {
+    it('draw their text at AA contrast on their fill, and their border at 3:1 against the page (A11Y-07.1)', () => {
+        expect(UI_CONTRAST_PAIRS).toContainEqual({
+            foreground: 'secondaryText',
+            background: 'secondary',
+            minimum: 4.5,
+        });
+        expect(UI_CONTRAST_PAIRS).toContainEqual({
+            foreground: 'secondaryBorder',
+            background: 'background',
+            minimum: 3,
+        });
+        expect(UI_CONTRAST_PAIRS).toContainEqual({ foreground: 'secondaryBorder', background: 'surface', minimum: 3 });
+    });
+
+    it('are light text on dark gray with a gray edge in Midnight', () => {
+        expect(THEMES.midnight.ui).toMatchObject({
+            secondary: '#333333',
+            secondaryText: '#d2d2d2',
+            secondaryBorder: '#8c8c8c',
+        });
+    });
+});
+
 describe('themeStyleSheet', () => {
     it('declares the layers and one custom property per UI and terminal token and theme', () => {
         const css = themeStyleSheet();

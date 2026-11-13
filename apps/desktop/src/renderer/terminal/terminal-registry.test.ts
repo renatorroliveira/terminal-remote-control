@@ -141,4 +141,12 @@ describe('TerminalRegistry (US-1.8)', () => {
             [...area.querySelectorAll('[role="textbox"]')].map((surface) => surface.getAttribute('aria-label')),
         ).toEqual(['bash, h2']);
     });
+
+    it('removes the terminal of a session the daemon closed', () => {
+        const { area, registry } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        registry.show('h1/b', 'h1', info('b'));
+        registry.closeSession('h1/a');
+        expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(1);
+    });
 });

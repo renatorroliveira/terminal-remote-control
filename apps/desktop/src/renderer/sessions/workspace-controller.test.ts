@@ -1,4 +1,4 @@
-import type { ServerMessage, SessionInfo } from '@trc/protocol';
+import type { ExitStatus, ServerMessage, SessionInfo } from '@trc/protocol';
 import { describe, expect, it } from 'vitest';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import { parseHostAddress } from '../../shared/host-address';
@@ -63,9 +63,11 @@ class FakeClient implements WorkspaceClient {
         return () => this.messages.delete(hostId);
     }
 
+    listed: readonly SessionInfo[] = [info('a'), info('b', 1)];
+
     request(_hostId: string, request: ClientRequest): Promise<ServerMessage> {
         this.requests.push(request);
-        return Promise.resolve({ type: 'sessions', requestId: 1, sessions: [info('a'), info('b', 1)] });
+        return Promise.resolve({ type: 'sessions', requestId: 1, sessions: [...this.listed] });
     }
 }
 
@@ -85,6 +87,12 @@ class FakeTerminals implements TerminalHost {
 
     closeHost(hostId: string): void {
         this.closed.push(hostId);
+    }
+
+    readonly closedSessions: string[] = [];
+
+    closeSession(key: string): void {
+        this.closedSessions.push(key);
     }
 }
 
@@ -181,5 +189,39 @@ describe('WorkspaceController: sessions (US-1.7, US-1.8)', () => {
         expect(workspace.defaultHost(workspace.store.getState())).toBeUndefined();
         await workspace.newSession();
         expect(terminals.created).toEqual([]);
+    });
+});
+
+describe('WorkspaceController: exited sessions (US-1.10.7)', () => {
+    const exited = (id: string, exit: ExitStatus): SessionInfo => ({ ...info(id), state: 'exited', exit });
+    const closes = (client: FakeClient) => client.requests.filter((request) => request.type === 'close');
+
+    it('closes a session whose program exits cleanly, and keeps one that failed or was killed', async () => {
+        const { client, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        client.states.get(host.id)?.(connected);
+        const push = (session: SessionInfo) =>
+            client.messages.get(host.id)?.({ type: 'sessionEvent', change: { kind: 'updated', session } });
+        push(exited('a', { code: 0 }));
+        push(exited('b', { code: 2 }));
+        push(exited('c', { signal: 'SIGKILL' }));
+        push({ ...info('d'), state: 'stopped' });
+        expect(closes(client)).toEqual([{ type: 'close', session: 'a' }]);
+    });
+
+    it('removes the terminal of a session the daemon closed', async () => {
+        const { client, terminals, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        client.states.get(host.id)?.(connected);
+        client.messages.get(host.id)?.({ type: 'sessionEvent', change: { kind: 'closed', sessionId: 'a' } });
+        expect(terminals.closedSessions).toEqual([sessionKey(host.id, 'a')]);
+    });
+
+    it('closes sessions that exited cleanly while the app was away', async () => {
+        const { client, workspace } = setup();
+        client.listed = [exited('a', { code: 0 }), exited('b', { code: 1 }), info('c')];
+        const host = await workspace.addHost('devbox-1');
+        client.states.get(host.id)?.(connected);
+        await expect.poll(() => closes(client)).toEqual([{ type: 'close', session: 'a' }]);
     });
 });

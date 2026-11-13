@@ -73,8 +73,8 @@ export class SessionLink {
     }
 
     /** Records the terminal's size and sends it to the attached session (US-1.11.3). */
-    resize(size: TerminalSize): void {
-        this.#size = size;
+    resize({ cols, rows }: TerminalSize): void {
+        this.#size = { cols, rows };
         this.#sendSize();
     }
 

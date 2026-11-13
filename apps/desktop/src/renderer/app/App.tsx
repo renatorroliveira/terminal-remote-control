@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from 'react-aria-components';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useStore } from 'zustand';
@@ -6,8 +6,9 @@ import { APP_IDENTITY } from '../../shared/app-identity';
 import { shellMessages } from '../i18n/messages';
 import { ConnectionFailureDialog } from '../sessions/ConnectionFailureDialog';
 import { sidebarMessages } from '../sessions/messages';
-import { Sidebar } from '../sessions/Sidebar';
+import { NEW_SESSION_ID, Sidebar } from '../sessions/Sidebar';
 import type { WorkspaceController } from '../sessions/workspace-controller';
+import { BUTTON } from '../ui/buttons';
 import styles from './App.module.css';
 
 /** Where the terminal area hands its element. */
@@ -33,6 +34,11 @@ export function App({ workspace, terminals, askInstallLocation = false }: AppPro
     const intl = useIntl();
     const [panelOpen, setPanelOpen] = useState(false);
     const open = useStore(workspace.store, (state) => state.open);
+    useEffect(() => {
+        if (open === undefined && document.activeElement === document.body) {
+            document.getElementById(NEW_SESSION_ID)?.focus();
+        }
+    }, [open]);
 
     return (
         <div className={styles['shell'] ?? ''} data-panel={panelOpen ? 'open' : 'closed'}>
@@ -46,7 +52,7 @@ export function App({ workspace, terminals, askInstallLocation = false }: AppPro
             />
             <main aria-label={APP_IDENTITY.productName} className={styles['content'] ?? ''}>
                 <Button
-                    className={styles['toggle'] ?? ''}
+                    className={`${BUTTON} ${styles['toggle'] ?? ''}`}
                     aria-controls={SIDEBAR_ID}
                     aria-expanded={panelOpen}
                     onPress={() => setPanelOpen((value) => !value)}

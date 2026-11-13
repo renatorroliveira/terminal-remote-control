@@ -29,6 +29,7 @@ export function bashSession(id: string): SessionInfo {
 export class FakeWorkspaceClient implements WorkspaceClient {
     readonly calls: string[] = [];
     readonly #states = new Map<string, (state: ConnectionState) => void>();
+    readonly #messages = new Map<string, (message: ServerMessage) => void>();
     readonly #sessions: readonly SessionInfo[];
 
     /** A client whose daemons list `sessions`. */
@@ -39,6 +40,11 @@ export class FakeWorkspaceClient implements WorkspaceClient {
     /** Pushes a connection state for a host. */
     push(hostId: string, state: ConnectionState): void {
         this.#states.get(hostId)?.(state);
+    }
+
+    /** Pushes a daemon message for a host. */
+    message(hostId: string, message: ServerMessage): void {
+        this.#messages.get(hostId)?.(message);
     }
 
     /** Records the connect. */
@@ -67,9 +73,10 @@ export class FakeWorkspaceClient implements WorkspaceClient {
         return () => this.#states.delete(hostId);
     }
 
-    /** Sends no messages. */
-    onMessage(): () => void {
-        return () => undefined;
+    /** Keeps the host's message listener. */
+    onMessage(hostId: string, listener: (message: ServerMessage) => void): () => void {
+        this.#messages.set(hostId, listener);
+        return () => this.#messages.delete(hostId);
     }
 
     /** Answers every request with the session list. */
@@ -108,6 +115,11 @@ export class FakeTerminalHost implements TerminalHost {
     /** Records the closed host. */
     closeHost(hostId: string): void {
         this.closed.push(hostId);
+    }
+
+    /** Records the closed session. */
+    closeSession(key: string): void {
+        this.closed.push(key);
     }
 }
 

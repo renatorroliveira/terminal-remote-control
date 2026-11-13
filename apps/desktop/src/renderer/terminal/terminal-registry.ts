@@ -84,6 +84,15 @@ export class TerminalRegistry implements TerminalHost {
         }
     }
 
+    /** Removes the terminal of a session the daemon closed. */
+    closeSession(key: SessionKey): void {
+        const entry = this.#entries.get(key);
+        if (entry !== undefined) {
+            this.#dispose(entry);
+            this.#entries.delete(key);
+        }
+    }
+
     /** Applies a theme's terminal colors to every terminal. */
     setPalette(palette: TerminalPalette): void {
         this.#palette = palette;

@@ -7,7 +7,7 @@ function key(name: string, code = '', modifiers: Partial<KeyInput> = {}): KeyInp
     return { key: name, code, altKey: false, ctrlKey: false, shiftKey: false, metaKey: false, ...modifiers };
 }
 
-const normal = { applicationCursorKeys: false, macOptionIsMeta: false, isMac: true };
+const normal = { applicationCursorKeys: false, macOptionIsMeta: false, isMac: true, kittyFlags: 0 };
 const app = { ...normal, applicationCursorKeys: true };
 
 function bytes(input: KeyInput, modes = normal): string | undefined {
@@ -89,5 +89,54 @@ describe('encodeKey navigation keys', () => {
         expect(encodeKey(key('é', 'KeyE'), normal)).toEqual({ kind: 'none' });
         expect(encodeKey(key('c', 'KeyC', { metaKey: true }), normal)).toEqual({ kind: 'none' });
         expect(encodeKey(key('Shift', 'ShiftLeft', { shiftKey: true }), normal)).toEqual({ kind: 'none' });
+    });
+});
+
+describe('encodeKey with the kitty keyboard protocol disambiguate level (US-1.11, D-30)', () => {
+    const kitty = { ...normal, kittyFlags: 1 };
+    const linux = { ...kitty, isMac: false };
+
+    it('sends modified Enter, Tab and Backspace as CSI u, and the plain keys as before', () => {
+        expect(bytes(key('Enter', 'Enter', { shiftKey: true }), kitty)).toBe(`${ESC}[13;2u`);
+        expect(bytes(key('Enter', 'Enter', { ctrlKey: true }), kitty)).toBe(`${ESC}[13;5u`);
+        expect(bytes(key('Enter', 'Enter', { altKey: true }), kitty)).toBe(`${ESC}[13;3u`);
+        expect(bytes(key('Enter', 'Enter'), kitty)).toBe('\r');
+        expect(bytes(key('Tab', 'Tab', { shiftKey: true }), kitty)).toBe(`${ESC}[9;2u`);
+        expect(bytes(key('Tab', 'Tab'), kitty)).toBe('\t');
+        expect(bytes(key('Backspace', 'Backspace', { ctrlKey: true }), kitty)).toBe(`${ESC}[127;5u`);
+        expect(bytes(key('Backspace', 'Backspace'), kitty)).toBe('\u007f');
+    });
+
+    it('sends Escape as CSI 27 u, so it can never be mistaken for the start of a sequence', () => {
+        expect(bytes(key('Escape', 'Escape'), kitty)).toBe(`${ESC}[27u`);
+        expect(bytes(key('Escape', 'Escape', { shiftKey: true }), kitty)).toBe(`${ESC}[27;2u`);
+    });
+
+    it('sends Ctrl and Alt combinations with the unshifted key code', () => {
+        expect(bytes(key('c', 'KeyC', { ctrlKey: true }), kitty)).toBe(`${ESC}[99;5u`);
+        expect(bytes(key('A', 'KeyA', { ctrlKey: true, shiftKey: true }), kitty)).toBe(`${ESC}[97;6u`);
+        expect(bytes(key('!', 'Digit1', { ctrlKey: true, shiftKey: true }), kitty)).toBe(`${ESC}[49;6u`);
+        expect(bytes(key('x', 'KeyX', { altKey: true }), linux)).toBe(`${ESC}[120;3u`);
+        expect(bytes(key('a', 'KeyA', { ctrlKey: true, altKey: true }), linux)).toBe(`${ESC}[97;7u`);
+        expect(bytes(key(' ', 'Space', { ctrlKey: true }), kitty)).toBe(`${ESC}[32;5u`);
+    });
+
+    it('leaves text keys, Option characters on the Mac and Cmd shortcuts alone', () => {
+        expect(bytes(key('a', 'KeyA'), kitty)).toBeUndefined();
+        expect(bytes(key('A', 'KeyA', { shiftKey: true }), kitty)).toBeUndefined();
+        expect(bytes(key('≈', 'KeyX', { altKey: true }), kitty)).toBeUndefined();
+        expect(bytes(key('Enter', 'Enter', { metaKey: true }), kitty)).toBeUndefined();
+    });
+
+    it('keeps the legacy function key forms, except F3 with modifiers, whose CSI R would read as a cursor report', () => {
+        expect(bytes(key('ArrowUp', 'ArrowUp'), kitty)).toBe(`${ESC}[A`);
+        expect(bytes(key('ArrowUp', 'ArrowUp', { shiftKey: true }), kitty)).toBe(`${ESC}[1;2A`);
+        expect(bytes(key('F3', 'F3', { ctrlKey: true }), kitty)).toBe(`${ESC}[13;5~`);
+        expect(bytes(key('F5', 'F5'), kitty)).toBe(`${ESC}[15~`);
+    });
+
+    it('changes nothing while no program asked for it', () => {
+        expect(bytes(key('Enter', 'Enter', { shiftKey: true }))).toBe('\r');
+        expect(bytes(key('Escape', 'Escape'))).toBe(ESC);
     });
 });

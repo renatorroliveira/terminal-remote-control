@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { Button, Label, ListBox, ListBoxItem, Popover, Select, SelectValue } from 'react-aria-components';
 import { useIntl } from 'react-intl';
 import { useStore } from 'zustand';
-import { PRIMARY_BUTTON } from '../ui/buttons';
+import { BUTTON, PRIMARY_BUTTON } from '../ui/buttons';
 import { HostsPanel } from './HostsPanel';
 import { sidebarMessages } from './messages';
 import { SessionTree } from './SessionTree';
 import styles from './Sidebar.module.css';
 import type { WorkspaceController } from './workspace-controller';
 import { isConnected, treeItems } from './workspace-model';
+
+/** The New session button's element ID, where focus goes when the focused session disappears. */
+export const NEW_SESSION_ID = 'trc-new-session';
 
 /** What the sidebar shows and reports. */
 export interface SidebarProps {
@@ -75,7 +78,7 @@ function SessionsPanel({ workspace, onOpened }: Pick<SidebarProps, 'workspace' |
                     <Label className={styles['label'] ?? ''}>
                         {intl.formatMessage(sidebarMessages.newSessionHost)}
                     </Label>
-                    <Button className={styles['control'] ?? ''}>
+                    <Button className={`${BUTTON} ${styles['control'] ?? ''}`}>
                         <SelectValue />
                         <span aria-hidden="true">▾</span>
                     </Button>
@@ -94,6 +97,7 @@ function SessionsPanel({ workspace, onOpened }: Pick<SidebarProps, 'workspace' |
                     </Popover>
                 </Select>
                 <Button
+                    id={NEW_SESSION_ID}
                     className={PRIMARY_BUTTON}
                     isDisabled={target === undefined}
                     onPress={() => void workspace.newSession(target).then(onOpened)}

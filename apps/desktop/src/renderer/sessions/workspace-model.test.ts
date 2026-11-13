@@ -6,6 +6,7 @@ import {
     failureAcknowledged,
     hostAdded,
     hostStateChanged,
+    sessionChanged,
     sessionKey,
     sessionName,
     sessionsListed,
@@ -75,6 +76,15 @@ describe('the workspace model (US-1.6, US-1.9)', () => {
         expect(workspace.open).toBeUndefined();
         expect(workspace.hosts).toHaveLength(2);
     });
+});
+
+describe('the workspace model: notices and closed sessions (US-1.3, US-1.10)', () => {
+    it('no longer shows a session the daemon closed as open', () => {
+        const open = { ...workspaceWithTwoHosts(), open: sessionKey('h1', 'a') };
+        const closed = sessionChanged(open, 'h1', { kind: 'closed', sessionId: 'a' });
+        expect(closed.open).toBeUndefined();
+        expect(sessionChanged(open, 'h1', { kind: 'closed', sessionId: 'b' }).open).toBe(sessionKey('h1', 'a'));
+    });
 
     it('keeps a failed connection for the user to acknowledge (US-1.3.3)', () => {
         const failed = hostStateChanged(workspaceWithTwoHosts(), 'h2', {
@@ -93,7 +103,9 @@ describe('the workspace model (US-1.6, US-1.9)', () => {
         });
         expect(rejected.failureNotice).toBeUndefined();
     });
+});
 
+describe('the workspace model: changes and names (US-1.6, US-1.10)', () => {
     it('hides the sessions of a collapsed host', () => {
         const workspace = { ...workspaceWithTwoHosts(), collapsed: new Set(['h1']) };
         expect(treeItems(workspace).map((item) => item.kind)).toEqual(['host', 'host']);

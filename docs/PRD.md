@@ -2,7 +2,7 @@
 
 | Field        | Value                                        |
 | ------------ | -------------------------------------------- |
-| Status       | Draft v0.6                                   |
+| Status       | Draft v0.7                                   |
 | Owner        | Renato Oliveira                              |
 | Last updated | 2026-11-12                                   |
 | Scope        | P0 (first release), delivered in seven epics |
@@ -851,8 +851,10 @@ Acceptance criteria:
 5. Duplicate: new session on the same host, with the same shell and current
    working directory.
 6. Reorder by "Move up" and "Move down" commands as well as by dragging.
-7. Exited sessions stay in the list with exit status and scrollback until
-   closed. Auto-close on clean exit is configurable and off by default.
+7. A session whose process exits with code 0 closes on its own and leaves the
+   list. Sessions that exited with another code or a signal stay in the list
+   with exit status and scrollback until closed, so the user can see why.
+   Auto-close on clean exit is configurable and on by default.
 
 #### US-1.11 — Terminal emulation fidelity
 

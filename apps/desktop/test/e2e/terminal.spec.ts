@@ -66,21 +66,25 @@ function domSelection(window: Page): Promise<string> {
     return window.evaluate(() => getSelection()?.toString() ?? '');
 }
 
-test.describe('a live terminal on a Linux host (M1)', () => {
+/** Skips the block without test hosts, and gives each of its tests a scratch install that it removes afterwards. */
+function liveHost(): { root: string } {
+    const install = { root: '' };
     test.skip(missing !== undefined, missing);
-    let root = '';
-
     test.beforeEach(() => {
-        root = scratchInstallRoot();
+        install.root = scratchInstallRoot();
     });
-
     test.afterEach(() => {
-        removeInstall('trc-ubuntu', root);
+        removeInstall('trc-ubuntu', install.root);
     });
+    return install;
+}
+
+test.describe('a live terminal on a Linux host (M1)', () => {
+    const install = liveHost();
 
     test('types a command and reads its output as real text (US-1.11, A11Y-04.1, D-22)', async () => {
         const { app, window } = await launchWithTestHosts();
-        const terminal = await openTerminal(window, 'trc-ubuntu', root);
+        const terminal = await openTerminal(window, 'trc-ubuntu', install.root);
         await terminal.focus();
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
         await window.keyboard.type('echo hi');
@@ -90,11 +94,52 @@ test.describe('a live terminal on a Linux host (M1)', () => {
         await expect(window.locator('.xterm')).toHaveAttribute('aria-hidden', 'true');
         await app.close();
     });
+});
+
+test.describe('a live terminal on a Linux host: size and keys (M1)', () => {
+    const install = liveHost();
+
+    test('keeps the PTY the size of the grid as the window resizes (US-1.11.3)', async () => {
+        const { app, window } = await launchWithTestHosts();
+        const resize = (width: number, height: number) =>
+            app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]?.setSize(size[0], size[1]), [
+                width,
+                height,
+            ] as const);
+        await resize(1000, 700);
+        const terminal = await openTerminal(window, 'trc-ubuntu', install.root);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        const before = await terminal.getAttribute('data-columns');
+        await resize(1500, 900);
+        await expect.poll(() => terminal.getAttribute('data-columns')).not.toBe(before);
+        await window.waitForTimeout(500);
+        const grid = `${await terminal.getAttribute('data-rows')} ${await terminal.getAttribute('data-columns')}`;
+        await terminal.pressSequentially('echo size=$(stty size)\n');
+        await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain(`size=${grid}`);
+        await app.close();
+    });
+
+    test('delivers Shift+Enter as CSI 13;2u to a program that turned on kitty keys (US-1.11, D-30)', async () => {
+        const { app, window } = await launchWithTestHosts();
+        const terminal = await openTerminal(window, 'trc-ubuntu', install.root);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await terminal.pressSequentially(
+            "printf '\\033[>1u'; IFS= read -rs -d u key; printf '\\033[<u'; printf 'key=%q\\n' \"$key\"\n",
+        );
+        await window.waitForTimeout(500);
+        await window.keyboard.press('Shift+Enter');
+        await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain("key=$'\\E[13;2'");
+        await app.close();
+    });
+});
+
+test.describe('a live terminal on a Linux host: selection and glyphs (M1)', () => {
+    const install = liveHost();
 
     test('selects words and drags across text with the pointer while VoiceOver is on (A11Y-04.1, A11Y-04.3)', async () => {
         const { app, window } = await launchWithTestHosts();
         await app.evaluate(({ app: electronApp }) => electronApp.setAccessibilitySupportEnabled(true));
-        const terminal = await openTerminal(window, 'trc-ubuntu', root);
+        const terminal = await openTerminal(window, 'trc-ubuntu', install.root);
         await terminal.focus();
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
         await window.keyboard.type('echo the quick brown fox');
@@ -119,7 +164,7 @@ test.describe('a live terminal on a Linux host (M1)', () => {
         const { app, window } = await launchWithTestHosts();
         await app.context().addInitScript(recordCanvasFonts);
         await window.reload();
-        const terminal = await openTerminal(window, 'trc-ubuntu', root);
+        const terminal = await openTerminal(window, 'trc-ubuntu', install.root);
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
         const fonts = await window.evaluate(() => (window as unknown as { canvasFonts?: string[] }).canvasFonts ?? []);
         expect(fonts.filter((font) => font.startsWith('rejected:'))).toEqual([]);
