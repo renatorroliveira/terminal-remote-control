@@ -434,7 +434,11 @@ either way.
       `settings:get` and `settings:set`. A change must name known settings,
       each exactly within its range (`src/main/settings-schema.ts`), or it is
       refused. The renderer's `SettingsStore` applies a change at once, then
-      keeps it; terminals, the shell and the workspace read it from there. Earlier versions' files in their `@trc/desktop`
+      keeps it; terminals, the shell and the workspace read it from there.
+    - Sound cues (A11Y-12.4) are short sine tones made with Web Audio, with no
+      sound files (P-18): rising for a connection, falling for a loss, low for
+      a refused keystroke, each under 3 s and beside an announcement or a
+      visual sign. They are off by default; a volume setting scales them. Earlier versions' files in their `@trc/desktop`
       profile are copied in once. Logs and Chromium's own data stay in
       `~/Library/Application Support/Terminal Remote Control`, named by the
       package's `productName`.

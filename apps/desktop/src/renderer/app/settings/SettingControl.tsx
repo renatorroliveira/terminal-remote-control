@@ -28,6 +28,8 @@ interface Context {
     readonly settings: Settings;
     readonly update: (change: Partial<Settings>) => void;
     readonly appearance: (change: Partial<TerminalAppearance>) => void;
+    /** Plays the bell cue, so the user hears a sound setting take effect. */
+    readonly preview: () => void;
 }
 
 /** The control of one setting on the settings page (A11Y-10.3). */
@@ -49,6 +51,7 @@ export function SettingControl({ id, shell, settings, workspace }: SettingContro
         update: (change) => void settings.update(change),
         appearance: (change) =>
             void settings.update({ terminalAppearance: { ...settings.current.terminalAppearance, ...change } }),
+        preview: () => shell.playCue('bell'),
     };
     return RENDERERS[id](context);
 }
@@ -59,6 +62,27 @@ const APPEARANCE = TERMINAL_APPEARANCE_LIMITS;
 
 const RENDERERS: Readonly<Record<Exclude<SettingId, 'screenReaderMode' | 'clipboardWrites' | 'shortcuts'>, Renderer>> =
     {
+        audioCues: ({ intl, settings, update, preview }) => (
+            <SwitchSetting
+                {...text(intl, 'audioCues')}
+                isSelected={settings.audioCues}
+                onChange={(audioCues) => {
+                    update({ audioCues });
+                    preview();
+                }}
+            />
+        ),
+        audioVolume: ({ intl, settings, update, preview }) => (
+            <NumberSetting
+                {...text(intl, 'audioVolume')}
+                value={settings.audioVolume}
+                {...range(SETTINGS_LIMITS.audioVolume, 10)}
+                onChange={(audioVolume) => {
+                    update({ audioVolume });
+                    preview();
+                }}
+            />
+        ),
         plainF6: ({ intl, settings, update }) => (
             <SwitchSetting
                 {...text(intl, 'plainF6')}

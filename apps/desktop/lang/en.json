@@ -1003,6 +1003,22 @@
     "defaultMessage": "Unknown state",
     "description": "Session state."
   },
+  "setting.audioCues": {
+    "defaultMessage": "Sound cues",
+    "description": "Setting."
+  },
+  "setting.audioCues.description": {
+    "defaultMessage": "Short tones for the bell, a host connecting, a lost or failed connection, and typing that was not sent. Each is also announced or shown.",
+    "description": "Setting description."
+  },
+  "setting.audioVolume": {
+    "defaultMessage": "Sound cue volume, percent",
+    "description": "Setting."
+  },
+  "setting.audioVolume.description": {
+    "defaultMessage": "Changing it plays the bell tone.",
+    "description": "Setting description."
+  },
   "setting.autoClose": {
     "defaultMessage": "Close sessions that exit cleanly",
     "description": "Setting."
@@ -1217,6 +1233,10 @@
   },
   "settings.group.sessions": {
     "defaultMessage": "Sessions",
+    "description": "Section."
+  },
+  "settings.group.sound": {
+    "defaultMessage": "Sound",
     "description": "Section."
   },
   "settings.group.speech": {

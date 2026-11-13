@@ -14,6 +14,7 @@ import { NotificationCenter } from './app/notifications';
 import { applyTerminalSettings } from './app/settings/settings-effects';
 import { SettingsStore } from './app/settings/settings-store';
 import { Shell } from './app/shell';
+import { AudioCues, webAudioContext } from './app/sound/audio-cues';
 import { receiveConnectionPorts } from './connection/connection-port';
 import { HostClient } from './connection/host-client';
 import { DEFAULT_LOCALE, messagesFor } from './i18n/locale';
@@ -50,6 +51,7 @@ const notifications = new NotificationCenter();
 const keymap = resolveKeymap({});
 const settings = new SettingsStore(window.trc.settings);
 const settingsLoaded = settings.load();
+const cues = new AudioCues(() => settings.current, webAudioContext);
 const narrow = window.matchMedia('(max-width: 800px)');
 let shell: Shell | undefined;
 let stopTerminalSettings = (): void => undefined;
@@ -99,6 +101,7 @@ if (container !== null) {
             settings,
             guide: { open: (section) => void window.trc.help.openGuide(section) },
             menus: { ignoreShortcuts: (ignore) => void window.trc.menus.ignoreShortcuts(ignore) },
+            cues,
         });
         void settingsLoaded.then(() => workspace.load()).then(() => workspace.connectAll());
         reactRoot.render(

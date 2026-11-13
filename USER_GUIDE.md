@@ -4,7 +4,7 @@ Terminal Remote Control (TRC) runs terminal sessions on your Linux hosts and sho
 window. The sessions belong to a small daemon, `trcd`, that the app installs on each host for your user, so a
 session keeps running when you quit the app or lose the network.
 
-This guide covers version 0.1, the first milestone of Epic 1. [What's not there yet](#whats-not-there-yet) lists
+This guide covers Epic 1, which version 0.2 completes. [What's not there yet](#whats-not-there-yet) lists
 what later releases add.
 
 ## Contents
@@ -199,7 +199,8 @@ for bracketed paste, such as bash and zsh, then wait for Return before they run 
 When you scroll back, the terminal stays where you are while output arrives, and a "New output below" button appears
 (TRC says so once). Click it, press Shift-Page Down to the end, or type to return to the bottom.
 
-The bell never flashes: the status bar shows "Bell" for a few seconds and TRC says it. A session in the background
+The bell never flashes: the status bar shows "Bell" for a few seconds and TRC says it, with a short tone when sound
+cues are on. A session in the background
 gets a "bell" badge in the session list instead, until you open it.
 
 ### Review mode and Find
@@ -265,8 +266,9 @@ shown. Every change applies at once and is kept; Escape or Close returns to wher
 | Section                  | Settings                                                                                                                                                                                                                                           |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Speech and announcements | Screen-reader mode (automatic, on or off); Announcements (Detailed, or Brief, which leaves out the steps of connecting); the shortcut hint VoiceOver reads after the terminal's name; the flood threshold (5 to 100 lines a second, 20 by default) |
+| Sound                    | Sound cues, off by default: short tones for the bell, a host connecting, a lost or failed connection, and typing that was not sent, each also announced or shown; their volume                                                                     |
 | Terminal display         | Theme; minimum text contrast (4.5 to 1, or 7 to 1); text size; line height; letter spacing; cursor shape, bar width and blinking                                                                                                                   |
-| Keyboard                 | Tab moves focus out of the terminal, from launch on                                                                                                                                                                                                |
+| Keyboard                 | Tab moves focus out of the terminal, from launch on; plain F6 and Shift-F6 move between regions; every command's shortcut (Change, then press the new shortcut; Reset gives the default back)                                                      |
 | Sessions                 | Where new sessions start (the home folder, or the open session's folder); scrollback lines for new sessions (1,000 to 100,000); the seconds Stop waits; closing sessions that exit cleanly; asking before a paste of more than one line            |
 | Hosts                    | For each host, whether its programs may write the clipboard (OSC 52)                                                                                                                                                                               |
 
@@ -367,10 +369,6 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 `ssh -G <host>` shows the settings ssh will use for a host, and `ssh -v <host>` shows each connection step.
 
 ## What's not there yet
-
-Later releases of Epic 1 add:
-
-- Changing shortcuts, plain F6 to move between regions, and sound cues, in the settings page.
 
 Later epics add sessions that survive a host reboot, local sessions on the Mac, macOS hosts, and the Windows and
 Linux apps. [The PRD](docs/PRD.md) has the full plan.

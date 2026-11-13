@@ -780,6 +780,30 @@ As built:
     - OSC 52 per host.
 - Bundled HTML user docs and a VoiceOver quick-start. No instruction relies on a sensory characteristic.
 
+As built:
+
+- Option+F1 (and Help, then Accessibility Help) opens a dialog with a table of the shortcuts for where focus was
+  (terminal, review mode or session list) and one for everywhere, each command showing its chord in force, plus
+  the User guide and VoiceOver quick start buttons.
+- The user guide is `USER_GUIDE.md` rendered to `resources/docs/index.html` by `tools/user-docs` (D-41), shown in
+  a sandboxed window with no preload from the `app://docs` host, with a script-free CSP; web links open in the
+  browser. The VoiceOver quick start is one of its sections, so both copies stay the same.
+- Command+, opens the settings page: a search field that filters as the user types and says how many settings
+  are shown, and sections for speech, sound, display, keyboard, sessions and hosts. Beyond the list above it has
+  screen-reader mode, the theme, text size, line height, letter spacing, where new sessions start and the shortcut
+  editor. Minimum contrast offers 4.5 and 7 to 1. Each change applies at once and lands in `config.json`, field by
+  field; `settings:set` takes only known settings in range.
+- The shortcut editor records the next key press, refuses one that breaks a keymap rule or belongs to another
+  command, and resets to the default; the menus drop their accelerators while it listens. Plain F6 is a switch.
+- Sound cues are Web Audio tones, off by default, with a volume: the bell, connecting, a lost or failed connection
+  and refused input, each under 3 seconds and beside its announcement.
+- Help, settings and the palette return focus by hand, which fixed focus falling to the page when help closed
+  over the New host field.
+- Tests: unit and component tests for each part, axe on both dialogs, and e2e tests for help and the guide window,
+  the settings page with a theme change, and rebinding with the menus following. Playwright cannot deliver a
+  Command+letter press that a menu owns to an Electron page on macOS, so recording such a chord is part of the
+  owner's hands-on check.
+
 ### Phase 6 — Verification, packaging, release
 
 **ST-19 Fidelity and NFR verification** (US-1.11.5, S3b, NFR-02/03/04/05/06/07/09/10, SEC-08)
@@ -892,7 +916,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-15 | Done        | —      |
 | ST-16 | Done        | —      |
 | ST-17 | Done        | —      |
-| ST-18 | In progress | —      |
+| ST-18 | Done        | —      |
 | ST-19 | Not started | —      |
 | ST-20 | In progress | —      |
 | ST-21 | Not started | —      |

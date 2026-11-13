@@ -41,6 +41,7 @@ import {
     terminalAnnouncements,
     zoomAnnouncements,
 } from './shell-messages';
+import type { AudioCue } from './sound/audio-cues';
 
 /** What the shell's commands ask of the terminals. */
 export interface TerminalControls {
@@ -173,6 +174,8 @@ export interface ShellOptions {
     readonly guide?: GuideControls;
     /** Lets the page receive the menus' shortcuts while it records one (A11Y-05.7). */
     readonly menus?: { readonly ignoreShortcuts: (ignore: boolean) => void };
+    /** Plays sound cues beside announcements; without it, the app is silent (A11Y-12.4). */
+    readonly cues?: { readonly play: (cue: AudioCue) => void };
 }
 
 /** Opens the bundled user guide in its own window (A11Y-10.4). */
@@ -359,6 +362,7 @@ export class Shell {
                 announcer.announce(intl.formatMessage(findAnnouncements.reviewOutput), { group: `review:${key}` });
                 break;
             case 'input-refused':
+                this.playCue('input-refused');
                 announcer.announce(intl.formatMessage(terminalAnnouncements.inputRefused), {
                     group: `refused:${key}`,
                     politeness: 'assertive',
@@ -370,6 +374,11 @@ export class Shell {
     /** The shortcuts in force: the defaults, or the user's (A11Y-05.7). */
     get keymap(): Keymap {
         return this.#keymap;
+    }
+
+    /** Plays a sound cue, when sound cues are on (A11Y-12.4). */
+    playCue(cue: AudioCue): void {
+        this.#options.cues?.play(cue);
     }
 
     /** Lets the page receive the menus' own shortcuts, or gives them back to the menus. */
@@ -611,6 +620,7 @@ export class Shell {
             .flatMap((group) => group.sessions)
             .find((entry) => entry.key === key);
         this.state.setState({ bell: true });
+        this.playCue('bell');
         announcer.announce(intl.formatMessage(terminalAnnouncements.bell, { session: item?.label ?? key }), {
             group: 'bell',
         });
@@ -778,14 +788,17 @@ export class Shell {
         const { intl, announcer, notifications } = this.#options;
         const state = host.state;
         if (state.status === 'connected') {
+            this.playCue('connected');
             announcer.announce(intl.formatMessage(hostAnnouncements.connected, { host: host.destination }), {
                 group: host.id,
             });
         } else if (state.status === 'disconnected') {
+            this.playCue('disconnected');
             const text = intl.formatMessage(hostAnnouncements.disconnected, { host: host.destination });
             announcer.announce(text, { group: host.id, politeness: 'assertive' });
             notifications.add({ text, level: 'error' });
         } else if (state.status === 'failed' && state.failure.kind !== 'host-key-rejected') {
+            this.playCue('failed');
             const { problem } = failureMessage(intl, host.destination, state.failure);
             const text = intl.formatMessage(hostAnnouncements.failed, { host: host.destination, problem });
             notifications.add({ text, level: 'error' });
