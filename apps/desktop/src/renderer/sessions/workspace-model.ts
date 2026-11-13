@@ -2,6 +2,7 @@ import type { SessionChange, SessionId, SessionInfo } from '@trc/protocol';
 import type { ConnectionState } from '../../shared/connection';
 import { formatHostAddress } from '../../shared/host-address';
 import type { KnownHost } from '../../shared/hosts';
+import { stripControlCharacters } from '../../shared/text';
 
 /** A known host and its connection state. */
 export interface HostEntry extends KnownHost {
@@ -68,7 +69,7 @@ export function sessionKey(hostId: string, sessionId: SessionId): SessionKey {
 
 /** A session's display name: the user's name, then the program's title, then the shell's name (US-1.10). */
 export function sessionName(session: SessionInfo): string {
-    return session.customName ?? session.title ?? session.profile.name;
+    return stripControlCharacters(session.customName ?? session.title ?? session.profile.name);
 }
 
 /** Adds a known host, not connected yet; adding a host already there keeps it. */

@@ -31,6 +31,7 @@ function handlers(display: unknown = {}): InvokeHandlers {
         'links:check': async (target) => ({ target, origin: undefined, trusted: false }),
         'links:open': async () => undefined,
         'menus:terminal': async () => undefined,
+        'clipboard:write': async () => undefined,
         'sidebar:get-width': async () => 400,
         'sidebar:set-width': async () => undefined,
         'sidebar:get-collapsed': async () => false,
@@ -60,9 +61,17 @@ describe('registerHandlers (zod at the renderer boundary)', () => {
         await expect(async () => registered.get('links:open')?.({}, 'https://example.com')).rejects.toThrow(
             /invalid arguments/,
         );
+        await expect(async () => registered.get('clipboard:write')?.({}, 'x'.repeat(1_048_577))).rejects.toThrow(
+            /invalid arguments/,
+        );
         await expect(async () => registered.get('links:check')?.({}, 'x'.repeat(9_000))).rejects.toThrow(
             /invalid arguments/,
         );
+    });
+
+    it('rejects host and sidebar requests with arguments the contract does not allow', async () => {
+        const { handlers: registered, ipc } = fakeIpc();
+        registerHandlers(ipc, handlers(), trusted);
         await expect(async () => registered.get('hosts:add')?.({}, 'devbox-1', '~/.trc')).rejects.toThrow(
             /invalid arguments/,
         );
@@ -79,7 +88,9 @@ describe('registerHandlers (zod at the renderer boundary)', () => {
             );
         }
     });
+});
 
+describe('registerHandlers: hosts, sidebar and trust', () => {
     it('adds a host by address alone, and takes sidebar widths from 300 to 800 px', async () => {
         const { handlers: registered, ipc } = fakeIpc();
         registerHandlers(ipc, handlers(), trusted);

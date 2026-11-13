@@ -1,3 +1,5 @@
+import { stripControlCharacters } from '../../shared/text';
+
 /** How urgently a message is spoken: politely after current speech, or assertively at once (A11Y-12.1). */
 export type Politeness = 'polite' | 'assertive';
 
@@ -53,7 +55,8 @@ export class Announcer {
     announce(text: string, options: AnnounceOptions = {}): void {
         const group = options.group ?? `message-${this.#anonymous++}`;
         const waiting = options.append === true ? this.#pending.find((pending) => pending.group === group) : undefined;
-        const joined = waiting === undefined ? text : `${waiting.text}\n${text}`;
+        const clean = stripControlCharacters(text, { keepLineBreaks: true });
+        const joined = waiting === undefined ? clean : `${waiting.text}\n${clean}`;
         const message: Pending = { text: joined, politeness: options.politeness ?? 'polite', group };
         const others = this.#pending.filter((pending) => pending.group !== group);
         this.#pending = message.politeness === 'assertive' ? [message, ...others] : [...others, message];

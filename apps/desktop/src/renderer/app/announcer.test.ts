@@ -74,6 +74,12 @@ describe('Announcer: status messages that never move focus (A11Y-12.1, A11Y-12.3
         expect(sink.spoken).toEqual(['polite: connected', 'polite: build connected']);
     });
 
+    it('speaks no control characters, keeping the line breaks between output lines (SEC-06.4)', () => {
+        const { sink, announcer: speaker } = announcer();
+        speaker.announce('build\u001b[0m\u0007 done\nnext\u009b line');
+        expect(sink.spoken).toEqual(['polite: build[0m done\nnext line']);
+    });
+
     it('speaks an assertive message ahead of waiting polite ones', () => {
         const { sink, clock, announcer: speaker } = announcer();
         speaker.announce('one');

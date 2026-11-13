@@ -628,3 +628,19 @@ describe('TerminalView: paste and copy (US-1.12.1, US-1.12.2, A11Y-04.7)', () =>
         expect(inputs).toEqual([]);
     });
 });
+
+describe('TerminalView: OSC 52 clipboard writes (SEC-06.1)', () => {
+    it('passes a write on only while the host allows it, and never answers a read', async () => {
+        const writes: string[] = [];
+        const allowed = { now: false };
+        const { view, inputs } = mount({
+            clipboardWrites: () => allowed.now,
+            onClipboardWrite: (text) => writes.push(text),
+        });
+        await written(view, `\u001b]52;c;${btoa('first')}\u0007`);
+        allowed.now = true;
+        await written(view, `\u001b]52;c;${btoa('second')}\u0007\u001b]52;c;?\u0007`);
+        expect(writes).toEqual(['second']);
+        expect(inputs).toEqual([]);
+    });
+});

@@ -23,3 +23,10 @@ export const copyCappedMessage = defineMessage<{ lines: number; cap: number }>({
     defaultMessage: 'Copied all {lines, number} lines. Assistive technology sees the first {cap, number}.',
     description: 'Announced after a copy of more lines than the OS sees selected.',
 });
+
+/** A program wrote the clipboard (SEC-06.1). */
+export const clipboardWrittenMessage = defineMessage<{ host: string }>({
+    id: 'clipboard.written',
+    defaultMessage: 'A program on {host} put text on the clipboard.',
+    description: 'Announced when a program on a host that allows it writes the clipboard with OSC 52.',
+});

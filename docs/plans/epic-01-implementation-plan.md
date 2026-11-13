@@ -703,6 +703,9 @@ As built so far (links first, by the owner's request on 2026-11-13):
   which is announced. Paste turns line breaks into Return, wraps bracketed paste without any bracket sequence of
   its own, and asks first, with the text and the line count, for more than one line. Shift+F10, the Menu key and
   right-click open a native context menu: Copy, Paste, List Links and Look Up.
+- OSC 52 writes reach the clipboard (through the main process, at most 1 MiB) only for a host with
+  `allowClipboardWrites` in `hosts.json`, and each write is announced; reads are never answered. Titles and every
+  announcement lose their control characters (SEC-06.4).
 - Fixed on the way: Add host's suggestions now narrow as the user types (US-1.1.1).
 
 **ST-16 Review mode and find** (A11Y-03.1–8, US-1.13)

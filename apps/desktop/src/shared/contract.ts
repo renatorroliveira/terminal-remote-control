@@ -23,6 +23,7 @@ export interface InvokeContract {
         readonly result: undefined;
     };
     readonly 'menus:terminal': { readonly args: readonly [canCopy: boolean]; readonly result: undefined };
+    readonly 'clipboard:write': { readonly args: readonly [text: string]; readonly result: undefined };
     readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
     readonly 'sidebar:get-collapsed': { readonly args: readonly []; readonly result: boolean };
@@ -78,6 +79,10 @@ export interface TrcBridge {
         check(target: string): Promise<LinkCheck | undefined>;
         /** Opens a link the user confirmed or trusts, first trusting its origin when asked (US-1.12.4). */
         open(target: string, trustOrigin: boolean): Promise<void>;
+    };
+    readonly clipboard: {
+        /** Puts text a program wrote with OSC 52 on the clipboard, for a host that allows it (SEC-06.1). */
+        write(text: string): Promise<void>;
     };
     readonly menus: {
         /** Shows the terminal's context menu: Copy when `canCopy`, Paste, List Links and Look Up (A11Y-11.11). */

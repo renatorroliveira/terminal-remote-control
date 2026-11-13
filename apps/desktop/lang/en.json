@@ -75,6 +75,10 @@
     "defaultMessage": "Output announcements on for {session}.",
     "description": "Announced when output announcements are unmuted for a session."
   },
+  "clipboard.written": {
+    "defaultMessage": "A program on {host} put text on the clipboard.",
+    "description": "Announced when a program on a host that allows it writes the clipboard with OSC 52."
+  },
   "close.body": {
     "defaultMessage": "TRC stops {session} on {host} if it is running, then deletes the session and its scrollback. This can’t be undone.",
     "description": "Says what closing deletes."

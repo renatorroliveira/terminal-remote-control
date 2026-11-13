@@ -137,6 +137,7 @@ describe('the workspace model: changes and names (US-1.6, US-1.10)', () => {
     it('names a session by its custom name, then the program title, then its shell', () => {
         expect(sessionName(session('a', { customName: 'build', title: 'vim' }))).toBe('build');
         expect(sessionName(session('a', { title: 'vim' }))).toBe('vim');
+        expect(sessionName(session('a', { title: 'v\u001b[31mi\u0007m\u009b' }))).toBe('v[31mim');
         expect(sessionName(session('a'))).toBe('bash');
     });
 });
