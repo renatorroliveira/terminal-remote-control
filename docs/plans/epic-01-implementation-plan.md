@@ -559,6 +559,22 @@ A11Y-12.1/3)
 - The command palette (RAC Autocomplete plus ListBox), where every action is registered.
 - Context-menu infrastructure: Shift+F10, the Menu key, Ctrl+click.
 
+As built:
+
+- `docs/design/keymap.md` fixes the key map. Region cycling is Command+F6 and Shift+Command+F6, because macOS takes
+  the PRD's proposed Control+F6 (A11Y-05.2). `src/shared/keymap.ts` holds the defaults and the binding rules
+  (A11Y-05.5, A11Y-05.6), and a test keeps the two in step.
+- One renderer dispatcher matches every shortcut, so send-next-key passes any of them to the process; the View and
+  Terminal menus show only the Command shortcuts (D-36). Rebinding is supported by the keymap; the settings page
+  that edits bindings, and the plain-F6 option, arrive with ST-18.
+- The status bar shows the open session's host and daemon, the Tab focus mode and mute toggles, and the
+  notification count. Host connections, losses and failures are announced (A11Y-12.2) and losses and failures stay
+  in the notification list. Mute is per session and takes effect with ST-14's output announcements.
+- The command palette lists every command, host action and session. Context menus open on sessions, host sections
+  and host rows. Enter on the splitter, or Control+Command+S, hides the sidebar, and `config.json` keeps it hidden.
+- Two bugs found on the way: a bare modifier keydown spent an armed send-next-key, and any shell re-render
+  re-attached the terminal frames and blurred the focused terminal.
+
 **ST-12 Hosts** (US-1.1.1/5/6, US-1.2, US-1.3, US-1.4.5–7, A11Y-11.6/8/9, A11Y-12.2)
 
 - The add-host dialog:
@@ -763,7 +779,7 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-8  | Done        | —      |
 | ST-9  | Done        | —      |
 | ST-10 | Done        | —      |
-| ST-11 | Not started | —      |
+| ST-11 | Done        | —      |
 | ST-12 | Not started | —      |
 | ST-13 | Not started | —      |
 | ST-14 | Not started | —      |

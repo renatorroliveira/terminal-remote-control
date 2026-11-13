@@ -15,6 +15,7 @@ what later releases add.
 - [Connect](#connect)
 - [Sessions](#sessions)
 - [The terminal](#the-terminal)
+- [Moving around and commands](#moving-around-and-commands)
 - [Appearance](#appearance)
 - [Accessibility](#accessibility)
 - [Files and folders](#files-and-folders)
@@ -126,6 +127,33 @@ PTY to fit the window.
 
 Terminal output never touches your clipboard: programs can't read it or write to it.
 
+## Moving around and commands
+
+The window has three regions: the sidebar (sessions and hosts), the terminal, and the status bar at the bottom.
+
+| Action                                       | Keys                                                  |
+| -------------------------------------------- | ----------------------------------------------------- |
+| Next region, previous region                 | Command-F6, Shift-Command-F6                          |
+| Command palette                              | Shift-Command-P                                       |
+| Show or hide the sidebar                     | Control-Command-S, or Enter on the sidebar's edge     |
+| Tab moves focus out of the terminal (toggle) | Shift-Command-M                                       |
+| Send the next key to the terminal            | Shift-Command-K                                       |
+| Mute output announcements for this session   | Shift-Command-A                                       |
+| Notifications                                | Shift-Command-N                                       |
+| Actions for the focused session or host      | Shift-F10, the Menu key, Control-click or right-click |
+
+- **Regions.** Moving to a region puts you back where you were in it. A hidden sidebar is skipped.
+- **Tab focus mode.** The terminal normally sends Tab to the shell. With Tab focus mode on, Tab and Shift-Tab
+  leave the terminal like in any other field. The status bar shows the mode, and TRC says which way Tab goes.
+- **Send next key.** After Shift-Command-K, the next key goes to the program even if it is an app shortcut.
+- **Command palette.** Type part of a name, then press Return. The palette lists every command with its shortcut,
+  every host action (connect, disconnect, new session) and every session to open. Escape closes it.
+- **Status bar.** It shows the open session's host and its connection, the daemon version on that host, the Tab
+  focus mode and mute buttons, and how many notifications are waiting.
+- **Notifications.** Connection failures and lost connections stay in the list until you dismiss them, including
+  failures while connecting at launch. TRC also says when a host connects or its connection is lost.
+- **Menus.** View and Terminal hold the same commands, with their Command shortcuts.
+
 ## Appearance
 
 - **Theme.** View, then Theme: Midnight (the default, black with green, high contrast), System (follows macOS
@@ -134,14 +162,17 @@ Terminal output never touches your clipboard: programs can't read it or write to
 - **Size.** View, then Zoom In (Command-Plus), Zoom Out (Command-Minus) and Actual Size (Command-0). The text
   grows or shrinks, and the session resizes to fit.
 - **Sidebar width.** Drag the sidebar's right edge, between 300 and 800 pixels. Or focus the edge with Tab and use
-  Left and Right (10 pixels per press), Home (narrowest) and End (widest). TRC remembers the width.
+  Left and Right (10 pixels per press), Home (narrowest) and End (widest); Enter hides the sidebar and shows it
+  again. TRC remembers the width and whether the sidebar is hidden.
 
 ## Accessibility
 
 - **VoiceOver** reads the terminal as a text field holding the screen's text, by character, word or line. The
   text field's cursor is the terminal's cursor, so VoiceOver and Zoom follow it as you type.
 - **Selection** in the terminal is real text selection, so Speak Selection, Look Up and Services work on it.
-- **Keyboard.** Every control in the sidebar works with the keyboard, with a visible focus ring.
+- **Keyboard.** Every control works with the keyboard, with a visible focus ring, and the terminal never traps
+  focus: Command-F6 always leaves it, and Tab focus mode lets Tab leave it too.
+- **Announcements.** Status changes, such as Tab focus mode or a host connecting, are spoken without moving focus.
 - **Voice Control** can choose every button by its name, for example "Click New session on devbox".
 - **Fonts.** TRC embeds Atkinson Hyperlegible Next for the interface and Intel One Mono for the terminal.
 
@@ -192,10 +223,9 @@ Later releases of Epic 1 add:
 
 - Renaming, stopping, restarting, reordering and closing sessions from the app, and a dialog to pick the shell,
   folder and environment of a new session.
-- Shortcuts to move between the sidebar and the terminal, a command palette and rebindable keys. Until then, the
-  terminal keeps Tab for the shell: use the pointer, or VoiceOver navigation, to move from the terminal to the
-  sidebar.
-- Spoken announcements of new output, a review mode to read the scrollback, and Find.
+- Changing shortcuts, and plain F6 to move between regions, in the settings page.
+- Spoken announcements of new output (the mute button is ready for them), a review mode to read the scrollback,
+  and Find.
 - Links, paste confirmation, the settings page, accessibility help (Option-F1) and the in-app guide (the Help
   menu items do nothing yet).
 - Reconnecting after a network loss with a single action.

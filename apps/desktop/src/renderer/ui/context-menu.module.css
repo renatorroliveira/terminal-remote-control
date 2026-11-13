@@ -1,0 +1,34 @@
+@layer components {
+    .anchor {
+        position: fixed;
+        width: 0;
+        height: 0;
+    }
+
+    .popover {
+        min-width: 12rem;
+        border: 1px solid var(--trc-color-border);
+        border-radius: 6px;
+        background: var(--trc-color-surface);
+        color: var(--trc-color-text);
+        box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+    }
+
+    .menu {
+        padding: 0.25rem;
+        outline: none;
+    }
+
+    .item {
+        min-height: 28px;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .item[data-focused] {
+        background: var(--trc-color-selection-background);
+        color: var(--trc-color-selection-text);
+    }
+}

@@ -14,6 +14,10 @@ export interface SidebarSplitterProps {
     readonly onResize: (width: number) => void;
     /** The user settled on a width: a key press, or the end of a drag. */
     readonly onResized: (width: number) => void;
+    /** Whether the sidebar is hidden. */
+    readonly collapsed: boolean;
+    /** Enter hides or shows the sidebar (APG window splitter). */
+    readonly onToggleCollapsed: () => void;
 }
 
 /** How far one arrow key press moves the splitter. */
@@ -21,15 +25,22 @@ const KEY_STEP = 10;
 
 /**
  * The APG window splitter on the sidebar's right edge (US-1.6.3): drag it, or focus it and press Left or Right
- * (10 px), Home (300 px) or End (800 px). It reports the width as its value and in pixels as text.
+ * (10 px), Home (300 px) or End (800 px); Enter hides the sidebar and shows it again. It reports the width as its
+ * value and in pixels as text, or that the sidebar is hidden.
  */
-export function SidebarSplitter({ width, controls, onResize, onResized }: SidebarSplitterProps) {
+export function SidebarSplitter(props: SidebarSplitterProps) {
+    const { width, controls, onResize, onResized, collapsed, onToggleCollapsed } = props;
     const intl = useIntl();
     const dragging = useRef(false);
     const pointerWidth = (event: PointerEvent<HTMLDivElement>): number =>
         clampWidth(event.clientX - (event.currentTarget.parentElement?.getBoundingClientRect().left ?? 0));
     const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-        const next = keyWidth(event.key, width);
+        if (event.key === 'Enter' || (collapsed && event.key === 'ArrowRight')) {
+            event.preventDefault();
+            onToggleCollapsed();
+            return;
+        }
+        const next = collapsed ? undefined : keyWidth(event.key, width);
         if (next !== undefined) {
             event.preventDefault();
             onResize(next);
@@ -65,7 +76,7 @@ export function SidebarSplitter({ width, controls, onResize, onResized }: Sideba
             aria-valuenow={width}
             aria-valuemin={SIDEBAR_WIDTH.min}
             aria-valuemax={SIDEBAR_WIDTH.max}
-            aria-valuetext={intl.formatMessage(splitterMessages.value, { width })}
+            aria-valuetext={intl.formatMessage(collapsed ? splitterMessages.hidden : splitterMessages.value, { width })}
             className={styles['splitter']}
             onKeyDown={onKeyDown}
             onPointerDown={onPointerDown}

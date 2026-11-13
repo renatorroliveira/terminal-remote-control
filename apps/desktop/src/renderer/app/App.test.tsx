@@ -1,7 +1,10 @@
 import axe from 'axe-core';
+import { createIntl } from 'react-intl';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
+import { resolveKeymap } from '../../shared/keymap';
+import { messagesFor } from '../i18n/locale';
 import { WorkspaceController } from '../sessions/workspace-controller';
 import {
     bashSession,
@@ -12,6 +15,8 @@ import {
 import { themeStyleSheet } from '../ui/themes';
 import { App } from './App';
 import { AppProviders } from './AppProviders';
+import { NotificationCenter } from './notifications';
+import { Shell } from './shell';
 
 const CONNECTED = { status: 'connected', daemon: { version: '0.1.0', sha256: 'ab', proto: 1 } } as const;
 
@@ -31,22 +36,40 @@ function renderApp(savedWidth = 400) {
     const client = new FakeWorkspaceClient([bashSession('a')]);
     const terminals = new FakeTerminalHost([bashSession('b')]);
     const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore());
-    const saved: number[] = [];
-    const sidebar = {
-        width: () => Promise.resolve(savedWidth),
-        setWidth: (width: number) => {
-            saved.push(width);
-            return Promise.resolve();
+    const saved: (number | boolean)[] = [];
+    const spoken: string[] = [];
+    const shell = new Shell({
+        workspace,
+        terminals,
+        sidebar: {
+            width: () => Promise.resolve(savedWidth),
+            setWidth: (width: number) => {
+                saved.push(width);
+                return Promise.resolve();
+            },
+            collapsed: () => Promise.resolve(false),
+            setCollapsed: (collapsed: boolean) => {
+                saved.push(collapsed);
+                return Promise.resolve();
+            },
         },
-    };
+        announcer: { announce: (text: string) => spoken.push(text) },
+        notifications: new NotificationCenter(() => 0),
+        keymap: resolveKeymap({}),
+        intl: createIntl({ locale: 'en', messages: messagesFor('en') }),
+        document,
+        isNarrow: () => window.innerWidth <= 800,
+    });
     return {
         client,
         terminals,
         workspace,
+        shell,
         saved,
+        spoken,
         rendered: render(
             <AppProviders locale="en">
-                <App workspace={workspace} terminals={terminals} sidebar={sidebar} />
+                <App workspace={workspace} terminals={terminals} shell={shell} />
             </AppProviders>,
         ),
     };
@@ -250,5 +273,140 @@ describe('App: buttons (A11Y-07.1)', () => {
             runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] },
         });
         expect(results.violations).toEqual([]);
+    });
+});
+
+async function noViolations(): Promise<void> {
+    const results = await axe.run(document.body, {
+        runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] },
+    });
+    expect(results.violations).toEqual([]);
+}
+
+describe('App: status bar (US-1.6.1)', () => {
+    it('reports the hosts, then the open session’s host and daemon, and offers the Tab, mute and notification controls', async () => {
+        await page.viewport(1400, 800);
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        const bar = screen.getByRole('region', { name: 'Status bar' });
+        await expect.poll(() => bar.element().textContent).toContain('No hosts');
+        await expect.poll(() => bar.element().textContent).toContain('Daemon not reached');
+        await connectedHost(screen, client);
+        await expect.poll(() => bar.element().textContent).toContain('1 of 1 hosts connected');
+        await screen.getByRole('option', { name: 'bash, Running' }).click();
+        await expect.poll(() => bar.element().textContent).toContain('devbox-1: Connected');
+        await expect.poll(() => bar.element().textContent).toContain('Daemon 0.1.0');
+        const tab = bar.getByRole('button', { name: 'Tab moves focus' });
+        await expect.element(tab).toHaveAttribute('aria-pressed', 'false');
+        await tab.click();
+        await expect.element(tab).toHaveAttribute('aria-pressed', 'true');
+        await expect.element(bar.getByRole('button', { name: 'Mute output' })).toBeEnabled();
+        await expect.element(bar.getByRole('button', { name: 'Notifications 0' })).toBeVisible();
+    });
+});
+
+describe('App: regions and commands (A11Y-05.2, A11Y-11.11)', () => {
+    it('moves focus from region to region with Command+F6 and back with Shift+Command+F6', async () => {
+        await page.viewport(1400, 800);
+        const screen = await renderApp().rendered;
+        const field = screen.getByRole('textbox', { name: 'New host' });
+        await field.click();
+        await userEvent.keyboard('{Meta>}{F6}{/Meta}');
+        await expect.element(screen.getByRole('main', { name: 'Terminal Remote Control' })).toHaveFocus();
+        await userEvent.keyboard('{Meta>}{F6}{/Meta}');
+        await expect.element(screen.getByRole('button', { name: 'Tab moves focus' })).toHaveFocus();
+        await userEvent.keyboard('{Meta>}{F6}{/Meta}');
+        await expect.element(field).toHaveFocus();
+        await userEvent.keyboard('{Shift>}{Meta>}{F6}{/Meta}{/Shift}');
+        await expect.element(screen.getByRole('button', { name: 'Tab moves focus' })).toHaveFocus();
+    });
+});
+
+describe('App: command palette (A11Y-11.11)', () => {
+    it('runs any command or host action from the palette, then returns focus (A11Y-05.8)', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const { client, terminals, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        const field = screen.getByRole('textbox', { name: 'New host' });
+        await field.click();
+        await userEvent.keyboard('{Shift>}{Meta>}P{/Meta}{/Shift}');
+        const palette = screen.getByRole('dialog', { name: 'Command palette' });
+        await expect.element(palette.getByRole('searchbox', { name: 'Command' })).toHaveFocus();
+        await expect
+            .poll(() => palette.getByRole('menuitem', { name: /Next region/ }).element().textContent)
+            .toContain('Cmd+F6');
+        await noViolations();
+        await userEvent.keyboard('new session');
+        await expect.element(palette.getByRole('menuitem', { name: /Next region/ })).not.toBeInTheDocument();
+        await userEvent.keyboard('{Enter}');
+        await expect.element(palette).not.toBeInTheDocument();
+        await expect.poll(() => terminals.shown).toEqual(['host-0/b']);
+        await field.click();
+        await userEvent.keyboard('{Shift>}{Meta>}P{/Meta}{/Shift}');
+        await userEvent.keyboard('{Escape}');
+        await expect.element(field).toHaveFocus();
+    });
+});
+
+describe('App: hiding the sidebar (US-1.6.3)', () => {
+    it('hides the sidebar with Control+Command+S and shows it again from the splitter with Enter', async () => {
+        await page.viewport(1400, 800);
+        const { saved, rendered } = renderApp();
+        const screen = await rendered;
+        await screen.getByRole('textbox', { name: 'New host' }).click();
+        await userEvent.keyboard('{Control>}{Meta>}S{/Meta}{/Control}');
+        await expect.element(screen.getByRole('navigation', { name: 'Sessions and hosts' })).not.toBeInTheDocument();
+        await expect.element(screen.getByRole('main', { name: 'Terminal Remote Control' })).toHaveFocus();
+        const splitter = screen.getByRole('separator', { name: 'Sidebar width' });
+        await expect.element(splitter).toHaveAttribute('aria-valuetext', 'Sidebar hidden');
+        (splitter.element() as HTMLElement).focus();
+        await userEvent.keyboard('{Enter}');
+        await expect.element(screen.getByRole('navigation', { name: 'Sessions and hosts' })).toBeVisible();
+        expect(saved).toEqual([true, false]);
+    });
+});
+
+describe('App: notifications and context menus (A11Y-11.11, A11Y-12)', () => {
+    it('keeps a failed connection in the notification list until it is dismissed', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const { client, workspace, rendered } = renderApp();
+        const screen = await rendered;
+        await screen.getByRole('textbox', { name: 'New host' }).fill('devbox-1');
+        await userEvent.keyboard('{Enter}');
+        workspace.connectAll();
+        client.push('host-0', { status: 'failed', failure: { kind: 'dns', host: 'devbox-1', details: '' } });
+        await screen.getByRole('button', { name: 'Notifications 1' }).click();
+        const list = screen.getByRole('dialog', { name: 'Notifications' });
+        await expect
+            .poll(() => list.element().textContent)
+            .toContain('Couldn’t connect to devbox-1. devbox-1 couldn’t be found.');
+        await noViolations();
+        await list.getByRole('button', { name: /^Dismiss: Couldn’t connect/ }).click();
+        await expect.poll(() => list.element().textContent).toContain('No notifications.');
+        await userEvent.keyboard('{Escape}');
+        await expect.element(screen.getByRole('button', { name: 'Notifications 0' })).toHaveFocus();
+    });
+
+    it('opens a host’s and a session’s actions with Shift+F10, and Escape returns focus', async () => {
+        await page.viewport(1400, 800);
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        const option = screen.getByRole('option', { name: 'bash, Running' });
+        (option.element() as HTMLElement).focus();
+        await userEvent.keyboard('{Shift>}{F10}{/Shift}');
+        const menu = screen.getByRole('menu', { name: 'Actions for bash' });
+        await expect.element(menu.getByRole('menuitem', { name: 'Open' })).toHaveFocus();
+        await userEvent.keyboard('{Escape}');
+        await expect.element(option).toHaveFocus();
+        (screen.getByRole('button', { name: 'devbox-1 Connected' }).element() as HTMLElement).focus();
+        await userEvent.keyboard('{Shift>}{F10}{/Shift}');
+        const hostMenu = screen.getByRole('menu', { name: 'Actions for devbox-1' });
+        await expect.element(hostMenu.getByRole('menuitem', { name: 'New session on devbox-1' })).toHaveFocus();
+        await expect.element(hostMenu.getByRole('menuitem', { name: 'Disconnect devbox-1' })).toBeVisible();
+        await userEvent.keyboard('{Escape}');
     });
 });

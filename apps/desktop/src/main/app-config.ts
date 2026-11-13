@@ -9,10 +9,16 @@ export interface AppConfig {
     readonly theme: ThemePreference;
     /** The sidebar's width in CSS pixels. */
     readonly sidebarWidth: number;
+    /** Whether the user hid the sidebar (US-1.6.3). */
+    readonly sidebarCollapsed: boolean;
 }
 
 /** The configuration of a new install. */
-export const DEFAULT_APP_CONFIG: AppConfig = { theme: DEFAULT_THEME_PREFERENCE, sidebarWidth: SIDEBAR_WIDTH.initial };
+export const DEFAULT_APP_CONFIG: AppConfig = {
+    theme: DEFAULT_THEME_PREFERENCE,
+    sidebarWidth: SIDEBAR_WIDTH.initial,
+    sidebarCollapsed: false,
+};
 
 const THEME_PREFERENCES = ['midnight', 'system', 'light', 'dark', 'hc-light', 'hc-dark'] as const;
 const THEME_SCHEMA = z.enum(THEME_PREFERENCES);
@@ -20,6 +26,7 @@ const THEME_SCHEMA = z.enum(THEME_PREFERENCES);
 const CONFIG_SCHEMA: z.ZodType<AppConfig> = z.object({
     theme: THEME_SCHEMA.catch(DEFAULT_APP_CONFIG.theme),
     sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max).catch(DEFAULT_APP_CONFIG.sidebarWidth),
+    sidebarCollapsed: z.boolean().catch(DEFAULT_APP_CONFIG.sidebarCollapsed),
 });
 
 /** The theme preference in `value`, when it names one. */

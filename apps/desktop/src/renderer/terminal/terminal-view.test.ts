@@ -315,6 +315,18 @@ describe('TerminalView: focus and pointer (A11Y-05, A11Y-06)', () => {
         expect(inputs).toEqual(['\t', '\t']);
     });
 
+    it('keeps send-next-key armed through the modifier keys pressed before the key itself (A11Y-05.3)', () => {
+        const { view, inputs } = mount();
+        view.surface.focus();
+        view.setTabFocusMode(true);
+        view.sendNextKey();
+        key(view.surface, { key: 'Shift', code: 'ShiftLeft', shiftKey: true });
+        expect(view.passingNextKey).toBe(true);
+        expect(key(view.surface, { key: 'Tab', code: 'Tab', shiftKey: true }).defaultPrevented).toBe(true);
+        expect(view.passingNextKey).toBe(false);
+        expect(inputs).toEqual(['\u001b[Z']);
+    });
+
     it('keeps the text surface above every xterm layer, so the pointer selects real text (A11Y-04)', async () => {
         const { view } = mount();
         await written(view, 'hello world');

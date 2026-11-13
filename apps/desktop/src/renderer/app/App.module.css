@@ -1,8 +1,7 @@
 @layer components {
     .shell {
-        position: relative;
-        display: grid;
-        grid-template-columns: var(--trc-sidebar-width) minmax(0, 1fr);
+        display: flex;
+        flex-direction: column;
         height: 100vh;
         overflow: hidden;
     }
@@ -16,10 +15,26 @@
         white-space: nowrap;
     }
 
+    .workspace {
+        position: relative;
+        display: grid;
+        flex: 1 1 auto;
+        grid-template-columns: var(--trc-sidebar-width) minmax(0, 1fr);
+        min-height: 0;
+    }
+
+    .workspace[data-sidebar='hidden'] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .sidebar {
         overflow-y: auto;
         border-inline-end: 1px solid var(--trc-color-border);
         background: var(--trc-color-surface);
+    }
+
+    .workspace[data-sidebar='hidden'] .sidebar {
+        display: none;
     }
 
     .content {
@@ -52,15 +67,17 @@
     }
 
     @media (max-width: 800px) {
-        .shell {
+        .workspace,
+        .workspace[data-sidebar='hidden'] {
             grid-template-columns: minmax(0, 1fr);
         }
 
-        .sidebar {
+        .sidebar,
+        .workspace[data-sidebar='hidden'] .sidebar {
             display: none;
         }
 
-        .shell[data-panel='open'] .sidebar {
+        .workspace[data-panel='open'] .sidebar {
             position: absolute;
             inset-block: 0;
             inset-inline-start: 0;

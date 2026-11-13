@@ -36,6 +36,8 @@ export class TerminalRegistry implements TerminalHost {
     readonly #entries = new Map<SessionKey, Entry>();
     #area: HTMLElement | undefined;
     #palette: TerminalPalette;
+    #open: SessionKey | undefined;
+    #tabFocusMode = false;
 
     /** Creates an empty registry. */
     constructor(options: TerminalRegistryOptions) {
@@ -43,8 +45,11 @@ export class TerminalRegistry implements TerminalHost {
         this.#palette = options.palette;
     }
 
-    /** Sets the element terminals are shown in; their frames move with it. */
+    /** Sets the element terminals are shown in; their frames move with it. The same element again changes nothing. */
     attach(area: HTMLElement | null): void {
+        if ((area ?? undefined) === this.#area) {
+            return;
+        }
         this.#area = area ?? undefined;
         for (const entry of this.#entries.values()) {
             this.#area?.append(entry.frame);
@@ -59,7 +64,36 @@ export class TerminalRegistry implements TerminalHost {
         }
         const label = this.#options.labelFor(hostId, session);
         entry.view.setLabel(label.name, label.hint);
+        this.#open = key;
         entry.view.focus();
+    }
+
+    /** Focuses the open terminal; false when no session is open. */
+    focusOpen(): boolean {
+        const entry = this.#openEntry();
+        entry?.view.focus();
+        return entry !== undefined;
+    }
+
+    /** Makes Tab and Shift+Tab move focus out of every terminal instead of reaching the process (A11Y-05.4). */
+    setTabFocusMode(on: boolean): void {
+        this.#tabFocusMode = on;
+        for (const entry of this.#entries.values()) {
+            entry.view.setTabFocusMode(on);
+        }
+    }
+
+    /** Sends the next key to the open terminal's process, even an app shortcut, and focuses it (A11Y-05.3). */
+    sendNextKey(): boolean {
+        const entry = this.#openEntry();
+        entry?.view.sendNextKey();
+        entry?.view.focus();
+        return entry !== undefined;
+    }
+
+    /** Whether the open terminal waits for a key to pass to its process. */
+    passingNextKey(): boolean {
+        return this.#openEntry()?.view.passingNextKey ?? false;
     }
 
     /** Creates a session on `hostId` at the terminal area's size, in a frame of its own. */
@@ -80,6 +114,7 @@ export class TerminalRegistry implements TerminalHost {
             if (key.startsWith(`${hostId}/`)) {
                 this.#dispose(entry);
                 this.#entries.delete(key);
+                this.#open = this.#open === key ? undefined : this.#open;
             }
         }
     }
@@ -90,6 +125,7 @@ export class TerminalRegistry implements TerminalHost {
         if (entry !== undefined) {
             this.#dispose(entry);
             this.#entries.delete(key);
+            this.#open = this.#open === key ? undefined : this.#open;
         }
     }
 
@@ -107,6 +143,10 @@ export class TerminalRegistry implements TerminalHost {
             this.#dispose(entry);
         }
         this.#entries.clear();
+    }
+
+    #openEntry(): Entry | undefined {
+        return this.#open === undefined ? undefined : this.#entries.get(this.#open);
     }
 
     #attachNew(key: SessionKey, hostId: string, session: SessionInfo): Entry {
@@ -131,6 +171,7 @@ export class TerminalRegistry implements TerminalHost {
             onResize: (size) => link.resize(size),
         });
         view.mount(frame);
+        view.setTabFocusMode(this.#tabFocusMode);
         return { frame, view, link };
     }
 

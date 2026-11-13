@@ -1,4 +1,186 @@
 {
+  "announce.hostConnected": [
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " connected."
+    }
+  ],
+  "announce.hostDisconnected": [
+    {
+      "type": 0,
+      "value": "Connection to "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " lost."
+    }
+  ],
+  "announce.hostFailed": [
+    {
+      "type": 0,
+      "value": "Couldn’t connect to "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ". "
+    },
+    {
+      "type": 1,
+      "value": "problem"
+    }
+  ],
+  "announce.muted": [
+    {
+      "type": 0,
+      "value": "Output announcements off for "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.nextKey": [
+    {
+      "type": 0,
+      "value": "The next key goes to the terminal."
+    }
+  ],
+  "announce.noSession": [
+    {
+      "type": 0,
+      "value": "No session is open."
+    }
+  ],
+  "announce.sidebarHidden": [
+    {
+      "type": 0,
+      "value": "Sidebar hidden."
+    }
+  ],
+  "announce.sidebarShown": [
+    {
+      "type": 0,
+      "value": "Sidebar shown."
+    }
+  ],
+  "announce.tabMovesFocus": [
+    {
+      "type": 0,
+      "value": "Tab moves focus out of the terminal."
+    }
+  ],
+  "announce.tabToTerminal": [
+    {
+      "type": 0,
+      "value": "Tab goes to the terminal."
+    }
+  ],
+  "announce.unmuted": [
+    {
+      "type": 0,
+      "value": "Output announcements on for "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "command.announcementsToggleMute": [
+    {
+      "type": 0,
+      "value": "Mute output announcements"
+    }
+  ],
+  "command.helpAccessibility": [
+    {
+      "type": 0,
+      "value": "Accessibility help"
+    }
+  ],
+  "command.helpUserGuide": [
+    {
+      "type": 0,
+      "value": "User guide"
+    }
+  ],
+  "command.notificationsShow": [
+    {
+      "type": 0,
+      "value": "Show notifications"
+    }
+  ],
+  "command.paletteShow": [
+    {
+      "type": 0,
+      "value": "Show command palette"
+    }
+  ],
+  "command.regionNext": [
+    {
+      "type": 0,
+      "value": "Next region"
+    }
+  ],
+  "command.regionPrevious": [
+    {
+      "type": 0,
+      "value": "Previous region"
+    }
+  ],
+  "command.sidebarToggle": [
+    {
+      "type": 0,
+      "value": "Show or hide the sidebar"
+    }
+  ],
+  "command.terminalSendNextKey": [
+    {
+      "type": 0,
+      "value": "Send next key to terminal"
+    }
+  ],
+  "command.terminalToggleTabFocus": [
+    {
+      "type": 0,
+      "value": "Tab moves focus"
+    }
+  ],
+  "contextMenu.label": [
+    {
+      "type": 0,
+      "value": "Actions for "
+    },
+    {
+      "type": 1,
+      "value": "target"
+    }
+  ],
+  "contextMenu.open": [
+    {
+      "type": 0,
+      "value": "Open"
+    }
+  ],
   "failure.authenticationAgentEmpty.problem": [
     {
       "type": 0,
@@ -623,6 +805,92 @@
       "value": ". Trust it?"
     }
   ],
+  "notifications.clear": [
+    {
+      "type": 0,
+      "value": "Clear all"
+    }
+  ],
+  "notifications.close": [
+    {
+      "type": 0,
+      "value": "Close"
+    }
+  ],
+  "notifications.dismiss": [
+    {
+      "type": 0,
+      "value": "Dismiss"
+    }
+  ],
+  "notifications.dismissNamed": [
+    {
+      "type": 0,
+      "value": "Dismiss: "
+    },
+    {
+      "type": 1,
+      "value": "text"
+    }
+  ],
+  "notifications.empty": [
+    {
+      "type": 0,
+      "value": "No notifications."
+    }
+  ],
+  "notifications.title": [
+    {
+      "type": 0,
+      "value": "Notifications"
+    }
+  ],
+  "palette.empty": [
+    {
+      "type": 0,
+      "value": "No matching command."
+    }
+  ],
+  "palette.newSession": [
+    {
+      "type": 0,
+      "value": "New session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "palette.openSession": [
+    {
+      "type": 0,
+      "value": "Open "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": " on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "palette.search": [
+    {
+      "type": 0,
+      "value": "Command"
+    }
+  ],
+  "palette.title": [
+    {
+      "type": 0,
+      "value": "Command palette"
+    }
+  ],
   "session.exited": [
     {
       "type": 0,
@@ -791,6 +1059,12 @@
       "value": "Sidebar width"
     }
   ],
+  "sidebar.splitterHidden": [
+    {
+      "type": 0,
+      "value": "Sidebar hidden"
+    }
+  ],
   "sidebar.splitterValue": [
     {
       "type": 1,
@@ -811,6 +1085,88 @@
     {
       "type": 0,
       "value": "Trust"
+    }
+  ],
+  "status.daemon": [
+    {
+      "type": 0,
+      "value": "Daemon "
+    },
+    {
+      "type": 1,
+      "value": "version"
+    }
+  ],
+  "status.hostState": [
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ": "
+    },
+    {
+      "type": 1,
+      "value": "state"
+    }
+  ],
+  "status.hostsConnected": [
+    {
+      "type": 1,
+      "value": "connected"
+    },
+    {
+      "type": 0,
+      "value": " of "
+    },
+    {
+      "type": 1,
+      "value": "total"
+    },
+    {
+      "type": 0,
+      "value": " hosts connected"
+    }
+  ],
+  "status.mute": [
+    {
+      "type": 0,
+      "value": "Mute output"
+    }
+  ],
+  "status.noDaemon": [
+    {
+      "type": 0,
+      "value": "Daemon not reached"
+    }
+  ],
+  "status.noHosts": [
+    {
+      "type": 0,
+      "value": "No hosts"
+    }
+  ],
+  "status.notifications": [
+    {
+      "type": 0,
+      "value": "Notifications "
+    },
+    {
+      "type": 1,
+      "value": "count"
+    }
+  ],
+  "status.region": [
+    {
+      "type": 0,
+      "value": "Status bar"
+    }
+  ],
+  "status.tabMovesFocus": [
+    {
+      "type": 0,
+      "value": "Tab moves focus"
     }
   ],
   "terminal.hint": [

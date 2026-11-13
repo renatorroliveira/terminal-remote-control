@@ -1,4 +1,96 @@
 {
+  "announce.hostConnected": {
+    "defaultMessage": "{host} connected.",
+    "description": "Announced when a host connects."
+  },
+  "announce.hostDisconnected": {
+    "defaultMessage": "Connection to {host} lost.",
+    "description": "Announced and listed when a working connection ends."
+  },
+  "announce.hostFailed": {
+    "defaultMessage": "Couldn’t connect to {host}. {problem}",
+    "description": "Announced and listed when a connection fails."
+  },
+  "announce.muted": {
+    "defaultMessage": "Output announcements off for {session}.",
+    "description": "Announced when output announcements are muted for a session."
+  },
+  "announce.nextKey": {
+    "defaultMessage": "The next key goes to the terminal.",
+    "description": "Announced after the send-next-key command."
+  },
+  "announce.noSession": {
+    "defaultMessage": "No session is open.",
+    "description": "Announced when a command needs an open session."
+  },
+  "announce.sidebarHidden": {
+    "defaultMessage": "Sidebar hidden.",
+    "description": "Announcement."
+  },
+  "announce.sidebarShown": {
+    "defaultMessage": "Sidebar shown.",
+    "description": "Announcement."
+  },
+  "announce.tabMovesFocus": {
+    "defaultMessage": "Tab moves focus out of the terminal.",
+    "description": "Announced when Tab focus mode turns on."
+  },
+  "announce.tabToTerminal": {
+    "defaultMessage": "Tab goes to the terminal.",
+    "description": "Announced when Tab focus mode turns off."
+  },
+  "announce.unmuted": {
+    "defaultMessage": "Output announcements on for {session}.",
+    "description": "Announced when output announcements are unmuted for a session."
+  },
+  "command.announcementsToggleMute": {
+    "defaultMessage": "Mute output announcements",
+    "description": "Command name: toggles spoken output for the open session."
+  },
+  "command.helpAccessibility": {
+    "defaultMessage": "Accessibility help",
+    "description": "Command name."
+  },
+  "command.helpUserGuide": {
+    "defaultMessage": "User guide",
+    "description": "Command name."
+  },
+  "command.notificationsShow": {
+    "defaultMessage": "Show notifications",
+    "description": "Command name."
+  },
+  "command.paletteShow": {
+    "defaultMessage": "Show command palette",
+    "description": "Command name."
+  },
+  "command.regionNext": {
+    "defaultMessage": "Next region",
+    "description": "Command name."
+  },
+  "command.regionPrevious": {
+    "defaultMessage": "Previous region",
+    "description": "Command name."
+  },
+  "command.sidebarToggle": {
+    "defaultMessage": "Show or hide the sidebar",
+    "description": "Command name."
+  },
+  "command.terminalSendNextKey": {
+    "defaultMessage": "Send next key to terminal",
+    "description": "Command name."
+  },
+  "command.terminalToggleTabFocus": {
+    "defaultMessage": "Tab moves focus",
+    "description": "Command name: toggles whether Tab leaves the terminal."
+  },
+  "contextMenu.label": {
+    "defaultMessage": "Actions for {target}",
+    "description": "Context menu name."
+  },
+  "contextMenu.open": {
+    "defaultMessage": "Open",
+    "description": "Context menu item."
+  },
   "failure.authenticationAgentEmpty.problem": {
     "defaultMessage": "Your SSH agent holds no keys, so ssh had no key to offer {name}.",
     "description": "What went wrong when a connection failed."
@@ -247,6 +339,50 @@
     "defaultMessage": "{host} presented an unknown {type} host key, {fingerprint}. Trust it?",
     "description": "Question shown when a host presents a key the user has not trusted yet."
   },
+  "notifications.clear": {
+    "defaultMessage": "Clear all",
+    "description": "Button."
+  },
+  "notifications.close": {
+    "defaultMessage": "Close",
+    "description": "Button."
+  },
+  "notifications.dismiss": {
+    "defaultMessage": "Dismiss",
+    "description": "Button that removes one notification."
+  },
+  "notifications.dismissNamed": {
+    "defaultMessage": "Dismiss: {text}",
+    "description": "Accessible name of the Dismiss button; starts with its visible label and names the notification."
+  },
+  "notifications.empty": {
+    "defaultMessage": "No notifications.",
+    "description": "Shown when the list is empty."
+  },
+  "notifications.title": {
+    "defaultMessage": "Notifications",
+    "description": "Dialog name."
+  },
+  "palette.empty": {
+    "defaultMessage": "No matching command.",
+    "description": "Empty list."
+  },
+  "palette.newSession": {
+    "defaultMessage": "New session on {host}",
+    "description": "Palette entry."
+  },
+  "palette.openSession": {
+    "defaultMessage": "Open {session} on {host}",
+    "description": "Palette entry."
+  },
+  "palette.search": {
+    "defaultMessage": "Command",
+    "description": "Search field label."
+  },
+  "palette.title": {
+    "defaultMessage": "Command palette",
+    "description": "Dialog name."
+  },
   "session.exited": {
     "defaultMessage": "Exited",
     "description": "Session state, exit status unknown."
@@ -343,6 +479,10 @@
     "defaultMessage": "Sidebar width",
     "description": "Accessible name of the handle that resizes the sidebar."
   },
+  "sidebar.splitterHidden": {
+    "defaultMessage": "Sidebar hidden",
+    "description": "The splitter’s value while the sidebar is hidden; Enter shows it again."
+  },
   "sidebar.splitterValue": {
     "defaultMessage": "{width} pixels",
     "description": "The sidebar width the splitter reports."
@@ -354,6 +494,42 @@
   "sidebar.trust": {
     "defaultMessage": "Trust",
     "description": "Button that trusts a presented host key."
+  },
+  "status.daemon": {
+    "defaultMessage": "Daemon {version}",
+    "description": "The version of the daemon the open session’s host runs."
+  },
+  "status.hostState": {
+    "defaultMessage": "{host}: {state}",
+    "description": "The open session’s host and its connection state."
+  },
+  "status.hostsConnected": {
+    "defaultMessage": "{connected} of {total} hosts connected",
+    "description": "Shown while no session is open."
+  },
+  "status.mute": {
+    "defaultMessage": "Mute output",
+    "description": "Toggle button: mutes spoken output for the open session."
+  },
+  "status.noDaemon": {
+    "defaultMessage": "Daemon not reached",
+    "description": "Shown while the open session’s host is not connected."
+  },
+  "status.noHosts": {
+    "defaultMessage": "No hosts",
+    "description": "Status bar text."
+  },
+  "status.notifications": {
+    "defaultMessage": "Notifications {count}",
+    "description": "Button that opens the notification list, with how many it holds."
+  },
+  "status.region": {
+    "defaultMessage": "Status bar",
+    "description": "Landmark name."
+  },
+  "status.tabMovesFocus": {
+    "defaultMessage": "Tab moves focus",
+    "description": "Toggle button: whether Tab leaves the terminal."
   },
   "terminal.hint": {
     "defaultMessage": "Option F1: accessibility help.",

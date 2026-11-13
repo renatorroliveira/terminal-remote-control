@@ -156,6 +156,11 @@ export class TerminalView {
         this.#modes.sendNextKey = true;
     }
 
+    /** Whether the next key goes to the process even if the app reserves it. */
+    get passingNextKey(): boolean {
+        return this.#modes.sendNextKey;
+    }
+
     /** Moves keyboard focus to the surface. */
     focus(): void {
         this.surface.focus();

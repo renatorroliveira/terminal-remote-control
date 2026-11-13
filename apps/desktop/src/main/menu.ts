@@ -1,11 +1,14 @@
 import type { MenuItemConstructorOptions } from 'electron';
 import type { AppCommand } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
+import { type CommandId, type Keymap, menuAccelerator } from '../shared/keymap';
 import { MAIN_STRINGS } from './strings';
 
 /** What the menu needs. */
 export interface MenuOptions {
     readonly appName: string;
+    /** The shortcuts in force; the menus show the Command ones (docs/design/keymap.md, rule 7). */
+    readonly keymap: Keymap;
     /** Sends a command to the renderer. */
     readonly onCommand: (command: AppCommand) => void;
     /** Shows the macOS Look Up panel for the focused page's selection. */
@@ -27,8 +30,9 @@ const THEME_CHOICES: readonly (readonly [ThemePreference, string] | 'separator')
 ];
 
 /**
- * The menu bar: the standard macOS menus, Edit with Look Up and Speech, zoom in View, and Help with the user guide
- * and accessibility help.
+ * The menu bar: the standard macOS menus; Edit with Look Up and Speech; View with the command palette, notifications,
+ * the sidebar, regions, the theme and zoom; Terminal with Tab focus mode, send next key and mute; and Help with the
+ * user guide and accessibility help. Each command shows its Command shortcut and runs in the renderer.
  */
 export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[] {
     return [
@@ -50,6 +54,13 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
         {
             label: MAIN_STRINGS.viewMenu,
             submenu: [
+                command(options, 'palette.show', MAIN_STRINGS.commandPalette),
+                command(options, 'notifications.show', MAIN_STRINGS.showNotifications),
+                { type: 'separator' },
+                command(options, 'sidebar.toggle', MAIN_STRINGS.toggleSidebar),
+                command(options, 'region.next', MAIN_STRINGS.nextRegion),
+                command(options, 'region.previous', MAIN_STRINGS.previousRegion),
+                { type: 'separator' },
                 { label: MAIN_STRINGS.theme, submenu: themeMenu(options) },
                 { type: 'separator' },
                 { role: 'resetZoom' },
@@ -59,19 +70,29 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
                 { role: 'togglefullscreen' },
             ],
         },
+        {
+            label: MAIN_STRINGS.terminalMenu,
+            submenu: [
+                command(options, 'terminal.toggleTabFocus', MAIN_STRINGS.tabMovesFocus),
+                command(options, 'terminal.sendNextKey', MAIN_STRINGS.sendNextKey),
+                command(options, 'announcements.toggleMute', MAIN_STRINGS.muteAnnouncements),
+            ],
+        },
         { role: 'windowMenu' },
         {
             role: 'help',
             submenu: [
-                { label: MAIN_STRINGS.userGuide, click: () => options.onCommand('help.userGuide') },
-                {
-                    label: MAIN_STRINGS.accessibilityHelp,
-                    accelerator: 'Alt+F1',
-                    click: () => options.onCommand('help.accessibility'),
-                },
+                command(options, 'help.userGuide', MAIN_STRINGS.userGuide),
+                command(options, 'help.accessibility', MAIN_STRINGS.accessibilityHelp),
             ],
         },
     ];
+}
+
+function command(options: MenuOptions, id: CommandId, label: string): MenuItemConstructorOptions {
+    const chord = options.keymap.chordFor(id);
+    const accelerator = chord === undefined ? undefined : menuAccelerator(chord);
+    return { label, ...(accelerator === undefined ? {} : { accelerator }), click: () => options.onCommand(id) };
 }
 
 function editMenu(options: MenuOptions): MenuItemConstructorOptions {

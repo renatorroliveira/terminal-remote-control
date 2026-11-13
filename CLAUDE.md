@@ -45,6 +45,9 @@ tooling (`tools/*`).
 - `pnpm install` also brands the development Electron.app (name, icon,
   ad-hoc re-signature) through `tools/dev-electron` (D-35), so menus and the
   About panel show the product in dev and test builds.
+- Shortcuts: `docs/design/keymap.md` and `apps/desktop/src/shared/keymap.ts`
+  must match (a test checks); every command runs through the renderer's
+  dispatcher (D-36).
 - The git hooks install with `pnpm install` into `.git/hooks`; a global
   `core.hooksPath` hook manager runs them. Never bypass hooks with
   `--no-verify`.

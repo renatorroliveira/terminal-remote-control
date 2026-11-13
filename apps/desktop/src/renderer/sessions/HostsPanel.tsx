@@ -2,7 +2,10 @@ import { type FormEvent, useRef, useState } from 'react';
 import { Button, FieldError, Input, Label, Text, TextField } from 'react-aria-components';
 import { type IntlShape, useIntl } from 'react-intl';
 import { useStore } from 'zustand';
+import { contextMenuMessages } from '../app/shell-messages';
+import { hostActions } from '../app/workspace-actions';
 import { BUTTON, PRIMARY_BUTTON } from '../ui/buttons';
+import { useContextMenu } from '../ui/context-menu';
 import { BusyIcon, ConnectedIcon, DisconnectedIcon } from '../ui/icons';
 import styles from './HostsPanel.module.css';
 import {
@@ -58,6 +61,10 @@ function HostRow({ host, workspace }: { readonly host: HostEntry; readonly works
     const action = workspace.connectionAction(host);
     const badge = badgeOf(host);
     const descriptionId = `${host.id}-state`;
+    const { triggerProps, menu } = useContextMenu(() => ({
+        label: intl.formatMessage(contextMenuMessages.label, { target: host.destination }),
+        items: hostActions(intl, workspace, host),
+    }));
     const press = (): void => {
         if (action === 'review-key') {
             document.getElementById(`${host.id}-trust`)?.focus();
@@ -66,7 +73,7 @@ function HostRow({ host, workspace }: { readonly host: HostEntry; readonly works
         }
     };
     return (
-        <li className={styles['row']}>
+        <li className={styles['row']} {...triggerProps}>
             <span className={styles['name']}>{host.destination}</span>
             <Button
                 className={styles['badge'] ?? ''}
@@ -80,6 +87,7 @@ function HostRow({ host, workspace }: { readonly host: HostEntry; readonly works
             <span id={descriptionId} hidden>
                 {hostDescription(intl, host)}
             </span>
+            {menu}
         </li>
     );
 }

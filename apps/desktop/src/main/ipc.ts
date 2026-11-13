@@ -19,6 +19,8 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'hosts:add': z.tuple([z.string().min(1).max(1024)]),
     'sidebar:get-width': z.tuple([]),
     'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),
+    'sidebar:get-collapsed': z.tuple([]),
+    'sidebar:set-collapsed': z.tuple([z.boolean()]),
 };
 
 /**
