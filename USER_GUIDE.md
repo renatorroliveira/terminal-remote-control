@@ -142,14 +142,15 @@ lists them, and opening one shows its screen as the host has it now. A host rebo
 The terminal takes every key you type, including Escape, Tab and the arrow keys, and sends it to the session. The
 Command key belongs to the app.
 
-| Action                         | Keys or gesture                                                     |
-| ------------------------------ | ------------------------------------------------------------------- |
-| Copy the selection             | Command-C                                                           |
-| Paste                          | Command-V                                                           |
-| Select text                    | Drag. Drag past the top or bottom edge to scroll; farther is faster |
-| Scroll back and forward a page | Shift-Page Up and Shift-Page Down                                   |
-| Look up the selected word      | Control-Command-D, or Edit, then Look Up                            |
-| Speak the selection            | Edit, then Speech, then Start Speaking                              |
+| Action                              | Keys or gesture                                                     |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| Copy the selection                  | Command-C. Wrapped lines come out as the program printed them       |
+| Paste                               | Command-V. More than one line asks first and says how many          |
+| Copy, Paste, List Links and Look Up | Shift-F10, the Menu key, Control-click or right-click               |
+| Select text                         | Drag. Drag past the top or bottom edge to scroll; farther is faster |
+| Scroll back and forward a page      | Shift-Page Up and Shift-Page Down                                   |
+| Look up the selected word           | Control-Command-D, or Edit, then Look Up                            |
+| Speak the selection                 | Edit, then Speech, then Start Speaking                              |
 
 Programs that ask for the kitty keyboard protocol (Claude Code, Neovim, Helix and others) receive modified keys
 such as Shift-Return and Control-Tab as distinct keys. Others receive the classic xterm codes.
@@ -158,6 +159,10 @@ The terminal sets `TERM=xterm-256color`, `COLORTERM=truecolor` and `TERM_PROGRAM
 PTY to fit the window.
 
 Terminal output never touches your clipboard: programs can't read it or write to it.
+
+A selection of more than 5,000 lines still copies whole; VoiceOver sees its first 5,000 lines, and TRC says so.
+Pasting more than one line shows the text and asks first, because the shell may run each line. Programs that ask
+for bracketed paste, such as bash and zsh, then wait for Return before they run anything.
 
 ### Links
 

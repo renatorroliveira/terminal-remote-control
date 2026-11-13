@@ -22,6 +22,7 @@ export interface InvokeContract {
         readonly args: readonly [target: string, trustOrigin: boolean];
         readonly result: undefined;
     };
+    readonly 'menus:terminal': { readonly args: readonly [canCopy: boolean]; readonly result: undefined };
     readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
     readonly 'sidebar:get-collapsed': { readonly args: readonly []; readonly result: boolean };
@@ -77,6 +78,10 @@ export interface TrcBridge {
         check(target: string): Promise<LinkCheck | undefined>;
         /** Opens a link the user confirmed or trusts, first trusting its origin when asked (US-1.12.4). */
         open(target: string, trustOrigin: boolean): Promise<void>;
+    };
+    readonly menus: {
+        /** Shows the terminal's context menu: Copy when `canCopy`, Paste, List Links and Look Up (A11Y-11.11). */
+        terminal(canCopy: boolean): Promise<void>;
     };
     readonly sidebar: {
         /** The sidebar width the user last chose, in CSS pixels. */

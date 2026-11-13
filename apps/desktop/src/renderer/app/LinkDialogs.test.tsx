@@ -12,6 +12,7 @@ import { themeStyleSheet } from '../ui/themes';
 import { AppProviders } from './AppProviders';
 import { LinkDialogs } from './LinkDialogs';
 import { NotificationCenter } from './notifications';
+import { PasteDialog } from './PasteDialog';
 import { type LinkControls, Shell } from './shell';
 
 class RecordingLinks implements LinkControls {
@@ -59,6 +60,7 @@ async function renderDialogs() {
     const screen = await render(
         <AppProviders locale="en">
             <LinkDialogs shell={shell} />
+            <PasteDialog shell={shell} />
         </AppProviders>,
     );
     return { screen, shell, links, terminals };
@@ -125,5 +127,23 @@ describe('LinkDialogs: List links (US-1.12.3)', () => {
         await userEvent.keyboard('{Escape}');
         await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument();
         expect(links.opened).toEqual([]);
+    });
+});
+
+describe('PasteDialog: a paste of several lines asks first (US-1.12.2)', () => {
+    it('states the line count, shows the text, and pastes only when asked', async () => {
+        const { screen, shell, terminals } = await renderDialogs();
+        shell.requestPaste('host-0/a', 'make\nmake install\n');
+        const dialog = screen.getByRole('alertdialog', { name: 'Paste 2 lines?' });
+        await expect.element(dialog.getByRole('textbox', { name: 'Text to paste' })).toHaveFocus();
+        await expect
+            .element(dialog.getByRole('textbox', { name: 'Text to paste' }))
+            .toHaveValue('make\nmake install\n');
+        expect(await violations()).toEqual([]);
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+        expect(terminals.pasted).toEqual([]);
+        shell.requestPaste('host-0/a', 'a\nb');
+        await screen.getByRole('button', { name: 'Paste', exact: true }).click();
+        expect(terminals.pasted).toEqual([['host-0/a', 'a\nb']]);
     });
 });

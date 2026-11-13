@@ -161,6 +161,39 @@ test.describe('a live terminal on a Linux host: links (US-1.12.3, US-1.12.4)', (
     });
 });
 
+test.describe('a live terminal on a Linux host: paste (US-1.12.2)', () => {
+    const install = liveHost();
+
+    test('asks before pasting two lines, and the shell runs them on Return after a bracketed paste', async () => {
+        const { app, window } = await launchWithTestHosts(install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
+        await terminal.focus();
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await terminal.evaluate((surface) => {
+            const data = new DataTransfer();
+            data.setData('text/plain', 'echo pasted-one\necho pasted-two\n');
+            surface.dispatchEvent(
+                new InputEvent('beforeinput', {
+                    bubbles: true,
+                    cancelable: true,
+                    inputType: 'insertFromPaste',
+                    dataTransfer: data,
+                }),
+            );
+        });
+        const dialog = window.getByRole('alertdialog', { name: 'Paste 2 lines?' });
+        await dialog.getByRole('button', { name: 'Paste' }).click();
+        await expect(dialog).toHaveCount(0);
+        await expect(terminal).toBeFocused();
+        await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('echo pasted-two');
+        expect(await rowTexts(terminal)).not.toContain('pasted-one');
+        await window.keyboard.press('Enter');
+        await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('pasted-two');
+        expect(await rowTexts(terminal)).toContain('pasted-one');
+        await app.close();
+    });
+});
+
 test.describe('a live terminal on a Linux host: leaving the terminal (A11Y-05)', () => {
     const install = liveHost();
 

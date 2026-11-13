@@ -9,6 +9,8 @@ export interface InputSink {
     page(direction: 'up' | 'down'): void;
     /** The IME composition ended; rows may need rebuilding. */
     composed(): void;
+    /** The user pasted or dropped text. */
+    paste(text: string): void;
 }
 
 /** Input state the user toggles (A11Y-05.3, A11Y-05.4). */
@@ -27,8 +29,6 @@ export interface InputTarget {
     readonly keyboardFlags: () => number;
 }
 
-const BRACKETED_START = '\u001b[200~';
-const BRACKETED_END = '\u001b[201~';
 const BEFORE_INPUT_BYTES: Readonly<Record<string, string>> = {
     deleteContentBackward: '\u007f',
     deleteWordBackward: '\u0017',
@@ -81,7 +81,11 @@ export function attachInput(target: InputTarget, sink: InputSink): () => void {
             return;
         }
         event.preventDefault();
-        const text = textOf(event, terminal);
+        if (event.inputType === 'insertFromPaste' || event.inputType === 'insertFromDrop') {
+            sink.paste(event.dataTransfer?.getData('text/plain') ?? '');
+            return;
+        }
+        const text = textOf(event);
         if (text !== undefined && text !== '') {
             sink.send(text);
         }
@@ -102,14 +106,10 @@ export function attachInput(target: InputTarget, sink: InputSink): () => void {
     };
 }
 
-function textOf(event: InputEvent, terminal: Terminal): string | undefined {
+function textOf(event: InputEvent): string | undefined {
     const bytes = BEFORE_INPUT_BYTES[event.inputType];
     if (bytes !== undefined) {
         return bytes;
-    }
-    if (event.inputType === 'insertFromPaste' || event.inputType === 'insertFromDrop') {
-        const pasted = event.dataTransfer?.getData('text/plain') ?? '';
-        return terminal.modes.bracketedPasteMode ? `${BRACKETED_START}${pasted}${BRACKETED_END}` : pasted;
     }
     return event.inputType.startsWith('insert') ? (event.data ?? event.dataTransfer?.getData('text/plain')) : undefined;
 }

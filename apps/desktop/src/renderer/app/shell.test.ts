@@ -238,6 +238,24 @@ describe('Shell links (US-1.12.3, US-1.12.4)', () => {
     });
 });
 
+describe('Shell paste and copy (US-1.12.1, US-1.12.2, A11Y-04.7)', () => {
+    it('asks before a paste of more than one line, stating the line count, and pastes once confirmed', async () => {
+        const { shell, terminals } = await setup();
+        shell.requestPaste('host-0/a', 'make\nmake install\n');
+        expect(shell.state.getState().pasteDialog).toEqual({ key: 'host-0/a', text: 'make\nmake install\n', lines: 2 });
+        expect(terminals.pasted).toEqual([]);
+        shell.confirmPaste();
+        expect(terminals.pasted).toEqual([['host-0/a', 'make\nmake install\n']]);
+        expect(shell.state.getState().pasteDialog).toBeUndefined();
+    });
+
+    it('announces a copy past the selection cap', async () => {
+        const { shell, spoken } = await setup();
+        shell.terminalNotice('host-0/a', { kind: 'copy-capped', lines: 6_000 });
+        expect(spoken).toEqual(['Copied all 6,000 lines. Assistive technology sees the first 5,000.']);
+    });
+});
+
 describe('Shell sidebar and dialogs (US-1.6.3)', () => {
     it('hides and shows the sidebar column and keeps it, or the panel in a narrow window', async () => {
         const wide = await setup();

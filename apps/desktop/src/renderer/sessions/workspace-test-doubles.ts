@@ -171,6 +171,14 @@ export class FakeTerminalHost implements TerminalHost {
     visibleLinks(): readonly TerminalLink[] {
         return this.links;
     }
+
+    /** Every paste, as session and text. */
+    readonly pasted: (readonly [string, string])[] = [];
+
+    /** Records the paste. */
+    paste(key: string, text: string): void {
+        this.pasted.push([key, text]);
+    }
 }
 
 /** A known-host store in memory, numbering hosts `host-0`, `host-1`, ... */

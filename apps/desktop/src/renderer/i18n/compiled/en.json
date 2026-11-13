@@ -359,6 +359,30 @@
       "value": "Open"
     }
   ],
+  "copy.capped": [
+    {
+      "type": 0,
+      "value": "Copied all "
+    },
+    {
+      "type": 2,
+      "value": "lines",
+      "style": null
+    },
+    {
+      "type": 0,
+      "value": " lines. Assistive technology sees the first "
+    },
+    {
+      "type": 2,
+      "value": "cap",
+      "style": null
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "failure.authenticationAgentEmpty.problem": [
     {
       "type": 0,
@@ -1585,6 +1609,70 @@
     {
       "type": 0,
       "value": "Command palette"
+    }
+  ],
+  "paste.body": [
+    {
+      "type": 0,
+      "value": "TRC types the text into the terminal, and the shell may run each line as a command."
+    }
+  ],
+  "paste.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "paste.paste": [
+    {
+      "type": 0,
+      "value": "Paste"
+    }
+  ],
+  "paste.preview": [
+    {
+      "type": 0,
+      "value": "Text to paste"
+    }
+  ],
+  "paste.title": [
+    {
+      "type": 6,
+      "value": "lines",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Paste "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " line?"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Paste "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " lines?"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
     }
   ],
   "rename.cancel": [

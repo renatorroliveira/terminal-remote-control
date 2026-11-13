@@ -100,7 +100,25 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
     ];
 }
 
-function command(options: MenuOptions, id: CommandId, label: string): MenuItemConstructorOptions {
+/** The terminal's context menu: Copy (with a selection), Paste, List Links and Look Up (A11Y-11.11, US-1.12). */
+export function terminalContextMenu(
+    options: Pick<MenuOptions, 'keymap' | 'onCommand' | 'onLookUp'>,
+    canCopy: boolean,
+): MenuItemConstructorOptions[] {
+    return [
+        { role: 'copy', enabled: canCopy },
+        { role: 'paste' },
+        { type: 'separator' },
+        command(options, 'terminal.listLinks', MAIN_STRINGS.listLinks),
+        { label: MAIN_STRINGS.lookUp, enabled: canCopy, click: () => options.onLookUp() },
+    ];
+}
+
+function command(
+    options: Pick<MenuOptions, 'keymap' | 'onCommand'>,
+    id: CommandId,
+    label: string,
+): MenuItemConstructorOptions {
     const chord = options.keymap.chordFor(id);
     const accelerator = chord === undefined ? undefined : menuAccelerator(chord);
     return { label, ...(accelerator === undefined ? {} : { accelerator }), click: () => options.onCommand(id) };

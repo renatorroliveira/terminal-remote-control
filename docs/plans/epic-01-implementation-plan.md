@@ -673,19 +673,22 @@ As built:
   count.
 - Links (US-1.12.3, US-1.12.4):
     - OSC 8 through `linkHandler`;
-    - URL and path detection;
+    - URL detection; plain file paths wait for E5's local sessions (owner, 2026-11-13);
     - Cmd+click (Ctrl+click on other platforms);
     - a "list links" command;
     - any scheme the OS opens, always behind a confirmation that shows the target, unless the target starts with
       a trusted prefix from `accept_urls.json` in the TRC home; the confirmation can trust the link's origin.
-- OSC 52 off by default, enabled per host. Clipboard reads always refused.
+- OSC 52 off by default, enabled per host (kept in `hosts.json`; the switch appears only on ST-18's settings page,
+  owner's choice). Clipboard reads always refused.
 - Control characters stripped from titles and announcements.
 - Minimum contrast 4.5:1, including the dim-text fix.
-- Font size and zoom up to 200%, resizing the PTY.
+- Font size and zoom up to 200%, resizing the PTY: Command+=, Command+- and Command+0 change only the terminal font
+  (owner's choice); the View menu's page zoom moves to Option+Command+= and -.
 - Line-height and letter-spacing.
 - Cursor shape and thickness.
 - Blink: off under reduce motion, and stops after 5 s without input.
-- Visual bell: at most 3 flashes per second, with alternatives.
+- Bell: a status bar indicator for a few seconds, announced, and a badge on a background session's row; nothing
+  flashes (owner's choice), so A11Y-08.2's limit holds. The sound joins ST-18's audio cues.
 - A pinned viewport with an announced "new output below" indicator.
 
 As built so far (links first, by the owner's request on 2026-11-13):
@@ -696,6 +699,10 @@ As built so far (links first, by the owner's request on 2026-11-13):
   script and content schemes. Test builds log opened links to `TRC_TEST_OPENED_LINKS` instead of opening them.
 - Plain-text file paths are not detected: on a remote host they name files the Mac can't open. They wait for local
   sessions in E5; OSC 8 `file:` links still open after the confirmation.
+- Copy puts xterm.js's selection on the clipboard, soft-wrapped rows joined, whole even past the 5,000-line cap,
+  which is announced. Paste turns line breaks into Return, wraps bracketed paste without any bracket sequence of
+  its own, and asks first, with the text and the line count, for more than one line. Shift+F10, the Menu key and
+  right-click open a native context menu: Copy, Paste, List Links and Look Up.
 - Fixed on the way: Add host's suggestions now narrow as the user types (US-1.1.1).
 
 **ST-16 Review mode and find** (A11Y-03.1–8, US-1.13)

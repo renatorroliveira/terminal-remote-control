@@ -63,6 +63,9 @@ if (container !== null) {
                 isMuted: (key) => shell?.isMuted(key) ?? false,
             },
             onOpenLink: (link) => void shell?.openLink(link),
+            onPasteRequest: (key, text) => shell?.requestPaste(key, text),
+            onNotice: (key, notice) => shell?.terminalNotice(key, notice),
+            onContextMenu: (canCopy) => void window.trc.menus.terminal(canCopy),
         });
         const { workspace, terminals } = composed;
         shell = new Shell({

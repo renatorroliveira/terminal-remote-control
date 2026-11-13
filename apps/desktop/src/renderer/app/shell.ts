@@ -15,10 +15,14 @@ import {
 import { sessionStateText } from '../sessions/session-state-text';
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import { type HostEntry, hostGroups, type SessionKey, sessionName, type Workspace } from '../sessions/workspace-model';
+import { SELECTION_CAP } from '../terminal/ats-surface';
 import type { TerminalLink } from '../terminal/hyperlinks';
+import type { TerminalNotice } from '../terminal/notices';
+import { pastedLines } from '../terminal/paste';
 import type { Announcer } from './announcer';
 import { linkAnnouncements } from './link-messages';
 import type { NotificationCenter } from './notifications';
+import { copyCappedMessage } from './paste-messages';
 import { RegionCycler } from './regions';
 import {
     commandMessages,
@@ -37,6 +41,15 @@ export interface TerminalControls {
     passingNextKey(): boolean;
     /** The links on the open terminal's screen (US-1.12.3). */
     visibleLinks(): readonly TerminalLink[];
+    /** Pastes text into a session's terminal (US-1.12.2). */
+    paste(key: SessionKey, text: string): void;
+}
+
+/** A paste of more than one line, waiting for the user's confirmation (US-1.12.2). */
+export interface PasteDialog {
+    readonly key: SessionKey;
+    readonly text: string;
+    readonly lines: number;
 }
 
 /** What the shell asks of the main process to open links (US-1.12.3, US-1.12.4). */
@@ -87,6 +100,8 @@ export interface ShellState {
     readonly sessionDialog: SessionDialog | undefined;
     /** The link dialog open now (US-1.12.3). */
     readonly linkDialog: LinkDialog | undefined;
+    /** The paste waiting for confirmation (US-1.12.2). */
+    readonly pasteDialog: PasteDialog | undefined;
 }
 
 /** A dialog about a session, or the New session dialog. */
@@ -128,6 +143,7 @@ const INITIAL_STATE: ShellState = {
     hostDialog: undefined,
     sessionDialog: undefined,
     linkDialog: undefined,
+    pasteDialog: undefined,
 };
 
 /**
@@ -250,6 +266,34 @@ export class Shell {
     /** Opens a session dialog, or closes it. */
     setSessionDialog(sessionDialog: SessionDialog | undefined): void {
         this.state.setState({ sessionDialog });
+    }
+
+    /** Asks before pasting text of more than one line into a session (US-1.12.2). */
+    requestPaste(key: SessionKey, text: string): void {
+        this.state.setState({ pasteDialog: { key, text, lines: pastedLines(text) } });
+    }
+
+    /** Pastes the text the confirmation shows. */
+    confirmPaste(): void {
+        const dialog = this.state.getState().pasteDialog;
+        this.cancelPaste();
+        if (dialog !== undefined) {
+            this.#options.terminals.paste(dialog.key, dialog.text);
+        }
+    }
+
+    /** Drops the paste waiting for confirmation. */
+    cancelPaste(): void {
+        this.state.setState({ pasteDialog: undefined });
+    }
+
+    /** Shows or announces what a terminal reported. */
+    terminalNotice(_key: SessionKey, notice: TerminalNotice): void {
+        if (notice.kind === 'copy-capped') {
+            this.#options.announcer.announce(
+                this.#options.intl.formatMessage(copyCappedMessage, { lines: notice.lines, cap: SELECTION_CAP }),
+            );
+        }
     }
 
     /** Opens a link dialog, or closes it. */

@@ -28,6 +28,7 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'hosts:set-install-root': z.tuple([HOST_ID, z.string().min(1).max(4096)]),
     'links:check': z.tuple([LINK]),
     'links:open': z.tuple([LINK, z.boolean()]),
+    'menus:terminal': z.tuple([z.boolean()]),
     'sidebar:get-width': z.tuple([]),
     'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),
     'sidebar:get-collapsed': z.tuple([]),

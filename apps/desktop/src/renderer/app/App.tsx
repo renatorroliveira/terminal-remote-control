@@ -17,6 +17,7 @@ import styles from './App.module.css';
 import { CommandPalette } from './CommandPalette';
 import { LinkDialogs } from './LinkDialogs';
 import { NotificationsDialog } from './NotificationsDialog';
+import { PasteDialog } from './PasteDialog';
 import { REGION_ATTRIBUTE } from './regions';
 import { SidebarSplitter } from './SidebarSplitter';
 import { StatusBar } from './StatusBar';
@@ -58,6 +59,7 @@ export function App({ workspace, terminals, shell }: AppProps) {
                 <CommandPalette shell={shell} workspace={workspace} />
                 <NotificationsDialog shell={shell} />
                 <LinkDialogs shell={shell} />
+                <PasteDialog shell={shell} />
             </div>
         </ShellContext.Provider>
     );

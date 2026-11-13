@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { THEMES } from '../ui/themes';
+import { SELECTION_CAP } from './ats-surface';
 import type { TerminalLink } from './hyperlinks';
 import { TerminalView, type TerminalViewOptions } from './terminal-view';
 
@@ -558,5 +559,72 @@ describe('TerminalView: links (US-1.12.3)', () => {
             'https://example.com/1',
             'https://example.com/2',
         ]);
+    });
+});
+
+function paste(view: TerminalView, text: string): void {
+    const data = new DataTransfer();
+    data.setData('text/plain', text);
+    view.surface.dispatchEvent(
+        new InputEvent('beforeinput', {
+            bubbles: true,
+            cancelable: true,
+            inputType: 'insertFromPaste',
+            dataTransfer: data,
+        }),
+    );
+}
+
+describe('TerminalView: paste and copy (US-1.12.1, US-1.12.2, A11Y-04.7)', () => {
+    it('asks before pasting more than one line, and sends the text once confirmed', async () => {
+        const requests: string[] = [];
+        const { view, inputs } = mount({ onPasteRequest: (text) => requests.push(text) });
+        await written(view, '');
+        paste(view, 'one line');
+        paste(view, 'make\nmake install\n');
+        expect(inputs).toEqual(['one line']);
+        expect(requests).toEqual(['make\nmake install\n']);
+        view.paste('make\nmake install\n');
+        expect(inputs).toEqual(['one line', 'make\rmake install\r']);
+    });
+
+    it('copies the selection as logical lines, joining soft-wrapped rows', async () => {
+        const { view } = mount();
+        const long = 'x'.repeat(view.terminal.cols + 10);
+        await written(view, `${long}\r\nnext`);
+        view.terminal.select(0, 0, view.terminal.cols * 2 + 'next'.length);
+        const data = new DataTransfer();
+        const event = new ClipboardEvent('copy', { bubbles: true, cancelable: true, clipboardData: data });
+        view.surface.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(true);
+        expect(data.getData('text/plain')).toBe(`${long}\nnext`);
+    });
+
+    it('copies a selection past the cap whole, and reports that the OS sees only part of it', async () => {
+        const notices: unknown[] = [];
+        const { view } = mount({ onNotice: (notice) => notices.push(notice) });
+        const lines = SELECTION_CAP + 1;
+        await written(view, Array.from({ length: lines }, (_, index) => String(index)).join('\r\n'));
+        view.terminal.selectAll();
+        const data = new DataTransfer();
+        view.surface.dispatchEvent(
+            new ClipboardEvent('copy', { bubbles: true, cancelable: true, clipboardData: data }),
+        );
+        expect(data.getData('text/plain').split('\n').slice(0, lines)).toEqual(
+            Array.from({ length: lines }, (_, index) => String(index)),
+        );
+        expect(notices).toEqual([{ kind: 'copy-capped', lines: expect.any(Number) }]);
+    });
+
+    it('opens the context menu from the pointer, Shift+F10 and the Menu key, saying whether there is a selection', async () => {
+        const menus: boolean[] = [];
+        const { view, inputs } = mount({ onContextMenu: (canCopy) => menus.push(canCopy) });
+        await written(view, 'hello');
+        view.surface.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+        view.terminal.select(0, 0, 'hello'.length);
+        key(view.surface, { key: 'F10', code: 'F10', shiftKey: true });
+        key(view.surface, { key: 'ContextMenu', code: 'ContextMenu' });
+        expect(menus).toEqual([false, true, true]);
+        expect(inputs).toEqual([]);
     });
 });
