@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { page } from 'vitest/browser';
 import { THEMES } from '../ui/themes';
 import { TerminalView } from './terminal-view';
 
@@ -193,6 +194,50 @@ describe('TerminalView: dragging a selection past an edge (A11Y-04)', () => {
             scrolled.push(view.terminal.buffer.active.viewportY);
         }
         expect(scrolled[1]).toBeGreaterThan(scrolled[0] ?? 0);
+    });
+});
+
+/** The color of the pixel at (`x`, `y`) inside `element`, as rendered on screen. */
+async function pixelAt(element: HTMLElement, x: number, y: number): Promise<readonly number[]> {
+    const image = new Image();
+    image.src = `data:image/png;base64,${await page.screenshot({ element, save: false })}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d');
+    context?.drawImage(image, 0, 0);
+    const scale = image.width / element.getBoundingClientRect().width;
+    return [...(context?.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data.slice(0, 3) ?? [])];
+}
+
+function near(actual: readonly number[], expected: readonly number[]): boolean {
+    return expected.every((channel, index) => Math.abs((actual[index] ?? -255) - channel) <= 12);
+}
+
+describe('TerminalView: cursor and selection colors (A11Y-06.6, A11Y-04)', () => {
+    it('draws a phosphor green block cursor at the prompt, before the terminal ever had xterm focus', async () => {
+        const { view, host } = mount();
+        view.surface.focus();
+        await written(view, '$ ');
+        await frames();
+        const caret = getSelection()?.getRangeAt(0).getBoundingClientRect();
+        const box = host.getBoundingClientRect();
+        const color = await pixelAt(host, (caret?.left ?? 0) - box.left + 3, (caret?.top ?? 0) - box.top + 6);
+        expect(near(color, [0, 173, 44]), `cursor pixel ${color.join(',')}`).toBe(true);
+    });
+
+    it('fills selected cells with dark green', async () => {
+        const { view, host } = mount();
+        view.surface.focus();
+        await written(view, 'a     b');
+        view.terminal.select(0, 0, 7);
+        await frames();
+        const row = view.surface.querySelector('[data-row="0"]')?.getBoundingClientRect();
+        const box = host.getBoundingClientRect();
+        const cell = (row?.width ?? 0) / view.terminal.cols;
+        const color = await pixelAt(host, (row?.left ?? 0) - box.left + cell * 3.5, (row?.top ?? 0) - box.top + 4);
+        expect(near(color, [0, 107, 36]), `selection pixel ${color.join(',')}`).toBe(true);
     });
 });
 

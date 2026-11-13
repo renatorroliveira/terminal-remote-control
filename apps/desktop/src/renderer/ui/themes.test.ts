@@ -30,7 +30,7 @@ describe('the Midnight theme', () => {
     it('takes its UI and terminal colors from A11y Matrix Dark, kept apart', () => {
         const { ui, terminal } = THEMES.midnight;
         expect(ui).toMatchObject({ background: '#000000', text: '#d2d2d2', focusRing: '#ffb000', border: '#00ad2c' });
-        expect(terminal).toMatchObject({ background: '#000000', foreground: '#d2d2d2', cursor: '#d2d2d2' });
+        expect(terminal).toMatchObject({ background: '#000000', foreground: '#d2d2d2' });
         expect(terminal.ansi).toMatchObject({
             green: '#00ad2c',
             brightGreen: '#00f33e',
@@ -43,7 +43,13 @@ describe('the Midnight theme', () => {
         const { ui, terminal } = THEMES.midnight;
         expect(contrast(ui.text, ui.background)).toBeGreaterThanOrEqual(7);
         expect(contrast(terminal.foreground, terminal.background)).toBeGreaterThanOrEqual(7);
-        expect(contrast(terminal.selectionForeground, terminal.selectionBackground)).toBeGreaterThanOrEqual(7);
+    });
+
+    it('draws a phosphor green block cursor and selects in white on dark green, never inverted', () => {
+        const { ui, terminal } = THEMES.midnight;
+        expect(terminal).toMatchObject({ cursor: '#00ad2c', cursorAccent: '#000000' });
+        expect(terminal).toMatchObject({ selectionBackground: '#006b24', selectionForeground: '#ffffff' });
+        expect(ui).toMatchObject({ selectionBackground: '#006b24', selectionText: '#ffffff' });
     });
 });
 
