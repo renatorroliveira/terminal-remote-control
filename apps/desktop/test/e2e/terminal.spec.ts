@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
     launchWithTestHosts,
@@ -116,6 +118,45 @@ test.describe('a live terminal on a Linux host: spoken output (A11Y-02, A11Y-10.
         await window.keyboard.press('Enter');
         await expect.poll(() => spokenWith(window, 'trcspoken'), { timeout: 15_000 }).not.toEqual([]);
         expect(await spokenWith(window, 'echo')).toEqual([]);
+        await app.close();
+    });
+});
+
+async function commandClick(terminal: Locator, point: Point): Promise<void> {
+    const box = await terminal.boundingBox();
+    if (box === null) {
+        throw new Error('the terminal is not on the screen');
+    }
+    await terminal.click({ position: { x: point.x - box.x, y: point.y - box.y }, modifiers: ['Meta'] });
+}
+
+function readOrEmpty(file: string): string {
+    return existsSync(file) ? readFileSync(file, 'utf8') : '';
+}
+
+test.describe('a live terminal on a Linux host: links (US-1.12.3, US-1.12.4)', () => {
+    const install = liveHost();
+
+    test('confirms a Command+clicked link, trusts its origin when asked, then opens that origin’s links at once', async () => {
+        const { app, window, home, openedLinks } = await launchWithTestHosts(install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
+        await terminal.focus();
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await window.keyboard.type(
+            String.raw`printf '\e]8;;https://example.com/real\e\\the docs\e]8;;\e\\ or https://example.com/plain\n'`,
+        );
+        await window.keyboard.press('Enter');
+        const row = 'the docs or https://example.com/plain';
+        await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain(row);
+        await commandClick(terminal, await wordCenter(window, row, 'docs'));
+        const dialog = window.getByRole('alertdialog', { name: 'Open this link?' });
+        await expect(dialog.getByRole('textbox', { name: 'Address' })).toHaveValue('https://example.com/real');
+        await dialog.getByRole('button', { name: 'Always open links that start with https://example.com' }).click();
+        await expect.poll(() => readOrEmpty(openedLinks)).toBe('https://example.com/real\n');
+        expect(JSON.parse(readFileSync(join(home, 'accept_urls.json'), 'utf8'))).toEqual(['https://example.com']);
+        await commandClick(terminal, await wordCenter(window, row, 'plain'));
+        await expect.poll(() => readOrEmpty(openedLinks)).toBe('https://example.com/real\nhttps://example.com/plain\n');
+        await expect(dialog).toHaveCount(0);
         await app.close();
     });
 });

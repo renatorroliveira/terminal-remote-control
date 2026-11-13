@@ -1,4 +1,5 @@
 import type { IBuffer, IDisposable, IMarker, Terminal } from '@xterm/xterm';
+import { logicalEnd, logicalLine, logicalStart } from './buffer-lines';
 
 /** New output since the last read (A11Y-02.2). */
 export interface OutputDelta {
@@ -198,31 +199,6 @@ function commonPrefixLength(a: string, b: string): number {
         length += 1;
     }
     return length;
-}
-
-function logicalStart(buffer: IBuffer, row: number): number {
-    let start = row;
-    while (start > 0 && buffer.getLine(start)?.isWrapped === true) {
-        start -= 1;
-    }
-    return start;
-}
-
-function logicalEnd(buffer: IBuffer, start: number): number {
-    let next = start + 1;
-    while (next < buffer.length && buffer.getLine(next)?.isWrapped === true) {
-        next += 1;
-    }
-    return next;
-}
-
-function logicalLine(buffer: IBuffer, start: number): { readonly text: string; readonly next: number } {
-    const next = logicalEnd(buffer, start);
-    let text = '';
-    for (let row = start; row < next; row += 1) {
-        text += buffer.getLine(row)?.translateToString(row === next - 1) ?? '';
-    }
-    return { text: text.trimEnd(), next };
 }
 
 function rowText(buffer: IBuffer, row: number): string {

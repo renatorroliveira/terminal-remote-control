@@ -3,6 +3,7 @@ import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import { parseHostAddress } from '../../shared/host-address';
 import { DEFAULT_INSTALL_ROOT, isInstallRoot, type KnownHost } from '../../shared/hosts';
 import type { ClientRequest } from '../connection/host-client';
+import type { TerminalLink } from '../terminal/hyperlinks';
 import type { KnownHostStore, SessionOptions, TerminalHost, WorkspaceClient } from './workspace-controller';
 
 /** A login bash session for tests. */
@@ -161,6 +162,14 @@ export class FakeTerminalHost implements TerminalHost {
     /** Never waits for a key. */
     passingNextKey(): boolean {
         return false;
+    }
+
+    /** The links the open terminal shows. */
+    links: readonly TerminalLink[] = [];
+
+    /** Returns the links set in {@link FakeTerminalHost.links}. */
+    visibleLinks(): readonly TerminalLink[] {
+        return this.links;
     }
 }
 

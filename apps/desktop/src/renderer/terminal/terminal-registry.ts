@@ -1,6 +1,7 @@
 import type { SessionInfo } from '@trc/protocol';
 import type { SessionKey, SessionOptions, TerminalHost } from '../sessions/workspace-controller';
 import type { TerminalPalette } from '../ui/themes';
+import type { TerminalLink } from './hyperlinks';
 import type { OutputSpeech } from './output-announcer';
 import { SessionLink, type SessionTransport } from './session-link';
 import styles from './terminal-registry.module.css';
@@ -36,6 +37,8 @@ export interface TerminalRegistryOptions {
     readonly onActivity?: (key: SessionKey) => void;
     /** Where the open session's output is spoken; without it, no output is spoken. */
     readonly speech?: SessionSpeech;
+    /** The user opened a link in a terminal (US-1.12.3). */
+    readonly onOpenLink?: (link: TerminalLink) => void;
 }
 
 interface Entry {
@@ -115,6 +118,11 @@ export class TerminalRegistry implements TerminalHost {
     /** Whether the open terminal waits for a key to pass to its process. */
     passingNextKey(): boolean {
         return this.#openEntry()?.view.passingNextKey ?? false;
+    }
+
+    /** The links on the open terminal's screen (US-1.12.3). */
+    visibleLinks(): readonly TerminalLink[] {
+        return this.#openEntry()?.view.visibleLinks() ?? [];
     }
 
     /** Creates a session on `hostId` at the terminal area's size, with the options given, in a frame of its own. */
@@ -229,6 +237,7 @@ export class TerminalRegistry implements TerminalHost {
             onCredit: (bytes) => link.credit(bytes),
             onResize: (size) => link.resize(size),
             ...(speech === undefined ? {} : { speech }),
+            onLink: (link) => this.#options.onOpenLink?.(link),
         });
         view.mount(frame);
         view.setTabFocusMode(this.#tabFocusMode);

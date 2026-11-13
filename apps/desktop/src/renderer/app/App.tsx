@@ -15,6 +15,7 @@ import type { WorkspaceController } from '../sessions/workspace-controller';
 import { BUTTON } from '../ui/buttons';
 import styles from './App.module.css';
 import { CommandPalette } from './CommandPalette';
+import { LinkDialogs } from './LinkDialogs';
 import { NotificationsDialog } from './NotificationsDialog';
 import { REGION_ATTRIBUTE } from './regions';
 import { SidebarSplitter } from './SidebarSplitter';
@@ -56,6 +57,7 @@ export function App({ workspace, terminals, shell }: AppProps) {
                 <SessionDialogs workspace={workspace} shell={shell} />
                 <CommandPalette shell={shell} workspace={workspace} />
                 <NotificationsDialog shell={shell} />
+                <LinkDialogs shell={shell} />
             </div>
         </ShellContext.Provider>
     );

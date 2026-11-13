@@ -86,11 +86,17 @@ describe('menuTemplate: View', () => {
             ['Tab Moves Focus', 'Shift+Command+M'],
             ['Send Next Key to Terminal', 'Shift+Command+K'],
             ['Mute Output Announcements', 'Shift+Command+A'],
+            ['List Links…', 'Shift+Command+O'],
         ]);
         for (const item of terminal) {
             item.click?.(undefined as never, undefined, undefined as never);
         }
-        expect(commands).toEqual(['terminal.toggleTabFocus', 'terminal.sendNextKey', 'announcements.toggleMute']);
+        expect(commands).toEqual([
+            'terminal.toggleTabFocus',
+            'terminal.sendNextKey',
+            'announcements.toggleMute',
+            'terminal.listLinks',
+        ]);
     });
 
     it('shows no shortcut for a command bound to a key the terminal may need', () => {

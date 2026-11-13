@@ -5,6 +5,7 @@ import type { TerminalPalette } from '../ui/themes';
 import { attachInput, type InputModes } from './ats-input';
 import { AtsSurface } from './ats-surface';
 import { CreditTracker } from './credit-tracker';
+import { type TerminalLink, TerminalLinks } from './hyperlinks';
 import { KittyKeyboard } from './kitty-keyboard';
 import { OutputAnnouncer, type OutputSpeech } from './output-announcer';
 import { registerQueryFilters } from './query-filter';
@@ -33,6 +34,8 @@ export interface TerminalViewOptions {
     readonly maxColumns?: number;
     /** Where new output is spoken (A11Y-02); without it, output is not spoken. */
     readonly speech?: OutputSpeech;
+    /** The user opened a link with Command+click, or Control+click off macOS (US-1.12.3). */
+    readonly onLink?: (link: TerminalLink) => void;
 }
 
 /** The terminal font, embedded in the app. */
@@ -63,6 +66,7 @@ export class TerminalView {
     readonly #credit: CreditTracker;
     readonly #measurer: HTMLElement;
     readonly #announcer: OutputAnnouncer | undefined;
+    readonly #links: TerminalLinks;
     readonly #modes: InputModes = { tabFocusMode: false, sendNextKey: false };
     readonly #cleanups: (() => void)[] = [];
     #geometry: TerminalGeometry | undefined;
@@ -92,6 +96,11 @@ export class TerminalView {
         this.#scheduler = new UpdateScheduler(() => this.#ats.update(), options.assistiveTechnology);
         this.#credit = new CreditTracker(options.onCredit);
         this.#announcer = options.speech === undefined ? undefined : new OutputAnnouncer(this.terminal, options.speech);
+        this.#links = new TerminalLinks(
+            this.terminal,
+            (link) => options.onLink?.(link),
+            (event) => this.#linkModifier(event),
+        );
     }
 
     /**
@@ -166,6 +175,11 @@ export class TerminalView {
         return this.#modes.sendNextKey;
     }
 
+    /** The links on the screen, for the List links command (US-1.12.3). */
+    visibleLinks(): readonly TerminalLink[] {
+        return this.#links.visible();
+    }
+
     /** Moves keyboard focus to the surface. */
     focus(): void {
         this.surface.focus();
@@ -175,6 +189,7 @@ export class TerminalView {
     dispose(): void {
         this.#disposed = true;
         this.#announcer?.dispose();
+        this.#links.dispose();
         this.#geometry?.dispose();
         for (const cleanup of this.#cleanups.splice(0)) {
             cleanup();
@@ -260,6 +275,46 @@ export class TerminalView {
         this.#listenFocus(request);
         this.#listenWheel();
         this.#listenInterrupt();
+        this.#listenLinks();
+    }
+
+    #listenLinks(): void {
+        const linkAt = (event: MouseEvent): TerminalLink | undefined => {
+            const cell = this.#linkModifier(event) ? this.#ats.cellAt(event.clientX, event.clientY) : undefined;
+            return cell === undefined ? undefined : this.#links.linkAt(cell.row, cell.column);
+        };
+        const onPress = (event: MouseEvent): void => {
+            if (linkAt(event) !== undefined) {
+                event.preventDefault();
+            }
+        };
+        const onClick = (event: MouseEvent): void => {
+            const link = linkAt(event);
+            if (link !== undefined) {
+                event.preventDefault();
+                this.#options.onLink?.(link);
+            }
+        };
+        const onMove = (event: MouseEvent): void => {
+            this.surface.style.cursor = linkAt(event) === undefined ? '' : 'pointer';
+        };
+        const listeners = [
+            ['mousedown', onPress],
+            ['click', onClick],
+            ['mousemove', onMove],
+        ] as const;
+        for (const [type, listener] of listeners) {
+            this.surface.addEventListener(type, listener);
+        }
+        this.#cleanups.push(() => {
+            for (const [type, listener] of listeners) {
+                this.surface.removeEventListener(type, listener);
+            }
+        });
+    }
+
+    #linkModifier(event: MouseEvent): boolean {
+        return this.#options.isMac ? event.metaKey : event.ctrlKey;
     }
 
     #listenInterrupt(): void {

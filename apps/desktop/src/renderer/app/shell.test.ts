@@ -2,6 +2,7 @@ import { createIntl } from 'react-intl';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import type { ScreenReaderMode } from '../../shared/accessibility';
 import { resolveKeymap } from '../../shared/keymap';
+import type { LinkCheck } from '../../shared/links';
 import { messagesFor } from '../i18n/locale';
 import { WorkspaceController } from '../sessions/workspace-controller';
 import {
@@ -12,8 +13,26 @@ import {
 } from '../sessions/workspace-test-doubles';
 import type { AnnounceOptions } from './announcer';
 import { NotificationCenter } from './notifications';
-import { type ScreenReaderControls, Shell } from './shell';
+import { type LinkControls, type ScreenReaderControls, Shell } from './shell';
 import { paletteActions } from './workspace-actions';
+
+/** Link checks and opens as the main process would do them. */
+class FakeLinks implements LinkControls {
+    readonly trusted: string[] = [];
+    readonly opened: { readonly target: string; readonly trustOrigin: boolean }[] = [];
+
+    async check(target: string): Promise<LinkCheck | undefined> {
+        if (target.startsWith('javascript:')) {
+            return undefined;
+        }
+        const origin = /^[a-z]+:\/\/[^/]+/.exec(target)?.[0];
+        return { target, origin, trusted: this.trusted.some((prefix) => target.startsWith(prefix)) };
+    }
+
+    async open(target: string, trustOrigin: boolean): Promise<void> {
+        this.opened.push({ target, trustOrigin });
+    }
+}
 
 /** Screen-reader mode as the main process would keep it. */
 class FakeScreenReader implements ScreenReaderControls {
@@ -62,6 +81,7 @@ async function setup(narrow = false) {
     const spoken: string[] = [];
     const saved: boolean[] = [];
     const screenReader = new FakeScreenReader();
+    const links = new FakeLinks();
     const intl = createIntl({ locale: 'en', messages: messagesFor('en') });
     const shell = new Shell({
         workspace,
@@ -85,10 +105,11 @@ async function setup(narrow = false) {
         document,
         isNarrow: () => narrow,
         screenReader,
+        links,
     });
     onTestFinished(shell.start());
     await workspace.addHost('devbox-1');
-    return { client, terminals, workspace, shell, spoken, saved, screenReader, intl };
+    return { client, terminals, workspace, shell, spoken, saved, screenReader, intl, links };
 }
 
 describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
@@ -107,6 +128,7 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'New session with options…',
             'Next session',
             'Previous session',
+            'List links…',
         ]);
     });
 
@@ -173,6 +195,46 @@ describe('Shell screen-reader mode (A11Y-10.2)', () => {
         expect(labels()).toEqual(['Screen reader mode: on', 'Screen reader mode: off']);
         await screenReader.setMode('off');
         expect(labels()).toEqual(['Screen reader mode: automatic', 'Screen reader mode: on']);
+    });
+});
+
+describe('Shell links (US-1.12.3, US-1.12.4)', () => {
+    it('opens a link that starts with a trusted prefix at once', async () => {
+        const { shell, links } = await setup();
+        links.trusted.push('https://github.com');
+        await shell.openLink({ text: 'issues', target: 'https://github.com/trc/issues' });
+        expect(links.opened).toEqual([{ target: 'https://github.com/trc/issues', trustOrigin: false }]);
+        expect(shell.state.getState().linkDialog).toBeUndefined();
+    });
+
+    it('asks before opening any other link, then opens it, trusting its origin when the user asks', async () => {
+        const { shell, links } = await setup();
+        await shell.openLink({ text: 'the docs', target: 'https://example.com/docs' });
+        expect(shell.state.getState().linkDialog).toEqual({
+            kind: 'confirm',
+            text: 'the docs',
+            check: { target: 'https://example.com/docs', origin: 'https://example.com', trusted: false },
+        });
+        expect(links.opened).toEqual([]);
+        await shell.confirmLink(true);
+        expect(links.opened).toEqual([{ target: 'https://example.com/docs', trustOrigin: true }]);
+        expect(shell.state.getState().linkDialog).toBeUndefined();
+    });
+
+    it('says when it will not open a link', async () => {
+        const { shell, links, spoken } = await setup();
+        await shell.openLink({ text: 'click me', target: 'javascript:alert(1)' });
+        expect(links.opened).toEqual([]);
+        expect(spoken).toEqual(['TRC doesn’t open this kind of link.']);
+    });
+
+    it('lists the links on the screen, or says there are none', async () => {
+        const { shell, terminals, spoken } = await setup();
+        shell.run('terminal.listLinks');
+        expect(spoken).toEqual(['No links on the screen.']);
+        terminals.links = [{ text: 'https://example.com', target: 'https://example.com' }];
+        shell.run('terminal.listLinks');
+        expect(shell.state.getState().linkDialog).toEqual({ kind: 'list', links: terminals.links });
     });
 });
 

@@ -46,6 +46,7 @@ defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
 | New session with options  | Shift+Command+T   | Beside Command+T                                                                   |
 | Next session              | Shift+Command+]   | The macOS next-tab shortcut                                                        |
 | Previous session          | Shift+Command+[   | The macOS previous-tab shortcut                                                    |
+| List links                | Shift+Command+O   | O for open; free in the app (US-1.12.3)                                            |
 
 Plain F6 for the next region, the Windows convention, becomes an option in settings (A11Y-05.2). It is off by
 default because htop and mc use F6.

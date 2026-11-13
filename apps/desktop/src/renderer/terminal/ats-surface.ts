@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm';
+import type { BufferCell } from './buffer-lines';
 import { SelectionAutoScroll } from './selection-autoscroll';
 import { type CellLine, columnToOffset, minimalEdit, offsetToColumn, rowsToRender } from './text-geometry';
 import type { UpdateScheduler } from './update-scheduler';
@@ -75,6 +76,19 @@ export class AtsSurface {
     setCellSize(cell: CellSize): void {
         this.#cell = cell;
         this.#element.style.lineHeight = `${cell.height}px`;
+    }
+
+    /** The buffer cell under a point on the screen, or undefined outside the grid. */
+    cellAt(clientX: number, clientY: number): BufferCell | undefined {
+        const { width, height } = this.#cell;
+        if (width <= 0 || height <= 0) {
+            return undefined;
+        }
+        const box = this.#element.getBoundingClientRect();
+        const column = Math.floor((clientX - box.left) / width);
+        const line = Math.floor((clientY - box.top) / height);
+        const inside = column >= 0 && column < this.#terminal.cols && line >= 0 && line < this.#terminal.rows;
+        return inside ? { row: this.#terminal.buffer.active.viewportY + line, column } : undefined;
     }
 
     /** Brings the rows, the selection and the caret up to date with the terminal. */

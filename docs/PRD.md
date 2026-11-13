@@ -2,9 +2,9 @@
 
 | Field        | Value                                        |
 | ------------ | -------------------------------------------- |
-| Status       | Draft v0.7                                   |
+| Status       | Draft v0.8                                   |
 | Owner        | Renato Oliveira                              |
-| Last updated | 2026-11-12                                   |
+| Last updated | 2026-11-13                                   |
 | Scope        | P0 (first release), delivered in seven epics |
 | Name         | Terminal Remote Control (TRC)                |
 
@@ -886,8 +886,14 @@ Acceptance criteria:
    asks for confirmation and states the line count (on by default, can be
    disabled).
 3. Hyperlinks (OSC 8) and detected URLs and file paths open by modifier+click
-   and from the keyboard through a "list links" command and review mode. The
-   target is shown before opening when it differs from the link text.
+   (Cmd+click on macOS, Ctrl+click on Windows and Linux) and from the keyboard
+   through a "list links" command and review mode, with the app the OS assigns
+   to the link's scheme.
+4. Before a link opens, a confirmation shows its full target, unless the
+   target starts with a prefix the user trusts (SEC-06.2). The confirmation can
+   trust the link's origin, for example `https://google.com`, so its links
+   then open at once. The trusted prefixes are kept in `accept_urls.json` in
+   the app's home folder, which the user can edit.
 
 #### US-1.13 — Find in the terminal
 

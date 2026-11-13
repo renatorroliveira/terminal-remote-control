@@ -139,6 +139,10 @@
     "defaultMessage": "Show or hide the sidebar",
     "description": "Command name."
   },
+  "command.terminalListLinks": {
+    "defaultMessage": "List links…",
+    "description": "Command name: lists the links on the terminal screen to open one (US-1.12.3)."
+  },
   "command.terminalSendNextKey": {
     "defaultMessage": "Send next key to terminal",
     "description": "Command name."
@@ -482,6 +486,58 @@
   "installRoot.title": {
     "defaultMessage": "Install location of {host}",
     "description": "Dialog title."
+  },
+  "link.confirm.address": {
+    "defaultMessage": "Address",
+    "description": "Label of the read-only field holding the link target."
+  },
+  "link.confirm.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button."
+  },
+  "link.confirm.check": {
+    "defaultMessage": "A program in the terminal printed this link. Check its address before you open it.",
+    "description": "Dialog text for a link whose text is its address."
+  },
+  "link.confirm.differs": {
+    "defaultMessage": "The link shows “{text}”, but it opens the address below. Check it before you open it.",
+    "description": "Dialog text for a link whose text hides a different address."
+  },
+  "link.confirm.open": {
+    "defaultMessage": "Open",
+    "description": "Button."
+  },
+  "link.confirm.title": {
+    "defaultMessage": "Open this link?",
+    "description": "Dialog title."
+  },
+  "link.confirm.trust": {
+    "defaultMessage": "Always open links that start with {origin}",
+    "description": "Button that trusts the link’s origin, then opens the link."
+  },
+  "link.confirm.trustHint": {
+    "defaultMessage": "Always open links that start with {origin} opens them without asking from now on. accept_urls.json in the TRC home folder keeps the list.",
+    "description": "Explains the Always open button."
+  },
+  "link.list.close": {
+    "defaultMessage": "Close",
+    "description": "Button."
+  },
+  "link.list.label": {
+    "defaultMessage": "Links",
+    "description": "List name."
+  },
+  "link.list.title": {
+    "defaultMessage": "Links on the screen",
+    "description": "Dialog title."
+  },
+  "link.none": {
+    "defaultMessage": "No links on the screen.",
+    "description": "Announced when List links finds no link."
+  },
+  "link.refused": {
+    "defaultMessage": "TRC doesn’t open this kind of link.",
+    "description": "Announced for a link TRC never opens, such as a javascript: link."
   },
   "newSession.cancel": {
     "defaultMessage": "Cancel",

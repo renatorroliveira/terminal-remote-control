@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { app, BrowserWindow, ipcMain, Menu, protocol } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, protocol, shell } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
@@ -18,7 +18,9 @@ import { installRootFor } from './install-root';
 import { type InvokeHandlers, registerHandlers } from './ipc';
 import { KnownHosts } from './known-hosts';
 import { migrateLegacyState } from './legacy-state';
+import { LinkService } from './link-service';
 import { menuTemplate } from './menu';
+import { openExternalFor } from './open-external';
 import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
 import { sshConfigFilesFor, sshConfigHosts } from './ssh-config-hosts';
@@ -66,6 +68,14 @@ async function start(): Promise<void> {
         save: (mode) => config.update({ screenReaderMode: mode }),
     });
     const knownHosts = new KnownHosts(home);
+    const links = new LinkService(
+        home,
+        openExternalFor({
+            seamEnabled: __TRC_TEST_SEAM__,
+            env: process.env,
+            shellOpen: (url) => shell.openExternal(url),
+        }),
+    );
     registerHandlers(
         ipcMain,
         {
@@ -73,6 +83,11 @@ async function start(): Promise<void> {
             'accessibility:get': async () => screenReader.current(),
             'accessibility:set-mode': async (mode) => {
                 await screenReader.setMode(mode);
+                return undefined;
+            },
+            'links:check': (target) => links.check(target),
+            'links:open': async (target, trustOrigin) => {
+                await links.open(target, trustOrigin);
                 return undefined;
             },
             ...hostHandlers(knownHosts),

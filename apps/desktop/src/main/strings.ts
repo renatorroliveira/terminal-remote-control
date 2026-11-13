@@ -18,6 +18,7 @@ export const MAIN_STRINGS = {
     tabMovesFocus: 'Tab Moves Focus',
     sendNextKey: 'Send Next Key to Terminal',
     muteAnnouncements: 'Mute Output Announcements',
+    listLinks: 'List Links…',
     theme: 'Theme',
     themeMidnight: 'Midnight',
     themeSystem: 'Match System',

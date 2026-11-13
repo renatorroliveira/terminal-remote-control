@@ -10,6 +10,7 @@ import {
 } from '../shared/contract';
 import type { DisplaySettings } from '../shared/display';
 import type { KnownHost } from '../shared/hosts';
+import type { LinkCheck } from '../shared/links';
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
     const handler = (_event: IpcRendererEvent, value: T): void => listener(value);
@@ -35,6 +36,10 @@ const bridge: TrcBridge = {
         remove: (id) => ipcRenderer.invoke('hosts:remove', id) as Promise<void>,
         setInstallRoot: (id, installRoot) =>
             ipcRenderer.invoke('hosts:set-install-root', id, installRoot) as Promise<KnownHost>,
+    },
+    links: {
+        check: (target) => ipcRenderer.invoke('links:check', target) as Promise<LinkCheck | undefined>,
+        open: (target, trustOrigin) => ipcRenderer.invoke('links:open', target, trustOrigin) as Promise<void>,
     },
     sidebar: {
         width: () => ipcRenderer.invoke('sidebar:get-width') as Promise<number>,

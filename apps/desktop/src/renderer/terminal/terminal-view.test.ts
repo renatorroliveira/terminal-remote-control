@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { THEMES } from '../ui/themes';
-import { TerminalView } from './terminal-view';
+import type { TerminalLink } from './hyperlinks';
+import { TerminalView, type TerminalViewOptions } from './terminal-view';
 
 interface Harness {
     readonly view: TerminalView;
@@ -20,7 +21,7 @@ afterEach(() => {
     document.body.replaceChildren();
 });
 
-function mount(): Harness {
+function mount(overrides: Partial<TerminalViewOptions> = {}): Harness {
     const host = document.createElement('div');
     host.style.width = '800px';
     host.style.height = '400px';
@@ -35,6 +36,7 @@ function mount(): Harness {
         onInput: (text) => inputs.push(text),
         onCredit: (bytes) => credits.push(bytes),
         onResize: (size) => sizes.push(size),
+        ...overrides,
     });
     view.mount(host);
     view.setLabel('build, devbox-1', 'Option F1: accessibility help.');
@@ -482,5 +484,79 @@ describe('TerminalView: layout and size (A11Y-07.5, US-1.11.3)', () => {
         await frames();
         expect(sizes.at(-1)?.cols).toBeGreaterThan(40);
         expect(sizes.at(-1)?.rows).toBeGreaterThan(10);
+    });
+});
+
+/** The center of the characters of `part` in the row that holds them. */
+function centerOf(view: TerminalView, part: string): { readonly clientX: number; readonly clientY: number } {
+    const row = [...view.surface.querySelectorAll<HTMLElement>('[data-row]')].find((element) =>
+        element.textContent?.includes(part),
+    );
+    const text = row?.firstChild;
+    if (!(text instanceof Text)) {
+        throw new Error(`no row holds ${part}`);
+    }
+    const range = document.createRange();
+    const start = text.data.indexOf(part);
+    range.setStart(text, start);
+    range.setEnd(text, start + part.length);
+    const box = range.getBoundingClientRect();
+    return { clientX: box.left + box.width / 2, clientY: box.top + box.height / 2 };
+}
+
+describe('TerminalView: links (US-1.12.3)', () => {
+    function linkHarness(isMac: boolean) {
+        const opened: TerminalLink[] = [];
+        const harness = mount({ isMac, onLink: (link) => opened.push(link) });
+        return { ...harness, opened };
+    }
+
+    function click(view: TerminalView, part: string, init: MouseEventInit): MouseEvent {
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true, ...centerOf(view, part), ...init });
+        view.surface.dispatchEvent(event);
+        return event;
+    }
+
+    it('opens the URL under a Command+click, and leaves a plain click to the text', async () => {
+        const { view, opened } = linkHarness(true);
+        await written(view, 'docs at https://example.com/docs today');
+        expect(click(view, 'example', {}).defaultPrevented).toBe(false);
+        expect(click(view, 'today', { metaKey: true }).defaultPrevented).toBe(false);
+        expect(opened).toEqual([]);
+        expect(click(view, 'example', { metaKey: true }).defaultPrevented).toBe(true);
+        expect(opened).toEqual([{ text: 'https://example.com/docs', target: 'https://example.com/docs' }]);
+    });
+
+    it('uses Control+click off macOS', async () => {
+        const { view, opened } = linkHarness(false);
+        await written(view, 'https://example.com');
+        click(view, 'example', { metaKey: true });
+        click(view, 'example', { ctrlKey: true });
+        expect(opened.map((link) => link.target)).toEqual(['https://example.com']);
+    });
+
+    it('shows the pointer hand over a link while the modifier is held', async () => {
+        const { view } = linkHarness(true);
+        await written(view, 'see https://example.com');
+        const move = (part: string, metaKey: boolean): void => {
+            view.surface.dispatchEvent(
+                new MouseEvent('mousemove', { bubbles: true, ...centerOf(view, part), metaKey }),
+            );
+        };
+        move('example', true);
+        expect(view.surface.style.cursor).toBe('pointer');
+        move('example', false);
+        expect(view.surface.style.cursor).toBe('');
+        move('see', true);
+        expect(view.surface.style.cursor).toBe('');
+    });
+
+    it('lists the links on the screen', async () => {
+        const { view } = linkHarness(true);
+        await written(view, 'one https://example.com/1\r\ntwo https://example.com/2');
+        expect(view.visibleLinks().map((link) => link.target)).toEqual([
+            'https://example.com/1',
+            'https://example.com/2',
+        ]);
     });
 });
