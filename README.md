@@ -1,9 +1,18 @@
-# Terminal Remote Control
+<h1 align="center">
+  <img src="apps/desktop/resources/icons/icon.svg" alt="" width="64" height="64" align="absmiddle">
+  Terminal Remote Control
+</h1>
+
+<p align="center">
+  <a href="https://github.com/renatorroliveira/terminal-remote-control/actions/workflows/ci.yml"><img src="https://github.com/renatorroliveira/terminal-remote-control/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+</p>
 
 An accessible desktop terminal manager whose sessions outlive the app, the network and the client computer.
 
-> **Status: pre-release.** Epic 1 (an accessible macOS app connected to Linux hosts) is in progress. Nothing is
-> installable yet. See the [E1 implementation plan](docs/plans/epic-01-implementation-plan.md) for progress.
+> **Status: early preview.** Version 0.1 is the first milestone of Epic 1: a macOS app that adds Linux hosts over
+> SSH, installs its daemon on them, and runs and switches terminal sessions there, with VoiceOver, Zoom and
+> keyboard support. The [E1 implementation plan](docs/plans/epic-01-implementation-plan.md) tracks the rest of the
+> epic.
 
 ## Why
 
@@ -17,7 +26,7 @@ screen readers, magnifiers, voice control and keyboard-only use.
 
 ## Features
 
-Planned for the first release (P0), delivered in seven epics:
+Planned for the first full release (P0), delivered in seven epics:
 
 - **Accessible first.** WCAG 2.2 AA, with native integration for VoiceOver, JAWS, NVDA, Narrator, Orca, screen
   magnifiers, Speak Selection and voice control. Terminal text is real, selectable text that the operating system
@@ -61,7 +70,23 @@ Desktop app (Electron)                        Host
 - The app reaches remote daemons through the system OpenSSH client, honoring your SSH config and agent. One exec
   channel per host carries every session, so it works even when SSH forwarding is disabled.
 
+## Get started
+
+1. Download the dmg for your Mac (Apple silicon or Intel) from the
+   [latest release](https://github.com/renatorroliveira/terminal-remote-control/releases/latest) and drag the app to
+   Applications. Builds are ad-hoc signed, so the first launch needs Open Anyway in System Settings, Privacy &
+   Security.
+2. Make sure `ssh <host>` works in Terminal with a key in your SSH agent and no password.
+3. Open the app, type the host in the Hosts field (an SSH alias or `user@host:port`) and choose Add host.
+4. Choose the + next to the host to start a session.
+
+The app keeps its settings in `~/.trc` (`config.json` and `hosts.json`); set `TRC_HOME` to use another folder. On
+each host, it installs its daemon under `~/.trc` for your user. The [user guide](USER_GUIDE.md) covers everything
+the app does today.
+
 ## Documentation
+
+- [User guide](USER_GUIDE.md): installing, adding hosts, sessions, the terminal, settings and troubleshooting.
 
 - [Product requirements (PRD)](docs/PRD.md): goals, global accessibility, security and performance requirements,
   and every epic's user stories.
@@ -95,9 +120,30 @@ Desktop app (Electron)                        Host
 | `pnpm test:e2e`                   | Builds a test build of the app and runs the Playwright Electron tests                      |
 | `pnpm test:ax`                    | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests     |
 | `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                               |
+| `pnpm icons`                      | Renders the app icons in `apps/desktop/resources/icons` from `tools/icons`                 |
+| `pnpm dist`                       | Builds the ad-hoc signed arm64 and x64 dmg and zip into `apps/desktop/dist`                |
+| `pnpm release <level>`            | Cuts a release; see below                                                                  |
 | `cargo nextest run`               | Rust tests                                                                                 |
 
 Single tests: `pnpm exec vitest run <file> -t <name>` and `cargo nextest run <name>`.
+
+### Releases
+
+Versions follow [semver](https://semver.org/). Between releases, `main` carries the next minor version with a
+`-dev` suffix (`0.2.0-dev`). A release runs from a clean, up-to-date `main` with `gh` logged in:
+
+```sh
+pnpm release minor --dry-run   # prints the next version and the release notes
+pnpm release minor             # or patch, or major
+```
+
+It computes the version from the last `v*` tag, runs `pnpm check`, sets the version in every manifest, builds the
+daemons and the macOS artifacts, commits `chore(release): v<version>`, tags and pushes it, publishes a
+[GitHub Release](https://github.com/renatorroliveira/terminal-remote-control/releases) with the notes, the dmg and zip
+files and `SHA256SUMS.txt`, then commits and pushes the next `-dev` version.
+
+CI builds the project and runs the unit tests on every push to `main` and every pull request. The integration, e2e
+and accessibility-tree suites need the local test hosts and macOS permissions, so they run locally.
 
 ## Contributing
 
