@@ -38,6 +38,8 @@ export interface LiveSession {
     next(text: string, timeoutMs?: number): Promise<number>;
     /** Bytes received so far. */
     received(): number;
+    /** The last 64 KiB received. */
+    tail(): string;
 }
 
 /** Why the test hosts cannot be used, or `undefined` when they can. */
@@ -128,6 +130,7 @@ export class LiveHost {
             type: (text) => this.connection.input(stream, Buffer.from(text)),
             next: (text, timeoutMs) => buffer.next(text, timeoutMs),
             received: () => buffer.bytes,
+            tail: () => buffer.tail,
         };
     }
 
@@ -228,6 +231,10 @@ function removeInstall(host: LiveHost): void {
 class StreamBuffer {
     bytes = 0;
     #tail = '';
+
+    get tail(): string {
+        return this.#tail;
+    }
     #waiters: { readonly text: string; readonly from: number; readonly done: (at: number) => void }[] = [];
 
     push(text: string, at: number): void {

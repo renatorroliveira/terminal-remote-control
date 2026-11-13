@@ -28,6 +28,9 @@ tooling (`tools/*`).
 - Integration (needs `tools/test-hosts/up.sh`): `pnpm test:integration`. It
   builds the daemon bundle (`pnpm build:daemon`), then runs `pnpm test:daemon`, which runs the musl daemon tests as root in
   Ubuntu, Alpine and Rocky containers (Linux-only and other-user checks).
+- NFR measurements: `pnpm test:nfr` (needs the test hosts and the daemons;
+  launches the app in the background); `node tools/nfr-report/nfr-report.ts`
+  prints the run's table for `docs/verification/E1-nfr.md`.
 - End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax` (needs the
   macOS Accessibility permission). Both build a test build
   (`pnpm --filter @trc/desktop build:test`, `TRC_TEST_BUILD=1`), which compiles

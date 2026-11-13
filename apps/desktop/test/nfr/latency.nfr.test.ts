@@ -1,6 +1,15 @@
+import { execFileSync } from 'node:child_process';
 import { CREDIT_WINDOW } from '@trc/protocol';
 import { afterAll, describe, expect, it } from 'vitest';
-import { closeLiveHosts, connectLive, type LiveSession, ssh, sshRoundTrip, testHostsMissing } from './live-host';
+import {
+    closeLiveHosts,
+    connectLive,
+    type LiveSession,
+    ssh,
+    sshRoundTrip,
+    testHostsMissing,
+    waitFor,
+} from './live-host';
 import { percentile, record } from './stats';
 
 const missing = testHostsMissing();
@@ -135,3 +144,26 @@ async function waitBytes(session: LiveSession, bytes: number): Promise<void> {
         await new Promise((done) => setTimeout(done, 10));
     }
 }
+
+describe.skipIf(missing !== undefined)('dead connection detection (NFR-07)', () => {
+    it('notices a host that stopped answering within 30 s', async () => {
+        const host = await connectLive('trc-rocky');
+        const docker = ['--context', 'colima-trc'];
+        execFileSync('docker', [...docker, 'pause', 'trc-test-hosts-rocky-1']);
+        try {
+            const started = performance.now();
+            await waitFor(() => host.states.at(-1)?.status === 'disconnected', 35_000);
+            const seconds = (performance.now() - started) / 1_000;
+            record({
+                id: 'NFR-07',
+                what: 'trc-rocky paused: time until the app marks it disconnected',
+                value: seconds,
+                unit: 's',
+                target: '≤ 30 s',
+            });
+            expect(seconds).toBeLessThanOrEqual(30);
+        } finally {
+            execFileSync('docker', [...docker, 'unpause', 'trc-test-hosts-rocky-1']);
+        }
+    }, 90_000);
+});

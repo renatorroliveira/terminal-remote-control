@@ -829,6 +829,21 @@ conditions.
   default and the 100,000-line maximum, with memory bounded.
 - SEC-08: canary strings typed, printed and set in the environment appear in no app or daemon log.
 
+As built (2026-11-13):
+
+- `pnpm test:nfr` runs a Vitest half (`apps/desktop/test/nfr/*.nfr.test.ts`, the connection host in Node over real
+  ssh) and a Playwright half (`ui.spec.ts`, the test build). Each measurement is appended with its target to
+  `apps/desktop/nfr-results/results.jsonl`, and `tools/nfr-report` prints it as a table. Results and findings are in
+  [E1-nfr.md](../verification/E1-nfr.md).
+- The test hosts gain `trc-latency` (100 ms, `tc netem`, `NET_ADMIN`) and `trc-scale-01` to `25` (25 users on one
+  sshd with a raised `MaxStartups`); `up.sh` recreates every container so none keeps an old key.
+- The program matrix is `test/e2e/programs.spec.ts`, part of `pnpm test:e2e`.
+- Test builds report each terminal write's arrival and parse time (`write-timing.ts`, P-14), so NFR-02 is measured
+  to the echo parsed in the app, with the next display frame recorded beside it.
+- Tuned: the credit window is 1 MiB (S3b). Fixed: a silent ssh exit now has details (US-1.3.1).
+- Open for the owner: NFR-02 misses by about 1 ms on a sub-millisecond link; the spread is in Electron's port
+  delivery between the renderer and the utility process.
+
 **ST-20 Packaging and the release workflow** (SEC-01.3, SEC-04.2, P-11, P-19, P-21)
 
 Already built (M1, D-34): electron-builder's ad-hoc signed arm64 and x64 dmg and zip, the fuses, and the bundled
@@ -860,6 +875,18 @@ daemons with their manifest. Still to build:
 - Actions stay pinned by SHA, and no secret but the job's `GITHUB_TOKEN` is used. `pnpm release <bump>
 [--dry-run]` becomes a shortcut that starts the workflow with `gh` and watches it.
 - Done when a dry run on `main` passes on both runners and its artifacts launch on this Mac.
+
+As built (2026-11-13):
+
+- `refuseNavigation` keeps the main window on its page; `refuseRemoteDebugging` strips the DevTools switches in
+  release builds; `readTestSeam` is the one reader of `TRC_TEST_*`, which release bundles no longer contain.
+- `pnpm verify:artifact` checks a packaged app: ad-hoc signature, fuses, no seam, the notices, the daemons against
+  the manifest and the app version, and no TCP or UDP socket after a background launch with every debugging switch.
+  It found the DevTools listener and the seam names in v0.1.0.
+- `tools/notices` writes `THIRD_PARTY_NOTICES.txt` (93 components); `pnpm check` and CI fail while it is stale.
+- `.github/workflows/release.yml` and the `release-commit` action carry the release commit between jobs as a git
+  bundle; `ci.yml` is reusable and runs cargo with `--locked`. The first dry run passed in 13 minutes, with "may
+  ship" on `macos-15` and `macos-15-intel`, and its arm64 package passed the same check on this Mac.
 
 **ST-21 Release gate and epic review** (PRD §9 done, §11.1–3, §11.6)
 
@@ -950,6 +977,6 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 | ST-16 | Done        | —      |
 | ST-17 | Done        | —      |
 | ST-18 | Done        | —      |
-| ST-19 | Not started | —      |
-| ST-20 | In progress | —      |
+| ST-19 | Done        | —      |
+| ST-20 | Done        | —      |
 | ST-21 | Not started | —      |

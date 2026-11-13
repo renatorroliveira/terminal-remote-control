@@ -118,6 +118,7 @@ the app does today.
 | `pnpm build:daemon`               | Builds the Linux daemons into `apps/desktop/resources/daemon` with their manifest          |
 | `pnpm test:daemon`                | The daemon's musl tests in Ubuntu, Alpine and Rocky containers (part of the above)         |
 | `pnpm test:e2e`                   | Builds a test build of the app and runs the Playwright Electron tests                      |
+| `pnpm test:nfr`                   | Measures the NFR targets against the test hosts; see `docs/verification/E1-nfr.md`         |
 | `pnpm test:ax`                    | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests     |
 | `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                               |
 | `pnpm icons`                      | Renders the app icons in `apps/desktop/resources/icons` from `tools/icons`                 |

@@ -2,7 +2,7 @@ import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 /** Where every NFR measurement is appended, one JSON object per line, for docs/verification/E1-nfr.md. */
-export const RESULTS = resolve(import.meta.dirname, '../../test-results/nfr/results.jsonl');
+export const RESULTS = resolve(import.meta.dirname, '../../nfr-results/results.jsonl');
 
 /** The `p`th percentile (0 to 100) of `values`, by the nearest-rank method. */
 export function percentile(values: readonly number[], p: number): number {
