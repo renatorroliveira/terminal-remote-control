@@ -10,8 +10,10 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import {
     type CargoMetadata,
+    fontLicenses,
     formatNotices,
     isLicenseFile,
+    mitLicense,
     type Notice,
     npmPackages,
     rustPackages,
@@ -23,12 +25,16 @@ const DESKTOP = join(ROOT, 'apps/desktop');
 const OUTPUT = join(DESKTOP, 'resources/notices/THIRD_PARTY_NOTICES.txt');
 const FONTS = join(DESKTOP, 'src/renderer/ui/fonts');
 const DAEMON_TARGETS = ['x86_64-unknown-linux-musl', 'aarch64-unknown-linux-musl'] as const;
+const FONT_NAMES: Readonly<Record<string, string>> = {
+    'atkinson-hyperlegible-next.OFL.txt': 'Atkinson Hyperlegible Next',
+    'intel-one-mono.OFL.txt': 'Intel One Mono',
+};
 
 /** The notices file's text, from the packages installed and fetched now. */
 export function noticesText(): string {
     const packages = [...npm(), ...rust()];
     const notices: readonly Notice[] = [
-        ...packages.map((entry) => ({ ...entry, texts: licenseTexts(entry.folder) })),
+        ...packages.map((entry) => ({ ...entry, texts: packageTexts(entry) })),
         ...native(),
         ...fonts(),
     ];
@@ -36,7 +42,12 @@ export function noticesText(): string {
 }
 
 function npm(): readonly ShippedPackage[] {
-    return npmPackages(capture('pnpm', ['licenses', 'list', '--prod', '--json'], DESKTOP));
+    return npmPackages(capture('pnpm', ['licenses', 'list', '--prod', '--json'], DESKTOP), (folder) => {
+        const manifest = join(folder, 'package.json');
+        return existsSync(manifest)
+            ? (JSON.parse(readFileSync(manifest, 'utf8')) as { version?: string }).version
+            : undefined;
+    });
 }
 
 function rust(): readonly ShippedPackage[] {
@@ -84,33 +95,57 @@ function native(): readonly Notice[] {
 }
 
 function fonts(): readonly Notice[] {
-    return [
-        { name: 'Atkinson Hyperlegible Next', file: 'atkinson-hyperlegible-next.OFL.txt' },
-        { name: 'Intel One Mono', file: 'intel-one-mono.OFL.txt' },
-    ].map(({ name, file }) => ({
-        name,
-        version: 'font',
-        license: 'OFL-1.1',
-        texts: [readFileSync(join(FONTS, file), 'utf8')],
-    }));
+    return fontLicenses(readdirSync(FONTS)).map((file) => {
+        const name = FONT_NAMES[file];
+        if (name === undefined) {
+            throw new Error(`name the font family of ${file} in FONT_NAMES`);
+        }
+        return { name, version: 'font', license: 'OFL-1.1', texts: [readFileSync(join(FONTS, file), 'utf8')] };
+    });
 }
 
-/** The folder of the dependency that `pkg/<name>/build.zig.zon` fetches first, in the extracted deps tarball. */
+/** A package's license files; for MIT without one, the MIT license with its authors' copyright. */
+function packageTexts(entry: ShippedPackage): readonly string[] {
+    const texts = licenseTexts(entry.folder);
+    return texts.length === 0 && entry.license === 'MIT'
+        ? [mitLicense(holderOf(entry.folder) ?? `the ${entry.name} authors`)]
+        : texts;
+}
+
+/** The authors a package's `package.json` or `Cargo.toml` names. */
+function holderOf(folder: string): string | undefined {
+    const npm = join(folder, 'package.json');
+    if (existsSync(npm)) {
+        const author = (JSON.parse(readFileSync(npm, 'utf8')) as { author?: string | { name?: string } }).author;
+        return typeof author === 'string' ? author : author?.name;
+    }
+    const cargo = join(folder, 'Cargo.toml');
+    const authors = existsSync(cargo)
+        ? /^authors\s*=\s*\[([^\]]*)\]/m.exec(readFileSync(cargo, 'utf8'))?.[1]
+        : undefined;
+    const names = [...(authors ?? '').matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+    return names.length === 0 ? undefined : names.join(', ');
+}
+
+/** The folder of the dependency named `name` that `pkg/<name>/build.zig.zon` fetches, in the extracted deps tarball. */
 function zigDependency(source: string, deps: string, name: string): string {
     const zon = readFileSync(join(source, 'pkg', name, 'build.zig.zon'), 'utf8');
-    const hash = /\.hash = "([^"]+)"/.exec(zon)?.[1];
+    const hash = new RegExp(`\\.${name} = \\.\\{[^}]*?\\.hash = "([^"]+)"`).exec(zon)?.[1];
     if (hash === undefined) {
-        throw new Error(`pkg/${name}/build.zig.zon names no dependency`);
+        throw new Error(`pkg/${name}/build.zig.zon fetches no dependency named ${name}`);
     }
     return join(deps, hash);
 }
 
 function folderStarting(folder: string, prefix: string): string {
-    const found = readdirSync(folder).find((entry) => entry.startsWith(prefix));
-    if (found === undefined) {
-        throw new Error(`no ${prefix}* folder in ${folder}`);
+    const found = readdirSync(folder)
+        .filter((entry) => entry.startsWith(prefix))
+        .sort();
+    const [only] = found;
+    if (found.length !== 1 || only === undefined) {
+        throw new Error(`expected one ${prefix}* folder in ${folder}, found ${found.length}`);
     }
-    return found;
+    return only;
 }
 
 function licenseTexts(folder: string): readonly string[] {

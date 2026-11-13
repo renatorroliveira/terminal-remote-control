@@ -883,6 +883,13 @@ As built (2026-11-13):
 - `pnpm verify:artifact` checks a packaged app: ad-hoc signature, fuses, no seam, the notices, the daemons against
   the manifest and the app version, and no TCP or UDP socket after a background launch with every debugging switch.
   It found the DevTools listener and the seam names in v0.1.0.
+- The planned local "connect and create first" step of that check was dropped: without the seam, a release build
+  reaches a host only through the user's own SSH config, agent and `known_hosts`, which tests must not touch. SEC-01.3
+  after connect and create is covered instead by `test/e2e/no-listeners.spec.ts` on the test build, the release
+  build's only difference being the seam: no process but main listens, main listens only on loopback, every listener
+  answers `/json/version` as a debugging endpoint, and the build is checked to be the test build. `verify:artifact`
+  then shows that a release build refuses those endpoints. The e2e needs the test hosts, so it runs in the local
+  release gate (ST-21), not in GitHub Actions.
 - `tools/notices` writes `THIRD_PARTY_NOTICES.txt` (93 components); `pnpm check` and CI fail while it is stale.
 - `.github/workflows/release.yml` and the `release-commit` action carry the release commit between jobs as a git
   bundle; `ci.yml` is reusable and runs cargo with `--locked`. The first dry run passed in 13 minutes, with "may

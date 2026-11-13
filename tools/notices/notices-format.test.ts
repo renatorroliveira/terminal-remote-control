@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { type CargoMetadata, formatNotices, isLicenseFile, npmPackages, rustPackages } from './notices-format.ts';
+import {
+    type CargoMetadata,
+    fontLicenses,
+    formatNotices,
+    isLicenseFile,
+    mitLicense,
+    npmPackages,
+    rustPackages,
+} from './notices-format.ts';
 
 describe('npmPackages', () => {
     it('lists each production package once per version from pnpm licenses list, without our own', () => {
@@ -12,11 +20,45 @@ describe('npmPackages', () => {
                 { name: 'a', versions: ['1.0.0', '2.0.0'], paths: ['/n/a1', '/n/a2'], license: 'Apache-2.0' },
             ],
         });
-        expect(npmPackages(json)).toEqual([
+        const installed: Readonly<Record<string, string>> = {
+            '/n/a1': '1.0.0',
+            '/n/a2': '2.0.0',
+            '/n/react': '19.2.0',
+        };
+        expect(npmPackages(json, (folder) => installed[folder])).toEqual([
             { name: 'a', version: '1.0.0', license: 'Apache-2.0', folder: '/n/a1' },
             { name: 'a', version: '2.0.0', license: 'Apache-2.0', folder: '/n/a2' },
             { name: 'react', version: '19.2.0', license: 'MIT', folder: '/n/react' },
         ]);
+    });
+
+    it('pairs each version with the folder that holds it, whatever order pnpm lists them in', () => {
+        const json = JSON.stringify({
+            MIT: [{ name: 'a', versions: ['1.0.0', '2.0.0'], paths: ['/n/a2', '/n/a1'], license: 'MIT' }],
+        });
+        const installed: Readonly<Record<string, string>> = { '/n/a1': '1.0.0', '/n/a2': '2.0.0' };
+        expect(npmPackages(json, (folder) => installed[folder]).map((entry) => [entry.version, entry.folder])).toEqual([
+            ['1.0.0', '/n/a1'],
+            ['2.0.0', '/n/a2'],
+        ]);
+        const elsewhere = (): string => '3.0.0';
+        expect(() => npmPackages(json, elsewhere)).toThrow(/a in \/n\/a2 is 3\.0\.0/);
+    });
+});
+
+describe('mitLicense', () => {
+    it('writes the MIT license with the holder’s copyright, for a package that ships no license file', () => {
+        const text = mitLicense('Moritz Bischof <moritz.bischof1@gmail.com>');
+        expect(text).toMatch(/^MIT License\n\nCopyright \(c\) Moritz Bischof <moritz\.bischof1@gmail\.com>\n/);
+        expect(text).toContain('The above copyright notice and this permission notice shall be included');
+    });
+});
+
+describe('fontLicenses', () => {
+    it('pairs every bundled font with its family’s OFL text, and refuses a font without one', () => {
+        const files = ['b.OFL.txt', 'b.ttf', 'b-italic.ttf', 'a.OFL.txt', 'a.ttf'];
+        expect(fontLicenses(files)).toEqual(['a.OFL.txt', 'b.OFL.txt']);
+        expect(() => fontLicenses([...files, 'c.woff2'])).toThrow(/c\.woff2 has no c\.OFL\.txt/);
     });
 });
 

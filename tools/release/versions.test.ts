@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     bumpVersion,
+    checkReleaseVersion,
     crateName,
     devVersion,
     lastRelease,
@@ -21,6 +22,13 @@ describe('release versions (semver)', () => {
     it('names the development version after a release: the next minor, marked dev', () => {
         expect(devVersion('0.1.0')).toBe('0.2.0-dev');
         expect(devVersion('1.9.3')).toBe('1.10.0-dev');
+    });
+
+    it('refuses a release numbered below the version main carries, and accepts one at or above it', () => {
+        expect(() => checkReleaseVersion('0.1.1', '0.2.0-dev')).toThrow(/0\.1\.1 is below 0\.2\.0-dev/);
+        expect(() => checkReleaseVersion('0.2.0', '0.2.0-dev')).not.toThrow();
+        expect(() => checkReleaseVersion('1.0.0', '0.2.0-dev')).not.toThrow();
+        expect(() => checkReleaseVersion('0.10.0', '0.9.0-dev')).not.toThrow();
     });
 
     it('takes the highest v-tag as the last release, and 0.0.0 before the first', () => {

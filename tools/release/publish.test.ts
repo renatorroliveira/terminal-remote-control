@@ -1,0 +1,139 @@
+import { describe, expect, it } from 'vitest';
+import { type Download, type PublishSeams, publish, type ReleaseInput } from './publish.ts';
+
+const INPUT: ReleaseInput = {
+    version: '0.2.0',
+    notes: '/tmp/release/notes.md',
+    assets: ['/tmp/packages/TRC-0.2.0-mac-arm64.dmg', '/tmp/packages/SHA256SUMS.txt'],
+    sums: 'abc  TRC-0.2.0-mac-arm64.dmg\n',
+    base: 'base1',
+    repository: 'owner/trc',
+};
+
+const FRESH: ReadonlyMap<string, string | undefined> = new Map([
+    ['git rev-parse HEAD~1', 'base1'],
+    ['git rev-parse HEAD', 'release1'],
+    ['git diff --name-only HEAD~1 HEAD', 'Cargo.lock\nCargo.toml\npackage.json'],
+    ['git ls-remote --tags origin', ''],
+    ['gh release view v0.2.0 --json isDraft', undefined],
+    ['gh release view v0.2.0 --json assets', 'TRC-0.2.0-mac-arm64.dmg\nSHA256SUMS.txt'],
+    ['git show FETCH_HEAD:package.json', '{ "version": "0.2.0" }'],
+]);
+
+/** Records what publishing runs, and answers its queries by command prefix. */
+class FakeRelease implements PublishSeams {
+    readonly calls: string[] = [];
+    readonly answers: Map<string, string | undefined>;
+    readonly downloads: Download[];
+
+    constructor(changes: Readonly<Record<string, string | undefined>> = {}, downloads?: readonly Download[]) {
+        this.answers = new Map([...FRESH, ...Object.entries(changes)]);
+        this.downloads = [...(downloads ?? [{ status: 200, text: INPUT.sums }])];
+    }
+
+    run(command: string, args: readonly string[]): void {
+        this.calls.push([command, ...args].join(' '));
+    }
+
+    query(command: string, args: readonly string[]): string | undefined {
+        const line = [command, ...args].join(' ');
+        const key = [...this.answers.keys()].find((prefix) => line === prefix || line.startsWith(`${prefix} `));
+        if (key === undefined) {
+            throw new Error(`unexpected query: ${line}`);
+        }
+        return this.answers.get(key);
+    }
+
+    download(url: string): Promise<Download> {
+        this.calls.push(`download ${url}`);
+        return Promise.resolve(this.downloads.shift() ?? { status: 404, text: '' });
+    }
+
+    wait(): Promise<void> {
+        return Promise.resolve();
+    }
+
+    setVersion(version: string): void {
+        this.calls.push(`set ${version}`);
+    }
+
+    commitVersion(subject: string): void {
+        this.calls.push(`commit ${subject}`);
+    }
+}
+
+const SUMS_URL = 'download https://github.com/owner/trc/releases/download/v0.2.0/SHA256SUMS.txt';
+
+describe('publish (P-21, D-42)', () => {
+    it('tags and pushes, publishes a draft once every asset is up, then starts the next version', async () => {
+        const release = new FakeRelease();
+        await publish(INPUT, release);
+        expect(release.calls).toEqual([
+            'git tag -a v0.2.0 -m TRC v0.2.0',
+            'git push --atomic origin HEAD:refs/heads/main refs/tags/v0.2.0',
+            'gh release create v0.2.0 --verify-tag --draft --title TRC v0.2.0 --notes-file /tmp/release/notes.md /tmp/packages/TRC-0.2.0-mac-arm64.dmg /tmp/packages/SHA256SUMS.txt',
+            'gh release edit v0.2.0 --draft=false',
+            'git fetch --quiet origin main',
+            'git checkout --quiet --detach FETCH_HEAD',
+            'set 0.3.0-dev',
+            'commit chore(release): start 0.3.0-dev',
+            'git push origin HEAD:refs/heads/main',
+            SUMS_URL,
+        ]);
+    });
+
+    it('refuses a release commit that is not on the workflow’s commit, or that changes more than versions', async () => {
+        await expect(publish(INPUT, new FakeRelease({ 'git rev-parse HEAD~1': 'other' }))).rejects.toThrow(
+            /must sit on base1/,
+        );
+        const extra = new FakeRelease({ 'git diff --name-only HEAD~1 HEAD': 'package.json\n.github/workflows/ci.yml' });
+        await expect(publish(INPUT, extra)).rejects.toThrow(/only the version files.*ci\.yml/);
+        expect(extra.calls).toEqual([]);
+    });
+});
+
+describe('publish: resuming and refusing (P-21, D-42)', () => {
+    it('resumes a run that stopped after the push: uploads to the draft again and publishes it', async () => {
+        const release = new FakeRelease({
+            'git ls-remote --tags origin': 'tagobj\trefs/tags/v0.2.0\nrelease1\trefs/tags/v0.2.0^{}',
+            'gh release view v0.2.0 --json isDraft': 'true',
+        });
+        await publish(INPUT, release);
+        expect(release.calls.slice(0, 2)).toEqual([
+            'gh release upload v0.2.0 --clobber /tmp/packages/TRC-0.2.0-mac-arm64.dmg /tmp/packages/SHA256SUMS.txt',
+            'gh release edit v0.2.0 --draft=false',
+        ]);
+    });
+
+    it('skips every step a previous run finished', async () => {
+        const release = new FakeRelease({
+            'git ls-remote --tags origin': 'tagobj\trefs/tags/v0.2.0\nrelease1\trefs/tags/v0.2.0^{}',
+            'gh release view v0.2.0 --json isDraft': 'false',
+            'git show FETCH_HEAD:package.json': '{ "version": "0.3.0-dev" }',
+        });
+        await publish(INPUT, release);
+        expect(release.calls).toEqual(['git fetch --quiet origin main', SUMS_URL]);
+    });
+
+    it('refuses a tag on another commit, a draft that lacks an asset, and a main it cannot place', async () => {
+        const moved = { 'git ls-remote --tags origin': 'tagobj\trefs/tags/v0.2.0\nelse1\trefs/tags/v0.2.0^{}' };
+        await expect(publish(INPUT, new FakeRelease(moved))).rejects.toThrow(/already tags else1/);
+        const partial = new FakeRelease({ 'gh release view v0.2.0 --json assets': 'SHA256SUMS.txt' });
+        await expect(publish(INPUT, partial)).rejects.toThrow(/lacks TRC-0\.2\.0-mac-arm64\.dmg/);
+        expect(partial.calls).not.toContain('gh release edit v0.2.0 --draft=false');
+        const odd = new FakeRelease({ 'git show FETCH_HEAD:package.json': '{ "version": "0.9.0-dev" }' });
+        await expect(publish(INPUT, odd)).rejects.toThrow(/main carries 0\.9\.0-dev/);
+    });
+
+    it('waits while the release propagates, and fails when anyone still cannot download what it published', async () => {
+        const slow = new FakeRelease({}, [
+            { status: 404, text: '' },
+            { status: 200, text: INPUT.sums },
+        ]);
+        await publish(INPUT, slow);
+        expect(slow.calls.filter((call) => call === SUMS_URL)).toHaveLength(2);
+        const wrong = new FakeRelease({}, []);
+        await expect(publish(INPUT, wrong)).rejects.toThrow(/got HTTP 404/);
+        expect(wrong.calls).toContain('git push origin HEAD:refs/heads/main');
+    });
+});

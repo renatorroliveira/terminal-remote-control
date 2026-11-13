@@ -48,8 +48,9 @@ your `known_hosts`. It never changes your SSH configuration or your keys. The on
 
 1. Download the release for your Mac from the
    [Releases page](https://github.com/renatorroliveira/terminal-remote-control/releases): `TRC-<version>-mac-arm64.dmg`
-   for Apple silicon, or `TRC-<version>-mac-x64.dmg` for Intel. `SHA256SUMS.txt` lists every file's checksum
-   (`shasum -a 256 -c SHA256SUMS.txt`).
+   for Apple silicon, or `TRC-<version>-mac-x64.dmg` for Intel. `SHA256SUMS.txt` lists every file's checksum;
+   with it in the same folder, `shasum -a 256 --ignore-missing -c SHA256SUMS.txt` checks that your download is
+   complete and intact. It comes from the same Releases page, so it cannot show who made the files.
 2. Open the dmg and drag Terminal Remote Control to Applications.
 3. Open it once from Applications. This release is ad-hoc signed, not notarized, so macOS blocks the first launch.
    Open System Settings, then Privacy & Security, and choose Open Anyway next to the message about Terminal Remote

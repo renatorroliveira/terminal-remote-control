@@ -27,7 +27,7 @@
         "test:e2e": "pnpm --filter @trc/desktop test:e2e",
         "test:nfr": "pnpm --filter @trc/desktop build:test && vitest run --project nfr; pnpm --filter @trc/desktop exec playwright test -c playwright.nfr.config.ts",
         "test:ax": "swift build -c release --package-path tools/ax-probe && pnpm --filter @trc/desktop build:test && vitest run --project ax",
-        "gen": "cargo test -p trc-protocol --quiet export_bindings",
+        "gen": "cargo test --locked -p trc-protocol --quiet export_bindings",
         "rust:check": "cargo fmt --all --check && cargo clippy --workspace --all-targets --quiet -- -D warnings && cargo nextest run --workspace --cargo-quiet",
         "build": "pnpm --filter @trc/desktop build",
         "dist": "pnpm --filter @trc/desktop dist",

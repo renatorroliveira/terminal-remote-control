@@ -17,6 +17,7 @@ import {
     type FuseStates,
     fuseProblems,
     listenerProblems,
+    lsofVisibilityProblems,
     manifestProblems,
     seamProblems,
     signatureProblems,
@@ -30,6 +31,7 @@ const SETTLE_MS = 3_000;
 interface Ran {
     readonly status: number | null;
     readonly stdout: string;
+    readonly stderr: string;
     readonly output: string;
 }
 
@@ -151,9 +153,11 @@ function processTree(pid: number): string {
 
 function sockets(pids: readonly number[]): readonly string[] {
     const list = pids.join(',');
+    const main = pids[0] ?? 0;
     return [
-        ...listenerProblems(run('lsof', ['-nP', '-a', '-p', list, '-iTCP', '-sTCP:LISTEN']).stdout),
-        ...listenerProblems(run('lsof', ['-nP', '-a', '-p', list, '-iUDP']).stdout),
+        ...lsofVisibilityProblems(run('lsof', ['-nP', '-a', '-p', String(main), '-d', 'cwd', '-F', 'n']), main),
+        ...listenerProblems(run('lsof', ['-nP', '-a', '-p', list, '-iTCP', '-sTCP:LISTEN', '-F', 'pcn'])),
+        ...listenerProblems(run('lsof', ['-nP', '-a', '-p', list, '-iUDP', '-F', 'pcn'])),
     ];
 }
 
@@ -164,7 +168,12 @@ function plist(app: string, key: string): string {
 /** A command's exit status, its stdout, and all its output, stdout then stderr (codesign -dv reports on stderr). */
 function run(command: string, args: readonly string[]): Ran {
     const result = spawnSync(command, args, { encoding: 'utf8' });
-    return { status: result.status, stdout: result.stdout, output: `${result.stdout}${result.stderr}`.trim() };
+    return {
+        status: result.status,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        output: `${result.stdout}${result.stderr}`.trim(),
+    };
 }
 
 if (import.meta.main) {

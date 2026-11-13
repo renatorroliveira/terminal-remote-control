@@ -142,11 +142,13 @@ pnpm release minor             # or patch, or major
 
 The workflow computes the version from the last `v*` tag and commits it, runs CI on that commit, builds both Linux
 daemons on Ubuntu and the arm64 and x64 dmg and zip on macOS, then checks each package on its own architecture's
-runner with `pnpm verify:artifact` (signature, fuses, no test seam, the daemons against their manifest, and no
-listening sockets). Only when all of that passes does it tag and push the release commit, publish the
-[GitHub Release](https://github.com/renatorroliveira/terminal-remote-control/releases) `TRC v<version>` with the
-notes, the four packages and `SHA256SUMS.txt`, and push the next `-dev` version. If `main` moved during the run,
-the push is refused and nothing is published.
+runner with `pnpm verify:artifact` on the app in both the zip and the dmg (signature, fuses, no test seam, the
+daemons against their manifest, and no listening sockets). Only when all of that passes does it tag and push the
+release commit, publish the [GitHub Release](https://github.com/renatorroliveira/terminal-remote-control/releases)
+`TRC v<version>` with the notes, the four packages and `SHA256SUMS.txt` (a draft until every file is up), and push
+the next `-dev` version. If `main` moved during the run, the push is refused and nothing is published. A version
+below the one `main` carries is refused too. If the publish job fails part way, re-run it from the run's page: it
+skips each step that is already done (the tag, the release, the `-dev` version).
 
 CI builds the project and runs the unit tests on every push to `main` and every pull request. The integration, e2e
 and accessibility-tree suites need the local test hosts and macOS permissions, so they run locally.
