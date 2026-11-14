@@ -3,6 +3,7 @@
 //! Every connection has a reader task that turns frames into [`CoreEvent`]s; writes go through each connection's
 //! [`FrameSender`]. Nothing else touches the state, so no locks are needed.
 
+mod attach;
 mod holder_events;
 mod requests;
 mod size;
@@ -24,7 +25,7 @@ use super::registry::Registry;
 use crate::accept_backoff::AcceptBackoff;
 use crate::frame_io::{FrameReader, FrameSender};
 use crate::holder::environment::Account;
-use crate::holder::protocol::{HolderCommand, HolderSpec};
+use crate::holder::protocol::{HOLDER_PROTOCOL, HolderCommand, HolderSpec};
 use crate::peer::is_same_user;
 use crate::run_dir::RunDir;
 
@@ -51,7 +52,6 @@ pub struct Core {
     registry: Registry,
     clients: BTreeMap<ClientId, ClientLink>,
     holders: BTreeMap<SessionId, HolderLink>,
-    attachments: BTreeMap<SessionId, Attachment>,
     events_tx: mpsc::Sender<CoreEvent>,
     events: mpsc::Receiver<CoreEvent>,
     next_client: ClientId,
@@ -63,20 +63,49 @@ type ClientId = u64;
 struct ClientLink {
     sender: FrameSender,
     greeted: bool,
-    streams: BTreeMap<u32, SessionId>,
+    /// The app protocol the client negotiated.
+    proto: u32,
+    /// Each of the client's streams, and the session attachment it is.
+    streams: BTreeMap<u32, Route>,
     next_stream: u32,
 }
 
+/// Where a client stream goes: one attachment of one session.
+#[derive(Clone)]
+struct Route {
+    session: SessionId,
+    attachment: u32,
+}
+
+/// One client attached to a session, on one of its streams.
 #[derive(Clone, Copy)]
 struct Attachment {
     client: ClientId,
     stream: u32,
+    /// The `attach` request still waiting for the holder's answer.
+    request: Option<u32>,
 }
 
-#[derive(Default)]
 struct HolderLink {
     sender: Option<FrameSender>,
     pending: Vec<Vec<u8>>,
+    /// The holder protocol the holder speaks: 1 for E1 holders, which serve one attachment.
+    proto: u32,
+    /// The session's attachments, by the identifier the holder knows them by.
+    attachments: BTreeMap<u32, Attachment>,
+    next_attachment: u32,
+}
+
+impl HolderLink {
+    fn new(sender: Option<FrameSender>, proto: u32) -> Self {
+        Self {
+            sender,
+            pending: Vec::new(),
+            proto,
+            attachments: BTreeMap::new(),
+            next_attachment: 1,
+        }
+    }
 }
 
 enum CoreEvent {
@@ -99,7 +128,6 @@ impl Core {
             registry: Registry::default(),
             clients: BTreeMap::new(),
             holders: BTreeMap::new(),
-            attachments: BTreeMap::new(),
             events_tx,
             events,
             next_client: 1,
@@ -159,6 +187,7 @@ impl Core {
             ClientLink {
                 sender,
                 greeted: false,
+                proto: 1,
                 streams: BTreeMap::new(),
                 next_stream: 1,
             },
@@ -188,13 +217,8 @@ impl Core {
     fn register_adopted(&mut self, found: Adopted) -> SessionInfo {
         let id = found.record.info.id.clone();
         let info = self.registry.insert(found.record);
-        self.holders.insert(
-            id.clone(),
-            HolderLink {
-                sender: Some(found.sender),
-                pending: Vec::new(),
-            },
-        );
+        self.holders
+            .insert(id.clone(), HolderLink::new(Some(found.sender), found.proto));
         self.spawn_holder_reader(id, found.reader);
         info
     }
@@ -229,7 +253,7 @@ impl Core {
 
     /// Starts a holder for `session`; `start` and the other queued commands reach it once it is connected.
     fn launch(&mut self, session: SessionId, spec: HolderSpec, name: Option<String>) {
-        let mut link = HolderLink::default();
+        let mut link = HolderLink::new(None, HOLDER_PROTOCOL);
         link.pending
             .extend(control_frame(&HolderCommand::Start { spec: Box::new(spec) }));
         if name.is_some() {
@@ -279,14 +303,6 @@ impl Core {
         };
         for link in self.clients.values().filter(|link| link.greeted) {
             link.sender.send(frame.clone());
-        }
-    }
-
-    fn detach_session(&mut self, session: &SessionId) {
-        if let Some(attachment) = self.attachments.remove(session)
-            && let Some(link) = self.clients.get_mut(&attachment.client)
-        {
-            link.streams.remove(&attachment.stream);
         }
     }
 }

@@ -36,6 +36,8 @@ pub struct Adopted {
     pub sender: FrameSender,
     /// The task writing to the holder.
     pub writer: JoinHandle<()>,
+    /// The holder protocol the holder speaks; 1 for an E1 holder.
+    pub proto: u32,
 }
 
 /// The holders a starting core found.
@@ -104,8 +106,8 @@ fn session_id_of(path: &Path) -> Option<SessionId> {
 
 /// What a holder's first event says about it.
 enum Greeting {
-    /// It runs a session.
-    Started(Box<HolderSpec>, Option<String>),
+    /// It runs a session, speaking the given holder protocol.
+    Started(Box<HolderSpec>, Option<String>, u32),
     /// It was never given a session to run.
     Unstarted,
     /// It did not introduce itself in time, or said something else.
@@ -133,8 +135,10 @@ async fn introduce_at(path: &Path, id: &SessionId, wait: Duration) -> Introducti
 fn greeting(event: Option<HolderEvent>) -> Greeting {
     match event {
         Some(HolderEvent::Hello {
-            spec: Some(spec), name, ..
-        }) => Greeting::Started(spec, name),
+            spec: Some(spec),
+            name,
+            proto,
+        }) => Greeting::Started(spec, name, proto.unwrap_or(1)),
         Some(HolderEvent::Hello { spec: None, .. }) => Greeting::Unstarted,
         _ => Greeting::Silent,
     }
@@ -144,8 +148,8 @@ async fn introduce(id: SessionId, stream: UnixStream, wait: Duration) -> Introdu
     let (read, write) = stream.into_split();
     let mut reader = FrameReader::new(read);
     let (sender, writer) = FrameSender::spawn(write);
-    let (spec, name) = match greeting(next_event(&mut reader, wait).await) {
-        Greeting::Started(spec, name) => (spec, name),
+    let (spec, name, proto) = match greeting(next_event(&mut reader, wait).await) {
+        Greeting::Started(spec, name, proto) => (spec, name, proto),
         Greeting::Unstarted => {
             send_shutdown(&sender);
             return Introduction::Gone;
@@ -162,6 +166,7 @@ async fn introduce(id: SessionId, stream: UnixStream, wait: Duration) -> Introdu
         reader,
         sender,
         writer,
+        proto,
     }))
 }
 

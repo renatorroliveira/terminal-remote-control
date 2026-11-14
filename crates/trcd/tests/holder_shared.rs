@@ -107,6 +107,12 @@ impl Core {
                 panic!("holder went quiet; events: {:?}", self.events);
             };
             let frame = next.unwrap().expect("holder closed");
+            self.absorb(frame);
+        }
+    }
+
+    fn absorb(&mut self, frame: trc_protocol::frame::Frame) {
+        {
             match frame.kind {
                 FrameKind::Output => self.received.entry(frame.stream).or_default().push(&frame.payload),
                 FrameKind::Control => {
@@ -122,6 +128,21 @@ impl Core {
                     self.events.push(event);
                 }
                 other => panic!("unexpected frame {other:?}"),
+            }
+        }
+    }
+
+    /// Waits until the shell has printed its prompt and gone quiet, as a line editor that is still starting (busybox
+    /// ash's, which asks for the cursor position first) drops what is typed.
+    async fn settle(&mut self) {
+        loop {
+            match timeout(Duration::from_millis(500), self.reader.next()).await {
+                Err(_) if self.received.values().any(|stream| stream.bytes > 0) => return,
+                Err(_) => {}
+                Ok(next) => {
+                    let frame = next.unwrap().expect("holder closed");
+                    self.absorb(frame);
+                }
             }
         }
     }
@@ -158,14 +179,13 @@ fn spec() -> HolderSpec {
 }
 
 async fn started() -> Core {
+    static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
     let dir = std::env::temp_dir().join(format!(
         "trcd-shared-test-{}-{}",
         std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
+        NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let socket = dir.join("holder.sock");
     let listener_path = socket.clone();
@@ -205,6 +225,7 @@ async fn shares_output_and_tells_each_client_when_another_types() {
     core.attach(7, u32::MAX, None);
     core.attach(8, u32::MAX, None);
     core.until(|c| c.synced(7).is_some() && c.synced(8).is_some()).await;
+    core.settle().await;
     core.input(7, "echo shared-$((2+3))\r");
     core.until(|c| c.text(7).contains("shared-5") && c.text(8).contains("shared-5"))
         .await;
@@ -219,8 +240,10 @@ async fn replays_only_what_a_client_missed() {
     core.attach(1, u32::MAX, None);
     core.attach(2, u32::MAX, None);
     core.until(|c| c.synced(1).is_some() && c.synced(2).is_some()).await;
+    core.settle().await;
     core.input(1, "echo seen-$((1+1))\r");
-    core.until(|c| c.text(1).contains("seen-2\r\n$ ")).await;
+    core.until(|c| c.text(1).contains("seen-2\r\n")).await;
+    core.settle().await;
     let offset = core.received[&1].offset().unwrap();
     core.command(&HolderCommand::Detach { attachment: Some(1) });
     core.input(2, "echo missed-$((3+4))\r");
@@ -241,6 +264,7 @@ async fn never_blocks_the_program_on_a_client_without_credit() {
     core.attach(1, 1 << 20, None);
     core.attach(2, u32::MAX, None);
     core.until(|c| c.synced(1).is_some() && c.synced(2).is_some()).await;
+    core.settle().await;
     core.input(2, "yes trc | head -c 8000000 >/dev/tty; echo flood-$((5+5))\r");
     core.until(|c| c.text(2).contains("flood-10")).await;
     core.credit(1, 1 << 20);
