@@ -18,7 +18,7 @@ const GRAPHEME_CLUSTER_MODE: sys::GhosttyMode = 2027;
 const PAGE_SLACK_LINES: usize = 1024;
 /// Every formatter extra except the palette, so a snapshot restores modes, cursor, styles and character sets but
 /// never overrides the app's theme colors (A11Y-07).
-const SNAPSHOT_EXTRAS: sys::GhosttyFormatterExtras = 0xfff & !1;
+pub(crate) const SNAPSHOT_EXTRAS: sys::GhosttyFormatterExtras = 0xfff & !1;
 
 /// A libghostty-vt terminal configured for `trcd`: grapheme clustering on, title reports off, line-bounded
 /// scrollback, and query replies collected as [`TerminalEvent::Reply`].
@@ -88,6 +88,11 @@ impl GhosttyTerminal {
             value: true,
         };
         self.set_value(Opt::GHOSTTY_TERMINAL_OPT_MODE_DEFAULT, &grapheme)
+    }
+
+    /// The libghostty-vt handle, for the snapshot stream's grid lookups. It stays owned by `self`.
+    pub(crate) fn raw(&self) -> sys::GhosttyTerminal {
+        self.raw
     }
 
     fn set_value<T>(&mut self, option: sys::GhosttyTerminalOption::Type, value: &T) -> Result<(), VtError> {
@@ -229,22 +234,26 @@ enum Effect {
     Bell,
 }
 
-struct Formatter(sys::GhosttyFormatter);
+/// A formatter over one terminal, freed on drop.
+pub(crate) struct Formatter(sys::GhosttyFormatter);
 
 impl Formatter {
-    fn new(terminal: sys::GhosttyTerminal) -> Result<Self, VtError> {
+    /// Creates a formatter; `terminal` must outlive it.
+    pub(crate) fn new(terminal: sys::GhosttyTerminal) -> Result<Self, VtError> {
         let mut raw: sys::GhosttyFormatter = null_mut();
         // SAFETY: `terminal` is live for the formatter's whole lifetime, which ends inside `GhosttyTerminal::format`.
         check(unsafe { sys::ghostty_formatter_terminal_new(null(), &mut raw, terminal) })?;
         Ok(Self(raw))
     }
 
-    fn set<T>(&self, option: sys::GhosttyFormatterOption::Type, value: &T) -> Result<(), VtError> {
+    /// Sets an option; `value` must have the type the option documents.
+    pub(crate) fn set<T>(&self, option: sys::GhosttyFormatterOption::Type, value: &T) -> Result<(), VtError> {
         // SAFETY: every caller passes the value type the option documents; the formatter copies it.
         check(unsafe { sys::ghostty_formatter_set(self.0, option, (value as *const T).cast()) })
     }
 
-    fn format(&self) -> Result<Vec<u8>, VtError> {
+    /// Formats with the options set.
+    pub(crate) fn format(&self) -> Result<Vec<u8>, VtError> {
         let mut ptr: *mut u8 = null_mut();
         let mut len: usize = 0;
         // SAFETY: `ptr` and `len` are valid out pointers; the buffer is freed below with the same allocator.
@@ -270,7 +279,8 @@ impl Drop for Formatter {
     }
 }
 
-fn check(result: sys::GhosttyResult::Type) -> Result<(), VtError> {
+/// Turns a libghostty-vt result into an error unless it succeeded.
+pub(crate) fn check(result: sys::GhosttyResult::Type) -> Result<(), VtError> {
     if result == sys::GhosttyResult::GHOSTTY_SUCCESS {
         Ok(())
     } else {
