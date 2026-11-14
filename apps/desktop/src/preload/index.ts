@@ -6,6 +6,7 @@ import {
     APP_COMMAND_CHANNEL,
     type AppCommand,
     DISPLAY_CHANGED_CHANNEL,
+    QUIT_REQUESTED_CHANNEL,
     type TrcBridge,
 } from '../shared/contract';
 import type { DisplaySettings } from '../shared/display';
@@ -30,6 +31,11 @@ const bridge: TrcBridge = {
         get: () => ipcRenderer.invoke('accessibility:get') as Promise<AccessibilityState>,
         setMode: (mode) => ipcRenderer.invoke('accessibility:set-mode', mode) as Promise<void>,
         onChanged: (listener) => subscribe<AccessibilityState>(ACCESSIBILITY_CHANGED_CHANNEL, listener),
+    },
+    app: {
+        quit: () => ipcRenderer.invoke('app:quit') as Promise<void>,
+        quitNoticeOpened: () => ipcRenderer.invoke('app:quit-notice-opened') as Promise<void>,
+        onQuitRequested: (listener) => subscribe<undefined>(QUIT_REQUESTED_CHANNEL, () => listener()),
     },
     sessions: {
         load: () => ipcRenderer.invoke('sessions:load') as Promise<SessionCache>,

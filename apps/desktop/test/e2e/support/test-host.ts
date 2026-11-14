@@ -4,7 +4,7 @@ import { copyFileSync, existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { ElectronApplication, Locator, Page } from '@playwright/test';
-import { launchApp } from './launch';
+import { launchApp, skipFirstQuitNotice } from './launch';
 
 const repository = resolve(import.meta.dirname, '../../../../..');
 const run = join(repository, 'tools/test-hosts/.run');
@@ -30,23 +30,32 @@ export interface TestHostApp {
     readonly openedLinks: string;
 }
 
+/** How {@link launchWithTestHosts} launches the app. */
+export interface LaunchOptions {
+    /** Extra command-line arguments. */
+    readonly args?: readonly string[];
+    /** The scratch folder of an earlier launch, to launch the app again with its TRC home, as after a quit. */
+    readonly scratch?: string;
+    /** Keeps the first-quit notice (US-2.1.5); other launches start as if it was shown, so quitting never waits. */
+    readonly firstQuit?: boolean;
+}
+
 /**
- * Launches the test build with the test hosts' ssh config and known hosts and any extra command-line `args`; hosts
- * it adds install under `installRoot`. A `scratch` folder from an earlier launch launches the app again with its TRC
- * home, as after a quit.
+ * Launches the test build with the test hosts' ssh config and known hosts; hosts it adds install under
+ * `installRoot`.
  */
-export async function launchWithTestHosts(
-    installRoot?: string,
-    args: readonly string[] = [],
-    scratch: string = mkdtempSync(join(tmpdir(), 'trc-e2e-')),
-): Promise<TestHostApp> {
+export async function launchWithTestHosts(installRoot?: string, options: LaunchOptions = {}): Promise<TestHostApp> {
+    const scratch = options.scratch ?? mkdtempSync(join(tmpdir(), 'trc-e2e-'));
     const knownHosts = join(scratch, 'known_hosts');
     const home = join(scratch, 'home');
     const openedLinks = join(scratch, 'opened-links.log');
     if (!existsSync(knownHosts)) {
         copyFileSync(join(run, 'known_hosts.smoke'), knownHosts);
     }
-    const app = await launchApp([`--user-data-dir=${join(scratch, 'user-data')}`, ...args], {
+    if (options.firstQuit !== true) {
+        skipFirstQuitNotice(home);
+    }
+    const app = await launchApp([`--user-data-dir=${join(scratch, 'user-data')}`, ...(options.args ?? [])], {
         TRC_TEST_SSH_CONFIG: join(run, 'ssh_config'),
         TRC_TEST_KNOWN_HOSTS: knownHosts,
         TRC_TEST_OPENED_LINKS: openedLinks,

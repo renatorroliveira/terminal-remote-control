@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app, BrowserWindow, clipboard, ipcMain, Menu, protocol, session, shell } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
-import { APP_COMMAND_CHANNEL } from '../shared/contract';
+import { APP_COMMAND_CHANNEL, QUIT_REQUESTED_CHANNEL } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
 import { type Keymap, UNBOUND_KEYMAP } from '../shared/keymap';
 import { keymapFor } from '../shared/settings';
@@ -26,6 +26,7 @@ import { type MenuOptions, menuTemplate, terminalContextMenu } from './menu';
 import { refuseNavigation } from './navigation-guard';
 import { disableNetworkSwitches, lockDownNetwork } from './network-guard';
 import { openExternalFor } from './open-external';
+import { QuitGuard } from './quit-guard';
 import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, GUIDE_CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
 import { SessionCacheFile } from './session-cache';
@@ -86,12 +87,7 @@ async function start(): Promise<void> {
         save: (mode) => config.update({ screenReaderMode: mode }),
     });
     const knownHosts = new KnownHosts(home);
-    const openExternal = openExternalFor({
-        openedLinks: testSeam.openedLinks,
-        shellOpen: (url) => shell.openExternal(url),
-    });
-    const links = new LinkService(home, openExternal);
-    const guide = new GuideWindow({ icon: appIconPath(resources), openExternal, background });
+    const quitGuard = guardQuitting(config, stored.quitNoticeShown);
     registerHandlers(
         ipcMain,
         {
@@ -108,24 +104,51 @@ async function start(): Promise<void> {
                     hostId,
                     text,
                 ),
-            'links:check': (target) => links.check(target),
-            'links:open': async (target, trustOrigin) => {
-                await links.open(target, trustOrigin);
-                return undefined;
-            },
+            ...linkHandlers(home),
             ...hostHandlers(knownHosts),
             ...sidebarHandlers(config),
             ...settingsHandlers(config, display),
-            'help:open-guide': async (section) => {
-                guide.open(section);
-                return undefined;
-            },
             ...sessionHandlers(new SessionCacheFile(home)),
+            ...quitHandlers(quitGuard),
         },
         (event) => isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
     );
     installMenu(display, config, theme);
     mainWindow = createWindow(display, screenReader);
+    mainWindow.on('close', (event) => quitGuard.beforeQuit(event));
+}
+
+/**
+ * Holds the first quit while sessions may run, so the page can show the first-quit notice (US-2.1.5): on
+ * `before-quit`, and on closing the window, which quits the app.
+ */
+function guardQuitting(config: AppConfigFile, noticeShown: boolean): QuitGuard {
+    const guard = new QuitGuard({
+        noticeShown,
+        markShown: () => void config.update({ quitNoticeShown: true }),
+        ask: () => {
+            const contents = mainWindow?.isDestroyed() === false ? mainWindow.webContents : undefined;
+            contents?.send(QUIT_REQUESTED_CHANNEL);
+            return contents !== undefined && !contents.isCrashed();
+        },
+        quit: () => app.quit(),
+    });
+    app.on('before-quit', (event) => guard.beforeQuit(event));
+    return guard;
+}
+
+/** Quits as the page decides, and keeps that it showed the first-quit notice (US-2.1). */
+function quitHandlers(guard: QuitGuard): Pick<InvokeHandlers, 'app:quit' | 'app:quit-notice-opened'> {
+    return {
+        'app:quit': async () => {
+            guard.quit();
+            return undefined;
+        },
+        'app:quit-notice-opened': async () => {
+            guard.noticeOpened();
+            return undefined;
+        },
+    };
 }
 
 type HostHandlers = Pick<
@@ -137,6 +160,27 @@ type HostHandlers = Pick<
     | 'hosts:set-install-root'
     | 'hosts:set-clipboard-writes'
 >;
+
+/** Checks and opens links (US-1.12.3, US-1.12.4), and opens the user guide in its own window (A11Y-10.4). */
+function linkHandlers(home: string): Pick<InvokeHandlers, 'links:check' | 'links:open' | 'help:open-guide'> {
+    const openExternal = openExternalFor({
+        openedLinks: testSeam.openedLinks,
+        shellOpen: (url) => shell.openExternal(url),
+    });
+    const links = new LinkService(home, openExternal);
+    const guide = new GuideWindow({ icon: appIconPath(resources), openExternal, background });
+    return {
+        'links:check': (target) => links.check(target),
+        'links:open': async (target, trustOrigin) => {
+            await links.open(target, trustOrigin);
+            return undefined;
+        },
+        'help:open-guide': async (section) => {
+            guide.open(section);
+            return undefined;
+        },
+    };
+}
 
 /** Reads and keeps each host's sessions as last listed (US-2.3.2, P-30). */
 function sessionHandlers(cache: SessionCacheFile): Pick<InvokeHandlers, 'sessions:load' | 'sessions:save'> {

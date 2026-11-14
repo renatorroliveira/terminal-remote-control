@@ -282,6 +282,39 @@ describe('WorkspaceController: reconnecting (US-2.2)', () => {
     });
 });
 
+describe('WorkspaceController: stopping every session (US-2.1.4)', () => {
+    async function twoHosts() {
+        const { client, hosts, terminals } = setup();
+        hosts.hosts.push(
+            { id: 'host-a', address: { destination: 'devbox-1' }, installRoot: '~/.trc' },
+            { id: 'host-b', address: { destination: 'devbox-2' }, installRoot: '~/.trc' },
+        );
+        const cache = {
+            load: async () => ({ 'host-b': [{ id: 'old', shell: 'bash', order: 0, state: 'running' as const }] }),
+            save: async () => undefined,
+        };
+        const workspace = new WorkspaceController(client, terminals, hosts, { cache });
+        await workspace.load();
+        client.listed = [info('a'), { ...info('b', 1), state: 'exited' }];
+        client.states.get('host-a')?.(connected);
+        await expect.poll(() => workspace.store.getState().sessions.get('host-a')?.length).toBe(2);
+        return { client, workspace };
+    }
+
+    it('counts the running sessions on connected hosts, and names the hosts it cannot reach', async () => {
+        const { workspace } = await twoHosts();
+        expect(workspace.runningSessions()).toEqual({ sessions: 1, hosts: 1, unreachable: ['devbox-2'] });
+    });
+
+    it('stops every running session on every connected host, and names a host that refused', async () => {
+        const { client, workspace } = await twoHosts();
+        expect(await workspace.stopAll()).toEqual([]);
+        expect(client.requests.filter((request) => request.type === 'stop')).toEqual([{ type: 'stop', session: 'a' }]);
+        client.refused.add('stop');
+        expect(await workspace.stopAll()).toEqual(['devbox-1']);
+    });
+});
+
 describe('WorkspaceController: shared sessions (US-2.6.3)', () => {
     it('passes every listed and changed session to its terminal, as other clients change it', async () => {
         const { client, terminals, workspace } = setup();

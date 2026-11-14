@@ -110,7 +110,8 @@
 <li><strong>Ending a session.</strong> Type <code>exit</code>, or end its program. A session that exits cleanly (code 0) leaves the list, unless you turn off &quot;Close sessions that exit cleanly&quot; in <a href="#settings">Settings</a>; one that failed stays, so you can read its last output.</li>
 <li><strong>Stopping.</strong> Stop asks the program to end, then forces it after the seconds Settings sets (5 by default).</li>
 </ul>
-<p>Sessions keep running on the host when you quit the app or the connection drops. When the app connects again, it lists them, and opening one shows its screen as the host has it now. A host reboot ends them in this release.</p>
+<p>Sessions keep running on the host when you quit the app, when it crashes or is forced to quit, and when the connection drops. When the app connects again, it lists them, and opening one shows its screen as the host has it now, with the output they wrote while you were away. A host reboot ends them in this release.</p>
+<p>The first time you quit while sessions run, TRC says that they keep running and offers Quit, Quit and Stop All Sessions, and Cancel; it doesn't ask again. To end every session, choose Quit and Stop All Sessions… in the TRC menu or the command palette: TRC says how many sessions on how many hosts it will stop, and names any host that isn't connected, whose sessions keep running. Once you confirm, it stops them and quits; if a host refuses, TRC stays open and says which.</p>
 <h3 id="sharing-a-session-with-another-computer">Sharing a session with another computer</h3>
 <p>The app on another computer can open the same session at the same time: both see its output as it comes and both can type. The session's size follows the computer you used last. When the other computer sets it, your terminal shows the session at that size, and the status bar and the terminal's description say &quot;Size set by another client&quot;; focus the terminal or type to take the size back. When the other computer types into the session you have open, TRC says &quot;Input from another client&quot; once, until it stops typing for a few seconds.</p>
 <h2 id="the-terminal">The terminal</h2>
@@ -215,7 +216,7 @@
 <table>
 <thead><tr><th scope="col">File</th><th scope="col">Holds</th></tr></thead>
 <tbody>
-<tr><td><code>config.json</code></td><td>Your <a href="#settings">settings</a>, the screen-reader mode, and the sidebar's width (<code>sidebarWidth</code>, 300 to 800) and whether it is hidden (<code>sidebarCollapsed</code>)</td></tr>
+<tr><td><code>config.json</code></td><td>Your <a href="#settings">settings</a>, the screen-reader mode, the sidebar's width (<code>sidebarWidth</code>, 300 to 800) and whether it is hidden (<code>sidebarCollapsed</code>), and whether the first-quit message was shown (<code>quitNoticeShown</code>)</td></tr>
 <tr><td><code>hosts.json</code></td><td>The known hosts, and per host <code>allowClipboardWrites</code> (off unless <code>true</code>)</td></tr>
 <tr><td><code>sessions.json</code></td><td>Each host's sessions as TRC last listed them (name, title, shell, order and state), so they show at once at the next launch. TRC rewrites it; the host's own list always wins</td></tr>
 <tr><td><code>accept_urls.json</code></td><td>The link prefixes you trust, as a JSON list such as <code>[&quot;https://github.com/myteam/&quot;]</code>. A prefix matches up to a <code>/</code>, <code>?</code> or <code>#</code>, so <code>https://github.com</code> never matches <code>https://github.com.evil.example</code></td></tr>

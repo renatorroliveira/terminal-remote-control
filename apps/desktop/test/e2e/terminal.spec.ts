@@ -109,7 +109,7 @@ test.describe('a live terminal on a Linux host: spoken output (A11Y-02, A11Y-10.
     const install = liveHost();
 
     test('speaks a command’s output in screen-reader mode, but not the echo of what was typed (A11Y-01.4)', async () => {
-        const { app, window } = await launchWithTestHosts(install.root, ['--screen-reader-mode=on']);
+        const { app, window } = await launchWithTestHosts(install.root, { args: ['--screen-reader-mode=on'] });
         await recordSpeech(window);
         const terminal = await openTerminal(window, 'trc-ubuntu');
         await terminal.focus();

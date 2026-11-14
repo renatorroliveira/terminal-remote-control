@@ -519,7 +519,7 @@ export class TerminalView {
             }),
             this.terminal.onBell(() => this.#options.onNotice?.({ kind: 'bell' })),
             this.terminal.onSelectionChange(request),
-            this.terminal.onResize(({ cols, rows }) => {
+            this.terminal.onResize(() => {
                 this.#geometry?.align();
                 request();
             }),

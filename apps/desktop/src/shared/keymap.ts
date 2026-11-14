@@ -21,6 +21,7 @@ export const COMMAND_IDS = [
     'review.toggle',
     'terminal.find',
     'settings.show',
+    'app.quitAndStopAll',
 ] as const;
 
 /** A command's ID. */

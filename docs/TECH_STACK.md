@@ -432,8 +432,8 @@ either way.
       that fall back to defaults, atomic writes, mode 0600 in a 0700
       directory, the TRC home (`~/.trc`, or `TRC_HOME`; D-33). `config.json`
       holds the settings page's settings (`src/shared/settings.ts`), the
-      screen-reader mode and the sidebar layout, each field falling back to its
-      own default; `hosts.json` holds the known hosts (address, port, install
+      screen-reader mode, the sidebar layout and whether the first-quit notice
+      was shown (US-2.1.5), each field falling back to its own default; `hosts.json` holds the known hosts (address, port, install
       location and OSC 52 permission), which the main process serves over the
       `hosts:*` channels; `sessions.json` holds each host's sessions as last
       listed (ID, name, title, shell name, order and state, nothing more; P-30),

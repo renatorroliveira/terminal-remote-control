@@ -42,6 +42,8 @@ export interface InvokeContract {
         readonly args: readonly [section: GuideSection | undefined];
         readonly result: undefined;
     };
+    readonly 'app:quit': { readonly args: readonly []; readonly result: undefined };
+    readonly 'app:quit-notice-opened': { readonly args: readonly []; readonly result: undefined };
     readonly 'sessions:load': { readonly args: readonly []; readonly result: SessionCache };
     readonly 'sessions:save': { readonly args: readonly [cache: SessionCache]; readonly result: undefined };
 }
@@ -54,6 +56,9 @@ export const DISPLAY_CHANGED_CHANNEL = 'display:changed';
 
 /** The event the main process sends when assistive technology starts or stops using the app, or screen-reader mode changes. */
 export const ACCESSIBILITY_CHANGED_CHANNEL = 'accessibility:changed';
+
+/** The event the main process sends when the user quits before the first-quit notice was shown (US-2.1.5). */
+export const QUIT_REQUESTED_CHANNEL = 'app:quit-requested';
 
 /** The event the main process sends for a menu command the renderer carries out. */
 export const APP_COMMAND_CHANNEL = 'app:command';
@@ -91,6 +96,14 @@ export interface TrcBridge {
         setInstallRoot(id: string, installRoot: string): Promise<KnownHost>;
         /** Lets a host's programs write the clipboard with OSC 52, or stops them (SEC-06.1). */
         setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost>;
+    };
+    readonly app: {
+        /** Quits now: no session runs, or the user chose to quit (US-2.1). */
+        quit(): Promise<void>;
+        /** The first-quit notice is open; it is never shown again (US-2.1.5). */
+        quitNoticeOpened(): Promise<void>;
+        /** Calls `listener` when the user quits before the notice was shown; returns a function that stops listening. */
+        onQuitRequested(listener: () => void): () => void;
     };
     readonly sessions: {
         /** Each host's sessions as the app last listed them (US-2.3.2, P-30). */

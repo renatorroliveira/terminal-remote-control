@@ -338,7 +338,7 @@ test.describe('Speech of new output on a live host (NFR-04)', () => {
 
     test('starts speaking new output within 500 ms when idle, p95 (NFR-04)', async () => {
         const root = scratchInstallRoot();
-        const { app, window } = await launchWithTestHosts(root, ['--screen-reader-mode=on']);
+        const { app, window } = await launchWithTestHosts(root, { args: ['--screen-reader-mode=on'] });
         try {
             const terminal = await openTerminal(window, 'trc-ubuntu');
             await ready(window, terminal);

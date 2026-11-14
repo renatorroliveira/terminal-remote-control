@@ -179,8 +179,15 @@ The Sessions list is a tree: each connected host, then its sessions. It is one s
   can read its last output.
 - **Stopping.** Stop asks the program to end, then forces it after the seconds Settings sets (5 by default).
 
-Sessions keep running on the host when you quit the app or the connection drops. When the app connects again, it
-lists them, and opening one shows its screen as the host has it now. A host reboot ends them in this release.
+Sessions keep running on the host when you quit the app, when it crashes or is forced to quit, and when the
+connection drops. When the app connects again, it lists them, and opening one shows its screen as the host has
+it now, with the output they wrote while you were away. A host reboot ends them in this release.
+
+The first time you quit while sessions run, TRC says that they keep running and offers Quit, Quit and Stop All
+Sessions, and Cancel; it doesn't ask again. To end every session, choose Quit and Stop All Sessions… in the TRC
+menu or the command palette: TRC says how many sessions on how many hosts it will stop, and names any host that
+isn't connected, whose sessions keep running. Once you confirm, it stops them and quits; if a host refuses, TRC
+stays open and says which.
 
 ### Sharing a session with another computer
 
@@ -352,12 +359,12 @@ shown. Every change applies at once and is kept; Escape or Close returns to wher
 
 On your Mac, TRC keeps its settings in the TRC home, `~/.trc`:
 
-| File               | Holds                                                                                                                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config.json`      | Your [settings](#settings), the screen-reader mode, and the sidebar's width (`sidebarWidth`, 300 to 800) and whether it is hidden (`sidebarCollapsed`)                                                  |
-| `hosts.json`       | The known hosts, and per host `allowClipboardWrites` (off unless `true`)                                                                                                                                |
-| `sessions.json`    | Each host's sessions as TRC last listed them (name, title, shell, order and state), so they show at once at the next launch. TRC rewrites it; the host's own list always wins                           |
-| `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example` |
+| File               | Holds                                                                                                                                                                                                                |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config.json`      | Your [settings](#settings), the screen-reader mode, the sidebar's width (`sidebarWidth`, 300 to 800) and whether it is hidden (`sidebarCollapsed`), and whether the first-quit message was shown (`quitNoticeShown`) |
+| `hosts.json`       | The known hosts, and per host `allowClipboardWrites` (off unless `true`)                                                                                                                                             |
+| `sessions.json`    | Each host's sessions as TRC last listed them (name, title, shell, order and state), so they show at once at the next launch. TRC rewrites it; the host's own list always wins                                        |
+| `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example`              |
 
 These files are readable only by you. Edit `config.json` while the app is closed; a value TRC can't use falls back
 to its default.

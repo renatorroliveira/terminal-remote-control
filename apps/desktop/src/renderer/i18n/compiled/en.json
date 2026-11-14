@@ -453,6 +453,12 @@
       "value": "Show command palette"
     }
   ],
+  "command.quitAndStopAll": [
+    {
+      "type": 0,
+      "value": "Quit and Stop All Sessions…"
+    }
+  ],
   "command.regionNext": [
     {
       "type": 0,
@@ -2415,6 +2421,196 @@
       },
       "offset": 0,
       "pluralType": "cardinal"
+    }
+  ],
+  "quit.first.body": [
+    {
+      "type": 0,
+      "value": "Sessions keep running on their hosts after TRC quits, and TRC reconnects to them when it opens again. To end them, choose Quit and Stop All Sessions, here or in the TRC menu. This message won’t appear again."
+    }
+  ],
+  "quit.first.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "quit.first.quit": [
+    {
+      "type": 0,
+      "value": "Quit"
+    }
+  ],
+  "quit.first.stopAll": [
+    {
+      "type": 0,
+      "value": "Quit and Stop All Sessions…"
+    }
+  ],
+  "quit.first.title": [
+    {
+      "type": 0,
+      "value": "Your sessions keep running"
+    }
+  ],
+  "quit.stopAll.body": [
+    {
+      "type": 6,
+      "value": "sessions",
+      "options": {
+        "=0": {
+          "value": [
+            {
+              "type": 0,
+              "value": "No session runs on a connected host."
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " session on "
+            },
+            {
+              "type": 6,
+              "value": "hosts",
+              "options": {
+                "one": {
+                  "value": [
+                    {
+                      "type": 7
+                    },
+                    {
+                      "type": 0,
+                      "value": " host"
+                    }
+                  ]
+                },
+                "other": {
+                  "value": [
+                    {
+                      "type": 7
+                    },
+                    {
+                      "type": 0,
+                      "value": " hosts"
+                    }
+                  ]
+                }
+              },
+              "offset": 0,
+              "pluralType": "cardinal"
+            },
+            {
+              "type": 0,
+              "value": " will stop: its program ends, and its scrollback stays until you close it."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " sessions on "
+            },
+            {
+              "type": 6,
+              "value": "hosts",
+              "options": {
+                "one": {
+                  "value": [
+                    {
+                      "type": 7
+                    },
+                    {
+                      "type": 0,
+                      "value": " host"
+                    }
+                  ]
+                },
+                "other": {
+                  "value": [
+                    {
+                      "type": 7
+                    },
+                    {
+                      "type": 0,
+                      "value": " hosts"
+                    }
+                  ]
+                }
+              },
+              "offset": 0,
+              "pluralType": "cardinal"
+            },
+            {
+              "type": 0,
+              "value": " will stop: their programs end, and their scrollback stays until you close them."
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "quit.stopAll.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "quit.stopAll.confirm": [
+    {
+      "type": 0,
+      "value": "Stop Sessions and Quit"
+    }
+  ],
+  "quit.stopAll.failed": [
+    {
+      "type": 0,
+      "value": "Couldn’t stop the sessions on "
+    },
+    {
+      "type": 1,
+      "value": "hosts"
+    },
+    {
+      "type": 0,
+      "value": ". TRC is still open."
+    }
+  ],
+  "quit.stopAll.stopping": [
+    {
+      "type": 0,
+      "value": "Stopping…"
+    }
+  ],
+  "quit.stopAll.title": [
+    {
+      "type": 0,
+      "value": "Stop all sessions and quit?"
+    }
+  ],
+  "quit.stopAll.unreachable": [
+    {
+      "type": 0,
+      "value": "Not connected, so its sessions keep running: "
+    },
+    {
+      "type": 1,
+      "value": "hosts"
+    },
+    {
+      "type": 0,
+      "value": "."
     }
   ],
   "rename.cancel": [

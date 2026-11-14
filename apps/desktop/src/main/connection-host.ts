@@ -7,7 +7,8 @@ import type { TestSeam } from './test-seam';
 /**
  * Starts the connection host and gives the window a fresh MessagePort to it after every page load, so a reload
  * reconnects to the same connections (TECH_STACK §4.2). It also tells the connection host when the Mac wakes, so lost
- * hosts reconnect at once (US-2.2.2). `resources` holds the bundled daemons and helpers, and `seam` is the P-14 test
+ * hosts reconnect at once (US-2.2.2). It stops only once the app really quits, not when the first-quit notice holds a
+ * quit (US-2.1.5). `resources` holds the bundled daemons and helpers, and `seam` is the P-14 test
  * seam, empty in release builds.
  */
 export function startConnectionHost(window: BrowserWindow, resources: string, seam: TestSeam): void {
@@ -26,5 +27,5 @@ export function startConnectionHost(window: BrowserWindow, resources: string, se
         window.webContents.postMessage(CONNECTION_PORT_CHANNEL, null, [port2]);
     });
     powerMonitor.on('resume', () => child.postMessage({ type: 'wake' }));
-    app.on('before-quit', () => child.kill());
+    app.on('will-quit', () => child.kill());
 }

@@ -89,6 +89,14 @@ export interface WorkspaceOptions {
     readonly cache?: SessionCacheStore;
 }
 
+/** How many sessions run, on how many connected hosts, and which hosts with running sessions are not connected. */
+export interface RunningSessions {
+    readonly sessions: number;
+    readonly hosts: number;
+    /** The names of hosts that are not connected but had running sessions when last listed. */
+    readonly unreachable: readonly string[];
+}
+
 /** What a new session may set beyond its size (US-1.7.2). */
 export type SessionOptions = Partial<Pick<CreateSessionSpec, 'profileId' | 'cwd' | 'name' | 'env'>>;
 
@@ -432,6 +440,45 @@ export class WorkspaceController {
         return this.#sessionRequest(key, 'move', (session) => ({ type: 'reorder', session, index }));
     }
 
+    /** The running sessions on connected hosts, and the hosts with running sessions it cannot reach (US-2.1.4). */
+    runningSessions(): RunningSessions {
+        const { hosts, sessions } = this.store.getState();
+        let count = 0;
+        let reached = 0;
+        const unreachable: string[] = [];
+        for (const host of hosts) {
+            const running = (sessions.get(host.id) ?? []).filter(isRunning).length;
+            if (running > 0 && isConnected(host)) {
+                count += running;
+                reached += 1;
+            } else if (running > 0) {
+                unreachable.push(host.destination);
+            }
+        }
+        return { sessions: count, hosts: reached, unreachable };
+    }
+
+    /**
+     * Stops every running session on every connected host, each with the grace period Settings sets; resolves with
+     * the hosts that refused or dropped a stop (US-2.1.4).
+     */
+    async stopAll(): Promise<readonly string[]> {
+        const { hosts, sessions } = this.store.getState();
+        const grace = this.#preferences?.().stopGraceSeconds;
+        const outcomes = hosts.filter(isConnected).map(async (host) => {
+            const stops = (sessions.get(host.id) ?? []).filter(isRunning).map((session) =>
+                this.#client.request(host.id, {
+                    type: 'stop',
+                    session: session.id,
+                    ...(grace === undefined ? {} : { graceMs: grace * 1_000 }),
+                }),
+            );
+            const settled = await Promise.allSettled(stops);
+            return settled.some((outcome) => outcome.status === 'rejected') ? [host.destination] : [];
+        });
+        return (await Promise.all(outcomes)).flat();
+    }
+
     /** Opens a new session on the same host with the same shell and working directory (US-1.10.5). */
     async duplicateSession(key: SessionKey): Promise<void> {
         const found = this.#find(key);
@@ -638,6 +685,10 @@ const CONNECTION_UNDER_WAY: ReadonlySet<ConnectionState['status']> = new Set([
     'host-key',
     'reconnecting',
 ]);
+
+function isRunning(session: SessionInfo): boolean {
+    return session.state === 'running' || session.state === 'starting';
+}
 
 function exitedCleanly(session: SessionInfo): boolean {
     return session.state === 'exited' && session.exit?.code === 0;

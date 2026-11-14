@@ -36,6 +36,7 @@ describe('AppConfigFile: config.json in the TRC home (P-18)', () => {
             sidebarWidth: 400,
             sidebarCollapsed: false,
             screenReaderMode: 'auto',
+            quitNoticeShown: false,
             terminalZoom: 100,
             terminalAppearance: {
                 lineHeight: 1,
@@ -58,6 +59,7 @@ describe('AppConfigFile: config.json in the TRC home (P-18)', () => {
             sidebarWidth: 520,
             sidebarCollapsed: true,
             screenReaderMode: 'on',
+            quitNoticeShown: false,
             terminalZoom: 150,
             terminalAppearance: {
                 lineHeight: 1,
@@ -92,6 +94,7 @@ describe('AppConfigFile: values it cannot use', () => {
             sidebarWidth: 640,
             sidebarCollapsed: false,
             screenReaderMode: 'auto',
+            quitNoticeShown: false,
             terminalZoom: 100,
             terminalAppearance: expect.objectContaining({ cursorStyle: 'block' }),
         });
@@ -102,6 +105,7 @@ describe('AppConfigFile: values it cannot use', () => {
             sidebarWidth: 400,
             sidebarCollapsed: false,
             screenReaderMode: 'auto',
+            quitNoticeShown: false,
             terminalZoom: 100,
             terminalAppearance: expect.objectContaining({ cursorStyle: 'block' }),
         });
@@ -118,6 +122,7 @@ describe('AppConfigFile: updates', () => {
             sidebarWidth: 300,
             sidebarCollapsed: false,
             screenReaderMode: 'auto',
+            quitNoticeShown: false,
             terminalZoom: 100,
             terminalAppearance: expect.objectContaining({ cursorStyle: 'block' }),
         });
