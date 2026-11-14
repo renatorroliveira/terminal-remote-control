@@ -1,5 +1,5 @@
 import { createIntl } from 'react-intl';
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { ScreenReaderMode } from '../../shared/accessibility';
 import { formatChord, resolveKeymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
@@ -575,6 +575,33 @@ describe('Shell action failures (US-1.10, US-1.14.3, WCAG 3.3.1)', () => {
         await workspace.newSession('host-0');
         const text = '! Couldn’t create a session on devbox-1. Try again.';
         expect(spoken.filter((entry) => entry === text)).toHaveLength(2);
+    });
+});
+
+describe('Shell: shared sessions (US-2.6)', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('announces input from another client in the open session once per burst (US-2.6.4)', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        const { shell, spoken } = await sessionOpen();
+        shell.peerInput('host-0/a');
+        vi.setSystemTime(Date.now() + 1_000);
+        shell.peerInput('host-0/a');
+        shell.peerInput('host-0/b');
+        expect(spoken).toEqual(['Input from another client.']);
+        vi.setSystemTime(Date.now() + 5_000);
+        shell.peerInput('host-0/a');
+        expect(spoken).toEqual(['Input from another client.', 'Input from another client.']);
+    });
+
+    it('notes which sessions show a size another client set (US-2.6.2)', async () => {
+        const { shell } = await sessionOpen();
+        shell.terminalNotice('host-0/a', { kind: 'size', setElsewhere: true });
+        expect(shell.state.getState().sizeSetElsewhere).toEqual(new Set(['host-0/a']));
+        shell.terminalNotice('host-0/a', { kind: 'size', setElsewhere: false });
+        expect(shell.state.getState().sizeSetElsewhere).toEqual(new Set());
     });
 });
 

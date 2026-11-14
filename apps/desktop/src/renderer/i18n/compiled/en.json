@@ -251,6 +251,12 @@
       "value": "New output below."
     }
   ],
+  "announce.peerInput": [
+    {
+      "type": 0,
+      "value": "Input from another client."
+    }
+  ],
   "announce.reviewOutput": [
     {
       "type": 0,
@@ -3333,6 +3339,12 @@
       "value": "Status bar"
     }
   ],
+  "status.sizeSetElsewhere": [
+    {
+      "type": 0,
+      "value": "Size set by another client"
+    }
+  ],
   "status.tabMovesFocus": [
     {
       "type": 0,
@@ -3471,6 +3483,12 @@
     {
       "type": 1,
       "value": "host"
+    }
+  ],
+  "terminal.sizeSetElsewhere": [
+    {
+      "type": 0,
+      "value": "Size set by another client."
     }
   ],
   "tree.bell": [

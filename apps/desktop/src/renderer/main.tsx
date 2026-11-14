@@ -76,6 +76,7 @@ if (container !== null) {
             onOpenLink: (link) => void shell?.openLink(link),
             onPasteRequest: (key, text) => shell?.requestPaste(key, text),
             onNotice: (key, notice) => shell?.terminalNotice(key, notice),
+            onPeerInput: (key) => shell?.peerInput(key),
             onContextMenu: (canCopy) => void window.trc.menus.terminal(canCopy),
             onClipboardWrite: (key, text) => {
                 const hostId = key.split('/')[0] ?? '';

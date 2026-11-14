@@ -145,6 +145,8 @@ export interface ShellState {
     readonly help: HelpContext | undefined;
     /** Whether the settings page is open (A11Y-10.3). */
     readonly settingsOpen: boolean;
+    /** Sessions shown at a size another client set (US-2.6.2). */
+    readonly sizeSetElsewhere: ReadonlySet<SessionKey>;
 }
 
 /** A dialog about a session, or the New session dialog. */
@@ -205,7 +207,11 @@ const INITIAL_STATE: ShellState = {
     find: undefined,
     help: undefined,
     settingsOpen: false,
+    sizeSetElsewhere: new Set(),
 };
+
+/** Input from another client this long after the last starts a new burst, which is announced again (US-2.6.4). */
+const PEER_BURST_GAP_MS = 3_000;
 
 /** How long the status bar shows the bell. */
 const BELL_SHOWN_MS = 3_000;
@@ -226,6 +232,8 @@ export class Shell {
     #focusReturn: HTMLElement | undefined;
     #keymap: Keymap;
     #bellTimer: number | undefined;
+    /** When each session last had input from another client. */
+    readonly #peerInput = new Map<SessionKey, number>();
 
     /** Builds the shell and registers its commands. */
     constructor(options: ShellOptions) {
@@ -380,6 +388,9 @@ export class Shell {
             case 'review-output':
                 announcer.announce(intl.formatMessage(findAnnouncements.reviewOutput), { group: `review:${key}` });
                 break;
+            case 'size':
+                this.#noteSize(key, notice.setElsewhere);
+                break;
             case 'input-refused':
                 this.playCue('input-refused');
                 announcer.announce(intl.formatMessage(refusalMessages[notice.reason]), {
@@ -387,6 +398,18 @@ export class Shell {
                     politeness: 'assertive',
                 });
                 break;
+        }
+    }
+
+    /** Another client typed into a session: in the open one, announced politely once per burst (US-2.6.4). */
+    peerInput(key: SessionKey): void {
+        const now = Date.now();
+        const last = this.#peerInput.get(key) ?? Number.NEGATIVE_INFINITY;
+        this.#peerInput.set(key, now);
+        if (key === this.#options.workspace.store.getState().open && now - last > PEER_BURST_GAP_MS) {
+            this.#options.announcer.announce(this.#options.intl.formatMessage(terminalAnnouncements.peerInput), {
+                group: `peer:${key}`,
+            });
         }
     }
 
@@ -742,6 +765,16 @@ export class Shell {
         if ((this.state.getState().find?.query ?? '') !== '') {
             this.updateFind({});
         }
+    }
+
+    #noteSize(key: SessionKey, setElsewhere: boolean): void {
+        const next = new Set(this.state.getState().sizeSetElsewhere);
+        if (setElsewhere) {
+            next.add(key);
+        } else {
+            next.delete(key);
+        }
+        this.state.setState({ sizeSetElsewhere: next });
     }
 
     #announceScreenReader(on: boolean): void {

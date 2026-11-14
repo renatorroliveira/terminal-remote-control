@@ -137,6 +137,11 @@ export const terminalMessages = defineMessages({
         defaultMessage: 'Reconnecting — input not sent',
         description: 'Shown and announced when the user types while the host reconnects; nothing was sent.',
     },
+    sizeSetElsewhere: {
+        id: 'terminal.sizeSetElsewhere',
+        defaultMessage: 'Size set by another client.',
+        description: 'Added to the terminal description while another computer set the shared session’s size.',
+    },
     inputNotReady: {
         id: 'terminal.inputNotReady',
         defaultMessage: 'Session still opening — input not sent',

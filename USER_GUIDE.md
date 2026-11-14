@@ -182,6 +182,14 @@ The Sessions list is a tree: each connected host, then its sessions. It is one s
 Sessions keep running on the host when you quit the app or the connection drops. When the app connects again, it
 lists them, and opening one shows its screen as the host has it now. A host reboot ends them in this release.
 
+### Sharing a session with another computer
+
+The app on another computer can open the same session at the same time: both see its output as it comes and both
+can type. The session's size follows the computer you used last. When the other computer sets it, your terminal
+shows the session at that size, and the status bar and the terminal's description say "Size set by another
+client"; focus the terminal or type to take the size back. When the other computer types into the session you
+have open, TRC says "Input from another client" once, until it stops typing for a few seconds.
+
 ## The terminal
 
 The terminal takes every key you type, including Escape, Tab and the arrow keys, and sends it to the session. The

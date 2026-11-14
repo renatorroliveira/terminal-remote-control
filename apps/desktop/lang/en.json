@@ -83,6 +83,10 @@
     "defaultMessage": "New output below.",
     "description": "Announced once when output arrives while the user has scrolled the terminal back."
   },
+  "announce.peerInput": {
+    "defaultMessage": "Input from another client.",
+    "description": "Announced politely once per burst when another computer types into the open session."
+  },
   "announce.reviewOutput": {
     "defaultMessage": "New output. Command-Down Arrow goes to the end.",
     "description": "Announced once when output arrives while review mode is open."
@@ -1575,6 +1579,10 @@
     "defaultMessage": "Status bar",
     "description": "Landmark name."
   },
+  "status.sizeSetElsewhere": {
+    "defaultMessage": "Size set by another client",
+    "description": "Shown while another computer set the open shared session’s size."
+  },
   "status.tabMovesFocus": {
     "defaultMessage": "Tab moves focus",
     "description": "Toggle button: whether Tab leaves the terminal."
@@ -1638,6 +1646,10 @@
   "terminal.review": {
     "defaultMessage": "Review {session}, {host}",
     "description": "Name of review mode, the read-only text field holding the whole buffer."
+  },
+  "terminal.sizeSetElsewhere": {
+    "defaultMessage": "Size set by another client.",
+    "description": "Added to the terminal description while another computer set the shared session’s size."
   },
   "tree.bell": {
     "defaultMessage": "bell",

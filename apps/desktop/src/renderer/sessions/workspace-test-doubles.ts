@@ -164,6 +164,14 @@ export class FakeTerminalHost implements TerminalHost {
         this.closed.push(key);
     }
 
+    /** Sessions whose info reached their terminal, latest last. */
+    readonly updated: SessionInfo[] = [];
+
+    /** Records the session's info. */
+    updateSession(_key: string, session: SessionInfo): void {
+        this.updated.push(session);
+    }
+
     /** Whether Tab focus mode is on, and how often send-next-key was asked for. */
     tabFocusMode = false;
     nextKeys = 0;

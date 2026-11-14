@@ -54,6 +54,7 @@ function mount(overrides: Partial<TerminalViewOptions> = {}): Harness {
         inputRefused: 'Disconnected — input not sent',
         inputReconnecting: 'Reconnecting — input not sent',
         inputNotReady: 'Session still opening — input not sent',
+        sizeSetElsewhere: 'Size set by another client.',
     });
     views.push(view);
     return { view, host, inputs, credits, sizes };
@@ -871,6 +872,57 @@ describe('TerminalView: reconnecting and replays (US-2.2.2, D-04, D-45)', () => 
         expect(view.terminal.hasSelection()).toBe(false);
         await written(view, 'new screen\r\n$ ');
         expect(bufferText(view.terminal).lines.slice(0, 2)).toEqual(['new screen', '$']);
+    });
+});
+
+describe('TerminalView: a shared session’s size (US-2.6.2, P-31)', () => {
+    const description = (view: TerminalView): string =>
+        (view.surface.getAttribute('aria-describedby') ?? '')
+            .split(' ')
+            .map((id) => document.getElementById(id)?.textContent ?? '')
+            .join(' ');
+
+    it('shows the session at the size another client set, says so, and takes the size back on focus', async () => {
+        const notices: unknown[] = [];
+        const { view, sizes } = mount({ onNotice: (notice) => notices.push(notice) });
+        await view.ready;
+        const fitted = sizes.at(-1);
+        view.setSessionSize({ cols: 40, rows: 10 });
+        expect([view.terminal.cols, view.terminal.rows]).toEqual([40, 10]);
+        expect(sizes.at(-1)).toEqual(fitted);
+        expect(description(view)).toContain('Size set by another client.');
+        expect(notices).toEqual([{ kind: 'size', setElsewhere: true }]);
+        view.surface.focus();
+        expect([view.terminal.cols, view.terminal.rows]).toEqual([fitted?.cols, fitted?.rows]);
+        expect(sizes.at(-1)).toEqual(fitted);
+        expect(sizes).toHaveLength(2);
+        expect(description(view)).not.toContain('Size set by another client.');
+        expect(notices.at(-1)).toEqual({ kind: 'size', setElsewhere: false });
+    });
+
+    it('takes the size back when the user types, and keeps the note with hints off', async () => {
+        const { view, sizes, inputs } = mount();
+        await view.ready;
+        view.setHints(false);
+        view.setSessionSize({ cols: 40, rows: 10 });
+        expect(description(view)).toBe('Size set by another client.');
+        view.surface.blur();
+        beforeInput(view.surface, 'insertText', 'ls');
+        expect(inputs).toEqual(['ls']);
+        expect(view.terminal.cols).not.toBe(40);
+        expect(sizes).toHaveLength(2);
+        expect(view.surface.hasAttribute('aria-describedby')).toBe(false);
+    });
+
+    it('keeps its own size when the daemon reports the size it asked for', async () => {
+        const { view, sizes } = mount();
+        await view.ready;
+        const fitted = sizes.at(-1);
+        if (fitted !== undefined) {
+            view.setSessionSize(fitted);
+        }
+        expect([view.terminal.cols, view.terminal.rows]).toEqual([fitted?.cols, fitted?.rows]);
+        expect(view.surface.getAttribute('aria-describedby')).not.toBeNull();
     });
 });
 

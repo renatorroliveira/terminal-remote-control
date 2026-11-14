@@ -139,6 +139,12 @@ class FakeTerminals implements TerminalHost {
     closeSession(key: string): void {
         this.closedSessions.push(key);
     }
+
+    readonly updated: string[] = [];
+
+    updateSession(key: string, session: SessionInfo): void {
+        this.updated.push(`${key} ${session.size.cols}x${session.size.rows}`);
+    }
 }
 
 class FakeHosts extends FakeKnownHostStore {
@@ -273,6 +279,18 @@ describe('WorkspaceController: reconnecting (US-2.2)', () => {
         expect(workspace.store.getState().failureNotice).toBeUndefined();
         expect(workspace.store.getState().hosts[0]?.reconnecting).toBe(false);
         expect(workspace.store.getState().hosts[0]?.state.status).toBe('failed');
+    });
+});
+
+describe('WorkspaceController: shared sessions (US-2.6.3)', () => {
+    it('passes every listed and changed session to its terminal, as other clients change it', async () => {
+        const { client, terminals, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        client.states.get(host.id)?.(connected);
+        await expect.poll(() => terminals.updated).toEqual([`${host.id}/a 120x40`, `${host.id}/b 120x40`]);
+        const resized = { ...info('a'), size: { cols: 80, rows: 24 } };
+        client.messages.get(host.id)?.({ type: 'sessionEvent', change: { kind: 'updated', session: resized } });
+        expect(terminals.updated.at(-1)).toBe(`${host.id}/a 80x24`);
     });
 });
 

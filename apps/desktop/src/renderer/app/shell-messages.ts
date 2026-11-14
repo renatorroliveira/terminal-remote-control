@@ -161,6 +161,11 @@ export const terminalAnnouncements = {
         defaultMessage: 'Reconnecting — input not sent.',
         description: 'Announced assertively when the user types while the host reconnects.',
     }),
+    peerInput: defineMessage({
+        id: 'announce.peerInput',
+        defaultMessage: 'Input from another client.',
+        description: 'Announced politely once per burst when another computer types into the open session.',
+    }),
     inputNotReady: defineMessage({
         id: 'announce.inputNotReady',
         defaultMessage: 'Session still opening — input not sent.',
@@ -401,6 +406,11 @@ export const statusMessages = {
         description: 'Shown while no session is open.',
     }),
     noHosts: defineMessage({ id: 'status.noHosts', defaultMessage: 'No hosts', description: 'Status bar text.' }),
+    sizeSetElsewhere: defineMessage({
+        id: 'status.sizeSetElsewhere',
+        defaultMessage: 'Size set by another client',
+        description: 'Shown while another computer set the open shared session’s size.',
+    }),
     daemon: defineMessage<{ version: string }>({
         id: 'status.daemon',
         defaultMessage: 'Daemon {version}',

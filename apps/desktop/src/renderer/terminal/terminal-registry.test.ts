@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { type ClientRequest, HostRequestError } from '../connection/host-client';
 import { THEMES } from '../ui/themes';
 import type { SessionTransport } from './session-link';
-import { type SessionSpeech, TerminalRegistry } from './terminal-registry';
+import { type SessionSpeech, TerminalRegistry, type TerminalRegistryOptions } from './terminal-registry';
 
 const info = (id: string): SessionInfo => ({
     id,
@@ -158,7 +158,7 @@ class FakeSpeech implements SessionSpeech {
     }
 }
 
-function setup() {
+function setup(extra: Partial<TerminalRegistryOptions> = {}) {
     const speech = new FakeSpeech();
     const notices: string[] = [];
     const failed: string[] = [];
@@ -183,10 +183,12 @@ function setup() {
             inputRefused: 'Disconnected — input not sent',
             inputReconnecting: 'Reconnecting — input not sent',
             inputNotReady: 'Session still opening — input not sent',
+            sizeSetElsewhere: 'Size set by another client.',
         }),
         speech,
         onNotice: (key, notice) => notices.push(`${key} ${notice.kind}`),
         onAttachFailed: (key) => failed.push(key),
+        ...extra,
     });
     registry.attach(area);
     registries.push(registry);
@@ -525,6 +527,34 @@ describe('TerminalRegistry: resyncs and gaps (D-04, D-45)', () => {
         transport.push(synced(1, 600));
         await filled;
         expect(registry.hasGap()).toBe(false);
+    });
+});
+
+describe('TerminalRegistry: shared sessions (US-2.6, P-31)', () => {
+    it('shows a session at the size another client set, and keeps it after a reconnect until taken back', async () => {
+        const { area, transport, registry } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(1)).toBe(true);
+        const surface = area.querySelector<HTMLElement>('[role="textbox"]');
+        await expect.poll(() => requestsOf(transport, 'resize')).toBeGreaterThan(0);
+        registry.updateSession('h1/a', { ...info('a'), size: { cols: 40, rows: 10 } });
+        expect(surface?.dataset['columns']).toBe('40');
+        const resizes = requestsOf(transport, 'resize');
+        registry.setHostConnection('h1', 'reconnecting');
+        await registry.reattachHost('h1');
+        expect(requestsOf(transport, 'resize')).toBe(resizes);
+        typeInto(area, 'x');
+        expect(requestsOf(transport, 'resize')).toBe(resizes + 1);
+        expect(surface?.dataset['columns']).not.toBe('40');
+    });
+
+    it('reports input from another client in a session', async () => {
+        const peers: string[] = [];
+        const { transport, registry } = setup({ onPeerInput: (key) => peers.push(key) });
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(1)).toBe(true);
+        transport.push({ type: 'peerInput', session: 'a', stream: 1 });
+        expect(peers).toEqual(['h1/a']);
     });
 });
 

@@ -58,6 +58,8 @@ export interface TerminalRegistryOptions {
     readonly onClipboardWrite?: (key: SessionKey, text: string) => void;
     /** A session shown for the first time could not attach; its terminal is gone (US-1.14.2, WCAG 3.3.1). */
     readonly onAttachFailed?: (key: SessionKey, error: unknown) => void;
+    /** Another client typed into a session (US-2.6.4). */
+    readonly onPeerInput?: (key: SessionKey) => void;
 }
 
 interface Entry {
@@ -321,6 +323,11 @@ export class TerminalRegistry implements TerminalHost {
         }
     }
 
+    /** Takes a session's info as the daemon lists it: its terminal follows the PTY size (US-2.6.2). */
+    updateSession(key: SessionKey, session: SessionInfo): void {
+        this.#entries.get(key)?.view.setSessionSize(session.size);
+    }
+
     /** Removes the terminal of a session the daemon closed. */
     closeSession(key: SessionKey): void {
         const entry = this.#entries.get(key);
@@ -478,7 +485,10 @@ export class TerminalRegistry implements TerminalHost {
                 void view?.write(data);
                 this.#activity(link);
             },
-            replayEvents(() => view),
+            replayEvents(
+                () => view,
+                () => withKey(this.#keyOf(link), (key) => this.#options.onPeerInput?.(key)),
+            ),
         );
         const speech = this.#speechFor(() => link);
         view = new TerminalView({
@@ -494,7 +504,12 @@ export class TerminalRegistry implements TerminalHost {
             onLink: (link) => this.#options.onOpenLink?.(link),
             onContextMenu: (canCopy) => this.#options.onContextMenu?.(canCopy),
             onPasteRequest: (text) => withKey(this.#keyOf(link), (key) => this.#options.onPasteRequest?.(key, text)),
-            onNotice: (notice) => withKey(this.#keyOf(link), (key) => this.#options.onNotice?.(key, notice)),
+            onNotice: (notice) => {
+                if (notice.kind === 'size' && notice.setElsewhere) {
+                    link.releaseSize();
+                }
+                withKey(this.#keyOf(link), (key) => this.#options.onNotice?.(key, notice));
+            },
             clipboardWrites: () => this.#options.clipboardWrites?.(hostId) === true,
             onClipboardWrite: (text) =>
                 withKey(this.#keyOf(link), (key) => this.#options.onClipboardWrite?.(key, text)),
@@ -521,8 +536,8 @@ export class TerminalRegistry implements TerminalHost {
     }
 }
 
-/** What a terminal does as its session link replays, resyncs and catches up. */
-function replayEvents(view: () => TerminalView | undefined): LinkEvents {
+/** What a terminal does as its session link replays, resyncs and catches up, and when another client types. */
+function replayEvents(view: () => TerminalView | undefined, peerInput: () => void): LinkEvents {
     let attached = false;
     return {
         replay: (replay) => {
@@ -534,6 +549,7 @@ function replayEvents(view: () => TerminalView | undefined): LinkEvents {
         },
         synced: () => view()?.endReplay(),
         resync: () => view()?.beginReplay('replace'),
+        peerInput,
     };
 }
 

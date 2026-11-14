@@ -18,6 +18,7 @@ import { OutputAnnouncer, type OutputSpeech } from './output-announcer';
 import { encodePaste, pastedLines } from './paste';
 import { registerQueryFilters } from './query-filter';
 import { ReviewField } from './review-field';
+import { SharedSize } from './shared-size';
 import { SCROLLBAR_WIDTH, TerminalGeometry } from './terminal-geometry';
 import { xtermTheme } from './terminal-theme';
 import { UpdateScheduler } from './update-scheduler';
@@ -47,6 +48,8 @@ export interface TerminalLabel {
     readonly inputReconnecting: string;
     /** What a keystroke shows before the session has attached (US-1.14.2). */
     readonly inputNotReady: string;
+    /** What the description adds while another client set a shared session's size (US-2.6.2). */
+    readonly sizeSetElsewhere: string;
 }
 
 interface FindState {
@@ -120,6 +123,9 @@ export class TerminalView {
     readonly surface: HTMLElement;
     readonly #options: TerminalViewOptions;
     readonly #hint: HTMLElement;
+    readonly #sizeNote: HTMLElement;
+    readonly #shared = new SharedSize();
+    #hints = true;
     readonly #outputBelow: HTMLButtonElement;
     readonly #inputRefused: HTMLElement;
     readonly #ats: AtsSurface;
@@ -159,6 +165,7 @@ export class TerminalView {
         });
         this.surface = createSurface(options.fontSize ?? TERMINAL_FONT_SIZE);
         this.#hint = createHint();
+        this.#sizeNote = createHint();
         this.#outputBelow = createOutputBelow();
         this.#inputRefused = createInputRefused();
         this.#measurer = createMeasurer(options.fontSize ?? TERMINAL_FONT_SIZE);
@@ -185,20 +192,28 @@ export class TerminalView {
         host.className = styles['host'] ?? '';
         const canvas = document.createElement('div');
         canvas.className = styles['canvas'] ?? '';
-        host.append(canvas, this.surface, this.#hint, this.#measurer, this.#outputBelow, this.#inputRefused);
+        host.append(
+            canvas,
+            this.surface,
+            this.#hint,
+            this.#sizeNote,
+            this.#measurer,
+            this.#outputBelow,
+            this.#inputRefused,
+        );
         this.#review = new ReviewField(host, () => bufferText(this.terminal), {
             onClose: () => this.toggleReview(),
             onNewOutput: () => this.#options.onNotice?.({ kind: 'review-output' }),
         });
         frame.append(host);
         container.append(frame);
-        this.surface.setAttribute('aria-describedby', this.#hint.id);
+        this.#describe();
         this.#listen();
         this.#geometry = new TerminalGeometry(
             this.terminal,
             { frame, host, surface: this.surface, measurer: this.#measurer },
             this.#ats,
-            this.#options.maxColumns ?? DEFAULT_MAX_COLUMNS,
+            { maxColumns: this.#options.maxColumns ?? DEFAULT_MAX_COLUMNS, onFit: (size) => this.#fitted(size) },
         );
         this.#ready = loadTerminalFonts().then(() => this.#open(canvas));
     }
@@ -227,6 +242,7 @@ export class TerminalView {
     setLabel(label: TerminalLabel): void {
         this.#label = label;
         this.#hint.textContent = label.hint;
+        this.#sizeNote.textContent = label.sizeSetElsewhere;
         this.#outputBelow.textContent = label.outputBelow;
         this.#showConnection();
     }
@@ -384,11 +400,18 @@ export class TerminalView {
 
     /** Names the help and leave-terminal shortcuts in the terminal's description, or not when hints are off (A11Y-01.2). */
     setHints(on: boolean): void {
-        if (on) {
-            this.surface.setAttribute('aria-describedby', this.#hint.id);
-        } else {
-            this.surface.removeAttribute('aria-describedby');
-        }
+        this.#hints = on;
+        this.#describe();
+    }
+
+    /**
+     * Takes the session's PTY size as the daemon reports it. A size another client set is shown as it is and named
+     * in the description until the user focuses the terminal or types, which takes the size back (US-2.6.2, P-31).
+     */
+    setSessionSize(size: { readonly cols: number; readonly rows: number }): void {
+        const before = this.#shared.foreign;
+        this.#shared.session(size);
+        this.#showSharedSize(before);
     }
 
     /** Keeps at least `ratio` contrast between each cell's text and background (A11Y-04, A11Y-10.3). */
@@ -450,7 +473,7 @@ export class TerminalView {
         this.#tameXtermFocus(canvas);
         const fitted = this.#geometry?.observe() ?? Promise.resolve();
         this.#scheduler.request();
-        return fitted.then(() => this.#options.onResize({ cols: this.terminal.cols, rows: this.terminal.rows }));
+        return fitted;
     }
 
     #loadAddons(): void {
@@ -498,7 +521,6 @@ export class TerminalView {
             this.terminal.onSelectionChange(request),
             this.terminal.onResize(({ cols, rows }) => {
                 this.#geometry?.align();
-                this.#options.onResize({ cols, rows });
                 request();
             }),
             this.terminal.onData((data) => this.#forwardTerminalData(data)),
@@ -683,6 +705,7 @@ export class TerminalView {
             this.refuseInput(this.#connection);
             return;
         }
+        this.#claimSize();
         if (!this.#options.onInput(text)) {
             this.refuseInput('opening');
             return;
@@ -714,8 +737,43 @@ export class TerminalView {
         };
     }
 
+    #fitted(size: { readonly cols: number; readonly rows: number }): void {
+        const send = this.#shared.fitted(size);
+        if (send !== undefined) {
+            this.#options.onResize(send);
+        }
+    }
+
+    #claimSize(): void {
+        const before = this.#shared.foreign;
+        const send = this.#shared.claim();
+        if (send !== undefined) {
+            this.#options.onResize(send);
+            this.#showSharedSize(before);
+        }
+    }
+
+    #showSharedSize(before: boolean): void {
+        const foreign = this.#shared.foreign;
+        this.#geometry?.setForcedSize(foreign ? this.#shared.shown : undefined);
+        if (before !== foreign) {
+            this.#describe();
+            this.#options.onNotice?.({ kind: 'size', setElsewhere: foreign });
+        }
+    }
+
+    #describe(): void {
+        const ids = [this.#hints ? this.#hint.id : '', this.#shared.foreign ? this.#sizeNote.id : ''].filter(Boolean);
+        if (ids.length === 0) {
+            this.surface.removeAttribute('aria-describedby');
+        } else {
+            this.surface.setAttribute('aria-describedby', ids.join(' '));
+        }
+    }
+
     #listenFocus(request: () => void): void {
         const onFocus = (): void => {
+            this.#claimSize();
             this.terminal.options.cursorInactiveStyle = 'block';
             if (this.terminal.modes.sendFocusMode) {
                 this.#deliver(FOCUS_IN);
