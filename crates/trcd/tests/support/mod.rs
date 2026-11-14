@@ -260,3 +260,16 @@ impl AppClient {
         }
     }
 }
+
+/// The parent process of `pid`, from `ps` or, where `ps` is missing, `/proc`.
+pub fn parent_of(pid: i32) -> i32 {
+    let output = std::process::Command::new("ps")
+        .args(["-o", "ppid=", "-p", &pid.to_string()])
+        .output();
+    if let Some(output) = output.ok().filter(|output| output.status.success()) {
+        return String::from_utf8_lossy(&output.stdout).trim().parse().unwrap();
+    }
+    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).unwrap();
+    let after_name = &stat[stat.rfind(')').unwrap() + 2..];
+    after_name.split(' ').nth(1).unwrap().parse().unwrap()
+}

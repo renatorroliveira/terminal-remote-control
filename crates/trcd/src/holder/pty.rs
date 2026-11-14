@@ -108,6 +108,7 @@ enum Input {
 
 impl Pty {
     /// Starts `spec.program` in a new PTY as the leader of its own session, with the PTY as its controlling terminal.
+    /// Every descriptor is set up before the program starts, so a failure never leaves a started program behind.
     pub fn spawn(spec: &SpawnSpec) -> Result<(Self, PtyOutput), SpawnError> {
         let master = open_master()?;
         grantpt(&master)?;
@@ -115,9 +116,6 @@ impl Pty {
         let slave = open_slave(&master)?;
         tcsetwinsize(&slave, winsize(spec.size))?;
         mark_utf8(&slave)?;
-        let mut child = command(spec, &slave)?.spawn()?;
-        drop(slave);
-        let pid = child.id();
         fcntl_setfl(&master, OFlags::NONBLOCK)?;
         let (stop_reader, stop) = rustix::pipe::pipe()?;
         fcntl_setfd(&stop_reader, FdFlags::CLOEXEC)?;
@@ -125,6 +123,9 @@ impl Pty {
         let stop_writer = stop_reader.try_clone()?;
         let reader = File::from(master.try_clone()?);
         let writer = File::from(master.try_clone()?);
+        let mut child = command(spec, &slave)?.spawn()?;
+        drop(slave);
+        let pid = child.id();
         let (chunks_tx, chunks) = mpsc::channel(2);
         let (exit_tx, exit) = oneshot::channel();
         let (input, input_rx) = std_mpsc::channel();
