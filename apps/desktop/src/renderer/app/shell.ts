@@ -15,6 +15,7 @@ import {
     hostActionMessages,
     touchMessage,
 } from '../sessions/host-messages';
+import { LogoutWarning } from '../sessions/logout-warning';
 import { sessionStateText } from '../sessions/session-state-text';
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import { type HostEntry, hostGroups, type SessionKey, sessionName, type Workspace } from '../sessions/workspace-model';
@@ -231,6 +232,8 @@ export class Shell {
     readonly sidebar: SidebarSettings;
     /** Quitting: the first-quit notice and Quit and Stop All Sessions (US-2.1.4, US-2.1.5). */
     readonly quit: QuitFlow;
+    /** The warning before the first session on a host that ends its sessions at logout (US-2.4.4). */
+    readonly logoutWarning = new LogoutWarning();
     readonly #options: ShellOptions;
     readonly #regions: RegionCycler;
     /** Where focus returns when the palette, help or the settings page closes (A11Y-05.8). */

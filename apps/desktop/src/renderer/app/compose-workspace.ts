@@ -15,6 +15,7 @@ import {
     type SessionCacheStore,
     type SessionKey,
     WorkspaceController,
+    type WorkspaceOptions,
 } from '../sessions/workspace-controller';
 import { sessionName } from '../sessions/workspace-model';
 import type { TerminalLink } from '../terminal/hyperlinks';
@@ -54,6 +55,8 @@ export interface WorkspaceSources {
     readonly onClipboardWrite: (key: SessionKey, text: string) => void;
     /** Another client typed into a session (US-2.6.4). */
     readonly onPeerInput?: (key: SessionKey) => void;
+    /** Asks before the first session on a host that ends its sessions at logout (US-2.4.4). */
+    readonly confirmSessionsEndAtLogout?: (hostId: string) => Promise<boolean>;
     /** The settings page's current settings (A11Y-10.3). */
     readonly settings: () => Settings;
 }
@@ -119,11 +122,17 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
         onAttachFailed: (key, error) => workspace?.attachFailed(key, error),
         ...(sources.onPeerInput === undefined ? {} : { onPeerInput: sources.onPeerInput }),
     });
-    workspace = new WorkspaceController(sources.client, terminals, sources.hosts, {
-        preferences: sources.settings,
-        ...(sources.sessionCache === undefined ? {} : { cache: sources.sessionCache }),
-    });
+    workspace = new WorkspaceController(sources.client, terminals, sources.hosts, workspaceOptions(sources));
     return { workspace, terminals };
+}
+
+function workspaceOptions(sources: WorkspaceSources): WorkspaceOptions {
+    const { sessionCache, confirmSessionsEndAtLogout } = sources;
+    return {
+        preferences: sources.settings,
+        ...(sessionCache === undefined ? {} : { cache: sessionCache }),
+        ...(confirmSessionsEndAtLogout === undefined ? {} : { confirmSessionsEndAtLogout }),
+    };
 }
 
 /** Speaks each session's output through the announcer, one appending group per session (A11Y-02.1). */

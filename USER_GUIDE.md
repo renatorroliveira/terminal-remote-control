@@ -183,6 +183,13 @@ Sessions keep running on the host when you quit the app, when it crashes or is f
 connection drops. When the app connects again, it lists them, and opening one shows its screen as the host has
 it now, with the output they wrote while you were away. A host reboot ends them in this release.
 
+On a Linux host where your user has lingering on (`loginctl enable-linger`), the host's systemd keeps the TRC
+daemon running and restarts it if it fails; elsewhere the daemon runs on its own. Either way your sessions outlive
+the connection. The exception is a host that ends your processes when your last connection closes
+(`KillUserProcesses=yes`) while lingering is off: its status says "Connected; sessions end when its last connection
+closes", and TRC warns you before the first session you create there. TRC never turns lingering on for you; the
+host's administrator can.
+
 The first time you quit while sessions run, TRC says that they keep running and offers Quit, Quit and Stop All
 Sessions, and Cancel; it doesn't ask again. To end every session, choose Quit and Stop All Sessions… in the TRC
 menu or the command palette: TRC says how many sessions on how many hosts it will stop, and names any host that

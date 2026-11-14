@@ -214,6 +214,9 @@ launches start with the notice marked shown, except the test of the notice.
 - The host's status says sessions end when the last connection closes, and a warning precedes the first session
   created there.
 
+As built (ST-34, 2026-11-14): the warning comes whenever a session is about to be created on such a host while
+the host has none, from any of the ways to create one; Cancel creates nothing. An e2e runs on `trc-systemd-kill`.
+
 **ST-35 NFR-02 on a sub-millisecond link** (S13)
 
 - S13: where the 2.6 to 12 ms spread between the renderer and the connection host comes from; then the fix, and the
@@ -262,7 +265,7 @@ launches start with the notice marked shown, except the test of the notice.
 | ST-31 | Done    | —      |
 | ST-32 | Done    | —      |
 | ST-33 | Done    | —      |
-| ST-34 | Pending | —      |
+| ST-34 | Done    | —      |
 | ST-35 | Pending | —      |
 | ST-36 | Pending | —      |
 | ST-37 | Pending | —      |

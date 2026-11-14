@@ -78,6 +78,7 @@ if (container !== null) {
             onPasteRequest: (key, text) => shell?.requestPaste(key, text),
             onNotice: (key, notice) => shell?.terminalNotice(key, notice),
             onPeerInput: (key) => shell?.peerInput(key),
+            confirmSessionsEndAtLogout: (hostId) => shell?.logoutWarning.ask(hostId) ?? Promise.resolve(true),
             onContextMenu: (canCopy) => void window.trc.menus.terminal(canCopy),
             onClipboardWrite: writeClipboard,
             settings: () => settings.current,
