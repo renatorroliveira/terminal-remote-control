@@ -1394,7 +1394,8 @@ Chromium, and Cargo.
 
 ## 11. Spikes
 
-Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spikes/S4.md), [S5](spikes/S5.md).
+Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spikes/S4.md), [S5](spikes/S5.md),
+[S11](spikes/S11.md), [S12](spikes/S12.md).
 
 | ID  | Epic | Spike                                                                                                                                                                               | Retires                      |
 | --- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |

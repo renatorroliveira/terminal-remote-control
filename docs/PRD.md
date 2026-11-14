@@ -1035,6 +1035,11 @@ Acceptance criteria:
    The app warns about this before the first session is created on the host,
    and the host's status shows it.
 
+**E2 note** (owner, 2026-11-14): the app never enables lingering. Where logind
+ends user processes at logout and lingering is off, a detached daemon would end
+with the connection that started it, so there the daemon runs under the user's
+systemd instance, which lasts until the last connection closes (criterion 4).
+
 #### US-2.5 — Daemon crashes and upgrades never lose sessions
 
 > As **Jordan**, I want a daemon crash or upgrade to be invisible to my
