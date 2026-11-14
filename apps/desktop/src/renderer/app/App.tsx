@@ -7,6 +7,7 @@ import { SIDEBAR_WIDTH } from '../../shared/layout';
 import { shellMessages } from '../i18n/messages';
 import { ConnectionFailureDialog } from '../sessions/ConnectionFailureDialog';
 import { ADD_HOST_ATTRIBUTE, HostDialogs } from '../sessions/HostDialogs';
+import { LogoutWarningDialog } from '../sessions/LogoutWarningDialog';
 import { sidebarMessages } from '../sessions/messages';
 import { SessionDialogs } from '../sessions/SessionDialogs';
 import { SESSION_TREE_ATTRIBUTE } from '../sessions/SessionTree';
@@ -65,6 +66,7 @@ export function App({ workspace, terminals, shell }: AppProps) {
                 <LinkDialogs shell={shell} />
                 <PasteDialog shell={shell} />
                 <QuitDialogs quit={shell.quit} />
+                <LogoutWarningDialog workspace={workspace} warning={shell.logoutWarning} />
                 <AccessibilityHelp shell={shell} />
                 <SettingsDialog shell={shell} workspace={workspace} />
             </div>

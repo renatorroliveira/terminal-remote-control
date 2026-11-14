@@ -87,6 +87,11 @@ export interface WorkspaceOptions {
     readonly preferences?: () => SessionPreferences;
     /** Where each host's sessions are cached for the next launch (P-30). */
     readonly cache?: SessionCacheStore;
+    /**
+     * Asks the user before the first session on a host that ends its sessions when the last connection closes;
+     * resolves true to create it (US-2.4.4). Without it, sessions are created without asking.
+     */
+    readonly confirmSessionsEndAtLogout?: (hostId: string) => Promise<boolean>;
 }
 
 /** How many sessions run, on how many connected hosts, and which hosts with running sessions are not connected. */
@@ -124,6 +129,7 @@ export class WorkspaceController {
     /** Stops following each host's connection states and daemon messages. */
     readonly #unfollow = new Map<string, () => void>();
     readonly #cache: SessionCacheStore | undefined;
+    readonly #confirmEndsAtLogout: ((hostId: string) => Promise<boolean>) | undefined;
     #stopCache: () => void = () => undefined;
     /** The host a session was last opened or created on (US-1.7.1). */
     #lastHost: string | undefined;
@@ -143,6 +149,7 @@ export class WorkspaceController {
         this.#hosts = hosts;
         this.#preferences = options.preferences;
         this.#cache = options.cache;
+        this.#confirmEndsAtLogout = options.confirmSessionsEndAtLogout;
         this.store = createStore<Workspace>(() => EMPTY_WORKSPACE);
     }
 
@@ -358,7 +365,7 @@ export class WorkspaceController {
     /** Creates a session on a connected host and opens it (US-1.7.1). */
     async newSession(hostId: string, options?: SessionOptions): Promise<void> {
         const host = this.#host(hostId);
-        if (host === undefined || !isConnected(host)) {
+        if (host === undefined || !isConnected(host) || !(await this.#mayCreate(host))) {
             return;
         }
         await this.#attempt('create', host.id, async () => {
@@ -486,6 +493,16 @@ export class WorkspaceController {
             const { profile, cwd } = found.session;
             await this.newSession(found.hostId, { profileId: profile.id, ...(cwd === undefined ? {} : { cwd }) });
         }
+    }
+
+    /** Whether a session may be created on `host`: the user agreed, if it is the first on a host that ends them. */
+    async #mayCreate(host: HostEntry): Promise<boolean> {
+        const ends = host.state.status === 'connected' && host.state.daemon.service?.sessionsEndAtLogout === true;
+        const first = (this.store.getState().sessions.get(host.id)?.length ?? 0) === 0;
+        if (!ends || !first || this.#confirmEndsAtLogout === undefined) {
+            return true;
+        }
+        return this.#confirmEndsAtLogout(host.id);
     }
 
     async #sessionRequest(

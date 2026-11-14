@@ -81,6 +81,11 @@ export const hostStateMessages = defineMessages({
         description: 'Host connection state while an unknown host key waits for the user.',
     },
     connected: { id: 'host.connected', defaultMessage: 'Connected', description: 'Host connection state.' },
+    connectedEndsAtLogout: {
+        id: 'host.connectedEndsAtLogout',
+        defaultMessage: 'Connected; sessions end when its last connection closes',
+        description: 'Host state when the host ends the user’s processes at logout and lingering is off (US-2.4.4).',
+    },
     failed: { id: 'host.failed', defaultMessage: 'Connection failed', description: 'Host connection state.' },
     disconnected: { id: 'host.disconnected', defaultMessage: 'Disconnected', description: 'Host connection state.' },
     reconnecting: {
@@ -315,3 +320,28 @@ export const terminalReviewMessage = defineMessage<{ session: string; host: stri
     defaultMessage: 'Review {session}, {host}',
     description: 'Name of review mode, the read-only text field holding the whole buffer.',
 });
+
+/** The warning before the first session on a host that ends its sessions at logout (US-2.4.4). */
+export const logoutWarningMessages = {
+    title: defineMessage<{ host: string }>({
+        id: 'logoutWarning.title',
+        defaultMessage: 'Sessions on {host} end when you disconnect',
+        description: 'Title of the warning before the first session on a host that ends sessions at logout.',
+    }),
+    body: defineMessage<{ host: string }>({
+        id: 'logoutWarning.body',
+        defaultMessage:
+            '{host} ends your processes when your last connection to it closes, and lingering is off for your user, so its sessions end when TRC’s connection closes. To keep them, ask the host’s administrator to enable lingering for your user (loginctl enable-linger).',
+        description: 'Why the sessions end and what keeps them.',
+    }),
+    create: defineMessage({
+        id: 'logoutWarning.create',
+        defaultMessage: 'Create Session',
+        description: 'Button that creates the session anyway.',
+    }),
+    cancel: defineMessage({
+        id: 'logoutWarning.cancel',
+        defaultMessage: 'Cancel',
+        description: 'Button that creates no session.',
+    }),
+};

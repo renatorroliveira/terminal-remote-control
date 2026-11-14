@@ -1779,6 +1779,12 @@
       "value": "Connected"
     }
   ],
+  "host.connectedEndsAtLogout": [
+    {
+      "type": 0,
+      "value": "Connected; sessions end when its last connection closes"
+    }
+  ],
   "host.connecting": [
     {
       "type": 0,
@@ -2059,6 +2065,42 @@
     {
       "type": 0,
       "value": "TRC doesn’t open this kind of link."
+    }
+  ],
+  "logoutWarning.body": [
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " ends your processes when your last connection to it closes, and lingering is off for your user, so its sessions end when TRC’s connection closes. To keep them, ask the host’s administrator to enable lingering for your user (loginctl enable-linger)."
+    }
+  ],
+  "logoutWarning.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "logoutWarning.create": [
+    {
+      "type": 0,
+      "value": "Create Session"
+    }
+  ],
+  "logoutWarning.title": [
+    {
+      "type": 0,
+      "value": "Sessions on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " end when you disconnect"
     }
   ],
   "newSession.cancel": [

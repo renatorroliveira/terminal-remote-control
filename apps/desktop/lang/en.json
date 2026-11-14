@@ -763,6 +763,10 @@
     "defaultMessage": "Connected",
     "description": "Host connection state."
   },
+  "host.connectedEndsAtLogout": {
+    "defaultMessage": "Connected; sessions end when its last connection closes",
+    "description": "Host state when the host ends the user’s processes at logout and lingering is off (US-2.4.4)."
+  },
   "host.connecting": {
     "defaultMessage": "Connecting",
     "description": "Host connection state."
@@ -894,6 +898,22 @@
   "link.refused": {
     "defaultMessage": "TRC doesn’t open this kind of link.",
     "description": "Announced for a link TRC never opens, such as a javascript: link."
+  },
+  "logoutWarning.body": {
+    "defaultMessage": "{host} ends your processes when your last connection to it closes, and lingering is off for your user, so its sessions end when TRC’s connection closes. To keep them, ask the host’s administrator to enable lingering for your user (loginctl enable-linger).",
+    "description": "Why the sessions end and what keeps them."
+  },
+  "logoutWarning.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button that creates no session."
+  },
+  "logoutWarning.create": {
+    "defaultMessage": "Create Session",
+    "description": "Button that creates the session anyway."
+  },
+  "logoutWarning.title": {
+    "defaultMessage": "Sessions on {host} end when you disconnect",
+    "description": "Title of the warning before the first session on a host that ends sessions at logout."
   },
   "newSession.cancel": {
     "defaultMessage": "Cancel",

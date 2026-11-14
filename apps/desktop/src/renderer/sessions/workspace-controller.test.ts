@@ -315,6 +315,31 @@ describe('WorkspaceController: stopping every session (US-2.1.4)', () => {
     });
 });
 
+describe('WorkspaceController: hosts whose sessions end at logout (US-2.4.4)', () => {
+    it('asks before the first session on such a host, and creates nothing when the user cancels', async () => {
+        const client = new FakeClient();
+        const terminals = new FakeTerminals();
+        const answers = [false, true];
+        const asked: string[] = [];
+        const workspace = new WorkspaceController(client, terminals, new FakeHosts(), {
+            confirmSessionsEndAtLogout: async (hostId) => {
+                asked.push(hostId);
+                return answers.shift() ?? true;
+            },
+        });
+        const host = await workspace.addHost('devbox-1');
+        client.listed = [];
+        const service = { manager: 'systemd', sessionsEndAtLogout: true } as const;
+        client.states.get(host.id)?.({ status: 'connected', daemon: { ...connected.daemon, proto: 2, service } });
+        await workspace.newSession(host.id);
+        expect(terminals.created).toEqual([]);
+        await workspace.newSession(host.id);
+        expect(terminals.created).toEqual([host.id]);
+        await workspace.newSession(host.id);
+        expect(asked).toEqual([host.id, host.id]);
+    });
+});
+
 describe('WorkspaceController: shared sessions (US-2.6.3)', () => {
     it('passes every listed and changed session to its terminal, as other clients change it', async () => {
         const { client, terminals, workspace } = setup();
