@@ -1,0 +1,6 @@
+{
+  "type": "error",
+  "requestId": 9,
+  "code": "unknownSession",
+  "message": "no session s-9"
+}

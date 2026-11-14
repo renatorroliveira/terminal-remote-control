@@ -1,5 +1,5 @@
 /** The newest protocol version this build speaks. Matches `trc_protocol::PROTOCOL_VERSION`. */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 /** The oldest protocol version this build still speaks (N−1, never below 1). */
 export const MIN_PROTOCOL_VERSION = 1;
 

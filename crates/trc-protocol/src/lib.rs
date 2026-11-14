@@ -6,7 +6,10 @@ pub mod profile;
 pub mod session;
 pub mod version;
 
-pub use messages::{AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, ServerMessage, SessionChange};
+pub use messages::{
+    AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, Replay, ResyncKind, ServerMessage, ServiceInfo,
+    ServiceManager, SessionChange,
+};
 pub use profile::{Integration, ProfileOrigin, ShellKind, ShellProfile};
 pub use session::{ExitStatus, SessionId, SessionInfo, SessionState, TerminalSize};
 pub use version::{MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, negotiate};

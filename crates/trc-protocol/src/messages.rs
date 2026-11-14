@@ -50,6 +50,60 @@ pub enum AttachMode {
     Unspecified,
 }
 
+/// How an attach brings a client up to date (protocol 2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Replay {
+    /// The output since the client's `fromOffset`, which the client adds to the terminal it has.
+    Delta,
+    /// The whole scrollback and screen, which replace whatever the client shows.
+    Snapshot,
+    /// A replay this version does not know.
+    #[serde(other)]
+    Unspecified,
+}
+
+/// What a client that fell behind receives instead of the output it missed (protocol 2, D-04, D-45).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum ResyncKind {
+    /// Only the current screen; the scrollback the client skipped is missing until it asks for `refresh`.
+    Screen,
+    /// The whole scrollback and screen.
+    Full,
+    /// A kind this version does not know.
+    #[serde(other)]
+    Unspecified,
+}
+
+/// What runs the host's daemon (US-2.4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum ServiceManager {
+    /// The user's systemd instance, which restarts the daemon after a crash.
+    Systemd,
+    /// Nothing: the daemon runs detached, and the app starts it again when it finds it stopped.
+    Detached,
+    /// A manager this version does not know.
+    #[serde(other)]
+    Unspecified,
+}
+
+/// How the host's daemon runs, and whether its sessions outlive logout (US-2.4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ServiceInfo {
+    /// What runs the daemon.
+    pub manager: ServiceManager,
+    /// Whether the host ends the user's processes once the last connection closes, so sessions end with it
+    /// (US-2.4.4).
+    pub sessions_end_at_logout: bool,
+}
+
 /// Why a request failed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -188,6 +242,19 @@ pub enum ClientMessage {
         session: SessionId,
         /// How much to receive.
         mode: AttachMode,
+        /// The offset of the first output byte the client has not received, to replay only what it missed
+        /// (protocol 2, US-2.2.2).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        from_offset: Option<u64>,
+    },
+    /// Asks for the whole scrollback and screen of an attached session again, after a `resync` of the screen
+    /// left a gap (protocol 2, D-45). Answered by `done`; the `resync` follows on the session's stream.
+    Refresh {
+        /// Correlates the reply.
+        request_id: u32,
+        /// The session.
+        session: SessionId,
     },
     /// Stops receiving a session's output. The session keeps running.
     Detach {
@@ -222,6 +289,10 @@ pub enum ServerMessage {
         binary_sha256: String,
         /// Optional features the daemon supports.
         caps: Vec<String>,
+        /// How the daemon runs (protocol 2).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        service: Option<ServiceInfo>,
     },
     /// Refuses the handshake: no common protocol version (US-1.4.6).
     Incompatible {
@@ -266,6 +337,38 @@ pub enum ServerMessage {
         stream: u32,
         /// Output bytes the app may receive before it grants more credit.
         credit: u32,
+        /// What the output that follows brings: the missed output or a snapshot, ending with `synced`
+        /// (protocol 2).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        replay: Option<Replay>,
+    },
+    /// Ends a replay or resync: every output byte after it on `stream` is live output, the first at `offset`
+    /// (protocol 2).
+    Synced {
+        /// The session.
+        session: SessionId,
+        /// The session's stream.
+        stream: u32,
+        /// The offset of the next output byte.
+        offset: u64,
+    },
+    /// Starts a resync of a client that fell behind: the client resets its terminal, and the output that follows
+    /// up to `synced` recreates it (protocol 2, D-04).
+    Resync {
+        /// The session.
+        session: SessionId,
+        /// The session's stream.
+        stream: u32,
+        /// What the resync sends.
+        kind: ResyncKind,
+    },
+    /// Another client typed into the session (protocol 2, US-2.6.4). Sent at most once a second.
+    PeerInput {
+        /// The session.
+        session: SessionId,
+        /// The session's stream.
+        stream: u32,
     },
     /// Answers a request that returns nothing else.
     Done {

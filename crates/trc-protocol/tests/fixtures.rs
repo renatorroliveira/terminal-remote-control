@@ -1,4 +1,5 @@
-//! The shared protocol fixtures (`protocol/fixtures/v1`) match what this crate encodes and decodes (NFR-12).
+//! The shared protocol fixtures (`protocol/fixtures/v1` and `v2`) match what this crate encodes and decodes, so the
+//! current and the previous protocol stay readable (NFR-12).
 //!
 //! Run with `TRC_BLESS_FIXTURES=1` to rewrite the fixtures after an intended change.
 
@@ -9,12 +10,13 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use trc_protocol::frame::{self, FrameDecoder, FrameKind};
 use trc_protocol::{
-    AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, ExitStatus, Integration, ProfileOrigin, ServerMessage,
-    SessionChange, SessionId, SessionInfo, SessionState, ShellKind, ShellProfile, TerminalSize,
+    AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, ExitStatus, Integration, ProfileOrigin, Replay,
+    ResyncKind, ServerMessage, ServiceInfo, ServiceManager, SessionChange, SessionId, SessionInfo, SessionState,
+    ShellKind, ShellProfile, TerminalSize,
 };
 
-fn fixtures_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../protocol/fixtures/v1")
+fn fixtures_dir(version: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("../../protocol/fixtures/{version}"))
 }
 
 fn blessing() -> bool {
@@ -135,6 +137,7 @@ fn client_messages() -> Vec<(&'static str, ClientMessage)> {
                 request_id: 11,
                 session: id(),
                 mode: AttachMode::Full,
+                from_offset: None,
             },
         ),
         (
@@ -170,6 +173,7 @@ fn server_messages() -> Vec<(&'static str, ServerMessage)> {
                 daemon_version: "0.1.0".into(),
                 binary_sha256: "ab".repeat(32),
                 caps: vec![],
+                service: None,
             },
         ),
         (
@@ -208,6 +212,7 @@ fn server_messages() -> Vec<(&'static str, ServerMessage)> {
                 session: SessionId("s-1".into()),
                 stream: 1,
                 credit: 262_144,
+                replay: None,
             },
         ),
         ("done", ServerMessage::Done { request_id: 5 }),
@@ -246,8 +251,120 @@ fn server_messages() -> Vec<(&'static str, ServerMessage)> {
     ]
 }
 
-fn check_message<T: Serialize + DeserializeOwned + PartialEq + std::fmt::Debug>(dir: &str, name: &str, value: &T) {
-    let path = fixtures_dir().join(dir).join(format!("{name}.json"));
+/// Protocol 2: the protocol 1 set with the new fields, plus the messages protocol 2 adds (US-2.2, US-2.4, US-2.6).
+fn client_messages_v2() -> Vec<(&'static str, ClientMessage)> {
+    let id = || SessionId("s-1".into());
+    let mut messages: Vec<(&'static str, ClientMessage)> = client_messages()
+        .into_iter()
+        .map(|(name, message)| match message {
+            ClientMessage::Hello { app_version, caps, .. } => (
+                name,
+                ClientMessage::Hello {
+                    min_proto: 1,
+                    max_proto: 2,
+                    app_version,
+                    caps,
+                },
+            ),
+            other => (name, other),
+        })
+        .collect();
+    messages.push((
+        "attach-from-offset",
+        ClientMessage::Attach {
+            request_id: 14,
+            session: id(),
+            mode: AttachMode::Full,
+            from_offset: Some(1_048_576),
+        },
+    ));
+    messages.push((
+        "refresh",
+        ClientMessage::Refresh {
+            request_id: 15,
+            session: id(),
+        },
+    ));
+    messages
+}
+
+fn server_messages_v2() -> Vec<(&'static str, ServerMessage)> {
+    let id = || SessionId("s-1".into());
+    let mut messages: Vec<(&'static str, ServerMessage)> = server_messages()
+        .into_iter()
+        .map(|(name, message)| match message {
+            ServerMessage::Welcome {
+                daemon_version,
+                binary_sha256,
+                caps,
+                ..
+            } => (
+                name,
+                ServerMessage::Welcome {
+                    proto: 2,
+                    daemon_version,
+                    binary_sha256,
+                    caps,
+                    service: Some(ServiceInfo {
+                        manager: ServiceManager::Systemd,
+                        sessions_end_at_logout: false,
+                    }),
+                },
+            ),
+            ServerMessage::Attached {
+                request_id,
+                session,
+                stream,
+                credit,
+                ..
+            } => (
+                name,
+                ServerMessage::Attached {
+                    request_id,
+                    session,
+                    stream,
+                    credit,
+                    replay: Some(Replay::Delta),
+                },
+            ),
+            other => (name, other),
+        })
+        .collect();
+    messages.extend([
+        (
+            "synced",
+            ServerMessage::Synced {
+                session: id(),
+                stream: 1,
+                offset: 1_048_576,
+            },
+        ),
+        (
+            "resync",
+            ServerMessage::Resync {
+                session: id(),
+                stream: 1,
+                kind: ResyncKind::Screen,
+            },
+        ),
+        (
+            "peer-input",
+            ServerMessage::PeerInput {
+                session: id(),
+                stream: 1,
+            },
+        ),
+    ]);
+    messages
+}
+
+fn check_message<T: Serialize + DeserializeOwned + PartialEq + std::fmt::Debug>(
+    version: &str,
+    dir: &str,
+    name: &str,
+    value: &T,
+) {
+    let path = fixtures_dir(version).join(dir).join(format!("{name}.json"));
     let encoded = serde_json::to_string_pretty(value).unwrap() + "\n";
     if blessing() {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -266,14 +383,20 @@ fn check_message<T: Serialize + DeserializeOwned + PartialEq + std::fmt::Debug>(
 #[test]
 fn client_message_fixtures_match() {
     for (name, message) in client_messages() {
-        check_message("client", name, &message);
+        check_message("v1", "client", name, &message);
+    }
+    for (name, message) in client_messages_v2() {
+        check_message("v2", "client", name, &message);
     }
 }
 
 #[test]
 fn server_message_fixtures_match() {
     for (name, message) in server_messages() {
-        check_message("server", name, &message);
+        check_message("v1", "server", name, &message);
+    }
+    for (name, message) in server_messages_v2() {
+        check_message("v2", "server", name, &message);
     }
 }
 
@@ -290,7 +413,7 @@ fn frame_fixture_decodes_to_its_description() {
         .iter()
         .flat_map(|(kind, stream, payload)| frame::encode(*kind, *stream, payload).unwrap())
         .collect();
-    let path = fixtures_dir().join("frames.bin");
+    let path = fixtures_dir("v1").join("frames.bin");
     if blessing() {
         std::fs::write(&path, &wire).unwrap();
     }

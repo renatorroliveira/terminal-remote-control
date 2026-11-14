@@ -5,16 +5,22 @@ import { decodeServerMessage, encodeClientMessage } from '../src/control';
 import { FrameDecoder, FrameKind } from '../src/frame';
 import type { ClientMessage } from '../src/generated/ClientMessage';
 
-const FIXTURES = resolve(import.meta.dirname, '../../../protocol/fixtures/v1');
-const fixtureNames = (dir: string): readonly string[] =>
-    readdirSync(resolve(FIXTURES, dir)).filter((name) => name.endsWith('.json'));
-const readFixture = (dir: string, name: string): unknown =>
-    JSON.parse(readFileSync(resolve(FIXTURES, dir, name), 'utf8'));
+/** The current and the previous protocol's fixtures, both of which the app must read (NFR-12). */
+const VERSIONS = ['v1', 'v2'] as const;
+const FIXTURES = resolve(import.meta.dirname, '../../../protocol/fixtures');
+const fixtureNames = (dir: string): readonly (readonly [string, string])[] =>
+    VERSIONS.flatMap((version) =>
+        readdirSync(resolve(FIXTURES, version, dir))
+            .filter((name) => name.endsWith('.json'))
+            .map((name) => [version, name] as const),
+    );
+const readFixture = (version: string, dir: string, name: string): unknown =>
+    JSON.parse(readFileSync(resolve(FIXTURES, version, dir, name), 'utf8'));
 const asPayload = (value: unknown): Uint8Array => new TextEncoder().encode(JSON.stringify(value));
 
 describe('decodeServerMessage', () => {
-    it.each(fixtureNames('server'))('accepts the %s fixture unchanged', (name) => {
-        const fixture = readFixture('server', name);
+    it.each(fixtureNames('server'))('accepts the %s %s fixture unchanged', (version, name) => {
+        const fixture = readFixture(version, 'server', name);
 
         expect(decodeServerMessage(asPayload(fixture))).toEqual({ ok: true, message: fixture });
     });
@@ -34,8 +40,8 @@ describe('decodeServerMessage', () => {
 });
 
 describe('encodeClientMessage', () => {
-    it.each(fixtureNames('client'))('encodes the %s fixture as one CONTROL frame', (name) => {
-        const fixture = readFixture('client', name) as ClientMessage;
+    it.each(fixtureNames('client'))('encodes the %s %s fixture as one CONTROL frame', (version, name) => {
+        const fixture = readFixture(version, 'client', name) as ClientMessage;
         const [frame] = new FrameDecoder().push(encodeClientMessage(fixture));
 
         expect(frame?.kind).toBe(FrameKind.Control);

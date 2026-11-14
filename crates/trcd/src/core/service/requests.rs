@@ -83,6 +83,7 @@ impl Core {
             daemon_version: env!("CARGO_PKG_VERSION").into(),
             binary_sha256: self.context.binary_sha256.clone(),
             caps: Vec::new(),
+            service: None,
         };
         self.reply(client, &welcome);
     }
@@ -121,7 +122,11 @@ impl Core {
                 request_id,
                 session,
                 mode,
+                ..
             } => self.attach(client, request_id, &session, mode),
+            ClientMessage::Refresh { request_id, .. } => {
+                error(Some(request_id), ErrorCode::Unsupported, "refresh is not supported yet")
+            }
             ClientMessage::Detach { request_id, session } => self.detach(client, request_id, &session),
             ClientMessage::Resize {
                 request_id,
@@ -263,6 +268,7 @@ impl Core {
             session: session.clone(),
             stream,
             credit: CREDIT_WINDOW,
+            replay: None,
         }
     }
 
