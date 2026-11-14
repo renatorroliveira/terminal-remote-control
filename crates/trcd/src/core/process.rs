@@ -9,6 +9,7 @@ use std::process::Stdio;
 use rustix::fs::{FlockOperation, Mode};
 use thiserror::Error;
 use tokio::net::UnixListener;
+use trc_protocol::{ServiceInfo, ServiceManager};
 
 use super::account::current_account;
 use super::service::{Core, CoreContext};
@@ -16,6 +17,7 @@ use crate::digest::sha256_file;
 use crate::install::InstallLayout;
 use crate::private_dir::ensure_private_dir;
 use crate::run_dir::RunDir;
+use crate::service::{ScopeLauncher, read_host_facts};
 use crate::socket::bind_private;
 
 /// Why the core did not start.
@@ -29,10 +31,11 @@ pub enum StartError {
     Io(#[from] io::Error),
 }
 
-/// Runs the core in the foreground until it is killed.
+/// Runs the core in the foreground until it is killed. Under systemd (`systemd`), holders start in their own
+/// transient scopes, outside the unit's control group (US-2.5.2).
 ///
 /// The core creates its files with umask 077; holders get back the umask the core inherited.
-pub fn run(layout: &InstallLayout) -> Result<(), StartError> {
+pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
     let uid = rustix::process::geteuid().as_raw();
     let login_umask = rustix::process::umask(Mode::from_raw_mode(0o077));
     let run = RunDir::for_root(&layout.root, uid);
@@ -44,14 +47,31 @@ pub fn run(layout: &InstallLayout) -> Result<(), StartError> {
     remove_stale(&run.core_socket())?;
     let listener = bind_private(&run.core_socket())?;
     listener.set_nonblocking(true)?;
+    let account = current_account();
+    let facts = read_host_facts(&account.user, uid);
+    let scope = if systemd { ScopeLauncher::find() } else { None };
     let context = CoreContext {
         binary: layout.binary.clone(),
         binary_sha256: sha256_file(&layout.binary)?,
         run,
-        account: current_account(),
+        account,
         holder_umask: login_umask,
+        service: ServiceInfo {
+            manager: if scope.is_some() {
+                ServiceManager::Systemd
+            } else {
+                ServiceManager::Detached
+            },
+            sessions_end_at_logout: facts.sessions_end_at_logout(),
+        },
+        scope,
     };
-    tracing::info!(version = env!("CARGO_PKG_VERSION"), "core started");
+    tracing::info!(
+        version = env!("CARGO_PKG_VERSION"),
+        systemd = context.scope.is_some(),
+        sessions_end_at_logout = context.service.sessions_end_at_logout,
+        "core started"
+    );
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
     runtime.block_on(async {
         let mut core = Core::new(context);

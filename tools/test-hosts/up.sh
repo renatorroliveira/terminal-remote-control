@@ -57,7 +57,7 @@ smoke_check() {
     fi
 }
 
-for alias in trc-ubuntu trc-ubuntu-nss trc-alpine trc-rocky trc-noexec trc-latency trc-scale-01 trc-scale-25 trc-jump trc-behind; do
+for alias in trc-ubuntu trc-ubuntu-nss trc-alpine trc-rocky trc-noexec trc-latency trc-systemd trc-systemd-linger trc-systemd-kill trc-scale-01 trc-scale-25 trc-jump trc-behind; do
     attempt=0
     until smoke_check "$alias"; do
         attempt=$((attempt + 1))

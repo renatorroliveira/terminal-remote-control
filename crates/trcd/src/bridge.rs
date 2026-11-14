@@ -12,6 +12,7 @@ use crate::install::InstallLayout;
 use crate::peer::is_same_user;
 use crate::private_dir::verify_private_dir;
 use crate::run_dir::RunDir;
+use crate::service::{ServiceMode, read_host_facts, start_unit};
 use crate::socket::connect_with_retry;
 
 /// How long the bridge waits for a core it started.
@@ -53,7 +54,28 @@ fn trusted(stream: UnixStream) -> io::Result<UnixStream> {
     }
 }
 
+/// Starts the core as D-44 says: a systemd user unit where that keeps sessions longer, otherwise detached; a unit that
+/// cannot start falls back to detached.
 fn start_core(layout: &InstallLayout) -> io::Result<()> {
+    let user = std::env::var("USER").unwrap_or_default();
+    let facts = read_host_facts(&user, rustix::process::geteuid().as_raw());
+    if facts.mode() == ServiceMode::Systemd {
+        let umask = current_umask();
+        match start_unit(&layout.binary, &layout.root, umask) {
+            Ok(()) => return Ok(()),
+            Err(error) => eprintln!("trcd: {error}; starting the core detached"),
+        }
+    }
+    start_detached(layout)
+}
+
+fn current_umask() -> u32 {
+    let mask = rustix::process::umask(rustix::fs::Mode::from_raw_mode(0o077));
+    rustix::process::umask(mask);
+    u32::from(mask.bits())
+}
+
+fn start_detached(layout: &InstallLayout) -> io::Result<()> {
     let status = std::process::Command::new(&layout.binary)
         .args(["core", "--detach"])
         .current_dir("/")

@@ -28,7 +28,7 @@ struct Client {
 
 impl Client {
     async fn connect(socket: &PathBuf) -> Self {
-        let stream = UnixStream::connect(socket).await.unwrap();
+        let stream = connect_when_listening(socket).await;
         let (read, write) = stream.into_split();
         let (sender, _writer) = FrameSender::spawn(write);
         Self {
@@ -140,7 +140,8 @@ fn spec(program: &str) -> HolderSpec {
 }
 
 fn start_holder() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("trcd-holder-test-{}-{}", std::process::id(), rand_suffix()));
+    let dir = PathBuf::from(format!("/tmp/trch-{}-{}", std::process::id(), unique_suffix()));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let socket = dir.join("holder.sock");
     let listener_path = socket.clone();
@@ -157,14 +158,11 @@ fn start_holder() -> PathBuf {
     socket
 }
 
-/// A suffix no other test in this run shares: the clock alone repeats when tests start together.
-fn rand_suffix() -> String {
+/// A number no other test in this run shares, so each holder gets its own short socket path (macOS caps them at
+/// 104 bytes, which a temporary directory under `/var/folders` nearly fills).
+fn unique_suffix() -> u32 {
     static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    format!("{nanos}-{}", NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+    NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 async fn started(program: &str) -> Client {
@@ -405,4 +403,17 @@ async fn sends_a_title_change_within_the_status_tick_while_a_detached_session_fl
         Some("flooding"),
         "the title reached the core only after the flood"
     );
+}
+
+/// Connects once the holder listens: its socket file appears at `bind`, a moment before `listen`, when a connection is
+/// still refused.
+async fn connect_when_listening(socket: &PathBuf) -> UnixStream {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        match UnixStream::connect(socket).await {
+            Ok(stream) => return stream,
+            Err(error) if tokio::time::Instant::now() >= deadline => panic!("the holder never listened: {error}"),
+            Err(_) => tokio::time::sleep(Duration::from_millis(10)).await,
+        }
+    }
 }

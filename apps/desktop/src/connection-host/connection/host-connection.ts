@@ -271,7 +271,12 @@ export class HostConnection implements HostConnectionLike {
         if (answer?.type === 'welcome') {
             this.#dispatch({
                 type: 'connected',
-                daemon: { version: answer.daemonVersion, sha256: answer.binarySha256, proto: answer.proto },
+                daemon: {
+                    version: answer.daemonVersion,
+                    sha256: answer.binarySha256,
+                    proto: answer.proto,
+                    ...(answer.service === undefined ? {} : { service: answer.service }),
+                },
             });
             return this.#startPinger(process);
         }

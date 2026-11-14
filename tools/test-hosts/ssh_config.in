@@ -33,6 +33,15 @@ Host trc-jump
 Host trc-latency
     Port 2226
 
+Host trc-systemd
+    Port 2231
+
+Host trc-systemd-linger
+    Port 2232
+
+Host trc-systemd-kill
+    Port 2233
+
 @SCALE_HOSTS@
 
 Host trc-behind trc-badjump
@@ -55,7 +64,7 @@ Host trc-timeout
     HostName 10.255.255.1
     ConnectTimeout 3
 
-Host trc-ubuntu trc-ubuntu-nss trc-alpine trc-rocky trc-noexec trc-latency trc-scale-* trc-jump trc-behind trc-badjump trc-unreachable trc-dns trc-timeout
+Host trc-ubuntu trc-ubuntu-nss trc-alpine trc-rocky trc-noexec trc-latency trc-systemd trc-systemd-linger trc-systemd-kill trc-scale-* trc-jump trc-behind trc-badjump trc-unreachable trc-dns trc-timeout
     IdentityFile @RUN@/id_ed25519
 
 Host trc-*

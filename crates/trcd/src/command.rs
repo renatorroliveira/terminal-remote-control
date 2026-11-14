@@ -9,6 +9,8 @@ pub enum Command {
     Core {
         /// Start the core in a new session and return at once, instead of running it in the foreground.
         detach: bool,
+        /// The core runs as a systemd user unit, so each holder starts in its own transient scope (D-44).
+        systemd: bool,
     },
     /// One session's PTY owner, serving the socket at `socket`.
     Holder {
@@ -35,10 +37,12 @@ impl Command {
     }
 
     fn parse_core(args: &[String]) -> Result<Self, String> {
+        let core = |detach, systemd| Ok(Self::Core { detach, systemd });
         match args {
-            [] => Ok(Self::Core { detach: false }),
-            [flag] if flag == "--detach" => Ok(Self::Core { detach: true }),
-            _ => Err("core takes only --detach".into()),
+            [] => core(false, false),
+            [flag] if flag == "--detach" => core(true, false),
+            [flag] if flag == "--systemd" => core(false, true),
+            _ => Err("core takes only --detach or --systemd".into()),
         }
     }
 
@@ -60,9 +64,31 @@ mod tests {
 
     #[test]
     fn parses_each_subcommand() {
-        assert_eq!(parse(&["core"]), Ok(Command::Core { detach: false }));
-        assert_eq!(parse(&["core", "--detach"]), Ok(Command::Core { detach: true }));
-        assert_eq!(parse(&["core", "--now"]), Err("core takes only --detach".to_owned()));
+        assert_eq!(
+            parse(&["core"]),
+            Ok(Command::Core {
+                detach: false,
+                systemd: false
+            })
+        );
+        assert_eq!(
+            parse(&["core", "--detach"]),
+            Ok(Command::Core {
+                detach: true,
+                systemd: false
+            })
+        );
+        assert_eq!(
+            parse(&["core", "--systemd"]),
+            Ok(Command::Core {
+                detach: false,
+                systemd: true
+            })
+        );
+        assert_eq!(
+            parse(&["core", "--now"]),
+            Err("core takes only --detach or --systemd".to_owned())
+        );
         assert_eq!(
             parse(&["holder", "--socket", "/run/h.sock"]),
             Ok(Command::Holder {

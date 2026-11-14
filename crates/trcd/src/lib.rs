@@ -12,6 +12,7 @@ pub mod logging;
 pub mod peer;
 pub mod private_dir;
 pub mod run_dir;
+pub mod service;
 pub mod session_id;
 pub mod socket;
 pub mod time;

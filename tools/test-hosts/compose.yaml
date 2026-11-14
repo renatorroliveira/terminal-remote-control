@@ -43,6 +43,29 @@ services:
             TRC_CREATE_USERS: u01 u02 u03 u04 u05 u06 u07 u08 u09 u10 u11 u12 u13 u14 u15 u16 u17 u18 u19 u20 u21 u22 u23 u24 u25
             TRC_MAX_STARTUPS: '100:30:200'
         ports: ['127.0.0.1:2227:22']
+    systemd:
+        <<: *host
+        build: { context: images, dockerfile: systemd/Dockerfile }
+        image: trc-test-systemd
+        privileged: true
+        cgroup: private
+        ports: ['127.0.0.1:2231:22']
+    systemd-linger:
+        <<: *host
+        image: trc-test-systemd
+        depends_on: [systemd]
+        privileged: true
+        cgroup: private
+        environment: { TRC_LINGER: '1' }
+        ports: ['127.0.0.1:2232:22']
+    systemd-kill:
+        <<: *host
+        image: trc-test-systemd
+        depends_on: [systemd]
+        privileged: true
+        cgroup: private
+        environment: { TRC_KILL_USER_PROCESSES: '1' }
+        ports: ['127.0.0.1:2233:22']
     jump:
         <<: *host
         image: trc-test-alpine
