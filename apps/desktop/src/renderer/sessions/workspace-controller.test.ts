@@ -2,10 +2,12 @@ import type { ExitStatus, ServerMessage, SessionInfo } from '@trc/protocol';
 import { describe, expect, it } from 'vitest';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import type { KnownHost } from '../../shared/hosts';
+import type { SessionCache } from '../../shared/session-cache';
 import { type ClientRequest, type ConnectOptions, HostRequestError } from '../connection/host-client';
 import type { TerminalConnection } from '../terminal/terminal-view';
 import {
     type AttachFailure,
+    type SessionCacheStore,
     type SessionPreferences,
     type TerminalHost,
     type WorkspaceClient,
@@ -163,7 +165,12 @@ function setup(preferences?: SessionPreferences) {
     const client = new FakeClient();
     const terminals = new FakeTerminals();
     const hosts = new FakeHosts();
-    const workspace = new WorkspaceController(client, terminals, hosts, preferences && (() => preferences));
+    const workspace = new WorkspaceController(
+        client,
+        terminals,
+        hosts,
+        preferences === undefined ? {} : { preferences: () => preferences },
+    );
     return { client, terminals, hosts, workspace };
 }
 
@@ -295,6 +302,47 @@ describe('WorkspaceController: retrying (US-2.2.3, US-2.3.3)', () => {
 function fail(): never {
     throw new Error('missing');
 }
+
+describe('WorkspaceController: restoring at launch (US-2.3)', () => {
+    const cached: SessionCache = {
+        'host-a': [{ id: 'old', name: 'build', shell: 'bash', order: 0, state: 'running' }],
+    };
+
+    function restoring(cache: SessionCacheStore) {
+        const client = new FakeClient();
+        const terminals = new FakeTerminals();
+        const hosts = new FakeHosts();
+        hosts.hosts.push({ id: 'host-a', address: { destination: 'devbox-1' }, installRoot: '~/.trc' });
+        const workspace = new WorkspaceController(client, terminals, hosts, { cache });
+        return { client, terminals, workspace };
+    }
+
+    it('shows the sessions cached at the last run at once, Reconnecting, until their host lists its own', async () => {
+        const { client, terminals, workspace } = restoring({ load: async () => cached, save: async () => undefined });
+        await workspace.load();
+        const items = () => hostGroups(workspace.store.getState())[0]?.sessions ?? [];
+        const keys = () => items().map((item) => item.key);
+        const reconnecting = () => items().some((item) => item.reconnecting);
+        expect(items().map((item) => [item.label, item.reconnecting])).toEqual([['build', true]]);
+        expect(terminals.reachable).toEqual(['host-a:reconnecting']);
+        workspace.connectAll();
+        client.states.get('host-a')?.({ status: 'connecting', step: 'connecting', touch: undefined });
+        expect(items()[0]?.reconnecting).toBe(true);
+        client.states.get('host-a')?.(connected);
+        await expect.poll(keys).toEqual(['host-a/a', 'host-a/b']);
+        expect(reconnecting()).toBe(false);
+    });
+
+    it('loads its hosts without sessions when the cache cannot be read', async () => {
+        const { workspace } = restoring({
+            load: () => Promise.reject(new Error('EACCES')),
+            save: async () => undefined,
+        });
+        await workspace.load();
+        expect(workspace.store.getState().hosts.map((host) => host.id)).toEqual(['host-a']);
+        expect(hostGroups(workspace.store.getState())).toEqual([]);
+    });
+});
 
 describe('WorkspaceController: sessions (US-1.7, US-1.8)', () => {
     it('opens a session, and creates one on the host the user picked', async () => {

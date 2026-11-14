@@ -83,7 +83,8 @@ Desktop app (Electron)                        Host
 3. Open the app, type the host in the Hosts field (an SSH alias or `user@host:port`) and choose Add host.
 4. Choose the + next to the host to start a session.
 
-The app keeps its settings in `~/.trc` (`config.json` and `hosts.json`); set `TRC_HOME` to use another folder. On
+The app keeps its settings in `~/.trc` (`config.json`, `hosts.json` and the session cache `sessions.json`); set
+`TRC_HOME` to use another folder. On
 each host, it installs its daemon under `~/.trc` for your user. The [user guide](USER_GUIDE.md) covers everything
 the app does today.
 

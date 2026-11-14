@@ -143,6 +143,12 @@ export function hostStateChanged(
     return { ...workspace, hosts, sessions, open };
 }
 
+/** Shows a host's sessions as cached at the last run, Reconnecting until the host lists its own (US-2.3.2). */
+export function hostRestored(workspace: Workspace, hostId: string, sessions: readonly SessionInfo[]): Workspace {
+    const hosts = workspace.hosts.map((host) => (host.id === hostId ? { ...host, reconnecting: true } : host));
+    return sessionsListed({ ...workspace, hosts }, hostId, sessions);
+}
+
 /** Drops a host the user forgot, with its sessions; nothing of it stays open or collapsed (A11Y-11.9). */
 export function hostRemoved(workspace: Workspace, hostId: string): Workspace {
     const sessions = new Map(workspace.sessions);

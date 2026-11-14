@@ -22,6 +22,8 @@ export function testHostsMissing(): string | undefined {
 export interface TestHostApp {
     readonly app: ElectronApplication;
     readonly window: Page;
+    /** The scratch folder of this launch, which a later launch may reuse. */
+    readonly scratch: string;
     /** The scratch TRC home of this launch. */
     readonly home: string;
     /** The file the test build writes opened links to instead of opening them. */
@@ -30,14 +32,20 @@ export interface TestHostApp {
 
 /**
  * Launches the test build with the test hosts' ssh config and known hosts and any extra command-line `args`; hosts
- * it adds install under `installRoot`.
+ * it adds install under `installRoot`. A `scratch` folder from an earlier launch launches the app again with its TRC
+ * home, as after a quit.
  */
-export async function launchWithTestHosts(installRoot?: string, args: readonly string[] = []): Promise<TestHostApp> {
-    const scratch = mkdtempSync(join(tmpdir(), 'trc-e2e-'));
+export async function launchWithTestHosts(
+    installRoot?: string,
+    args: readonly string[] = [],
+    scratch: string = mkdtempSync(join(tmpdir(), 'trc-e2e-')),
+): Promise<TestHostApp> {
     const knownHosts = join(scratch, 'known_hosts');
     const home = join(scratch, 'home');
     const openedLinks = join(scratch, 'opened-links.log');
-    copyFileSync(join(run, 'known_hosts.smoke'), knownHosts);
+    if (!existsSync(knownHosts)) {
+        copyFileSync(join(run, 'known_hosts.smoke'), knownHosts);
+    }
     const app = await launchApp([`--user-data-dir=${join(scratch, 'user-data')}`, ...args], {
         TRC_TEST_SSH_CONFIG: join(run, 'ssh_config'),
         TRC_TEST_KNOWN_HOSTS: knownHosts,
@@ -45,7 +53,7 @@ export async function launchWithTestHosts(installRoot?: string, args: readonly s
         TRC_HOME: home,
         ...(installRoot === undefined ? {} : { TRC_TEST_INSTALL_ROOT: installRoot }),
     });
-    return { app, window: await app.firstWindow(), home, openedLinks };
+    return { app, window: await app.firstWindow(), scratch, home, openedLinks };
 }
 
 /** A fresh install location on the test hosts, removed by {@link removeInstall}. */

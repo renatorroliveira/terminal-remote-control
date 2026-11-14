@@ -40,7 +40,7 @@ tooling (`tools/*`).
   unless the test hosts are up and the daemons are built. Test launches open
   behind the focused app (`TRC_TEST_BACKGROUND=1`, D-27), but `pnpm test:ax`
   must take focus, so warn the owner before running it.
-- App state lives in the TRC home, `~/.trc` (`config.json`, `hosts.json`), or
+- App state lives in the TRC home, `~/.trc` (`config.json`, `hosts.json`, `sessions.json`), or
   `TRC_HOME` when set; hosts install the daemon under `~/.trc` unless the
   user moves a host's install location (US-1.4.3).
 - Icons: `pnpm icons` renders `apps/desktop/resources/icons` from

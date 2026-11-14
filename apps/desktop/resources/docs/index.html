@@ -81,7 +81,7 @@
 <li><strong>Forget</strong>: removes the host from TRC after you confirm. Its sessions keep running on the host, and adding the host again shows them.</li>
 </ul>
 <h2 id="connect">Connect</h2>
-<p>When the app opens, it connects to every known host. A host that fails shows no dialog; if the network might fix the failure, TRC keeps trying, as after a lost connection.</p>
+<p>When the app opens, it connects to every known host at once. The sessions each host had when you last quit show right away, marked Reconnecting, and you can work in any host that is back while the others reconnect. A host that fails shows no dialog; if the network might fix the failure, TRC keeps trying, as after a lost connection.</p>
 <p>Each host in the Hosts section shows its state as an icon and as text: Not connected, Connecting, Connected, Reconnecting, Connection failed or Disconnected. Its button connects, cancels or disconnects it; while the host reconnects, it tries again now, and after a failure it retries.</p>
 <p>If your key is a security key, TRC shows and says &quot;Touch your security key for &lt;host&gt;&quot; while ssh waits for the touch.</p>
 <p>When a working connection drops, TRC says &quot;Connection to &lt;host&gt; lost&quot;, lists it in the notifications, and reconnects by itself: at once, then after 1, 2 and 4 seconds, then every 5 seconds for 5 minutes, then every 30 seconds. When your Mac wakes or its network changes, it tries at once. Your sessions keep running on the host the whole time. While TRC reconnects, the host's sessions show Reconnecting and their terminals take no input: a key press is not sent and not kept for later, and TRC shows and says &quot;Reconnecting — input not sent&quot;. Once the host is back, TRC says &quot;Reconnected to &lt;host&gt;&quot; and each open terminal picks up where it left off, with the output it missed added below what it already showed. When a host has more missed output than it keeps, the terminal shows the session's whole buffer again instead.</p>
@@ -215,10 +215,11 @@
 <tbody>
 <tr><td><code>config.json</code></td><td>Your <a href="#settings">settings</a>, the screen-reader mode, and the sidebar's width (<code>sidebarWidth</code>, 300 to 800) and whether it is hidden (<code>sidebarCollapsed</code>)</td></tr>
 <tr><td><code>hosts.json</code></td><td>The known hosts, and per host <code>allowClipboardWrites</code> (off unless <code>true</code>)</td></tr>
+<tr><td><code>sessions.json</code></td><td>Each host's sessions as TRC last listed them (name, title, shell, order and state), so they show at once at the next launch. TRC rewrites it; the host's own list always wins</td></tr>
 <tr><td><code>accept_urls.json</code></td><td>The link prefixes you trust, as a JSON list such as <code>[&quot;https://github.com/myteam/&quot;]</code>. A prefix matches up to a <code>/</code>, <code>?</code> or <code>#</code>, so <code>https://github.com</code> never matches <code>https://github.com.evil.example</code></td></tr>
 </tbody>
 </table>
-<p>Both files are readable only by you. Edit <code>config.json</code> while the app is closed; a value TRC can't use falls back to its default.</p>
+<p>These files are readable only by you. Edit <code>config.json</code> while the app is closed; a value TRC can't use falls back to its default.</p>
 <p>To use another folder, set <code>TRC_HOME</code> when you start the app. A leading <code>~</code> means your home folder, and a relative path lies under it:</p>
 <pre><code class="language-sh">TRC_HOME=~/work/trc open -n &quot;/Applications/Terminal Remote Control.app&quot;</code></pre>
 <p>Logs and Chromium's own data stay in <code>~/Library/Application Support/Terminal Remote Control</code>. Logs never hold terminal output, keystrokes, environment values or keys.</p>

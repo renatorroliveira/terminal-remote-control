@@ -11,6 +11,7 @@ import {
 import type { DisplaySettings } from '../shared/display';
 import type { KnownHost } from '../shared/hosts';
 import type { LinkCheck } from '../shared/links';
+import type { SessionCache } from '../shared/session-cache';
 import type { Settings } from '../shared/settings';
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
@@ -29,6 +30,10 @@ const bridge: TrcBridge = {
         get: () => ipcRenderer.invoke('accessibility:get') as Promise<AccessibilityState>,
         setMode: (mode) => ipcRenderer.invoke('accessibility:set-mode', mode) as Promise<void>,
         onChanged: (listener) => subscribe<AccessibilityState>(ACCESSIBILITY_CHANGED_CHANNEL, listener),
+    },
+    sessions: {
+        load: () => ipcRenderer.invoke('sessions:load') as Promise<SessionCache>,
+        save: (cache) => ipcRenderer.invoke('sessions:save', cache) as Promise<void>,
     },
     hosts: {
         list: () => ipcRenderer.invoke('hosts:list') as Promise<readonly KnownHost[]>,

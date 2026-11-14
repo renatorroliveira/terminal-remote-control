@@ -67,6 +67,7 @@ if (container !== null) {
             assistiveTechnology: () => assistiveTechnology.active,
             palette,
             hosts: window.trc.hosts,
+            sessionCache: window.trc.sessions,
             speech: {
                 announcer,
                 screenReader: () => assistiveTechnology.screenReader,

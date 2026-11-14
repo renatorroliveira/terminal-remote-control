@@ -38,6 +38,8 @@ function handlers(display: unknown = {}): InvokeHandlers {
         'sidebar:get-collapsed': async () => false,
         'sidebar:set-collapsed': async () => undefined,
         'help:open-guide': async () => undefined,
+        'sessions:load': async () => ({}),
+        'sessions:save': async () => undefined,
         'menus:ignore-shortcuts': async () => undefined,
         'settings:get': async () => DEFAULT_SETTINGS,
         'settings:set': async () => undefined,
@@ -93,6 +95,9 @@ describe('registerHandlers (zod at the renderer boundary)', () => {
         await expect(async () => registered.get('sidebar:set-collapsed')?.({}, 'yes')).rejects.toThrow(
             /invalid arguments/,
         );
+        await expect(async () =>
+            registered.get('sessions:save')?.({}, { 'host-0123456789abcdef': [{ id: 'a', cwd: '/' }] }),
+        ).rejects.toThrow(/invalid arguments/);
         for (const width of [299, 801, 400.5, '400']) {
             await expect(async () => registered.get('sidebar:set-width')?.({}, width)).rejects.toThrow(
                 /invalid arguments/,
