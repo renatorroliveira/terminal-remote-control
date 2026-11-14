@@ -107,7 +107,20 @@ session: SessionId,
 /**
  * How much to receive.
  */
-mode: AttachMode, } | { "type": "detach", 
+mode: AttachMode, 
+/**
+ * The offset of the first output byte the client has not received, to replay only what it missed
+ * (protocol 2, US-2.2.2).
+ */
+fromOffset?: number, } | { "type": "refresh", 
+/**
+ * Correlates the reply.
+ */
+requestId: number, 
+/**
+ * The session.
+ */
+session: SessionId, } | { "type": "detach", 
 /**
  * Correlates the reply.
  */

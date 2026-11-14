@@ -1,0 +1,17 @@
+{
+  "type": "create",
+  "requestId": 4,
+  "spec": {
+    "profileId": "login",
+    "cwd": "/home/tester",
+    "env": {
+      "EDITOR": "vim",
+      "PAGER": null
+    },
+    "size": {
+      "cols": 80,
+      "rows": 24
+    },
+    "scrollbackLines": 10000
+  }
+}

@@ -58,6 +58,7 @@ async fn attach(client: &mut AppClient, request_id: u32, id: &SessionId) -> u32 
         request_id,
         session: id.clone(),
         mode: AttachMode::Full,
+        from_offset: None,
     });
     let ServerMessage::Attached { stream, credit, .. } = client
         .take(|m| matches!(m, ServerMessage::Attached { request_id: r, .. } if *r == request_id))
@@ -109,7 +110,7 @@ async fn greets_with_the_version_and_the_binary_checksum() {
     else {
         unreachable!()
     };
-    assert_eq!(proto, 1);
+    assert_eq!(proto, 2);
     assert_eq!(daemon_version, env!("CARGO_PKG_VERSION"));
     assert_eq!(binary_sha256, trcd::digest::sha256_file(&installed.binary).unwrap());
     stop(core);
@@ -121,8 +122,8 @@ async fn refuses_an_app_without_a_common_protocol_version() {
     let core = installed.start_core();
     let mut client = AppClient::connect(&installed.core_socket()).await;
     client.send(&ClientMessage::Hello {
-        min_proto: 2,
-        max_proto: 3,
+        min_proto: 3,
+        max_proto: 4,
         app_version: "9".into(),
         caps: vec![],
     });
@@ -131,7 +132,7 @@ async fn refuses_an_app_without_a_common_protocol_version() {
         refusal,
         ServerMessage::Incompatible {
             min_proto: 1,
-            max_proto: 1
+            max_proto: 2
         }
     );
     client.until_closed().await;

@@ -1,0 +1,11 @@
+{
+  "type": "welcome",
+  "proto": 2,
+  "daemonVersion": "0.1.0",
+  "binarySha256": "abababababababababababababababababababababababababababababababab",
+  "caps": [],
+  "service": {
+    "manager": "systemd",
+    "sessionsEndAtLogout": false
+  }
+}

@@ -787,8 +787,9 @@ exports the TypeScript types, which are checked in, so building the app never
 needs Rust. Every request carries a `requestId`.
 
 1. **Handshake.** `Hello { minProto, maxProto, appVersion, caps }`, answered by
-   `Welcome { proto, daemonVersion, binarySha256, caps }` or
-   `Incompatible { minProto, maxProto }`.
+   `Welcome { proto, daemonVersion, binarySha256, caps, service }` or
+   `Incompatible { minProto, maxProto }`. From protocol 2, `service` says what
+   runs the daemon and whether sessions end at logout (US-2.4).
 2. **Liveness.** `Ping` and `Pong`.
 3. **Catalog.** `ListSessions` and `ListProfiles`. The daemon pushes
    `SessionEvent` (created, updated, closed, state) to every client (US-2.6).
@@ -799,13 +800,18 @@ needs Rust. Every request carries a `requestId`.
       `Attached { stream, credit }`. The screen snapshot follows as ordinary
       `OUTPUT` frames on that stream, before live output, so its size is never
       bound by the control-frame limit (1 MiB).
-    - From E2: `fromOffset` on `Attach` and `offset` on `Attached`.
+    - From protocol 2 (E2): `fromOffset` on `Attach`, and `replay` (`delta`
+      or `snapshot`) on `Attached`.
     - `Detach` and `Resize`.
     - `Refresh { session }`, which asks for the whole scrollback and screen
       again (D-45).
     - Reconnecting is an `Attach` with `fromOffset` (US-2.2): the daemon
       replays the output since that offset when it still holds it, and
       otherwise sends a snapshot. Either ends with `Synced { offset }`.
+    - `Resync { kind: screen | full }` starts the resync of a client that fell
+      behind (D-04); it also ends with `Synced`.
+    - `PeerInput` tells the other clients of a session that someone typed,
+      at most once a second (US-2.6.4).
 6. **Semantic events.** The daemon parses OSC 133, OSC 7, OSC 0/2 and BEL into
    `CommandFinished`, `Cwd`, `Title`, `Bell` and `Activity`.
     - Background sessions attach in `events` mode, so no output flows for them.

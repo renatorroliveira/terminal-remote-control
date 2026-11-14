@@ -6,7 +6,11 @@ import type { ErrorCode } from './generated/ErrorCode';
 import type { ExitStatus } from './generated/ExitStatus';
 import type { Integration } from './generated/Integration';
 import type { ProfileOrigin } from './generated/ProfileOrigin';
+import type { Replay } from './generated/Replay';
+import type { ResyncKind } from './generated/ResyncKind';
 import type { ServerMessage } from './generated/ServerMessage';
+import type { ServiceInfo } from './generated/ServiceInfo';
+import type { ServiceManager } from './generated/ServiceManager';
 import type { SessionChange } from './generated/SessionChange';
 import type { SessionInfo } from './generated/SessionInfo';
 import type { SessionState } from './generated/SessionState';
@@ -18,6 +22,8 @@ const u16 = z.number().int().min(0).max(0xffff);
 const u32 = z.number().int().min(0).max(0xffff_ffff);
 const i32 = z.number().int().min(-0x8000_0000).max(0x7fff_ffff);
 const timestamp = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+/** An output offset: a count of bytes, exact up to 2^53. */
+const offset = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const sessionId = z.string();
 
 const shellKind: z.ZodType<ShellKind> = z
@@ -33,6 +39,11 @@ const sessionState: z.ZodType<SessionState> = z
 const errorCode: z.ZodType<ErrorCode> = z
     .enum(['badRequest', 'unknownSession', 'unsupported', 'spawnFailed', 'internal', 'unspecified'])
     .catch('unspecified');
+
+const replay: z.ZodType<Replay> = z.enum(['delta', 'snapshot', 'unspecified']).catch('unspecified');
+const resyncKind: z.ZodType<ResyncKind> = z.enum(['screen', 'full', 'unspecified']).catch('unspecified');
+const serviceManager: z.ZodType<ServiceManager> = z.enum(['systemd', 'detached', 'unspecified']).catch('unspecified');
+const serviceInfo: z.ZodType<ServiceInfo> = z.object({ manager: serviceManager, sessionsEndAtLogout: z.boolean() });
 
 /** Validates an attach mode; unknown modes become `unspecified`. */
 export const AttachModeSchema: z.ZodType<AttachMode> = z.enum(['full', 'events', 'unspecified']).catch('unspecified');
@@ -91,13 +102,24 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnio
         daemonVersion: z.string(),
         binarySha256: z.string(),
         caps: z.array(z.string()),
+        service: serviceInfo.exactOptional(),
     }),
     z.object({ type: z.literal('incompatible'), minProto: u32, maxProto: u32 }),
     z.object({ type: z.literal('pong'), requestId: u32 }),
     z.object({ type: z.literal('sessions'), requestId: u32, sessions: z.array(SessionInfoSchema) }),
     z.object({ type: z.literal('profiles'), requestId: u32, profiles: z.array(ShellProfileSchema) }),
     z.object({ type: z.literal('created'), requestId: u32, session: SessionInfoSchema }),
-    z.object({ type: z.literal('attached'), requestId: u32, session: sessionId, stream: u32, credit: u32 }),
+    z.object({
+        type: z.literal('attached'),
+        requestId: u32,
+        session: sessionId,
+        stream: u32,
+        credit: u32,
+        replay: replay.exactOptional(),
+    }),
+    z.object({ type: z.literal('synced'), session: sessionId, stream: u32, offset }),
+    z.object({ type: z.literal('resync'), session: sessionId, stream: u32, kind: resyncKind }),
+    z.object({ type: z.literal('peerInput'), session: sessionId, stream: u32 }),
     z.object({ type: z.literal('done'), requestId: u32 }),
     z.object({ type: z.literal('sessionEvent'), change: sessionChange }),
     z.object({ type: z.literal('error'), requestId: u32.exactOptional(), code: errorCode, message: z.string() }),
@@ -135,7 +157,14 @@ export const ClientMessageSchema: z.ZodType<ClientMessage> = z.discriminatedUnio
     z.strictObject({ type: z.literal('stop'), requestId: u32, session: sessionId, graceMs: u32.exactOptional() }),
     z.strictObject({ type: z.literal('restart'), requestId: u32, session: sessionId }),
     z.strictObject({ type: z.literal('close'), requestId: u32, session: sessionId }),
-    z.strictObject({ type: z.literal('attach'), requestId: u32, session: sessionId, mode: z.enum(['full', 'events']) }),
+    z.strictObject({
+        type: z.literal('attach'),
+        requestId: u32,
+        session: sessionId,
+        mode: z.enum(['full', 'events']),
+        fromOffset: offset.exactOptional(),
+    }),
+    z.strictObject({ type: z.literal('refresh'), requestId: u32, session: sessionId }),
     z.strictObject({ type: z.literal('detach'), requestId: u32, session: sessionId }),
     z.strictObject({ type: z.literal('resize'), requestId: u32, session: sessionId, size: strictSize }),
 ]);
