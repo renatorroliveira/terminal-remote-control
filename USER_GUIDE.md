@@ -41,8 +41,9 @@ On each host:
   mounted `noexec`), and `sha256sum` or `shasum`. The host needs no internet access, no root or sudo, and no packages.
 
 TRC uses your own SSH setup: `~/.ssh/config` (aliases, `ProxyCommand`, `ProxyJump`, ports, users), your agent and
-your `known_hosts`. It never changes your SSH configuration or your keys. The one file it writes is
-`~/.ssh/known_hosts`, and only when you trust a new host key.
+your `known_hosts`. It never changes your SSH configuration or your keys. The one file it writes is your known hosts
+file, the first `UserKnownHostsFile` your SSH config names (`~/.ssh/known_hosts` unless you set another), and only
+when you trust a new host key.
 
 ## Install
 

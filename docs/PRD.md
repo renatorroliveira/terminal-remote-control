@@ -1,12 +1,12 @@
 # Terminal Remote Control — Product Requirements Document
 
-| Field        | Value                                        |
-| ------------ | -------------------------------------------- |
-| Status       | Draft v0.8                                   |
-| Owner        | Renato Oliveira                              |
-| Last updated | 2026-11-13                                   |
-| Scope        | P0 (first release), delivered in seven epics |
-| Name         | Terminal Remote Control (TRC)                |
+| Field        | Value                           |
+| ------------ | ------------------------------- |
+| Status       | Draft v0.9                      |
+| Owner        | Renato Oliveira                 |
+| Last updated | 2026-11-13                      |
+| Scope        | P0 in seven epics, then GA (E8) |
+| Name         | Terminal Remote Control (TRC)   |
 
 The keywords MUST, MUST NOT, SHOULD, SHOULD NOT and MAY follow
 [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Targets marked
@@ -546,7 +546,8 @@ path cannot be used to plant code.
    macOS, Authenticode on Windows, signed packages on Linux.
    **E1 exception:** E1 builds are ad-hoc signed and not notarized, because no
    Developer ID identity exists yet. Items 2–4 apply in full. The exception
-   ends no later than the first build distributed beyond the owner.
+   ends no later than the first build distributed beyond the owner. Platform
+   signing is delivered by E8 (US-8.3).
 2. Daemon binaries ship inside the signed app bundle. The app never downloads
    them from the network at install time.
 3. After upload to a remote host, the binary's SHA-256 checksum is verified
@@ -615,10 +616,23 @@ applies from the epic in the last column onward.
 | NFR-12 | Compatibility          | App-to-daemon protocol compatibility.                                                                                                       | Current and previous protocol version               | E2           |
 | NFR-13 | Localization           | UI strings externalized; UI language exposed programmatically.                                                                              | P0 ships English                                    | E1           |
 
+**E1 exceptions** (accepted by the owner on 2026-11-13; see
+`docs/verification/E1-nfr.md`):
+
+- NFR-02: on a link with a sub-millisecond round trip, the app adds about
+  10.7 ms at p95, about 1 ms over the target, from message delivery between
+  Electron's renderer and the connection host's utility process. E1 guards it
+  at 15 ms; E2 revisits that path. On a 100 ms link the target holds.
+- NFR-09: when the app attaches, the holder briefly keeps about twice the
+  session's snapshot, so a session at the 100,000-line scrollback maximum
+  passes 10 MB for a moment. Steady-state overhead meets the target. E2, which
+  reworks attach and resync, streams the snapshot.
+
 ## 9. Epics
 
 P0 is delivered in seven epics, in order. Each epic ships a signed build that
-users install and use for real.
+users install and use for real. E8 then prepares the general-availability
+release, 1.0.0: distribution, provenance and signing.
 
 An epic is done when all of the following hold:
 
@@ -641,6 +655,7 @@ The implementation breakdown of each epic lives in a separate plan per epic,
 | [E5](#95-e5--local-sessions-on-the-mac-and-macos-hosts)            | Run persistent local sessions on the Mac, and add macOS hosts                                                        | macOS                 | Linux, macOS, this Mac      | 5            |
 | [E6](#96-e6--windows-desktop)                                      | Do everything above from Windows, with persistent local Windows sessions                                             | macOS, Windows        | Linux, macOS, this computer | 3            |
 | [E7](#97-e7--linux-desktop)                                        | Do everything above from Linux, with persistent local Linux sessions                                                 | macOS, Windows, Linux | Linux, macOS, this computer | 2            |
+| [E8](#98-e8--general-availability-release)                         | Download signed releases from a website, and verify where each one came from                                         | macOS, Windows, Linux | Linux, macOS, this computer | 4            |
 
 ### 9.1 E1 — Accessible remote terminal: macOS app to Linux hosts
 
@@ -746,6 +761,9 @@ Acceptance criteria:
    user to update the app.
 7. Until E2 (US-2.5), upgrading the daemon may end running sessions. When
    sessions are running, the app says so and asks before upgrading.
+   **E1 note:** E1 installs a newer daemon beside the running one and asks
+   nothing: the running core keeps serving its sessions, so the upgrade ends
+   none of them, and the new version takes over when no core runs.
 
 #### US-1.5 — Tunneled connection with no exposed ports
 
@@ -888,7 +906,8 @@ Acceptance criteria:
 3. Hyperlinks (OSC 8) and detected URLs and file paths open by modifier+click
    (Cmd+click on macOS, Ctrl+click on Windows and Linux) and from the keyboard
    through a "list links" command and review mode, with the app the OS assigns
-   to the link's scheme.
+   to the link's scheme. **E1 note:** E1 detects URLs; detecting file paths is
+   deferred to E5 (owner, 2026-11-13), when local sessions make them openable.
 4. Before a link opens, a confirmation shows its full target, unless the
    target starts with a prefix the user trusts (SEC-06.2). The confirmation can
    trust the link's origin, for example `https://google.com`, so its links
@@ -1398,6 +1417,74 @@ Acceptance criteria:
    after a reboot.
 3. Logging out ends local sessions unless lingering is enabled. Logout is then
    treated like a reboot.
+
+### 9.8 E8 — General availability release
+
+**Outcome.** Version 1.0.0 is published for everyone: a website offers the
+downloads, every package is signed for its platform, and users can verify that
+a download is complete and that it was built from this repository by its
+release workflow.
+
+**Scope.** Release distribution and supply chain for every desktop platform of
+E1–E7. No product features.
+
+**Acceptance criteria.** US-8.1 to US-8.4 are fully implemented, the epic
+completion conditions in §9 hold, and the SEC-04.1 exception has ended.
+
+#### US-8.1 — A website with the downloads
+
+> As **Sam**, I want one accessible page that offers the right download for my
+> computer, so that installing never needs anything but my screen reader.
+
+Acceptance criteria:
+
+1. A GitHub Pages site lists each release with its notes, every package per
+   platform and architecture, and its checksums and verification steps.
+2. The site meets WCAG 2.2 AA and the A11Y-11 requirements for application
+   surfaces that apply to web pages; it sets no cookies and loads nothing from
+   third parties.
+3. The release workflow publishes the site's release entry together with the
+   GitHub Release, from the same commit.
+
+#### US-8.2 — Build provenance
+
+> As **Jordan**, I want to verify that a download was built from this
+> repository by its release workflow, so that a tampered package cannot pass as
+> the real one.
+
+Acceptance criteria:
+
+1. Every release asset carries a GitHub artifact attestation (build
+   provenance) made by the release workflow.
+2. The user guide and the website show how to verify a package with
+   `gh attestation verify`.
+3. The release workflow fails if an asset lacks its attestation.
+
+#### US-8.3 — Signed packages on every platform
+
+> As **Lee**, I want the app to install and open like any other app, with no
+> security warnings to work around, so that I can trust it and use it at once.
+
+Acceptance criteria:
+
+1. macOS packages are signed with an Apple Developer ID and notarized; Windows
+   packages are signed (Azure Artifact Signing); Linux packages are signed
+   (SEC-04.1).
+2. The macOS app drops the `disable-library-validation` entitlement that ad-hoc
+   signing needed, and the release check fails if it ships on a signed build.
+3. The user guide no longer tells users to bypass Gatekeeper or SmartScreen.
+
+#### US-8.4 — Signed checksums
+
+> As **Jordan**, I want the checksum file to be signed, so that the checksums
+> prove where the files came from, not just that they downloaded completely.
+
+Acceptance criteria:
+
+1. `SHA256SUMS.txt` is signed with the project's release key, and the public
+   key is published on the website and in the repository.
+2. The user guide shows how to check the signature, then the checksums.
+3. Losing or rotating the key has a documented procedure.
 
 ## 10. WCAG 2.2 conformance mapping
 

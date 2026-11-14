@@ -41,7 +41,7 @@
 <li><code>sshd</code> that accepts your key, and a POSIX shell.</li>
 <li>A few megabytes free in your home folder, or in another folder you choose, that allows running programs (not mounted <code>noexec</code>), and <code>sha256sum</code> or <code>shasum</code>. The host needs no internet access, no root or sudo, and no packages.</li>
 </ul>
-<p>TRC uses your own SSH setup: <code>~/.ssh/config</code> (aliases, <code>ProxyCommand</code>, <code>ProxyJump</code>, ports, users), your agent and your <code>known_hosts</code>. It never changes your SSH configuration or your keys. The one file it writes is <code>~/.ssh/known_hosts</code>, and only when you trust a new host key.</p>
+<p>TRC uses your own SSH setup: <code>~/.ssh/config</code> (aliases, <code>ProxyCommand</code>, <code>ProxyJump</code>, ports, users), your agent and your <code>known_hosts</code>. It never changes your SSH configuration or your keys. The one file it writes is your known hosts file, the first <code>UserKnownHostsFile</code> your SSH config names (<code>~/.ssh/known_hosts</code> unless you set another), and only when you trust a new host key.</p>
 <h2 id="install">Install</h2>
 <ol>
 <li>Download the release for your Mac from the <a href="https://github.com/renatorroliveira/terminal-remote-control/releases">Releases page</a>: <code>TRC-&lt;version&gt;-mac-arm64.dmg</code> for Apple silicon, or <code>TRC-&lt;version&gt;-mac-x64.dmg</code> for Intel. <code>SHA256SUMS.txt</code> lists every file's checksum; with it in the same folder, <code>shasum -a 256 --ignore-missing -c SHA256SUMS.txt</code> checks that your download is complete and intact. It comes from the same Releases page, so it cannot show who made the files.</li>

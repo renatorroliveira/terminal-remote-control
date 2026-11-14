@@ -318,7 +318,7 @@ message.
     - Starts the core detached (P-17).
     - `--version` prints the version and SHA-256.
 - Tests:
-    - A no-listener test: no TCP or UDP sockets on any `trcd` process (`/proc/net` plus `ss`).
+    - A no-listener test: no TCP or UDP sockets on any `trcd` process (`/proc/net`).
     - A test that rejects a peer from another uid.
     - A PSS measurement against NFR-09.
 - Outcome: the core adopts live holders after a crash (each holder introduces its spec and name), and one core runs
@@ -623,7 +623,7 @@ As built:
 - Rename (OSC title until the user renames), stop with a grace period, restart with a marker, close with a
   confirmation, duplicate.
 - Move up and Move down, plus drag.
-- Exited sessions are kept. Auto-close is off by default.
+- Exited sessions are kept unless auto-close, on by default, removes a cleanly exited one (US-1.10.7).
 
 As built:
 
@@ -908,6 +908,15 @@ As built (2026-11-13):
 - Final pass over CLAUDE.md, README, TECH_STACK and PRD status.
 - Once the owner accepts the gate, the release workflow cuts `v0.2.0` with `bump: minor` (P-21); the owner set
   this version on 2026-11-13, after M1 shipped as `v0.1.0`.
+
+Review round 1 (2026-11-13), over `c70a087..e350f38`, with what became of each finding:
+
+| Review                      | Found (C/H/M/L) | Fixed                                                                                                                            | Not changed, and why                                                                                                                                                                                                                                                                                                |
+| --------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| code-reviewer, TypeScript   | 0/3/9/6         | All 18 (`65dfb6b`, `800c60c`, `3582cd6`)                                                                                         | —                                                                                                                                                                                                                                                                                                                   |
+| code-reviewer, Rust         | 0/2/6/6         | H1–H2, M3, M4, M5, M7, M8, L10, L13, L14 (`17c8da7`, `4ecd394`); M8 was worse than reported: a slow holder was told to shut down | M6 snapshot memory: deferred to E2 by the owner, recorded as a PRD E1 exception to NFR-09. L9: measured, does not happen (the status tick ran mid-flood); a test guards it. L11: one client per session until E2 (P-16). L12: caching shell detection would miss shells installed after the core started (US-1.7.2) |
+| technical-auditor, release  | 0/1/9/12        | All but M9 (`3582cd6`)                                                                                                           | M9: the guide now says the checksums prove integrity only; provenance, signed checksums and platform signing are E8 (GA), by the owner                                                                                                                                                                              |
+| technical-auditor, security | 0/1/6/7         | H1 bootstrap root checks, M2 evidence and holder test, M4 network guard, L9–L14                                                  | M3, M6, M7: recorded as PRD E1 exceptions and notes, by the owner. M5: covered as ST-20 As built describes. L8: the entitlement guard is E8 (US-8.3), by the owner                                                                                                                                                  |
 
 ## 6. Traceability
 
