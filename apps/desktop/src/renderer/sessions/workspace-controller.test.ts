@@ -4,6 +4,7 @@ import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import type { KnownHost } from '../../shared/hosts';
 import { type ClientRequest, HostRequestError } from '../connection/host-client';
 import {
+    type AttachFailure,
     type SessionPreferences,
     type TerminalHost,
     type WorkspaceClient,
@@ -84,14 +85,15 @@ class FakeTerminals implements TerminalHost {
         this.reachable.push(`${hostId}:${connected}`);
     }
 
-    /** Sessions whose re-attach fails. */
+    /** Sessions whose re-attach fails, as the daemon no longer knows them. */
     unattachable: string[] = [];
     /** Whether creating a session fails. */
     failCreate = false;
 
-    reattachHost(hostId: string): Promise<readonly string[]> {
+    reattachHost(hostId: string): Promise<readonly AttachFailure[]> {
         this.reattached.push(hostId);
-        return Promise.resolve(this.unattachable);
+        const error = new HostRequestError('unknownSession', 'gone');
+        return Promise.resolve(this.unattachable.map((key) => ({ key, error })));
     }
 
     readonly shown: string[] = [];
@@ -345,24 +347,6 @@ describe('WorkspaceController: forgetting, moving and testing hosts (US-1.1.5, U
         await expect(workspace.moveInstallRoot(host.id, 'relative')).rejects.toThrow();
     });
 
-    it('lets a host’s programs write the clipboard, and stops them again (SEC-06.1)', async () => {
-        const { workspace } = setup();
-        const host = await workspace.addHost('devbox-1');
-        await workspace.setClipboardWrites(host.id, true);
-        expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBe(true);
-        await workspace.setClipboardWrites(host.id, false);
-        expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBeUndefined();
-    });
-
-    it('reports a clipboard change hosts.json refused, and keeps the host as it was (WCAG 3.3.1)', async () => {
-        const { hosts, workspace } = setup();
-        const host = await workspace.addHost('devbox-1');
-        hosts.readOnly = true;
-        await workspace.setClipboardWrites(host.id, true);
-        expect(workspace.store.getState().actionFailure).toMatchObject({ action: 'clipboard', hostId: host.id });
-        expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBeUndefined();
-    });
-
     it('tests a connection: connects, reports success and disconnects again, or reports the failure', async () => {
         const { client, workspace } = setup();
         const host = await workspace.addHost('devbox-1');
@@ -384,6 +368,26 @@ describe('WorkspaceController: forgetting, moving and testing hosts (US-1.1.5, U
         client.states.get(host.id)?.(connected);
         expect(await workspace.testConnection(host.id)).toBe(true);
         expect(client.calls).not.toContain(`disconnect ${host.id}`);
+    });
+});
+
+describe('WorkspaceController: clipboard writes (SEC-06.1)', () => {
+    it('lets a host’s programs write the clipboard, and stops them again (SEC-06.1)', async () => {
+        const { workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        await workspace.setClipboardWrites(host.id, true);
+        expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBe(true);
+        await workspace.setClipboardWrites(host.id, false);
+        expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBeUndefined();
+    });
+
+    it('reports a clipboard change hosts.json refused, and keeps the host as it was (WCAG 3.3.1)', async () => {
+        const { hosts, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        hosts.readOnly = true;
+        await workspace.setClipboardWrites(host.id, true);
+        expect(workspace.store.getState().actionFailure).toMatchObject({ action: 'clipboard', hostId: host.id });
+        expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBeUndefined();
     });
 });
 
@@ -461,7 +465,7 @@ describe('WorkspaceController: failed actions (US-1.10, US-1.14.3, WCAG 3.3.1)',
         client.states.get(host.id)?.(connected);
         await expect
             .poll(() => workspace.store.getState().actionFailure)
-            .toMatchObject({ action: 'reattach', hostId: host.id });
+            .toMatchObject({ action: 'reattach', hostId: host.id, code: 'unknownSession' });
         expect(workspace.store.getState().open).toBeUndefined();
     });
 

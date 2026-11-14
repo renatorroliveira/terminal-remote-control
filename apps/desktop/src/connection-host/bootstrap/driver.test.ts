@@ -115,10 +115,10 @@ describe('runBootstrap failures', () => {
         });
         const outcome = runBootstrap({ input, output }, options([]));
         output.write(`${nonce} HELLO os=Linux arch=arm64 checksum=sha256sum installed=-\n`);
-        output.write(`${nonce} ERROR root-unusable /home/t/.trc is writable by other users\n`);
+        output.write(`${nonce} ERROR root-unsafe /home/t/.trc is writable by other users\n`);
         await expect(outcome).resolves.toEqual({
             kind: 'failed',
-            failure: { kind: 'host', code: 'root-unusable', detail: '/home/t/.trc is writable by other users' },
+            failure: { kind: 'host', code: 'root-unsafe', detail: '/home/t/.trc is writable by other users' },
         });
     });
 

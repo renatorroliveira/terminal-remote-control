@@ -301,8 +301,8 @@ export const failedActionMessages = defineMessages<FailedAction>({
     },
     reattach: {
         id: 'failure.reattach',
-        defaultMessage: 'Couldn’t reattach every session on {host}; they take no input.',
-        description: 'Reported when sessions fail to reattach after a reconnect.',
+        defaultMessage: 'Couldn’t reattach every session on {host}; their terminals were closed.',
+        description: 'Reported when sessions fail to reattach after a reconnect; their terminals are removed.',
     },
 });
 

@@ -32,7 +32,7 @@ interface Bootstrapped {
 const cleanups: (() => void)[] = [];
 
 afterEach(() => {
-    for (const cleanup of cleanups.splice(0)) {
+    for (const cleanup of cleanups.splice(0).reverse()) {
         cleanup();
     }
 });
@@ -193,41 +193,78 @@ describe('bootstrap over an existing install', () => {
 });
 
 /**
- * Plants, under `dir`, a `trcd` stored at its own checksum that records being run in `marker` and claims to be a
- * daemon, as a local attacker able to write there could; `mode` is the version directory's.
+ * Plants, under `root`, a `trcd` stored at its own checksum that records being run in `marker` and claims to be a
+ * daemon, as a local attacker able to write there could, then runs `tamper` with `$r` (the root), `$v` (the version
+ * folder) and `$b` (the binary) set.
  */
-function plant(alias: string, dir: string, marker: string, mode: string): void {
-    cleanups.push(() => remote(alias, `rm -f "${marker}"`));
+function plant(alias: string, root: string, marker: string, tamper: string): void {
+    cleanups.push(() => remote(alias, `rm -rf "${marker}" "${root}.away"`));
     remote(
         alias,
-        `set -e; umask 077; mkdir -p "${dir}"; f="${dir}/planted"; ` +
+        `set -e; umask 077; r="${root}"; mkdir -p "$r"; f="$r/planted"; ` +
             `printf '#!/bin/sh\\ntouch "${marker}"\\necho trcd 9.9.9 x\\n' > "$f"; chmod 700 "$f"; ` +
-            `s=$(sha256sum "$f" | cut -d' ' -f1); mkdir -p "${dir}/versions/$s"; mv "$f" "${dir}/versions/$s/trcd"; ` +
-            `chmod ${mode} "${dir}/versions/$s"`,
+            `s=$(sha256sum "$f" | cut -d' ' -f1); v="$r/versions/$s"; b="$v/trcd"; mkdir -p "$v"; mv "$f" "$b"; ` +
+            tamper,
     );
 }
 
-describe('bootstrap never runs what others could have planted (SEC-04.4, SEC-07)', () => {
-    it('refuses an install location others can write before running anything in it', async () => {
-        const root = freshRoot('trc-ubuntu');
-        const marker = `${root}.ran`;
-        plant('trc-ubuntu', root, marker, '700');
-        remote('trc-ubuntu', `chmod 0777 "${root}"`);
-        const { outcome } = await bootstrap('trc-ubuntu', root);
-        expect(outcome).toMatchObject({ kind: 'failed', failure: { kind: 'host', code: 'root-unusable' } });
-        expect(exists('trc-ubuntu', marker)).toBe(false);
-    });
+/** How a planted daemon is exposed, and whether the bootstrap must refuse the location or install its own. */
+const PLANTED = [
+    { exposed: 'an install location others can write', tamper: 'chmod 0777 "$r"', expect: 'refused' },
+    { exposed: 'an install location its group can write', tamper: 'chmod 0770 "$r"', expect: 'refused' },
+    {
+        exposed: 'an install location that is a symbolic link',
+        tamper: 'mv "$r" "$r.away"; ln -s "$r.away" "$r"',
+        expect: 'refused',
+    },
+    { exposed: 'a versions folder its group can write', tamper: 'chmod 0770 "$r/versions"', expect: 'refused' },
+    { exposed: 'a version folder others can write', tamper: 'chmod 0777 "$v"', expect: 'replaced' },
+    {
+        exposed: 'a version folder that is a symbolic link',
+        tamper: 'mkdir "$r.away"; mv "$v" "$r.away/"; ln -s "$r.away/$(basename "$v")" "$v"',
+        expect: 'replaced',
+    },
+    { exposed: 'a binary its group can write', tamper: 'chmod 0770 "$b"', expect: 'replaced' },
+] as const;
 
-    it('skips a version directory others can write, and installs its own daemon instead', async () => {
-        const root = freshRoot('trc-ubuntu');
-        const marker = `${root}.ran`;
-        plant('trc-ubuntu', root, marker, '777');
-        const bootstrapped = await bootstrap('trc-ubuntu', root);
-        expect(bootstrapped.steps).toEqual(['checking', 'uploading', 'verifying', 'starting']);
-        expect(await handshake(bootstrapped)).toMatchObject({ type: 'welcome' });
-        expect(exists('trc-ubuntu', marker)).toBe(false);
-    });
-});
+describe.each(['trc-ubuntu', 'trc-alpine', 'trc-rocky'])(
+    'bootstrap on %s never runs what others could have planted (SEC-04.4, SEC-07)',
+    (alias) => {
+        it.each(PLANTED)('$expect for $exposed', async ({ tamper, expect: expected }) => {
+            const root = freshRoot(alias);
+            const marker = `${root}.ran`;
+            plant(alias, root, marker, tamper);
+            const bootstrapped = await bootstrap(alias, root);
+            if (expected === 'refused') {
+                expect(bootstrapped.outcome).toMatchObject({
+                    kind: 'failed',
+                    failure: { kind: 'host', code: 'root-unsafe' },
+                });
+            } else {
+                expect(bootstrapped.steps).toEqual(['checking', 'uploading', 'verifying', 'starting']);
+                expect(await handshake(bootstrapped)).toMatchObject({ type: 'welcome' });
+            }
+            expect(exists(alias, marker)).toBe(false);
+        });
+
+        it('refuses an install location under a folder others can change, and accepts a sticky one', async () => {
+            const shared = freshRoot(alias);
+            const root = `${shared}/trc`;
+            const marker = `${shared}.ran`;
+            remote(alias, `mkdir -p "${shared}" && chmod 0777 "${shared}"`);
+            plant(alias, root, marker, 'true');
+            const refused = await bootstrap(alias, root);
+            expect(refused.outcome).toMatchObject({ kind: 'failed', failure: { kind: 'host', code: 'root-unsafe' } });
+            expect(exists(alias, marker)).toBe(false);
+
+            const sticky = freshRoot(alias);
+            const inside = freshRoot(alias, sticky);
+            remote(alias, `mkdir -p "${sticky}" && chmod 1777 "${sticky}"`);
+            const accepted = await bootstrap(alias, inside);
+            expect(await handshake(accepted)).toMatchObject({ type: 'welcome' });
+        });
+    },
+);
 
 describe('bootstrap install locations', () => {
     it('names a noexec home and installs in a per-host location instead (US-1.4.3, R10)', async () => {
@@ -239,13 +276,6 @@ describe('bootstrap install locations', () => {
         const elsewhere = freshRoot('trc-noexec', '/var/tmp');
         const accepted = await bootstrap('trc-noexec', elsewhere);
         expect(await handshake(accepted)).toMatchObject({ type: 'welcome' });
-    });
-
-    it('refuses an install location others can write', async () => {
-        const root = freshRoot('trc-rocky');
-        remote('trc-rocky', `mkdir -p "${root}" && chmod 0777 "${root}"`);
-        const { outcome } = await bootstrap('trc-rocky', root);
-        expect(outcome).toMatchObject({ kind: 'failed', failure: { kind: 'host', code: 'root-unusable' } });
     });
 });
 

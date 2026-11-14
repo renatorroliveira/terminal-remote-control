@@ -17,6 +17,7 @@ export function failureMessage(intl: IntlShape, name: string, failure: Connectio
 type FailureKey =
     | Exclude<ConnectionFailure['kind'], 'authentication' | 'jump-failed' | 'unsupported'>
     | 'noexec'
+    | 'root-unsafe'
     | `authentication-${AuthenticationCause}`
     | `jump-failed-${NetworkCause}`
     | `unsupported-${Extract<ConnectionFailure, { kind: 'unsupported' }>['missing']}`;
@@ -309,6 +310,19 @@ const FAILURE_MESSAGES: Readonly<
             description: 'How to fix a failed connection.',
         }),
     },
+    'root-unsafe': {
+        problem: defineMessage<FailureValues>({
+            id: 'failure.rootUnsafe.problem',
+            defaultMessage: 'Other users can change the install location on {name}, or a folder above it.',
+            description: 'What went wrong when a connection failed.',
+        }),
+        remedy: defineMessage<FailureValues>({
+            id: 'failure.rootUnsafe.remedy',
+            defaultMessage:
+                'The details name the folder. Choose an install location for {name} that only you can change, such as one in your home folder, from its actions (Shift+F10), then connect again.',
+            description: 'How to fix a failed connection.',
+        }),
+    },
     'no-answer': {
         problem: defineMessage<FailureValues>({
             id: 'failure.noAnswer.problem',
@@ -370,7 +384,7 @@ function failureKey(failure: ConnectionFailure): FailureKey {
         case 'unsupported':
             return `unsupported-${failure.missing}`;
         case 'install':
-            return failure.code === 'noexec' ? 'noexec' : 'install';
+            return failure.code === 'noexec' || failure.code === 'root-unsafe' ? failure.code : 'install';
         default:
             return failure.kind;
     }

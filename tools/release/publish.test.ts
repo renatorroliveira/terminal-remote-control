@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { type Download, type PublishSeams, publish, type ReleaseInput } from './publish.ts';
+import {
+    type Download,
+    type PublishSeams,
+    publish,
+    type ReleaseInput,
+    type ReleaseState,
+    releaseStateOf,
+} from './publish.ts';
 
 const INPUT: ReleaseInput = {
     version: '0.2.0',
@@ -35,13 +42,21 @@ class FakeRelease implements PublishSeams {
         this.calls.push([command, ...args].join(' '));
     }
 
-    query(command: string, args: readonly string[]): string | undefined {
+    capture(command: string, args: readonly string[]): string {
         const line = [command, ...args].join(' ');
-        const key = [...this.answers.keys()].find((prefix) => line === prefix || line.startsWith(`${prefix} `));
-        if (key === undefined) {
-            throw new Error(`unexpected query: ${line}`);
+        const answer = this.#answer(line);
+        if (answer === undefined) {
+            throw new Error(`failed: ${line}`);
         }
-        return this.answers.get(key);
+        return answer;
+    }
+
+    releaseState(tag: string): ReleaseState {
+        const answer = this.#answer(`gh release view ${tag} --json isDraft`);
+        if (answer === 'unreachable') {
+            throw new Error('gh: HTTP 502');
+        }
+        return answer === undefined ? 'absent' : answer === 'true' ? 'draft' : 'published';
     }
 
     download(url: string): Promise<Download> {
@@ -59,6 +74,14 @@ class FakeRelease implements PublishSeams {
 
     commitVersion(subject: string): void {
         this.calls.push(`commit ${subject}`);
+    }
+
+    #answer(line: string): string | undefined {
+        const key = [...this.answers.keys()].find((prefix) => line === prefix || line.startsWith(`${prefix} `));
+        if (key === undefined) {
+            throw new Error(`unexpected command: ${line}`);
+        }
+        return this.answers.get(key);
     }
 }
 
@@ -115,6 +138,12 @@ describe('publish: resuming and refusing (P-21, D-42)', () => {
         expect(release.calls).toEqual(['git fetch --quiet origin main', SUMS_URL]);
     });
 
+    it('stops, creating no second draft, when gh cannot say whether the release exists', async () => {
+        const release = new FakeRelease({ 'gh release view v0.2.0 --json isDraft': 'unreachable' });
+        await expect(publish(INPUT, release)).rejects.toThrow(/HTTP 502/);
+        expect(release.calls.some((call) => call.startsWith('gh release create'))).toBe(false);
+    });
+
     it('refuses a tag on another commit, a draft that lacks an asset, and a main it cannot place', async () => {
         const moved = { 'git ls-remote --tags origin': 'tagobj\trefs/tags/v0.2.0\nelse1\trefs/tags/v0.2.0^{}' };
         await expect(publish(INPUT, new FakeRelease(moved))).rejects.toThrow(/already tags else1/);
@@ -135,5 +164,14 @@ describe('publish: resuming and refusing (P-21, D-42)', () => {
         const wrong = new FakeRelease({}, []);
         await expect(publish(INPUT, wrong)).rejects.toThrow(/got HTTP 404/);
         expect(wrong.calls).toContain('git push origin HEAD:refs/heads/main');
+    });
+});
+
+describe('releaseStateOf', () => {
+    it('reads a draft or a published release, takes only "release not found" as absent, and fails on any other error', () => {
+        expect(releaseStateOf({ ok: true, output: 'true' }, 'v0.2.0')).toBe('draft');
+        expect(releaseStateOf({ ok: true, output: 'false' }, 'v0.2.0')).toBe('published');
+        expect(releaseStateOf({ ok: false, stderr: 'release not found' }, 'v0.2.0')).toBe('absent');
+        expect(() => releaseStateOf({ ok: false, stderr: 'HTTP 502: Bad Gateway' }, 'v0.2.0')).toThrow(/HTTP 502/);
     });
 });

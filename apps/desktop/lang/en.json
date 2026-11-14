@@ -436,8 +436,8 @@
     "description": "The daemon does not support the request."
   },
   "failure.reattach": {
-    "defaultMessage": "Couldn’t reattach every session on {host}; they take no input.",
-    "description": "Reported when sessions fail to reattach after a reconnect."
+    "defaultMessage": "Couldn’t reattach every session on {host}; their terminals were closed.",
+    "description": "Reported when sessions fail to reattach after a reconnect; their terminals are removed."
   },
   "failure.rename": {
     "defaultMessage": "Couldn’t rename the session on {host}.",
@@ -446,6 +446,14 @@
   "failure.restart": {
     "defaultMessage": "Couldn’t restart the session on {host}.",
     "description": "Reported when a restart fails."
+  },
+  "failure.rootUnsafe.problem": {
+    "defaultMessage": "Other users can change the install location on {name}, or a folder above it.",
+    "description": "What went wrong when a connection failed."
+  },
+  "failure.rootUnsafe.remedy": {
+    "defaultMessage": "The details name the folder. Choose an install location for {name} that only you can change, such as one in your home folder, from its actions (Shift+F10), then connect again.",
+    "description": "How to fix a failed connection."
   },
   "failure.sshMissing.problem": {
     "defaultMessage": "This Mac has no OpenSSH client.",

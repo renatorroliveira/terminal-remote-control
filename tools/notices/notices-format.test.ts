@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
     type CargoMetadata,
+    copyrightHolder,
     fontLicenses,
     formatNotices,
     isLicenseFile,
     mitLicense,
     npmPackages,
     rustPackages,
+    unnoticedDependencies,
 } from './notices-format.ts';
 
 describe('npmPackages', () => {
@@ -170,5 +172,23 @@ describe('formatNotices', () => {
                 '',
             ].join('\n'),
         );
+    });
+});
+
+describe('copyrightHolder', () => {
+    it('takes the author a package names, then a holder looked up for it, and fails when neither is known', () => {
+        const known = { 'client-only': 'Meta Platforms, Inc. and affiliates' };
+        expect(copyrightHolder('a', 'A Author', known)).toBe('A Author');
+        expect(copyrightHolder('client-only', undefined, known)).toBe('Meta Platforms, Inc. and affiliates');
+        expect(() => copyrightHolder('nameless', undefined, known)).toThrow(/nameless/);
+    });
+});
+
+describe('unnoticedDependencies', () => {
+    it('lists the vendored folders that neither have a notice nor are build-time tools', () => {
+        const folders = ['aro-0.0.0-x', 'N-V-hw', 'N-V-new', 'translate_c-2.0.0-y', 'uucode-0.2.0-z'];
+        expect(unnoticedDependencies(folders, ['N-V-hw', 'uucode-0.2.0-z'], ['aro-', 'translate_c-'])).toEqual([
+            'N-V-new',
+        ]);
     });
 });

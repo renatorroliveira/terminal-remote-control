@@ -16,7 +16,10 @@ export interface ListedRun {
 const WORKFLOW = 'release.yml';
 const CLOCK_SKEW_MS = 10_000;
 
-/** Dispatches the workflow from `main`, follows the caller's run to the end, and fails when it did not release. */
+/**
+ * Dispatches the workflow from `main`, follows the caller's newest run created no more than 10 s before the dispatch
+ * (to allow for clock skew), and fails when it did not release.
+ */
 export async function release(options: ReleaseOptions): Promise<void> {
     run('gh', ['auth', 'status']);
     const user = capture('gh', ['api', 'user', '--jq', '.login']);

@@ -32,6 +32,11 @@ describe('resolveAppRequest', () => {
         expect(resolveAppRequest('app://docs/..%2findex.html', ROOTS)).toBeUndefined();
     });
 
+    it('refuses a path with a malformed escape instead of throwing', () => {
+        expect(resolveAppRequest('app://trc/%E0', ROOTS)).toBeUndefined();
+        expect(resolveAppRequest('app://docs/a%zz', ROOTS)).toBeUndefined();
+    });
+
     it('keeps dot segments that URL parsing normalizes inside the root', () => {
         expect(resolveAppRequest('app://trc/%2e%2e/%2e%2e/secret', ROOTS)).toBe('/bundle/out/renderer/secret');
     });

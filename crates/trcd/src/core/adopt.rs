@@ -61,18 +61,7 @@ pub async fn adopt_holders(run: &RunDir) -> Adoption {
             });
         }
     }
-    let mut adoption = Adoption::default();
-    while let Some(Ok((path, id, introduction))) = asked.join_next().await {
-        match introduction {
-            Introduction::Adopted(found) => adoption.adopted.push(*found),
-            Introduction::Silent => adoption.silent.push((path, id)),
-            Introduction::Gone => {}
-        }
-    }
-    adoption
-        .adopted
-        .sort_by_key(|found| (found.record.info.started_at.is_none(), found.record.info.started_at));
-    adoption
+    gather(asked).await
 }
 
 /// Asks a holder that was silent at start again; its session, or `None` when it is gone or still does not answer, in
@@ -86,6 +75,26 @@ pub async fn adopt_late(path: &Path, id: &SessionId) -> Option<Adopted> {
         }
         Introduction::Gone => None,
     }
+}
+
+/// Collects every introduction, skipping one whose task failed so the others still finish.
+async fn gather(mut asked: JoinSet<(PathBuf, SessionId, Introduction)>) -> Adoption {
+    let mut adoption = Adoption::default();
+    while let Some(joined) = asked.join_next().await {
+        let Ok((path, id, introduction)) = joined else {
+            tracing::warn!("a holder's introduction failed; the others go on");
+            continue;
+        };
+        match introduction {
+            Introduction::Adopted(found) => adoption.adopted.push(*found),
+            Introduction::Silent => adoption.silent.push((path, id)),
+            Introduction::Gone => {}
+        }
+    }
+    adoption
+        .adopted
+        .sort_by_key(|found| (found.record.info.started_at.is_none(), found.record.info.started_at));
+    adoption
 }
 
 fn session_id_of(path: &Path) -> Option<SessionId> {
@@ -179,5 +188,21 @@ mod tests {
         assert!(matches!(greeting(unstarted), Greeting::Unstarted));
         assert!(matches!(greeting(None), Greeting::Silent));
         assert!(matches!(greeting(Some(HolderEvent::Exiting)), Greeting::Silent));
+    }
+
+    #[tokio::test]
+    async fn keeps_gathering_after_an_introduction_fails() {
+        let mut asked = JoinSet::new();
+        asked.spawn(async { panic!("a malformed hello") });
+        asked.spawn(async {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            (
+                PathBuf::from("0123456789abcdef.sock"),
+                SessionId("0123456789abcdef".into()),
+                Introduction::Silent,
+            )
+        });
+        let adoption = gather(asked).await;
+        assert_eq!(adoption.silent.len(), 1);
     }
 }

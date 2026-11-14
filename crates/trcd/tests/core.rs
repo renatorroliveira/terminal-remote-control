@@ -364,16 +364,36 @@ async fn adopts_a_holder_that_answers_late_and_announces_its_session() {
     let holder = rustix::process::Pid::from_raw(parent_of(shell)).unwrap();
     stop(core);
     client.until_closed().await;
-    rustix::process::kill_process(holder, rustix::process::Signal::STOP).unwrap();
+    let stopped = Stopped::new(holder);
     let next = installed.start_core();
     let mut client = AppClient::greeted(&installed.core_socket()).await;
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    rustix::process::kill_process(holder, rustix::process::Signal::CONT).unwrap();
+    drop(stopped);
     let announced = client
         .take(|m| matches!(m, ServerMessage::SessionEvent { change: SessionChange::Created { session } } if session.id == id))
         .await;
     assert!(matches!(announced, ServerMessage::SessionEvent { .. }));
     stop(next);
+}
+
+/// A process held stopped, which resumes when this drops, and is killed too when a panic dropped it, so a failing test
+/// never leaves a stopped holder behind.
+struct Stopped(rustix::process::Pid);
+
+impl Stopped {
+    fn new(pid: rustix::process::Pid) -> Self {
+        rustix::process::kill_process(pid, rustix::process::Signal::STOP).unwrap();
+        Self(pid)
+    }
+}
+
+impl Drop for Stopped {
+    fn drop(&mut self) {
+        let _ = rustix::process::kill_process(self.0, rustix::process::Signal::CONT);
+        if std::thread::panicking() {
+            let _ = rustix::process::kill_process(self.0, rustix::process::Signal::KILL);
+        }
+    }
 }
 
 #[tokio::test]
