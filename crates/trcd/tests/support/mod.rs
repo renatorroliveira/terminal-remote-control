@@ -170,12 +170,17 @@ impl AppClient {
         }
     }
 
-    /// Connects and completes the handshake.
+    /// Connects and completes the handshake as an E1 app, which speaks protocol 1 only.
     pub async fn greeted(socket: &Path) -> Self {
+        Self::greeted_with(socket, 1).await
+    }
+
+    /// Connects and completes the handshake, speaking protocols 1 to `max_proto`.
+    pub async fn greeted_with(socket: &Path, max_proto: u32) -> Self {
         let mut client = Self::connect(socket).await;
         client.send(&ClientMessage::Hello {
             min_proto: 1,
-            max_proto: 1,
+            max_proto,
             app_version: "test".into(),
             caps: vec![],
         });
@@ -223,6 +228,19 @@ impl AppClient {
         while !done(self) {
             self.step().await;
             assert!(!self.closed, "the core closed the connection");
+        }
+    }
+
+    /// Reads frames until nothing arrives for half a second, so a shell's line editor is ready for typing.
+    pub async fn settle(&mut self) {
+        while let Ok(next) = tokio::time::timeout(std::time::Duration::from_millis(500), self.reader.next()).await {
+            match next {
+                Ok(Some(frame)) => self.absorb(frame),
+                _ => {
+                    self.closed = true;
+                    return;
+                }
+            }
         }
     }
 

@@ -2,7 +2,7 @@
 //! session events, and the end of a holder (US-1.9.4).
 
 use tokio::net::UnixStream;
-use trc_protocol::frame::{self, Frame, FrameKind};
+use trc_protocol::frame::{Frame, FrameKind};
 use trc_protocol::{ServerMessage, SessionChange, SessionId, SessionState};
 
 use super::Core;
@@ -42,7 +42,7 @@ impl Core {
 
     pub(super) fn on_holder_frame(&mut self, session: &SessionId, frame: &Frame) {
         match frame.kind {
-            FrameKind::Output => self.route_output(session, &frame.payload),
+            FrameKind::Output => self.route_output(session, frame.stream, &frame.payload),
             FrameKind::Control => self.on_holder_event(session, &frame.payload),
             _ => {}
         }
@@ -56,7 +56,7 @@ impl Core {
         if record.closing {
             return self.forget(session);
         }
-        self.detach_session(session);
+        self.drop_attachments(session);
         let _ = std::fs::remove_file(self.context.run.holder_socket(session));
         let Some(record) = self.registry.get_mut(session) else {
             return;
@@ -73,22 +73,25 @@ impl Core {
         });
     }
 
-    fn route_output(&self, session: &SessionId, payload: &[u8]) {
-        if let Some(attachment) = self.attachments.get(session)
-            && let Some(link) = self.clients.get(&attachment.client)
-            && let Ok(encoded) = frame::encode(FrameKind::Output, attachment.stream, payload)
-        {
-            link.sender.send(encoded);
-        }
-    }
-
     fn on_holder_event(&mut self, session: &SessionId, payload: &[u8]) {
-        if let Ok(HolderEvent::Status { status }) = serde_json::from_slice(payload)
-            && let Some(info) = self.registry.apply_status(session, &status)
-        {
-            self.broadcast(&ServerMessage::SessionEvent {
-                change: SessionChange::Updated { session: info },
-            });
+        let Ok(event) = serde_json::from_slice::<HolderEvent>(payload) else {
+            return;
+        };
+        match event {
+            HolderEvent::Status { status } => {
+                if let Some(info) = self.registry.apply_status(session, &status) {
+                    self.broadcast(&ServerMessage::SessionEvent {
+                        change: SessionChange::Updated { session: info },
+                    });
+                }
+            }
+            HolderEvent::Hello { proto, .. } => {
+                if let Some(holder) = self.holders.get_mut(session) {
+                    holder.proto = proto.unwrap_or(1);
+                }
+            }
+            HolderEvent::Exiting => {}
+            other => self.on_attachment_event(session, other),
         }
     }
 }

@@ -1,16 +1,16 @@
 //! App requests: the handshake, the catalog, the session lifecycle and attachment (US-1.7, US-1.9, US-1.10).
 
-use trc_protocol::frame::{self, CREDIT_WINDOW, Frame, FrameKind};
+use trc_protocol::frame::{Frame, FrameKind};
 use trc_protocol::{
     AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ServerMessage,
     SessionChange, SessionId, TerminalSize, negotiate,
 };
 
 use super::size::size_problem;
-use super::{Attachment, ClientId, Core};
+use super::{ClientId, Core};
 use crate::core::profiles::detect_profiles;
 use crate::core::registry::SessionRecord;
-use crate::holder::protocol::{HolderCommand, HolderSpec, SESSION_STREAM};
+use crate::holder::protocol::{HolderCommand, HolderSpec};
 use crate::session_id::new_session_id;
 
 /// The scrollback a session gets when the app does not choose one (NFR-10).
@@ -32,10 +32,7 @@ impl Core {
         let Some(link) = self.clients.remove(&client) else {
             return;
         };
-        for session in link.streams.into_values() {
-            self.attachments.remove(&session);
-            self.holder_command(&session, &HolderCommand::Detach { attachment: None });
-        }
+        self.detach_streams(client, link.streams.into_values());
         tracing::info!(client, "app disconnected");
     }
 
@@ -49,8 +46,9 @@ impl Core {
                 false,
             ) => self.on_hello(client, min_proto, max_proto),
             (Ok(message), true) => {
-                let reply = self.on_request(client, message);
-                self.reply(client, &reply);
+                if let Some(reply) = self.on_request(client, message) {
+                    self.reply(client, &reply);
+                }
             }
             (_, false) => {
                 self.reply(
@@ -77,6 +75,7 @@ impl Core {
         };
         if let Some(link) = self.clients.get_mut(&client) {
             link.greeted = true;
+            link.proto = proto;
         }
         let welcome = ServerMessage::Welcome {
             proto,
@@ -88,7 +87,22 @@ impl Core {
         self.reply(client, &welcome);
     }
 
-    fn on_request(&mut self, client: ClientId, message: ClientMessage) -> ServerMessage {
+    /// Answers a request; `None` when the answer comes later, as an attach to a protocol 2 holder's does.
+    fn on_request(&mut self, client: ClientId, message: ClientMessage) -> Option<ServerMessage> {
+        match message {
+            ClientMessage::Attach {
+                request_id,
+                session,
+                mode,
+                from_offset,
+            } => self.attach_request(client, request_id, &session, mode, from_offset),
+            ClientMessage::Detach { request_id, session } => Some(self.detach(client, request_id, &session)),
+            ClientMessage::Refresh { request_id, session } => Some(self.refresh(client, request_id, &session)),
+            other => Some(self.on_simple_request(other)),
+        }
+    }
+
+    fn on_simple_request(&mut self, message: ClientMessage) -> ServerMessage {
         match message {
             ClientMessage::Hello { .. } => error(None, ErrorCode::BadRequest, "already greeted"),
             ClientMessage::Ping { request_id } => ServerMessage::Pong { request_id },
@@ -118,22 +132,38 @@ impl Core {
             } => self.command_session(request_id, &session, &HolderCommand::Stop { grace_ms }),
             ClientMessage::Restart { request_id, session } => self.restart(request_id, &session),
             ClientMessage::Close { request_id, session } => self.close(request_id, &session),
-            ClientMessage::Attach {
-                request_id,
-                session,
-                mode,
-                ..
-            } => self.attach(client, request_id, &session, mode),
-            ClientMessage::Refresh { request_id, .. } => {
-                error(Some(request_id), ErrorCode::Unsupported, "refresh is not supported yet")
-            }
-            ClientMessage::Detach { request_id, session } => self.detach(client, request_id, &session),
             ClientMessage::Resize {
                 request_id,
                 session,
                 size,
             } => self.resize(request_id, &session, size),
+            ClientMessage::Attach { request_id, .. }
+            | ClientMessage::Detach { request_id, .. }
+            | ClientMessage::Refresh { request_id, .. } => {
+                error(Some(request_id), ErrorCode::Internal, "routed elsewhere")
+            }
         }
+    }
+
+    fn attach_request(
+        &mut self,
+        client: ClientId,
+        request_id: u32,
+        session: &SessionId,
+        mode: AttachMode,
+        from_offset: Option<u64>,
+    ) -> Option<ServerMessage> {
+        if self.registry.get(session).is_none() || !self.holders.contains_key(session) {
+            return Some(unknown(request_id));
+        }
+        if mode != AttachMode::Full {
+            return Some(error(
+                Some(request_id),
+                ErrorCode::Unsupported,
+                "only full attachment is supported",
+            ));
+        }
+        self.attach(client, request_id, session, from_offset)
     }
 
     fn create(&mut self, request_id: u32, spec: CreateSessionSpec) -> ServerMessage {
@@ -243,55 +273,6 @@ impl Core {
         ServerMessage::Done { request_id }
     }
 
-    fn attach(&mut self, client: ClientId, request_id: u32, session: &SessionId, mode: AttachMode) -> ServerMessage {
-        if self.registry.get(session).is_none() {
-            return unknown(request_id);
-        }
-        if mode != AttachMode::Full {
-            return error(
-                Some(request_id),
-                ErrorCode::Unsupported,
-                "only full attachment is supported",
-            );
-        }
-        self.detach_session(session);
-        let Some(link) = self.clients.get_mut(&client) else {
-            return unknown(request_id);
-        };
-        let stream = link.next_stream;
-        link.next_stream += 1;
-        link.streams.insert(stream, session.clone());
-        self.attachments.insert(session.clone(), Attachment { client, stream });
-        self.holder_command(
-            session,
-            &HolderCommand::Attach {
-                credit: CREDIT_WINDOW,
-                attachment: None,
-                from_offset: None,
-                legacy: true,
-            },
-        );
-        ServerMessage::Attached {
-            request_id,
-            session: session.clone(),
-            stream,
-            credit: CREDIT_WINDOW,
-            replay: None,
-        }
-    }
-
-    fn detach(&mut self, client: ClientId, request_id: u32, session: &SessionId) -> ServerMessage {
-        if self
-            .attachments
-            .get(session)
-            .is_some_and(|attachment| attachment.client == client)
-        {
-            self.detach_session(session);
-            self.holder_command(session, &HolderCommand::Detach { attachment: None });
-        }
-        ServerMessage::Done { request_id }
-    }
-
     fn resize(&mut self, request_id: u32, session: &SessionId, size: TerminalSize) -> ServerMessage {
         if let Some(problem) = size_problem(size) {
             return error(Some(request_id), ErrorCode::BadRequest, problem);
@@ -299,32 +280,9 @@ impl Core {
         self.command_session(request_id, session, &HolderCommand::Resize { size })
     }
 
-    fn forward_input(&mut self, client: ClientId, stream: u32, payload: &[u8]) {
-        if let Some(session) = self.session_on(client, stream)
-            && let Ok(encoded) = frame::encode(FrameKind::Input, SESSION_STREAM, payload)
-        {
-            self.send_to_holder(&session, encoded);
-        }
-    }
-
-    fn forward_credit(&mut self, client: ClientId, stream: u32, payload: &[u8]) {
-        if let Some(session) = self.session_on(client, stream)
-            && let Some(bytes) = payload.first_chunk::<4>()
-        {
-            self.send_to_holder(
-                &session,
-                frame::encode_credit(SESSION_STREAM, u32::from_be_bytes(*bytes)),
-            );
-        }
-    }
-
-    fn session_on(&self, client: ClientId, stream: u32) -> Option<SessionId> {
-        self.clients.get(&client)?.streams.get(&stream).cloned()
-    }
-
     /// Removes a closed session and tells every app.
     pub(super) fn forget(&mut self, session: &SessionId) {
-        self.detach_session(session);
+        self.drop_attachments(session);
         if self.registry.remove(session).is_some() {
             let _ = std::fs::remove_file(self.context.run.holder_socket(session));
             tracing::info!(session = %session.0, "session closed");
@@ -341,7 +299,8 @@ fn unknown(request_id: u32) -> ServerMessage {
     error(Some(request_id), ErrorCode::UnknownSession, "no such session")
 }
 
-fn error(request_id: Option<u32>, code: ErrorCode, message: &str) -> ServerMessage {
+/// An error reply.
+pub(super) fn error(request_id: Option<u32>, code: ErrorCode, message: &str) -> ServerMessage {
     ServerMessage::Error {
         request_id,
         code,

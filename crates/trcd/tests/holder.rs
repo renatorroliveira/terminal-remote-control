@@ -157,11 +157,14 @@ fn start_holder() -> PathBuf {
     socket
 }
 
-fn rand_suffix() -> u128 {
-    std::time::SystemTime::now()
+/// A suffix no other test in this run shares: the clock alone repeats when tests start together.
+fn rand_suffix() -> String {
+    static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
-        .as_nanos()
+        .as_nanos();
+    format!("{nanos}-{}", NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
 }
 
 async fn started(program: &str) -> Client {
