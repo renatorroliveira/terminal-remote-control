@@ -5,6 +5,7 @@ import { DEFAULT_INSTALL_ROOT, isInstallRoot, type KnownHost } from '../../share
 import { type ClientRequest, HostRequestError } from '../connection/host-client';
 import type { FindResult } from '../terminal/find';
 import type { TerminalLink } from '../terminal/hyperlinks';
+import type { TerminalConnection } from '../terminal/terminal-view';
 import type {
     AttachFailure,
     KnownHostStore,
@@ -59,6 +60,16 @@ export class FakeWorkspaceClient implements WorkspaceClient {
     /** Records the connect. */
     connect(hostId: string, target: ConnectTarget): void {
         this.calls.push(`connect ${hostId} ${target.destination}`);
+    }
+
+    /** Records the retry. */
+    retry(hostId: string): void {
+        this.calls.push(`retry ${hostId}`);
+    }
+
+    /** Records that the host stops retrying. */
+    stopRetrying(hostId: string): void {
+        this.calls.push(`stop-retrying ${hostId}`);
     }
 
     /** Records the disconnect. */
@@ -191,12 +202,28 @@ export class FakeTerminalHost implements TerminalHost {
     readonly reattached: string[] = [];
 
     /** Records whether a host's terminals may send input. */
-    setHostConnected(hostId: string, connected: boolean): void {
-        if (connected) {
+    setHostConnection(hostId: string, connection: TerminalConnection): void {
+        if (connection === 'connected') {
             this.unreachable.delete(hostId);
         } else {
             this.unreachable.add(hostId);
         }
+    }
+
+    /** Whether the open terminal lacks rows a resync skipped, and how often the gap was filled. */
+    gap = false;
+    fills = 0;
+
+    /** Says whether the open terminal lacks rows. */
+    hasGap(): boolean {
+        return this.gap;
+    }
+
+    /** Fills the gap. */
+    fillGap(): Promise<void> {
+        this.fills += 1;
+        this.gap = false;
+        return Promise.resolve();
     }
 
     /** Records the re-attach; every terminal attaches again. */

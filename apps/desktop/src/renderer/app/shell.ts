@@ -65,6 +65,10 @@ export interface TerminalControls {
     findStep(direction: 'next' | 'previous'): FindResult | undefined;
     /** Ends the search and clears its selection. */
     endFind(): void;
+    /** Whether the open terminal lacks rows a resync skipped (D-45). */
+    hasGap(): boolean;
+    /** Fetches the rows a resync skipped from the open session (D-45). */
+    fillGap(): Promise<void>;
 }
 
 /** The find bar's state (US-1.13). */
@@ -437,7 +441,10 @@ export class Shell {
         this.#options.guide?.open(section);
     }
 
-    /** Opens the find bar for the open session, re-running and announcing a search it still holds (US-1.13). */
+    /**
+     * Opens the find bar for the open session, re-running and announcing a search it still holds (US-1.13). Rows a
+     * resync skipped are fetched, and the search runs again over them (D-45).
+     */
     openFind(): void {
         if (this.#options.workspace.store.getState().open === undefined) {
             this.#announce(shellAnnouncements.noSession);
@@ -449,6 +456,10 @@ export class Shell {
         });
         if (previous !== undefined && previous.query !== '') {
             this.updateFind({});
+        }
+        const { terminals } = this.#options;
+        if (terminals.hasGap()) {
+            void terminals.fillGap().then(() => this.#searchAgain());
         }
     }
 
@@ -727,6 +738,12 @@ export class Shell {
         this.#announce(armed ? shellAnnouncements.nextKey : shellAnnouncements.noSession);
     }
 
+    #searchAgain(): void {
+        if ((this.state.getState().find?.query ?? '') !== '') {
+            this.updateFind({});
+        }
+    }
+
     #announceScreenReader(on: boolean): void {
         this.#announce(on ? screenReaderAnnouncements.on : screenReaderAnnouncements.off);
     }
@@ -753,7 +770,7 @@ export class Shell {
             for (const host of state.hosts) {
                 const before = previous.find((entry) => entry.id === host.id);
                 if (before !== undefined && before.state.status !== host.state.status) {
-                    this.#reportHost(host, state.failureNotice === host.id);
+                    this.#reportHost(before, host, state.failureNotice === host.id);
                 }
                 if (before !== undefined && before.state !== host.state) {
                     this.#reportProgress(before, host);
@@ -796,7 +813,7 @@ export class Shell {
                 politeness: 'assertive',
             });
         }
-        if (!this.#brief() && (was.status !== 'connecting' || was.step !== now.step)) {
+        if (!this.#brief() && !host.reconnecting && (was.status !== 'connecting' || was.step !== now.step)) {
             const step = intl.formatMessage(connectStepMessages[now.step]);
             announcer.announce(intl.formatMessage(connectStepAnnouncement, { host: host.destination, step }), {
                 group: host.id,
@@ -804,10 +821,15 @@ export class Shell {
         }
     }
 
-    #reportHost(host: HostEntry, inDialog: boolean): void {
+    #reportHost(before: HostEntry, host: HostEntry, inDialog: boolean): void {
         const { intl, announcer, notifications } = this.#options;
         const state = host.state;
-        if (state.status === 'connected') {
+        if (state.status === 'connected' && before.reconnecting) {
+            this.playCue('connected');
+            const text = intl.formatMessage(hostAnnouncements.reconnected, { host: host.destination });
+            announcer.announce(text, { group: host.id });
+            notifications.add({ text, level: 'info' });
+        } else if (state.status === 'connected') {
             this.playCue('connected');
             announcer.announce(intl.formatMessage(hostAnnouncements.connected, { host: host.destination }), {
                 group: host.id,

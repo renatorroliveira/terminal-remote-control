@@ -4,6 +4,8 @@ import { RESERVED_REQUEST_IDS } from '../../shared/connection';
 const PING_INTERVAL_MS = 5_000;
 /** How long a ping may stay unanswered before the connection counts as dead (NFR-07). */
 const PING_TIMEOUT_MS = 15_000;
+/** How long a check after a wake or a network change may go unanswered: such a connection is likely gone. */
+const CHECK_TIMEOUT_MS = 5_000;
 
 /**
  * Application-level liveness on top of ssh's keepalives: a ping every 5 s and a timeout 15 s after an unanswered
@@ -35,6 +37,19 @@ export class Pinger {
         }
     }
 
+    /** Pings now and gives the answer 5 s, after a wake or a network change, when the connection is likely gone. */
+    checkNow(): void {
+        if (this.#timer === undefined) {
+            return;
+        }
+        if (this.#outstanding === undefined) {
+            this.#outstanding = { id: this.#next, sentAt: Date.now() };
+            this.#next = this.#next + 1 > 0xffff_ffff ? RESERVED_REQUEST_IDS : this.#next + 1;
+            this.#send(this.#outstanding.id);
+        }
+        this.#watchdog(CHECK_TIMEOUT_MS);
+    }
+
     /** Stops pinging. */
     stop(): void {
         clearInterval(this.#timer);
@@ -48,11 +63,11 @@ export class Pinger {
             this.#outstanding = { id: this.#next, sentAt: Date.now() };
             this.#next = this.#next + 1 > 0xffff_ffff ? RESERVED_REQUEST_IDS : this.#next + 1;
             this.#send(this.#outstanding.id);
-            this.#watchdog();
+            this.#watchdog(PING_TIMEOUT_MS);
         }
     }
 
-    #watchdog(): void {
+    #watchdog(timeoutMs: number): void {
         const sent = this.#outstanding;
         clearTimeout(this.#watchdogTimer);
         this.#watchdogTimer = setTimeout(() => {
@@ -60,6 +75,6 @@ export class Pinger {
                 this.stop();
                 this.#onTimeout();
             }
-        }, PING_TIMEOUT_MS);
+        }, timeoutMs);
     }
 }

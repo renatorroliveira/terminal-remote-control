@@ -162,6 +162,20 @@ SHA-256>.service` with `RestartPreventExitStatus=75 78` and the login umask; hol
 - §3.3's terminal behavior; Reconnecting in the session tree and status bar; "Reconnected" shown and announced;
   Retry and Stop retrying per host.
 
+As built (ST-29 and ST-30, 2026-11-14):
+
+- A failed attempt while reconnecting reaches the renderer only as `reconnecting` with its failure, so retries raise
+  no notification each time. A connection the user starts that fails before it ever connected is reported as in E1
+  and not retried (US-1.3); the launch's connections (`restore`) and every host that has connected retry.
+- The host's button tries again now while it reconnects, and retries after a failure ("Retry connecting to
+  <host>"); Stop reconnecting is in its context menu and the palette. A lost host's connection steps are not
+  announced; "Reconnected to <host>" is, and listed, and merges with "Connection to <host> lost" when the two come
+  together.
+- The output announcer holds speech from an attach or resync to its `synced` and the parse of what came before it,
+  so no replayed line is spoken; a protocol 1 daemon keeps E1's rule (the first settled output is not spoken).
+- A resync replaces the buffer once the output queued before it is parsed. Review mode and Find fetch the rows a
+  screen resync skipped first; otherwise the gap fills 1 s after output pauses.
+
 **ST-31 Restore at launch** (US-2.3, NFR-06)
 
 - `sessions.json`, parallel connects, cached sessions shown as Reconnecting, failures that show their reason and
@@ -225,8 +239,8 @@ SHA-256>.service` with `RestartPreventExitStatus=75 78` and the login umask; hol
 | ST-26 | Done    | —      |
 | ST-27 | Done    | —      |
 | ST-28 | Done    | —      |
-| ST-29 | Pending | —      |
-| ST-30 | Pending | —      |
+| ST-29 | Done    | —      |
+| ST-30 | Done    | —      |
 | ST-31 | Pending | —      |
 | ST-32 | Pending | —      |
 | ST-33 | Pending | —      |

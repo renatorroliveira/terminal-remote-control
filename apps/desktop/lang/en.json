@@ -39,9 +39,17 @@
     "defaultMessage": "Couldn’t connect to {host}. {problem}",
     "description": "Announced and listed when a connection fails."
   },
+  "announce.hostReconnected": {
+    "defaultMessage": "Reconnected to {host}.",
+    "description": "Announced and listed when a lost host reconnects by itself (US-2.2.2)."
+  },
   "announce.inputNotReady": {
     "defaultMessage": "Session still opening — input not sent.",
     "description": "Announced assertively when the user types before a session has attached."
+  },
+  "announce.inputReconnecting": {
+    "defaultMessage": "Reconnecting — input not sent.",
+    "description": "Announced assertively when the user types while the host reconnects."
   },
   "announce.inputRefused": {
     "defaultMessage": "Disconnected — input not sent.",
@@ -719,9 +727,21 @@
     "defaultMessage": "Change install location of {host}…",
     "description": "Host action that opens a dialog."
   },
+  "host.action.retry": {
+    "defaultMessage": "Reconnect {host} now",
+    "description": "Accessible name of the connection button while the host waits to reconnect by itself."
+  },
+  "host.action.retryFailed": {
+    "defaultMessage": "Retry connecting to {host}",
+    "description": "Accessible name of the connection button of a host whose connection failed."
+  },
   "host.action.reviewKey": {
     "defaultMessage": "Review the host key of {host}",
     "description": "Accessible name of the connection button while a host key waits for the user."
+  },
+  "host.action.stopRetrying": {
+    "defaultMessage": "Stop reconnecting to {host}",
+    "description": "Host action while the host reconnects by itself (US-2.2.3)."
   },
   "host.action.test": {
     "defaultMessage": "Test connection to {host}",
@@ -762,6 +782,14 @@
   "host.keyQuestion": {
     "defaultMessage": "{host} presented an unknown {type} host key, {fingerprint}. Trust it?",
     "description": "Question shown when a host presents a key the user has not trusted yet."
+  },
+  "host.reconnecting": {
+    "defaultMessage": "Reconnecting",
+    "description": "Host connection state while the app reconnects a lost host by itself."
+  },
+  "host.reconnectingDetails": {
+    "defaultMessage": "Reconnecting. Last attempt: {details}",
+    "description": "Description of a host that reconnects by itself, with what ssh or the host reported last time."
   },
   "host.testPassed": {
     "defaultMessage": "The connection to {host} works.",
@@ -1086,6 +1114,10 @@
   "session.failedToStart": {
     "defaultMessage": "Failed to start",
     "description": "Session state."
+  },
+  "session.reconnecting": {
+    "defaultMessage": "Reconnecting",
+    "description": "Session state while its host reconnects by itself."
   },
   "session.running": {
     "defaultMessage": "Running",
@@ -1579,6 +1611,10 @@
     "defaultMessage": "Session still opening — input not sent",
     "description": "Shown when the user types before a session has attached; nothing was sent."
   },
+  "terminal.inputReconnecting": {
+    "defaultMessage": "Reconnecting — input not sent",
+    "description": "Shown and announced when the user types while the host reconnects; nothing was sent."
+  },
   "terminal.inputRefused": {
     "defaultMessage": "Disconnected — input not sent",
     "description": "Shown and announced when the user types while the host is disconnected; nothing was sent."
@@ -1590,6 +1626,10 @@
   "terminal.labelDisconnected": {
     "defaultMessage": "{session}, {host}, disconnected",
     "description": "Accessible name of a terminal whose host is not connected."
+  },
+  "terminal.labelReconnecting": {
+    "defaultMessage": "{session}, {host}, reconnecting",
+    "description": "Accessible name of a terminal whose host reconnects by itself."
   },
   "terminal.outputBelow": {
     "defaultMessage": "New output below",

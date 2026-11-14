@@ -2,7 +2,8 @@ import type { ExitStatus, ServerMessage, SessionInfo } from '@trc/protocol';
 import { describe, expect, it } from 'vitest';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import type { KnownHost } from '../../shared/hosts';
-import { type ClientRequest, HostRequestError } from '../connection/host-client';
+import { type ClientRequest, type ConnectOptions, HostRequestError } from '../connection/host-client';
+import type { TerminalConnection } from '../terminal/terminal-view';
 import {
     type AttachFailure,
     type SessionPreferences,
@@ -10,7 +11,7 @@ import {
     type WorkspaceClient,
     WorkspaceController,
 } from './workspace-controller';
-import { sessionKey } from './workspace-model';
+import { hostGroups, sessionKey } from './workspace-model';
 import { FakeKnownHostStore } from './workspace-test-doubles';
 
 const info = (id: string, order = 0): SessionInfo => ({
@@ -34,12 +35,24 @@ const info = (id: string, order = 0): SessionInfo => ({
 class FakeClient implements WorkspaceClient {
     readonly calls: string[] = [];
     readonly targets: [string, ConnectTarget][] = [];
+    readonly restored: string[] = [];
     readonly requests: ClientRequest[] = [];
     readonly states = new Map<string, (state: ConnectionState) => void>();
     readonly messages = new Map<string, (message: ServerMessage) => void>();
 
-    connect(hostId: string, target: ConnectTarget): void {
+    connect(hostId: string, target: ConnectTarget, options?: ConnectOptions): void {
         this.targets.push([hostId, target]);
+        if (options?.restore === true) {
+            this.restored.push(hostId);
+        }
+    }
+
+    retry(hostId: string): void {
+        this.calls.push(`retry ${hostId}`);
+    }
+
+    stopRetrying(hostId: string): void {
+        this.calls.push(`stop-retrying ${hostId}`);
     }
 
     disconnect(hostId: string): void {
@@ -81,8 +94,8 @@ class FakeTerminals implements TerminalHost {
     readonly reachable: string[] = [];
     readonly reattached: string[] = [];
 
-    setHostConnected(hostId: string, connected: boolean): void {
-        this.reachable.push(`${hostId}:${connected}`);
+    setHostConnection(hostId: string, connection: TerminalConnection): void {
+        this.reachable.push(`${hostId}:${connection}`);
     }
 
     /** Sessions whose re-attach fails, as the daemon no longer knows them. */
@@ -206,11 +219,82 @@ describe('WorkspaceController: connection loss (US-1.14)', () => {
         client.states.get(host.id)?.({ status: 'disconnected', reason: 'ping-timeout' });
         expect(workspace.store.getState().sessions.get(host.id)).toHaveLength(2);
         expect(terminals.closed).toEqual([]);
-        expect(terminals.reachable).toEqual([`${host.id}:false`]);
+        expect(terminals.reachable).toEqual([`${host.id}:disconnected`]);
         client.states.get(host.id)?.(connected);
         expect(terminals.reattached).toEqual([host.id, host.id]);
     });
 });
+
+const lost: ConnectionState = { status: 'disconnected', reason: 'ping-timeout' };
+const reconnecting = (attempt: number): ConnectionState => ({
+    status: 'reconnecting',
+    attempt,
+    nextAttemptAt: 0,
+    failure: undefined,
+});
+
+describe('WorkspaceController: reconnecting (US-2.2)', () => {
+    it('shows a lost host and its sessions Reconnecting until it connects, then re-attaches them', async () => {
+        const { client, terminals, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        client.states.get(host.id)?.(connected);
+        await expect.poll(() => workspace.store.getState().sessions.get(host.id)?.length).toBe(2);
+        client.states.get(host.id)?.(lost);
+        client.states.get(host.id)?.(reconnecting(1));
+        client.states.get(host.id)?.({ status: 'connecting', step: 'connecting', touch: undefined });
+        const group = hostGroups(workspace.store.getState())[0];
+        expect(group?.host.reconnecting).toBe(true);
+        expect(group?.sessions.map((item) => item.reconnecting)).toEqual([true, true]);
+        expect(terminals.reachable).toEqual([`${host.id}:disconnected`, `${host.id}:reconnecting`]);
+        expect(workspace.connectionAction(group?.host ?? fail())).toBe('cancel');
+        client.states.get(host.id)?.(connected);
+        expect(workspace.store.getState().hosts[0]?.reconnecting).toBe(false);
+        expect(terminals.reattached).toEqual([host.id, host.id]);
+    });
+
+    it('raises no dialog for a reconnection that fails, and says why in the host’s state (US-2.2.4)', async () => {
+        const { client, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        workspace.toggleConnection(host.id);
+        client.states.get(host.id)?.(connected);
+        client.states.get(host.id)?.(lost);
+        client.states.get(host.id)?.(reconnecting(1));
+        client.states.get(host.id)?.({
+            status: 'failed',
+            failure: { kind: 'authentication', cause: 'agent-empty', details: '' },
+        });
+        expect(workspace.store.getState().failureNotice).toBeUndefined();
+        expect(workspace.store.getState().hosts[0]?.reconnecting).toBe(false);
+        expect(workspace.store.getState().hosts[0]?.state.status).toBe('failed');
+    });
+});
+
+describe('WorkspaceController: retrying (US-2.2.3, US-2.3.3)', () => {
+    it('retries now, or stops retrying, per host (US-2.2.3)', async () => {
+        const { client, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        client.states.get(host.id)?.(connected);
+        client.states.get(host.id)?.(lost);
+        client.states.get(host.id)?.(reconnecting(2));
+        const entry = workspace.store.getState().hosts[0] ?? fail();
+        expect(workspace.connectionAction(entry)).toBe('retry');
+        workspace.toggleConnection(host.id);
+        workspace.stopRetrying(host.id);
+        expect(client.calls).toEqual([`retry ${host.id}`, `stop-retrying ${host.id}`]);
+    });
+
+    it('connects every known host at launch to restore it, retrying a failure (US-2.3.3)', async () => {
+        const { client, hosts, workspace } = setup();
+        hosts.hosts.push({ id: 'host-a', address: { destination: 'devbox-1' }, installRoot: '~/.trc' });
+        await workspace.load();
+        workspace.connectAll();
+        expect(client.restored).toEqual(['host-a']);
+    });
+});
+
+function fail(): never {
+    throw new Error('missing');
+}
 
 describe('WorkspaceController: sessions (US-1.7, US-1.8)', () => {
     it('opens a session, and creates one on the host the user picked', async () => {

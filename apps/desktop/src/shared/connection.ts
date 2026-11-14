@@ -75,6 +75,16 @@ export type ConnectionState =
     | { readonly status: 'connected'; readonly daemon: DaemonInfo }
     | { readonly status: 'failed'; readonly failure: ConnectionFailure }
     | { readonly status: 'disconnected'; readonly reason: LossReason }
+    | {
+          /** Waiting to reconnect on its own after a loss or a failure the network may fix (US-2.2.2). */
+          readonly status: 'reconnecting';
+          /** The attempt that starts next, 1 for the first. */
+          readonly attempt: number;
+          /** When it starts, in milliseconds since the Unix epoch. */
+          readonly nextAttemptAt: number;
+          /** Why the last attempt failed; none right after the loss. */
+          readonly failure: ConnectionFailure | undefined;
+      }
     | { readonly status: 'closed' };
 
 /** How the renderer names a host connection and where it goes. */
@@ -89,13 +99,23 @@ export interface ConnectTarget {
 
 /** A message from the renderer to the connection host, over the MessagePort. */
 export type HostRequest =
-    | { readonly type: 'connect'; readonly hostId: string; readonly target: ConnectTarget }
+    | {
+          readonly type: 'connect';
+          readonly hostId: string;
+          readonly target: ConnectTarget;
+          /** The launch restores the host, so a failed first connection retries too (US-2.3.3). */
+          readonly restore?: true;
+      }
     | { readonly type: 'send'; readonly hostId: string; readonly message: ClientMessage }
     | { readonly type: 'input'; readonly hostId: string; readonly stream: number; readonly data: Uint8Array }
     | { readonly type: 'credit'; readonly hostId: string; readonly stream: number; readonly bytes: number }
     | { readonly type: 'accept-host-key'; readonly hostId: string; readonly fingerprint: string }
     | { readonly type: 'reject-host-key'; readonly hostId: string }
-    | { readonly type: 'disconnect'; readonly hostId: string };
+    | { readonly type: 'disconnect'; readonly hostId: string }
+    /** Tries to reconnect now, after a failure that waits for the user or while backing off (US-2.2.3, US-2.2.4). */
+    | { readonly type: 'retry'; readonly hostId: string }
+    /** Stops reconnecting on its own until the user connects again (US-2.2.3). */
+    | { readonly type: 'stop-retrying'; readonly hostId: string };
 
 /** A message from the connection host to the renderer. */
 export type HostEvent =

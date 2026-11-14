@@ -129,10 +129,30 @@
       "value": "problem"
     }
   ],
+  "announce.hostReconnected": [
+    {
+      "type": 0,
+      "value": "Reconnected to "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "announce.inputNotReady": [
     {
       "type": 0,
       "value": "Session still opening — input not sent."
+    }
+  ],
+  "announce.inputReconnecting": [
+    {
+      "type": 0,
+      "value": "Reconnecting — input not sent."
     }
   ],
   "announce.inputRefused": [
@@ -1681,10 +1701,44 @@
       "value": "…"
     }
   ],
+  "host.action.retry": [
+    {
+      "type": 0,
+      "value": "Reconnect "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " now"
+    }
+  ],
+  "host.action.retryFailed": [
+    {
+      "type": 0,
+      "value": "Retry connecting to "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
   "host.action.reviewKey": [
     {
       "type": 0,
       "value": "Review the host key of "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "host.action.stopRetrying": [
+    {
+      "type": 0,
+      "value": "Stop reconnecting to "
     },
     {
       "type": 1,
@@ -1777,6 +1831,22 @@
     {
       "type": 0,
       "value": ". Trust it?"
+    }
+  ],
+  "host.reconnecting": [
+    {
+      "type": 0,
+      "value": "Reconnecting"
+    }
+  ],
+  "host.reconnectingDetails": [
+    {
+      "type": 0,
+      "value": "Reconnecting. Last attempt: "
+    },
+    {
+      "type": 1,
+      "value": "details"
     }
   ],
   "host.testPassed": [
@@ -2459,6 +2529,12 @@
     {
       "type": 0,
       "value": "Failed to start"
+    }
+  ],
+  "session.reconnecting": [
+    {
+      "type": 0,
+      "value": "Reconnecting"
     }
   ],
   "session.running": [
@@ -3311,6 +3387,12 @@
       "value": "Session still opening — input not sent"
     }
   ],
+  "terminal.inputReconnecting": [
+    {
+      "type": 0,
+      "value": "Reconnecting — input not sent"
+    }
+  ],
   "terminal.inputRefused": [
     {
       "type": 0,
@@ -3347,6 +3429,24 @@
     {
       "type": 0,
       "value": ", disconnected"
+    }
+  ],
+  "terminal.labelReconnecting": [
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": ", "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ", reconnecting"
     }
   ],
   "terminal.outputBelow": [

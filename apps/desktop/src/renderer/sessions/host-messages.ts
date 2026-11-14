@@ -41,6 +41,11 @@ export const hostActionMessages = {
         defaultMessage: 'Change install location of {host}…',
         description: 'Host action that opens a dialog.',
     }),
+    stopRetrying: defineMessage<{ host: string }>({
+        id: 'host.action.stopRetrying',
+        defaultMessage: 'Stop reconnecting to {host}',
+        description: 'Host action while the host reconnects by itself (US-2.2.3).',
+    }),
     forget: defineMessage<{ host: string }>({
         id: 'host.action.forget',
         defaultMessage: 'Forget {host}…',

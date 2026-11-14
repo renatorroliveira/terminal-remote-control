@@ -35,6 +35,9 @@ class FakeTransport implements SessionTransport {
     holdCreate: Promise<void> | undefined;
     readonly #outputs = new Map<number, (data: Uint8Array) => void>();
     readonly #refusedListeners = new Set<(hostId: string) => void>();
+    readonly #messageListeners = new Set<(message: ServerMessage) => void>();
+    /** What attach replies say they replay; absent like a protocol 1 daemon's. */
+    replay: 'delta' | 'snapshot' | undefined;
     /** Input sent on each stream. */
     readonly inputs: string[] = [];
     #stream = 0;
@@ -49,6 +52,18 @@ class FakeTransport implements SessionTransport {
     onInputRefused(listener: (hostId: string) => void): () => void {
         this.#refusedListeners.add(listener);
         return () => this.#refusedListeners.delete(listener);
+    }
+
+    onMessage(_hostId: string, listener: (message: ServerMessage) => void): () => void {
+        this.#messageListeners.add(listener);
+        return () => this.#messageListeners.delete(listener);
+    }
+
+    /** Sends a daemon message that answers no request. */
+    push(message: ServerMessage): void {
+        for (const listener of [...this.#messageListeners]) {
+            listener(message);
+        }
     }
 
     /** Sends output on the stream the session attached with. */
@@ -67,27 +82,31 @@ class FakeTransport implements SessionTransport {
             const created: ServerMessage = { type: 'created', requestId: 1, session: info('new') };
             return (this.holdCreate ?? Promise.resolve()).then(() => created);
         }
-        if (request.type === 'attach' && this.refuse.has(request.session)) {
-            return Promise.reject(new Error('unknownSession'));
-        }
-        if (request.type === 'attach' && this.drop.has(request.session)) {
-            return Promise.reject(new HostRequestError('disconnected', 'connection lost'));
-        }
-        if (request.type === 'attach' && this.hold !== undefined) {
-            const hold = this.hold;
-            return hold.then(() => this.request(_hostId, { ...request }));
-        }
         if (request.type === 'attach') {
-            this.#stream += 1;
-            return Promise.resolve({
-                type: 'attached',
-                requestId: 2,
-                session: request.session,
-                stream: this.#stream,
-                credit: 1,
-            });
+            return this.#attach(_hostId, request);
         }
         return Promise.resolve({ type: 'done', requestId: 3 });
+    }
+
+    #attach(hostId: string, request: Extract<ClientRequest, { type: 'attach' }>): Promise<ServerMessage> {
+        if (this.refuse.has(request.session)) {
+            return Promise.reject(new Error('unknownSession'));
+        }
+        if (this.drop.has(request.session)) {
+            return Promise.reject(new HostRequestError('disconnected', 'connection lost'));
+        }
+        if (this.hold !== undefined) {
+            return this.hold.then(() => this.request(hostId, { ...request }));
+        }
+        this.#stream += 1;
+        return Promise.resolve({
+            type: 'attached',
+            requestId: 2,
+            session: request.session,
+            stream: this.#stream,
+            credit: 1,
+            ...(this.replay === undefined ? {} : { replay: this.replay }),
+        });
     }
 
     input(_hostId: string, stream: number, text: string): void {
@@ -160,7 +179,9 @@ function setup() {
             outputBelow: 'New output below',
             review: `Review ${session.profile.name}, ${hostId}`,
             disconnected: `${session.profile.name}, ${hostId}, disconnected`,
+            reconnecting: `${session.profile.name}, ${hostId}, reconnecting`,
             inputRefused: 'Disconnected — input not sent',
+            inputReconnecting: 'Reconnecting — input not sent',
             inputNotReady: 'Session still opening — input not sent',
         }),
         speech,
@@ -348,7 +369,7 @@ describe('TerminalRegistry: closing and losing hosts (US-1.8, US-1.14)', () => {
         registry.show('h2/b', 'h2', info('b'));
         await expect.poll(() => transport.attached(1) && transport.attached(2)).toBe(true);
         transport.output(1, 'old screen');
-        registry.setHostConnected('h1', false);
+        registry.setHostConnection('h1', 'disconnected');
         registry.show('h1/c', 'h1', info('c'));
         await expect.poll(() => requestsOf(transport, 'attach')).toBe(3);
         expect(
@@ -372,7 +393,7 @@ describe('TerminalRegistry: reconnecting hosts (US-1.14.2)', () => {
         registry.show('h1/a', 'h1', info('a'));
         registry.show('h1/b', 'h1', info('b'));
         await expect.poll(() => requestsOf(transport, 'attach')).toBe(2);
-        registry.setHostConnected('h1', false);
+        registry.setHostConnection('h1', 'disconnected');
         let release = (): void => undefined;
         transport.hold = new Promise((done) => {
             release = done;
@@ -395,7 +416,7 @@ describe('TerminalRegistry: reconnecting hosts (US-1.14.2)', () => {
         await expect.poll(() => requestsOf(transport, 'attach')).toBe(1);
         transport.drop.add('b');
         registry.show('h1/b', 'h1', info('b'));
-        registry.setHostConnected('h1', false);
+        registry.setHostConnection('h1', 'disconnected');
         transport.drop.add('a');
         expect(await registry.reattachHost('h1')).toEqual([]);
         expect(failed).toEqual([]);
@@ -408,6 +429,102 @@ describe('TerminalRegistry: reconnecting hosts (US-1.14.2)', () => {
         registry.show('h1/b', 'h1', info('b'));
         registry.closeSession('h1/a');
         expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(1);
+    });
+});
+
+const synced = (stream: number, offset: number): ServerMessage => ({ type: 'synced', session: 'a', stream, offset });
+const resync = (stream: number, kind: 'screen' | 'full'): ServerMessage => ({
+    type: 'resync',
+    session: 'a',
+    stream,
+    kind,
+});
+const reviewField = (area: HTMLElement): HTMLTextAreaElement | null =>
+    area.querySelector('textarea[aria-label^="Review"]');
+
+describe('TerminalRegistry: protocol 2 (US-2.2.2, D-04)', () => {
+    it('says Reconnecting on its terminals, and that typing is not sent, while the host reconnects', async () => {
+        const { area, transport, registry, notices } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(1)).toBe(true);
+        registry.setHostConnection('h1', 'reconnecting');
+        expect(visibleSurfaces(area)).toEqual(['bash, h1, reconnecting']);
+        typeInto(area, 'ls');
+        expect(area.querySelector('[data-input-refused]')?.textContent).toBe('Reconnecting — input not sent');
+        transport.refuseInputs('h1');
+        expect(notices).toEqual(['h1/a input-refused', 'h1/a input-refused']);
+        expect(transport.inputs).toEqual([]);
+    });
+
+    it('keeps the buffer when the daemon replays only what was missed, and rebuilds it for a snapshot', async () => {
+        const { area, transport, registry } = setup();
+        transport.replay = 'snapshot';
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(1)).toBe(true);
+        transport.push(synced(1, 0));
+        transport.output(1, 'old screen\r\n');
+        const surface = area.querySelector<HTMLElement>('[role="textbox"]');
+        await expect.poll(() => surface?.textContent).toContain('old screen');
+        registry.setHostConnection('h1', 'reconnecting');
+        transport.replay = 'delta';
+        await registry.reattachHost('h1');
+        expect(transport.requests.filter((request) => request.type === 'attach').at(-1)).toEqual({
+            type: 'attach',
+            session: 'a',
+            mode: 'full',
+            fromOffset: 12,
+        });
+        transport.output(2, 'missed');
+        await expect.poll(() => surface?.textContent).toContain('missed');
+        expect(surface?.textContent).toContain('old screen');
+        registry.setHostConnection('h1', 'disconnected');
+        transport.replay = 'snapshot';
+        await registry.reattachHost('h1');
+        transport.output(3, 'fresh');
+        await expect.poll(() => surface?.textContent).toContain('fresh');
+        expect(surface?.textContent).not.toContain('old screen');
+    });
+});
+
+describe('TerminalRegistry: resyncs and gaps (D-04, D-45)', () => {
+    it('replaces the buffer on a resync, and fills the rows it skipped before review mode opens', async () => {
+        const { area, transport, registry } = setup();
+        transport.replay = 'snapshot';
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(1)).toBe(true);
+        transport.push(synced(1, 0));
+        transport.output(1, 'before\r\n');
+        transport.push(resync(1, 'screen'));
+        transport.output(1, 'screen only\r\n');
+        transport.push(synced(1, 500));
+        expect(registry.toggleReview()).toBe(true);
+        expect(requestsOf(transport, 'refresh')).toBe(1);
+        expect(reviewField(area)).toBeNull();
+        transport.push(resync(1, 'full'));
+        transport.output(1, 'whole buffer\r\n');
+        transport.push(synced(1, 600));
+        await expect.poll(() => reviewField(area)?.value).toContain('whole buffer');
+        expect(reviewField(area)?.value).not.toContain('before');
+    });
+
+    it('fills the rows a resync skipped before a search, and only then', async () => {
+        const { transport, registry } = setup();
+        transport.replay = 'snapshot';
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(1)).toBe(true);
+        transport.push(synced(1, 0));
+        expect(registry.hasGap()).toBe(false);
+        await registry.fillGap();
+        expect(requestsOf(transport, 'refresh')).toBe(0);
+        transport.push(resync(1, 'screen'));
+        transport.push(synced(1, 500));
+        expect(registry.hasGap()).toBe(true);
+        const filled = registry.fillGap();
+        expect(requestsOf(transport, 'refresh')).toBe(1);
+        transport.push(resync(1, 'full'));
+        transport.push(synced(1, 600));
+        await filled;
+        expect(registry.hasGap()).toBe(false);
     });
 });
 

@@ -121,19 +121,28 @@ find them in the command palette:
 
 ## Connect
 
-When the app opens, it connects to every known host. A host that fails stays disconnected and shows no dialog.
+When the app opens, it connects to every known host. A host that fails shows no dialog; if the network might fix
+the failure, TRC keeps trying, as after a lost connection.
 
 Each host in the Hosts section shows its state as an icon and as text: Not connected, Connecting, Connected,
-Connection failed or Disconnected. Its button connects, cancels or disconnects it.
+Reconnecting, Connection failed or Disconnected. Its button connects, cancels or disconnects it; while the host
+reconnects, it tries again now, and after a failure it retries.
 
 If your key is a security key, TRC shows and says "Touch your security key for <host>" while ssh waits for the
 touch.
 
-When a working connection drops, TRC says "Connection to <host> lost" and lists it in the notifications. The
-host's sessions stay in the list, marked Disconnected, and their terminals take no input: a key press is not sent
-and not kept for later, and TRC shows and says "Disconnected — input not sent". Choose the host's Connect button
-to reconnect: the sessions still running on the host come back, and each open terminal attaches to its session
-again.
+When a working connection drops, TRC says "Connection to <host> lost", lists it in the notifications, and
+reconnects by itself: at once, then after 1, 2 and 4 seconds, then every 5 seconds for 5 minutes, then every 30
+seconds. When your Mac wakes or its network changes, it tries at once. Your sessions keep running on the host
+the whole time. While TRC reconnects, the host's sessions show Reconnecting and their terminals take no input: a
+key press is not sent and not kept for later, and TRC shows and says "Reconnecting — input not sent". Once the
+host is back, TRC says "Reconnected to <host>" and each open terminal picks up where it left off, with the output
+it missed added below what it already showed. When a host has more missed output than it keeps, the terminal
+shows the session's whole buffer again instead.
+
+To stop TRC trying, choose Stop reconnecting to <host> in the host's context menu or the command palette; the
+host's sessions then show Disconnected until you connect it. When reconnecting needs you, for example because
+the agent has no key the host accepts, TRC stops trying, says why and lists it, and the host's button retries.
 
 When a connection you started fails, a dialog names the host, explains the reason (for example, the agent has no
 key the host accepts, the host is unreachable, or the connection timed out) and offers the details ssh reported.
@@ -259,7 +268,7 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 - **Status bar.** It shows the open session's host and its connection, the daemon version on that host, the Tab
   focus mode and mute buttons, and how many notifications are waiting.
 - **Notifications.** Connection failures and lost connections stay in the list until you dismiss them, including
-  failures while connecting at launch. TRC also says when a host connects or its connection is lost.
+  failures while connecting at launch. TRC also says when a host connects, reconnects or loses its connection.
 - **Menus.** View and Terminal hold the same commands, with their Command shortcuts.
 
 ## Settings

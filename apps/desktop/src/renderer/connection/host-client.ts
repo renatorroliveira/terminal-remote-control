@@ -37,7 +37,18 @@ interface Pending {
 
 type Listener<T> = (value: T) => void;
 
-const CONNECTION_ENDED: ReadonlySet<ConnectionState['status']> = new Set(['failed', 'disconnected', 'closed']);
+const CONNECTION_ENDED: ReadonlySet<ConnectionState['status']> = new Set([
+    'failed',
+    'disconnected',
+    'reconnecting',
+    'closed',
+]);
+
+/** How a host is connected. */
+export interface ConnectOptions {
+    /** The launch restores the host, so a failed first connection retries as after a loss (US-2.3.3). */
+    readonly restore?: boolean;
+}
 
 /**
  * The renderer's side of the MessagePort to the connection host: connects hosts, correlates daemon requests with
@@ -59,9 +70,19 @@ export class HostClient {
         port.onmessage = (event: MessageEvent<HostEvent>) => this.#receive(event.data);
     }
 
-    /** Connects a host, or retries a failed connection. */
-    connect(hostId: string, target: ConnectTarget): void {
-        this.#post({ type: 'connect', hostId, target });
+    /** Connects a host, or retries a failed connection; from then on it reconnects by itself after a loss (US-2.2). */
+    connect(hostId: string, target: ConnectTarget, options: ConnectOptions = {}): void {
+        this.#post({ type: 'connect', hostId, target, ...(options.restore === true ? { restore: true } : {}) });
+    }
+
+    /** Tries to reconnect a host now instead of at its next attempt (US-2.2.3). */
+    retry(hostId: string): void {
+        this.#post({ type: 'retry', hostId });
+    }
+
+    /** Stops a host reconnecting by itself until the user connects it again (US-2.2.3). */
+    stopRetrying(hostId: string): void {
+        this.#post({ type: 'stop-retrying', hostId });
     }
 
     /** Closes a host's connection. */

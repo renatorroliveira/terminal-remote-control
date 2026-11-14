@@ -146,7 +146,7 @@ describe('App: failed connections (US-1.3)', () => {
         expect(results.violations).toEqual([]);
         await userEvent.keyboard('{Enter}');
         await expect.element(alert).not.toBeInTheDocument();
-        await expect.element(screen.getByRole('button', { name: 'Connect devbox-1' })).toHaveFocus();
+        await expect.element(screen.getByRole('button', { name: 'Retry connecting to devbox-1' })).toHaveFocus();
     });
 });
 
@@ -361,14 +361,15 @@ describe('App: host key dialog (US-1.2.1)', () => {
     });
 });
 
-describe('App: forgetting and moving hosts (A11Y-11.9, US-1.4.3, US-1.1.5)', () => {
-    async function hostMenu(screen: AppScreen, item: string) {
-        const row = screen.getByRole('list', { name: 'Known hosts' }).getByRole('button', { name: /devbox-1/ });
-        (row.element() as HTMLElement).focus();
-        await userEvent.keyboard('{Shift>}{F10}{/Shift}');
-        await screen.getByRole('menuitem', { name: item }).click();
-    }
+/** Opens the host row's context menu and chooses `item`. */
+async function hostMenu(screen: AppScreen, item: string) {
+    const row = screen.getByRole('list', { name: 'Known hosts' }).getByRole('button', { name: /devbox-1/ });
+    (row.element() as HTMLElement).focus();
+    await userEvent.keyboard('{Shift>}{F10}{/Shift}');
+    await screen.getByRole('menuitem', { name: item }).click();
+}
 
+describe('App: forgetting and moving hosts (A11Y-11.9, US-1.4.3, US-1.1.5)', () => {
     it('forgets a host only after a confirmation that names what it removes', async () => {
         await page.viewport(1400, 800);
         onTestFinished(installTokens());
@@ -417,6 +418,22 @@ describe('App: forgetting and moving hosts (A11Y-11.9, US-1.4.3, US-1.1.5)', () 
         client.push('host-0', CONNECTED);
         await expect.poll(() => spoken).toContain('The connection to devbox-1 works.');
         expect(client.calls).toContain('disconnect host-0');
+    });
+});
+
+describe('App: reconnecting hosts (US-2.2)', () => {
+    it('shows a lost host Reconnecting, and retries it now or stops it retrying (US-2.2.2, US-2.2.3)', async () => {
+        await page.viewport(1400, 800);
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        client.push('host-0', { status: 'disconnected', reason: 'ping-timeout' });
+        client.push('host-0', { status: 'reconnecting', attempt: 2, nextAttemptAt: 0, failure: undefined });
+        await expect.element(screen.getByRole('treeitem', { name: 'bash, Reconnecting' })).toBeInTheDocument();
+        await screen.getByRole('button', { name: 'Reconnect devbox-1 now' }).click();
+        expect(client.calls.at(-1)).toBe('retry host-0');
+        await hostMenu(screen, 'Stop reconnecting to devbox-1');
+        expect(client.calls.at(-1)).toBe('stop-retrying host-0');
     });
 });
 

@@ -19,6 +19,7 @@ const hostRequestSchema: z.ZodType<HostRequest> = z.discriminatedUnion('type', [
             port: z.number().int().min(1).max(65_535).exactOptional(),
             installRoot: z.string().min(1).max(4096),
         }),
+        restore: z.literal(true).exactOptional(),
     }),
     z.strictObject({ type: z.literal('send'), hostId, message: renderMessage }),
     z.strictObject({ type: z.literal('input'), hostId, stream, data: z.instanceof(Uint8Array) }),
@@ -26,6 +27,8 @@ const hostRequestSchema: z.ZodType<HostRequest> = z.discriminatedUnion('type', [
     z.strictObject({ type: z.literal('accept-host-key'), hostId, fingerprint: z.string().min(1).max(256) }),
     z.strictObject({ type: z.literal('reject-host-key'), hostId }),
     z.strictObject({ type: z.literal('disconnect'), hostId }),
+    z.strictObject({ type: z.literal('retry'), hostId }),
+    z.strictObject({ type: z.literal('stop-retrying'), hostId }),
 ]);
 
 /** Validates a message from the renderer; anything malformed gives `undefined` (the renderer is a trust boundary). */

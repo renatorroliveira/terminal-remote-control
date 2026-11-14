@@ -10,12 +10,20 @@ describe('parseHostRequest (zod at the renderer boundary)', () => {
                 hostId: 'h1',
                 target: { destination: 'me@10.0.0.5', port: 2222, installRoot: '/var/tmp/trc' },
             },
+            {
+                type: 'connect',
+                hostId: 'h1',
+                target: { destination: 'devbox-1', installRoot: '~/.trc' },
+                restore: true,
+            },
             { type: 'send', hostId: 'h1', message: { type: 'listSessions', requestId: 1 } },
             { type: 'input', hostId: 'h1', stream: 1, data: new Uint8Array([3]) },
             { type: 'credit', hostId: 'h1', stream: 1, bytes: 65_536 },
             { type: 'accept-host-key', hostId: 'h1', fingerprint: 'SHA256:x' },
             { type: 'reject-host-key', hostId: 'h1' },
             { type: 'disconnect', hostId: 'h1' },
+            { type: 'retry', hostId: 'h1' },
+            { type: 'stop-retrying', hostId: 'h1' },
         ];
         for (const request of requests) {
             expect(parseHostRequest(request)).toEqual(request);

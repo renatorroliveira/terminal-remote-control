@@ -156,6 +156,11 @@ export const terminalAnnouncements = {
         defaultMessage: 'Disconnected — input not sent.',
         description: 'Announced assertively when the user types while the host is disconnected.',
     }),
+    inputReconnecting: defineMessage({
+        id: 'announce.inputReconnecting',
+        defaultMessage: 'Reconnecting — input not sent.',
+        description: 'Announced assertively when the user types while the host reconnects.',
+    }),
     inputNotReady: defineMessage({
         id: 'announce.inputNotReady',
         defaultMessage: 'Session still opening — input not sent.',
@@ -166,6 +171,7 @@ export const terminalAnnouncements = {
 /** What refused typing announces, by why it was refused (US-1.14.2). */
 export const refusalMessages: Readonly<Record<InputRefusal, MessageDescriptor>> = {
     disconnected: terminalAnnouncements.inputRefused,
+    reconnecting: terminalAnnouncements.inputReconnecting,
     opening: terminalAnnouncements.inputNotReady,
 };
 
@@ -256,6 +262,11 @@ export const hostAnnouncements = {
         id: 'announce.hostDisconnected',
         defaultMessage: 'Connection to {host} lost.',
         description: 'Announced and listed when a working connection ends.',
+    }),
+    reconnected: defineMessage<{ host: string }>({
+        id: 'announce.hostReconnected',
+        defaultMessage: 'Reconnected to {host}.',
+        description: 'Announced and listed when a lost host reconnects by itself (US-2.2.2).',
     }),
     failed: defineMessage<{ host: string; problem: string }>({
         id: 'announce.hostFailed',
