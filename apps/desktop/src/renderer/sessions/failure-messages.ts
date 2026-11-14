@@ -319,7 +319,7 @@ const FAILURE_MESSAGES: Readonly<
         remedy: defineMessage<FailureValues>({
             id: 'failure.rootUnsafe.remedy',
             defaultMessage:
-                'The details name the folder. Choose an install location for {name} that only you can change, such as one in your home folder, from its actions (Shift+F10), then connect again.',
+                'The details name the folder. If it is yours, such as your home folder, stop others writing to it with chmod go-w on {name}; otherwise choose an install location that only you can change from its actions (Shift+F10). Then connect again.',
             description: 'How to fix a failed connection.',
         }),
     },

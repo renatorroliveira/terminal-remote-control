@@ -438,6 +438,23 @@ fn refuses_to_start_from_an_install_others_can_write() {
 }
 
 #[tokio::test]
+async fn fails_a_new_session_at_once_naming_a_folder_above_the_root_that_became_unsafe() {
+    let installed = Installed::new();
+    let core = installed.start_core();
+    let mut client = AppClient::greeted(&installed.core_socket()).await;
+    std::fs::set_permissions(&installed.base, std::fs::Permissions::from_mode(0o777)).unwrap();
+    let started = std::time::Instant::now();
+    let session = create(&mut client, 1, None).await;
+    let failed = until_state(&mut client, &session.id, SessionState::FailedToStart).await;
+    std::fs::set_permissions(&installed.base, std::fs::Permissions::from_mode(0o700)).unwrap();
+    assert!(started.elapsed() < std::time::Duration::from_secs(3));
+    let failure = failed.failure.unwrap_or_default();
+    assert!(failure.contains(&installed.base.display().to_string()), "{failure}");
+    assert!(failure.contains("can be changed by other users"), "{failure}");
+    stop(core);
+}
+
+#[tokio::test]
 async fn keeps_private_files_and_logs_without_terminal_content() {
     let installed = Installed::new();
     let core = installed.start_core();

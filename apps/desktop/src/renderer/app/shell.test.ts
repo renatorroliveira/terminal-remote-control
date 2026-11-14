@@ -339,10 +339,12 @@ describe('Shell bell and new output below (A11Y-08.2, A11Y-08.4)', () => {
         expect(shell.state.getState().bell).toBe(false);
     });
 
-    it('announces refused input right away (US-1.14.2)', async () => {
+    it('announces refused input right away, saying why (US-1.14.2)', async () => {
         const { shell, spoken } = await setup();
-        shell.terminalNotice('host-0/a', { kind: 'input-refused' });
+        shell.terminalNotice('host-0/a', { kind: 'input-refused', reason: 'disconnected' });
         expect(spoken).toEqual(['! Disconnected — input not sent.']);
+        shell.terminalNotice('host-0/b', { kind: 'input-refused', reason: 'opening' });
+        expect(spoken.at(-1)).toBe('! Session still opening — input not sent.');
     });
 
     it('announces new output below a pinned viewport', async () => {
@@ -518,7 +520,7 @@ describe('Shell sound cues (A11Y-12.4)', () => {
         client.push('host-0', CONNECTED);
         client.push('host-0', { status: 'disconnected', reason: { kind: 'timeout' } } as never);
         client.push('host-0', { status: 'failed', failure: { kind: 'dns', host: 'devbox-1', details: '' } });
-        shell.terminalNotice('host-0/a', { kind: 'input-refused' });
+        shell.terminalNotice('host-0/a', { kind: 'input-refused', reason: 'disconnected' });
         expect(cues).toEqual(['connected', 'disconnected', 'failed', 'input-refused']);
     });
 });

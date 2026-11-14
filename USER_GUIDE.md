@@ -362,17 +362,17 @@ The licenses of the software TRC includes are in the app, in
 
 ## Troubleshooting
 
-| The dialog says                                      | What to do                                                                                     |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| No SSH agent is running, or your agent holds no keys | Start `ssh-agent` and add your key with `ssh-add`, then connect again.                         |
-| Your key needs its passphrase, or its PIN            | Add the key with `ssh-add`, which asks for it, then connect again.                             |
-| The host refused every key ssh offered               | Check that `ssh <host>` works in Terminal without a password.                                  |
-| The host couldn't be found, or didn't answer         | Check the name, your network or VPN, and any `ProxyCommand` or `ProxyJump` your config needs.  |
-| The host key has changed                             | Ask the host's administrator. Only if the new fingerprint matches, run `ssh-keygen -R <host>`. |
-| The host runs a newer daemon than this app           | Another Mac installed a newer TRC on this host. Update the app.                                |
-| The install location doesn't allow running programs  | Choose another install location from the host's actions, then connect again.                   |
-| Other users can change the install location          | Choose a location only you can change, such as one in your home folder, then connect again.    |
-| The daemon couldn't be installed                     | Check free space and permissions in the install location on the host.                          |
+| The dialog says                                      | What to do                                                                                                                                            |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No SSH agent is running, or your agent holds no keys | Start `ssh-agent` and add your key with `ssh-add`, then connect again.                                                                                |
+| Your key needs its passphrase, or its PIN            | Add the key with `ssh-add`, which asks for it, then connect again.                                                                                    |
+| The host refused every key ssh offered               | Check that `ssh <host>` works in Terminal without a password.                                                                                         |
+| The host couldn't be found, or didn't answer         | Check the name, your network or VPN, and any `ProxyCommand` or `ProxyJump` your config needs.                                                         |
+| The host key has changed                             | Ask the host's administrator. Only if the new fingerprint matches, run `ssh-keygen -R <host>`.                                                        |
+| The host runs a newer daemon than this app           | Another Mac installed a newer TRC on this host. Update the app.                                                                                       |
+| The install location doesn't allow running programs  | Choose another install location from the host's actions, then connect again.                                                                          |
+| Other users can change the install location          | If the folder named in the details is yours, run `chmod go-w` on it on the host; otherwise choose a location only you can change. Then connect again. |
+| The daemon couldn't be installed                     | Check free space and permissions in the install location on the host.                                                                                 |
 
 If the app doesn't open after you download it, see [Install](#install), step 3.
 

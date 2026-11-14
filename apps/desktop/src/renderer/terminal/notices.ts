@@ -10,5 +10,8 @@ export type TerminalNotice =
     | { readonly kind: 'output-below' }
     /** Output arrived while review mode was open (A11Y-03.5). */
     | { readonly kind: 'review-output' }
-    /** The user typed while the host was disconnected; nothing was sent (US-1.14.2). */
-    | { readonly kind: 'input-refused' };
+    /** The user typed while the host was disconnected, or before the session attached; nothing was sent (US-1.14.2). */
+    | { readonly kind: 'input-refused'; readonly reason: InputRefusal };
+
+/** Why typing was not sent: the host is disconnected, or the session is still opening. */
+export type InputRefusal = 'disconnected' | 'opening';

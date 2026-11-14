@@ -13,7 +13,7 @@ import { CursorBlink } from './cursor-blink';
 import { type FindMatch, type FindOptions, type FindResult, findMatches } from './find';
 import { type TerminalLink, TerminalLinks } from './hyperlinks';
 import { KittyKeyboard } from './kitty-keyboard';
-import type { TerminalNotice } from './notices';
+import type { InputRefusal, TerminalNotice } from './notices';
 import { OutputAnnouncer, type OutputSpeech } from './output-announcer';
 import { encodePaste, pastedLines } from './paste';
 import { registerQueryFilters } from './query-filter';
@@ -41,6 +41,8 @@ export interface TerminalLabel {
     readonly disconnected: string;
     /** What a keystroke shows while the host is disconnected (US-1.14.2). */
     readonly inputRefused: string;
+    /** What a keystroke shows before the session has attached (US-1.14.2). */
+    readonly inputNotReady: string;
 }
 
 interface FindState {
@@ -216,7 +218,6 @@ export class TerminalView {
         this.#label = label;
         this.#hint.textContent = label.hint;
         this.#outputBelow.textContent = label.outputBelow;
-        this.#inputRefused.textContent = label.inputRefused;
         this.#showConnection();
     }
 
@@ -230,10 +231,17 @@ export class TerminalView {
         this.#showConnection();
     }
 
-    /** Shows and reports that typing was not sent, as the connection refused it (US-1.14.2). */
-    refuseInput(): void {
+    /**
+     * Shows and reports that typing was not sent, and why: the host is disconnected or the session is still opening
+     * (US-1.14.2). Connecting again, or attaching, clears it.
+     */
+    refuseInput(reason: InputRefusal): void {
+        const label = this.#label;
+        if (label !== undefined) {
+            this.#inputRefused.textContent = reason === 'opening' ? label.inputNotReady : label.inputRefused;
+        }
         this.#inputRefused.hidden = false;
-        this.#options.onNotice?.({ kind: 'input-refused' });
+        this.#options.onNotice?.({ kind: 'input-refused', reason });
     }
 
     /**
@@ -632,8 +640,12 @@ export class TerminalView {
     }
 
     #send(text: string): void {
-        if (!(this.#connected && this.#options.onInput(text))) {
-            this.refuseInput();
+        if (!this.#connected) {
+            this.refuseInput('disconnected');
+            return;
+        }
+        if (!this.#options.onInput(text)) {
+            this.refuseInput('opening');
             return;
         }
         this.#scheduler.input();

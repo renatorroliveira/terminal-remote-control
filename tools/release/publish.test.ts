@@ -30,6 +30,8 @@ const FRESH: ReadonlyMap<string, string | undefined> = new Map([
 /** Records what publishing runs, and answers its queries by command prefix. */
 class FakeRelease implements PublishSeams {
     readonly calls: string[] = [];
+    /** The repository and tag of each release-state lookup. */
+    readonly states: string[] = [];
     readonly answers: Map<string, string | undefined>;
     readonly downloads: Download[];
 
@@ -51,7 +53,8 @@ class FakeRelease implements PublishSeams {
         return answer;
     }
 
-    releaseState(tag: string): ReleaseState {
+    releaseState(repository: string, tag: string): ReleaseState {
+        this.states.push(`${repository} ${tag}`);
         const answer = this.#answer(`gh release view ${tag} --json isDraft`);
         if (answer === 'unreachable') {
             throw new Error('gh: HTTP 502');
@@ -103,6 +106,7 @@ describe('publish (P-21, D-42)', () => {
             'git push origin HEAD:refs/heads/main',
             SUMS_URL,
         ]);
+        expect(release.states).toEqual(['owner/trc v0.2.0']);
     });
 
     it('refuses a release commit that is not on the workflow’s commit, or that changes more than versions', async () => {
@@ -168,10 +172,14 @@ describe('publish: resuming and refusing (P-21, D-42)', () => {
 });
 
 describe('releaseStateOf', () => {
-    it('reads a draft or a published release, takes only "release not found" as absent, and fails on any other error', () => {
-        expect(releaseStateOf({ ok: true, output: 'true' }, 'v0.2.0')).toBe('draft');
-        expect(releaseStateOf({ ok: true, output: 'false' }, 'v0.2.0')).toBe('published');
-        expect(releaseStateOf({ ok: false, stderr: 'release not found' }, 'v0.2.0')).toBe('absent');
-        expect(() => releaseStateOf({ ok: false, stderr: 'HTTP 502: Bad Gateway' }, 'v0.2.0')).toThrow(/HTTP 502/);
+    it('reads the drafts flag of the tag’s one release from a listing that includes drafts, or none', () => {
+        expect(releaseStateOf('', 'v0.2.0')).toBe('absent');
+        expect(releaseStateOf('true', 'v0.2.0')).toBe('draft');
+        expect(releaseStateOf('false', 'v0.2.0')).toBe('published');
+    });
+
+    it('fails on two releases for the tag, or on anything but true or false', () => {
+        expect(() => releaseStateOf('true\ntrue', 'v0.2.0')).toThrow(/2 releases/);
+        expect(() => releaseStateOf('null', 'v0.2.0')).toThrow(/null/);
     });
 });

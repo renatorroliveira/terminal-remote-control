@@ -1,7 +1,8 @@
-import { defineMessage, defineMessages } from 'react-intl';
+import { defineMessage, defineMessages, type MessageDescriptor } from 'react-intl';
 import type { ScreenReaderMode } from '../../shared/accessibility';
 import type { CommandId } from '../../shared/keymap';
 import type { ActionFailureCode, FailedAction } from '../sessions/workspace-model';
+import type { InputRefusal } from '../terminal/notices';
 
 /** Each command's name in the palette and in accessibility help (docs/design/keymap.md). */
 export const commandMessages = defineMessages<CommandId>({
@@ -155,6 +156,17 @@ export const terminalAnnouncements = {
         defaultMessage: 'Disconnected — input not sent.',
         description: 'Announced assertively when the user types while the host is disconnected.',
     }),
+    inputNotReady: defineMessage({
+        id: 'announce.inputNotReady',
+        defaultMessage: 'Session still opening — input not sent.',
+        description: 'Announced assertively when the user types before a session has attached.',
+    }),
+};
+
+/** What refused typing announces, by why it was refused (US-1.14.2). */
+export const refusalMessages: Readonly<Record<InputRefusal, MessageDescriptor>> = {
+    disconnected: terminalAnnouncements.inputRefused,
+    opening: terminalAnnouncements.inputNotReady,
 };
 
 /** Find and review mode (US-1.13, A11Y-03). */

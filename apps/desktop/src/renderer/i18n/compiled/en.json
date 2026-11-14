@@ -129,6 +129,12 @@
       "value": "problem"
     }
   ],
+  "announce.inputNotReady": [
+    {
+      "type": 0,
+      "value": "Session still opening — input not sent."
+    }
+  ],
   "announce.inputRefused": [
     {
       "type": 0,
@@ -1120,7 +1126,7 @@
   "failure.rootUnsafe.remedy": [
     {
       "type": 0,
-      "value": "The details name the folder. Choose an install location for "
+      "value": "The details name the folder. If it is yours, such as your home folder, stop others writing to it with chmod go-w on "
     },
     {
       "type": 1,
@@ -1128,7 +1134,7 @@
     },
     {
       "type": 0,
-      "value": " that only you can change, such as one in your home folder, from its actions (Shift+F10), then connect again."
+      "value": "; otherwise choose an install location that only you can change from its actions (Shift+F10). Then connect again."
     }
   ],
   "failure.sshMissing.problem": [
@@ -3289,6 +3295,12 @@
     {
       "type": 0,
       "value": "Option F1: accessibility help."
+    }
+  ],
+  "terminal.inputNotReady": [
+    {
+      "type": 0,
+      "value": "Session still opening — input not sent"
     }
   ],
   "terminal.inputRefused": [

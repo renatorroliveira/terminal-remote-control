@@ -39,6 +39,10 @@
     "defaultMessage": "Couldn’t connect to {host}. {problem}",
     "description": "Announced and listed when a connection fails."
   },
+  "announce.inputNotReady": {
+    "defaultMessage": "Session still opening — input not sent.",
+    "description": "Announced assertively when the user types before a session has attached."
+  },
   "announce.inputRefused": {
     "defaultMessage": "Disconnected — input not sent.",
     "description": "Announced assertively when the user types while the host is disconnected."
@@ -452,7 +456,7 @@
     "description": "What went wrong when a connection failed."
   },
   "failure.rootUnsafe.remedy": {
-    "defaultMessage": "The details name the folder. Choose an install location for {name} that only you can change, such as one in your home folder, from its actions (Shift+F10), then connect again.",
+    "defaultMessage": "The details name the folder. If it is yours, such as your home folder, stop others writing to it with chmod go-w on {name}; otherwise choose an install location that only you can change from its actions (Shift+F10). Then connect again.",
     "description": "How to fix a failed connection."
   },
   "failure.sshMissing.problem": {
@@ -1570,6 +1574,10 @@
   "terminal.hint": {
     "defaultMessage": "Option F1: accessibility help.",
     "description": "Hint read after the terminal name."
+  },
+  "terminal.inputNotReady": {
+    "defaultMessage": "Session still opening — input not sent",
+    "description": "Shown when the user types before a session has attached; nothing was sent."
   },
   "terminal.inputRefused": {
     "defaultMessage": "Disconnected — input not sent",

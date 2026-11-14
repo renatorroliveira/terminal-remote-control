@@ -13,7 +13,7 @@ import { basename, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { releaseAssets, sha256Sums } from './assets.ts';
 import { releaseTitle } from './notes.ts';
-import { type Attempt, attempt, capture, commitVersion, run, setVersion, VERSION_FILES } from './repository.ts';
+import { capture, commitVersion, run, setVersion, VERSION_FILES } from './repository.ts';
 import { devVersion } from './versions.ts';
 
 /** A downloaded file: its HTTP status and its text. */
@@ -28,8 +28,8 @@ export interface PublishSeams {
     run(command: string, args: readonly string[]): void;
     /** Runs a command and returns its trimmed output; the release fails when it fails. */
     capture(command: string, args: readonly string[]): string;
-    /** Whether the tag's GitHub release is absent, a draft or published; the release fails when gh cannot tell. */
-    releaseState(tag: string): ReleaseState;
+    /** Whether the tag's GitHub release in `repository` is absent, a draft or published; fails when it cannot tell. */
+    releaseState(repository: string, tag: string): ReleaseState;
     /** Downloads a URL without credentials. */
     download(url: string): Promise<Download>;
     /** Waits before trying again. */
@@ -61,17 +61,24 @@ export interface ReleaseInput {
 const PUBLIC_ATTEMPTS = 6;
 
 /**
- * Reads `gh release view --json isDraft` for `tag`: only gh's "release not found" means there is none, so a failure
- * of any other kind, such as the network, never leads to a second draft.
+ * Reads where `tag`'s release stands from the drafts flag of each release named for it, one per line, as a listing of
+ * every release, drafts included, gives it. Anything but no release or exactly one `true` or `false` fails the
+ * release: `gh release view` says "release not found" for a draft it failed to look up, which would lead to a second
+ * draft.
  */
-export function releaseStateOf(viewed: Attempt, tag: string): ReleaseState {
-    if (viewed.ok) {
-        return viewed.output === 'true' ? 'draft' : 'published';
+export function releaseStateOf(listed: string, tag: string): ReleaseState {
+    const flags = listed.split('\n').filter((line) => line !== '');
+    if (flags.length > 1) {
+        throw new Error(`${tag} has ${flags.length} releases; delete the extra drafts, then re-run`);
     }
-    if (/release not found/i.test(viewed.stderr)) {
+    const [flag] = flags;
+    if (flag === undefined) {
         return 'absent';
     }
-    throw new Error(`gh could not say whether ${tag} has a release: ${viewed.stderr}`);
+    if (flag === 'true' || flag === 'false') {
+        return flag === 'true' ? 'draft' : 'published';
+    }
+    throw new Error(`the release listing gave ${flag} as the draft flag of ${tag}`);
 }
 
 /** Publishes the checked-out release commit, resuming whatever an earlier run of the same release left undone. */
@@ -120,7 +127,7 @@ function taggedCommit(listing: string, tag: string): string | undefined {
 
 function publishRelease(input: ReleaseInput, seams: PublishSeams): void {
     const tag = `v${input.version}`;
-    const state = seams.releaseState(tag);
+    const state = seams.releaseState(input.repository, tag);
     if (state === 'published') {
         return;
     }
@@ -206,11 +213,15 @@ function releaseInput(version: string, notes: string, packages: string): Release
     return { version, notes, assets: [...files, sumsFile], sums, base, repository };
 }
 
+function releaseListing(repository: string, tag: string): readonly string[] {
+    const select = `.[] | select(.tag_name == ${JSON.stringify(tag)}) | .draft`;
+    return ['api', '--paginate', `repos/${repository}/releases`, '--jq', select];
+}
+
 const REAL_SEAMS: PublishSeams = {
     run,
     capture,
-    releaseState: (tag) =>
-        releaseStateOf(attempt('gh', ['release', 'view', tag, '--json', 'isDraft', '--jq', '.isDraft']), tag),
+    releaseState: (repository, tag) => releaseStateOf(capture('gh', releaseListing(repository, tag)), tag),
     download: async (url) => {
         const response = await fetch(url);
         return { status: response.status, text: await response.text() };

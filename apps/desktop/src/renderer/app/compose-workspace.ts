@@ -80,6 +80,7 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
                 host: destination(hostId),
             }),
             inputRefused: intl.formatMessage(terminalMessages.inputRefused),
+            inputNotReady: intl.formatMessage(terminalMessages.inputNotReady),
             review: intl.formatMessage(terminalReviewMessage, {
                 session: sessionName(session),
                 host: destination(hostId),

@@ -1,6 +1,6 @@
 import type { ServerMessage, SessionInfo } from '@trc/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { ClientRequest } from '../connection/host-client';
+import { type ClientRequest, HostRequestError } from '../connection/host-client';
 import { THEMES } from '../ui/themes';
 import type { SessionTransport } from './session-link';
 import { type SessionSpeech, TerminalRegistry } from './terminal-registry';
@@ -27,6 +27,8 @@ class FakeTransport implements SessionTransport {
     readonly requests: ClientRequest[] = [];
     /** Sessions whose next attach the daemon refuses. */
     readonly refuse = new Set<string>();
+    /** Sessions whose next attach fails because the connection dropped first. */
+    readonly drop = new Set<string>();
     /** While set, attach replies wait for it. */
     hold: Promise<void> | undefined;
     /** While set, create replies wait for it. */
@@ -67,6 +69,9 @@ class FakeTransport implements SessionTransport {
         }
         if (request.type === 'attach' && this.refuse.has(request.session)) {
             return Promise.reject(new Error('unknownSession'));
+        }
+        if (request.type === 'attach' && this.drop.has(request.session)) {
+            return Promise.reject(new HostRequestError('disconnected', 'connection lost'));
         }
         if (request.type === 'attach' && this.hold !== undefined) {
             const hold = this.hold;
@@ -156,6 +161,7 @@ function setup() {
             review: `Review ${session.profile.name}, ${hostId}`,
             disconnected: `${session.profile.name}, ${hostId}, disconnected`,
             inputRefused: 'Disconnected — input not sent',
+            inputNotReady: 'Session still opening — input not sent',
         }),
         speech,
         onNotice: (key, notice) => notices.push(`${key} ${notice.kind}`),
@@ -290,8 +296,11 @@ describe('TerminalRegistry: input that cannot be sent (US-1.14.2, WCAG 3.3.1)', 
         typeInto(area, 'ls');
         expect(transport.inputs).toEqual([]);
         expect(notices).toEqual(['h1/a input-refused']);
+        const notice = area.querySelector<HTMLElement>('[data-input-refused]');
+        expect(notice?.hidden).toBe(false);
         transport.hold = undefined;
         release();
+        await expect.poll(() => notice?.hidden).toBe(true);
         transport.refuse.add('b');
         registry.show('h1/b', 'h1', info('b'));
         await expect.poll(() => failed).toEqual(['h1/b']);
@@ -378,6 +387,19 @@ describe('TerminalRegistry: reconnecting hosts (US-1.14.2)', () => {
         release();
         expect(await reattached).toEqual([{ key: 'h1/b', error: new Error('unknownSession') }]);
         expect(labels()).toEqual(['bash, h1']);
+    });
+
+    it('keeps a terminal whose attach the connection dropped, refusing input until the next reconnect', async () => {
+        const { area, transport, registry, failed } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => requestsOf(transport, 'attach')).toBe(1);
+        transport.drop.add('b');
+        registry.show('h1/b', 'h1', info('b'));
+        registry.setHostConnected('h1', false);
+        transport.drop.add('a');
+        expect(await registry.reattachHost('h1')).toEqual([]);
+        expect(failed).toEqual([]);
+        expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(2);
     });
 
     it('removes the terminal of a session the daemon closed', () => {
