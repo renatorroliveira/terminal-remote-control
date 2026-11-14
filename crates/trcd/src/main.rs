@@ -29,12 +29,12 @@ fn main() -> ExitCode {
         Err(message) => return fail(EXIT_UNTRUSTED_INSTALL, &message),
     };
     match command {
-        Command::Core { detach: false } => match trcd::core::process::run(&layout) {
+        Command::Core { detach: false, systemd } => match trcd::core::process::run(&layout, systemd) {
             Ok(()) => ExitCode::SUCCESS,
             Err(StartError::AlreadyRunning) => fail(EXIT_ALREADY_RUNNING, "another core is already running"),
             Err(StartError::Io(error)) => fail(EXIT_OS_ERROR, &error.to_string()),
         },
-        Command::Core { detach: true } => finish(trcd::core::process::launch_detached(&layout)),
+        Command::Core { detach: true, .. } => finish(trcd::core::process::launch_detached(&layout)),
         Command::Holder { socket } => finish(trcd::holder::process::serve(&socket)),
         Command::Bridge => finish(trcd::bridge::run(&layout)),
         Command::Version => ExitCode::SUCCESS,

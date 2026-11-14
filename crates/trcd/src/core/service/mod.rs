@@ -17,7 +17,7 @@ use tokio::net::unix::OwnedReadHalf;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 use trc_protocol::frame::{self, Frame, FrameKind};
-use trc_protocol::{ServerMessage, SessionChange, SessionId, SessionInfo};
+use trc_protocol::{ServerMessage, ServiceInfo, SessionChange, SessionId, SessionInfo};
 
 use super::adopt::{Adopted, adopt_holders, adopt_late};
 use super::launch::launch_holder;
@@ -28,6 +28,7 @@ use crate::holder::environment::Account;
 use crate::holder::protocol::{HOLDER_PROTOCOL, HolderCommand, HolderSpec};
 use crate::peer::is_same_user;
 use crate::run_dir::RunDir;
+use crate::service::ScopeLauncher;
 
 /// How many events may wait for the loop before readers pause.
 const EVENT_QUEUE: usize = 256;
@@ -44,6 +45,10 @@ pub struct CoreContext {
     pub account: Account,
     /// The umask the core inherited, which holders and their shells get back.
     pub holder_umask: Mode,
+    /// How the core runs, reported in `welcome` (US-2.4).
+    pub service: ServiceInfo,
+    /// How holders start in their own scopes when the core runs under systemd.
+    pub scope: Option<ScopeLauncher>,
 }
 
 /// The core's state and event loop.
@@ -263,9 +268,10 @@ impl Core {
         let socket = self.context.run.holder_socket(&session);
         let binary = self.context.binary.clone();
         let umask = self.context.holder_umask;
+        let scope = self.context.scope.clone();
         let events = self.events_tx.clone();
         tokio::spawn(async move {
-            let event = match launch_holder(&binary, &socket, umask).await {
+            let event = match launch_holder(&binary, &socket, umask, scope.as_ref()).await {
                 Ok(stream) => CoreEvent::HolderConnected(session, stream),
                 Err(error) => CoreEvent::HolderFailed(session, error.to_string()),
             };

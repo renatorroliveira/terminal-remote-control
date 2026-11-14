@@ -53,7 +53,7 @@ impl Stream {
 
 impl Core {
     async fn connect(socket: &PathBuf) -> Self {
-        let stream = UnixStream::connect(socket).await.unwrap();
+        let stream = connect_when_listening(socket).await;
         let (read, write) = stream.into_split();
         let (sender, _writer) = FrameSender::spawn(write);
         Self {
@@ -180,8 +180,8 @@ fn spec() -> HolderSpec {
 
 async fn started() -> Core {
     static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-    let dir = std::env::temp_dir().join(format!(
-        "trcd-shared-test-{}-{}",
+    let dir = PathBuf::from(format!(
+        "/tmp/trcs-{}-{}",
         std::process::id(),
         NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
@@ -284,4 +284,17 @@ async fn never_blocks_the_program_on_a_client_without_credit() {
     })
     .await;
     assert!(core.bytes(1) <= 3 << 20, "the slow client got {} bytes", core.bytes(1));
+}
+
+/// Connects once the holder listens: its socket file appears at `bind`, a moment before `listen`, when a connection is
+/// still refused.
+async fn connect_when_listening(socket: &PathBuf) -> UnixStream {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        match UnixStream::connect(socket).await {
+            Ok(stream) => return stream,
+            Err(error) if tokio::time::Instant::now() >= deadline => panic!("the holder never listened: {error}"),
+            Err(_) => tokio::time::sleep(Duration::from_millis(10)).await,
+        }
+    }
 }

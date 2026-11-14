@@ -1,4 +1,4 @@
-import type { ClientMessage, ServerMessage } from '@trc/protocol';
+import type { ClientMessage, ServerMessage, ServiceInfo } from '@trc/protocol';
 
 /** A host key ssh was presented, as the `known-hosts` helper reports it (`%H %t %K %f`, US-1.2). */
 export interface PresentedHostKey {
@@ -56,6 +56,8 @@ export interface DaemonInfo {
     readonly version: string;
     readonly sha256: string;
     readonly proto: number;
+    /** How the daemon runs, and whether sessions end at logout; protocol 2 daemons say (US-2.4). */
+    readonly service?: ServiceInfo;
 }
 
 /** Why a working connection was lost (US-1.14, NFR-07). */

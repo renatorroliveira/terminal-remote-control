@@ -82,7 +82,7 @@ impl Core {
             daemon_version: env!("CARGO_PKG_VERSION").into(),
             binary_sha256: self.context.binary_sha256.clone(),
             caps: Vec::new(),
-            service: None,
+            service: Some(self.context.service),
         };
         self.reply(client, &welcome);
     }

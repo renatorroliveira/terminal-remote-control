@@ -1,0 +1,11 @@
+[Unit]
+Description=Prepare the trc test host: host keys, the test CA, user keys, lingering and logind
+Before=ssh.service systemd-logind.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /usr/local/sbin/trc-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

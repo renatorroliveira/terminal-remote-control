@@ -23,6 +23,9 @@ pass to ssh with `-F`. Ports are published on `127.0.0.1` only.
 | `trc-rocky`                                 | Rocky Linux 9                                             |
 | `trc-noexec`                                | Ubuntu with the home directory mounted `noexec`           |
 | `trc-latency`                               | Ubuntu behind a 100 ms delay (`tc netem`, `NET_ADMIN`)    |
+| `trc-systemd`                               | Ubuntu with systemd and logind, lingering off (P-32)      |
+| `trc-systemd-linger`                        | the same with lingering on for `tester`                   |
+| `trc-systemd-kill`                          | lingering off and logind's `KillUserProcesses=yes`        |
 | `trc-scale-01` … `trc-scale-25`             | 25 users (`u01` … `u25`) on one Ubuntu host               |
 | `trc-jump`                                  | the only host that allows forwarding                      |
 | `trc-behind`                                | reachable only through `trc-jump` (`ProxyJump`)           |
@@ -35,4 +38,5 @@ pass to ssh with `-F`. Ports are published on `127.0.0.1` only.
 
 Every host except `trc-jump` sets `DisableForwarding yes`, so the product must work over exec channels alone
 (US-1.5.3). The Ubuntu `tester` account prints a line from `.bashrc` on every login, to exercise the bootstrap's
-startup-noise filter.
+startup-noise filter. The `trc-systemd*` hosts run systemd as PID 1, which needs a privileged container on the
+local test VM; their ports, like every other, are published on `127.0.0.1` only.
