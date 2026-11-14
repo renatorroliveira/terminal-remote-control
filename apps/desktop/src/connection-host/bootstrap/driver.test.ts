@@ -156,3 +156,22 @@ describe('runBootstrap limits (SEC-06, US-1.4.5)', () => {
         clearInterval(ticker);
     });
 });
+
+describe('runBootstrap after an upload (SEC-04.3)', () => {
+    it('refuses an install the host reports under another checksum than the one uploaded', async () => {
+        const host = fakeHost();
+        const outcome = runBootstrap(host, options([]));
+        say(host, 'HELLO os=Linux arch=arm64 checksum=sha256sum installed=-');
+        await until(() => host.received().length >= 'SCRIPT\n'.length + 5);
+        say(host, `INSTALLED ${'e'.repeat(64)} 0.1.0`);
+        await expect(outcome).resolves.toEqual({
+            kind: 'failed',
+            failure: {
+                kind: 'host',
+                code: 'protocol',
+                detail: 'the host installed another daemon than the one uploaded',
+            },
+        });
+        expect(host.received()).not.toContain('RUN ');
+    });
+});

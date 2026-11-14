@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { app, BrowserWindow, clipboard, ipcMain, Menu, protocol, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, Menu, protocol, session, shell } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
@@ -24,6 +24,7 @@ import { migrateLegacyState } from './legacy-state';
 import { LinkService } from './link-service';
 import { type MenuOptions, menuTemplate, terminalContextMenu } from './menu';
 import { refuseNavigation } from './navigation-guard';
+import { disableNetworkSwitches, lockDownNetwork } from './network-guard';
 import { openExternalFor } from './open-external';
 import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, GUIDE_CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
@@ -33,6 +34,7 @@ import { trcHome } from './trc-home';
 import { isAppPage } from './trusted-sender';
 
 refuseRemoteDebugging(app.commandLine, { testBuild: __TRC_TEST_SEAM__ });
+disableNetworkSwitches(app.commandLine);
 
 const rendererRoot = join(import.meta.dirname, '../renderer');
 const resources = app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources');
@@ -64,6 +66,7 @@ if (app.requestSingleInstanceLock()) {
 }
 
 async function start(): Promise<void> {
+    lockDownPages();
     protocol.handle(APP_IDENTITY.appScheme, serveAppRequest);
     if (!app.isPackaged && !background) {
         app.dock?.setIcon(appIconPath(resources));
@@ -132,6 +135,20 @@ type HostHandlers = Pick<
     | 'hosts:set-install-root'
     | 'hosts:set-clipboard-writes'
 >;
+
+/** Keeps every page off the network and denies it every permission (SEC-01.1, SEC-06). */
+function lockDownPages(): void {
+    const pages = session.defaultSession;
+    lockDownNetwork({
+        configureHostResolver: (options) => app.configureHostResolver(options),
+        onWebContentsCreated: (listener) => app.on('web-contents-created', (_event, contents) => listener(contents)),
+        denyPermissionRequests: (handler) =>
+            pages.setPermissionRequestHandler((_contents, permission, grant) => handler(permission, grant)),
+        denyPermissionChecks: (handler) =>
+            pages.setPermissionCheckHandler((_contents, permission) => handler(permission)),
+        denyDevicePermissions: (handler) => pages.setDevicePermissionHandler(handler),
+    });
+}
 
 function hostHandlers(knownHosts: KnownHosts): HostHandlers {
     const home = app.getPath('home');

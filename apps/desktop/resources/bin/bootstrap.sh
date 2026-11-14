@@ -6,6 +6,9 @@
 #   RUN <sha256>
 #   EXIT
 # Errors are `ERROR <code> <detail>`. A failed run leaves nothing behind.
+# Nothing under the install location runs, or is even reported, unless the
+# location, its versions directory, the version directory and the binary are
+# all the user's own and writable by no one else (SEC-04.4).
 umask 077
 
 say() {
@@ -53,10 +56,34 @@ checksum() {
     esac
 }
 
+# Whether a path is the user's own, not a symbolic link, and writable by
+# neither its group nor others: only then may the daemon run from it.
+trusted() {
+    [ -L "$1" ] && return 1
+    [ -O "$1" ] || return 1
+    case $(ls -ld "$1" | cut -c6,9) in
+    *w*) return 1 ;;
+    esac
+    return 0
+}
+
+# Refuses an install location that exists and is not trusted, before anything
+# in it is run.
+check_root() {
+    [ -L "$root" ] && fail "root-unusable $root is a symbolic link"
+    [ -e "$root" ] || return 0
+    [ -O "$root" ] || fail "root-unusable $root belongs to another user"
+    trusted "$root" || fail "root-unusable $root is writable by other users"
+}
+
 installed_versions() {
     list=
+    trusted "$root/versions" || {
+        echo -
+        return
+    }
     for dir in "$root"/versions/*/; do
-        [ -x "${dir}trcd" ] || continue
+        trusted "${dir%/}" && trusted "${dir}trcd" && [ -x "${dir}trcd" ] || continue
         sum=${dir%/}
         sum=${sum##*/}
         [ "$(checksum "${dir}trcd")" = "$sum" ] || continue
@@ -78,13 +105,11 @@ prepare_root() {
     if make_dir "$root"; then
         created_root=1
     fi
-    [ -O "$root" ] || fail "root-unusable $root belongs to another user"
-    case $(ls -ld "$root" | cut -c6,9) in
-    *w*) fail "root-unusable $root is writable by other users" ;;
-    esac
+    check_root
     if make_dir "$root/versions"; then
         created_versions=1
     fi
+    trusted "$root/versions" || fail "root-unusable $root/versions is not yours alone"
 }
 
 take_lock() {
@@ -151,6 +176,7 @@ upload() {
     say "PROGRESS testing"
     self_test "$staging/trcd" "$2"
     if [ -d "$root/versions/$2" ]; then
+        trusted "$root/versions/$2" || fail "root-unusable $root/versions/$2 is not yours alone"
         mv -f "$staging/trcd" "$root/versions/$2/trcd" || fail "root-unusable cannot install into $root/versions/$2"
         rm -rf "$staging"
     else
@@ -168,6 +194,8 @@ run_bridge() {
     esac
     bin=$root/versions/$1/trcd
     [ -x "$bin" ] || fail "not-installed $1"
+    trusted "$root/versions" && trusted "$root/versions/$1" && trusted "$bin" ||
+        fail "root-unusable $root/versions/$1 is not yours alone"
     trap - EXIT HUP INT TERM
     say "RUNNING"
     exec "$bin" bridge
@@ -185,6 +213,7 @@ main() {
     trap cleanup EXIT
     trap 'exit 1' HUP INT TERM
     resolve_root
+    check_root
     os=$(uname -s)
     machine=$(uname -m)
     arch=$(detect_arch "$machine")

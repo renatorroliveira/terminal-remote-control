@@ -1,5 +1,5 @@
-//! `trcd holder --socket <path>` as the core starts it: a private socket that disappears on shutdown (SEC-02), and
-//! a shell that keeps the umask the holder was started with.
+//! `trcd holder --socket <path>` as the core starts it: a private socket that disappears on shutdown and refuses
+//! peers of another user (SEC-02), and a shell that keeps the umask the holder was started with.
 
 mod support;
 
@@ -64,6 +64,51 @@ fn refuses_a_socket_path_that_is_taken() {
     let mut child = spawn_holder(&installed, &socket);
     assert_eq!(wait_child(&mut child).code(), Some(71));
     assert!(socket.exists());
+}
+
+#[cfg(target_os = "linux")]
+#[tokio::test]
+async fn refuses_a_peer_of_another_user() {
+    use std::os::unix::process::CommandExt;
+
+    if !rustix::process::geteuid().is_root() {
+        return;
+    }
+    let installed = Installed::new();
+    let owner = 4243;
+    chown_tree(&installed.base, owner);
+    let socket = installed.base.join("foreign.sock");
+    let mut holder = Command::new(&installed.binary);
+    holder
+        .args(["holder", "--socket"])
+        .arg(&socket)
+        .uid(owner)
+        .gid(owner)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    let mut child = holder.spawn().unwrap();
+    wait_for(&socket);
+    let (_sender, mut reader) = connect(&socket).await;
+    let first = tokio::time::timeout(WAIT, reader.next()).await;
+    assert!(
+        matches!(first, Ok(Ok(None)) | Ok(Err(_))),
+        "the holder answered a peer of another user"
+    );
+    child.kill().unwrap();
+    let _ = wait_child(&mut child);
+}
+
+#[cfg(target_os = "linux")]
+fn chown_tree(path: &Path, owner: u32) {
+    let id = Some(rustix::process::Uid::from_raw(owner));
+    let group = Some(rustix::process::Gid::from_raw(owner));
+    rustix::fs::chown(path, id, group).unwrap();
+    if path.is_dir() {
+        for entry in std::fs::read_dir(path).unwrap() {
+            chown_tree(&entry.unwrap().path(), owner);
+        }
+    }
 }
 
 fn spawn_holder(installed: &Installed, socket: &Path) -> Child {

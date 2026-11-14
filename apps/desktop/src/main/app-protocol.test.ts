@@ -21,6 +21,12 @@ describe('resolveAppRequest', () => {
         expect(resolveAppRequest('app://trc/a/..%2f..%2f..%2fsecret', ROOTS)).toBeUndefined();
     });
 
+    it('refuses hosts named like object built-ins instead of throwing', () => {
+        for (const host of ['constructor', '__proto__', 'tostring', 'hasownproperty']) {
+            expect(resolveAppRequest(`app://${host}/x`, ROOTS)).toBeUndefined();
+        }
+    });
+
     it('serves the user guide from its own host, kept inside its folder (P-18)', () => {
         expect(resolveAppRequest('app://docs/index.html', ROOTS)).toBe('/bundle/resources/docs/index.html');
         expect(resolveAppRequest('app://docs/..%2findex.html', ROOTS)).toBeUndefined();

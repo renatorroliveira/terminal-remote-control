@@ -63,8 +63,9 @@ function remote(alias: string, command: string): string {
     return execFileSync('ssh', sshArguments(alias, command), { encoding: 'utf8' });
 }
 
+/** Whether `path` exists on the host, read from the last line, since a login banner may come before it. */
 function exists(alias: string, path: string): boolean {
-    return remote(alias, `test -e "${path}" && echo yes || echo no`).trim() === 'yes';
+    return remote(alias, `test -e "${path}" && echo yes || echo no`).trim().split('\n').at(-1) === 'yes';
 }
 
 function freshRoot(alias: string, base = '$HOME'): string {
@@ -188,6 +189,43 @@ describe('bootstrap over an existing install', () => {
         const bootstrapped = await bootstrap('trc-ubuntu', root);
         expect(bootstrapped.steps).toEqual(['checking', 'uploading', 'verifying', 'starting']);
         expect(await handshake(bootstrapped)).toMatchObject({ type: 'welcome', daemonVersion: manifest.version });
+    });
+});
+
+/**
+ * Plants, under `dir`, a `trcd` stored at its own checksum that records being run in `marker` and claims to be a
+ * daemon, as a local attacker able to write there could; `mode` is the version directory's.
+ */
+function plant(alias: string, dir: string, marker: string, mode: string): void {
+    cleanups.push(() => remote(alias, `rm -f "${marker}"`));
+    remote(
+        alias,
+        `set -e; umask 077; mkdir -p "${dir}"; f="${dir}/planted"; ` +
+            `printf '#!/bin/sh\\ntouch "${marker}"\\necho trcd 9.9.9 x\\n' > "$f"; chmod 700 "$f"; ` +
+            `s=$(sha256sum "$f" | cut -d' ' -f1); mkdir -p "${dir}/versions/$s"; mv "$f" "${dir}/versions/$s/trcd"; ` +
+            `chmod ${mode} "${dir}/versions/$s"`,
+    );
+}
+
+describe('bootstrap never runs what others could have planted (SEC-04.4, SEC-07)', () => {
+    it('refuses an install location others can write before running anything in it', async () => {
+        const root = freshRoot('trc-ubuntu');
+        const marker = `${root}.ran`;
+        plant('trc-ubuntu', root, marker, '700');
+        remote('trc-ubuntu', `chmod 0777 "${root}"`);
+        const { outcome } = await bootstrap('trc-ubuntu', root);
+        expect(outcome).toMatchObject({ kind: 'failed', failure: { kind: 'host', code: 'root-unusable' } });
+        expect(exists('trc-ubuntu', marker)).toBe(false);
+    });
+
+    it('skips a version directory others can write, and installs its own daemon instead', async () => {
+        const root = freshRoot('trc-ubuntu');
+        const marker = `${root}.ran`;
+        plant('trc-ubuntu', root, marker, '777');
+        const bootstrapped = await bootstrap('trc-ubuntu', root);
+        expect(bootstrapped.steps).toEqual(['checking', 'uploading', 'verifying', 'starting']);
+        expect(await handshake(bootstrapped)).toMatchObject({ type: 'welcome' });
+        expect(exists('trc-ubuntu', marker)).toBe(false);
     });
 });
 
