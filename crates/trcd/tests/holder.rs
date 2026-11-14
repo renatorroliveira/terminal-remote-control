@@ -1,4 +1,5 @@
-//! The holder over its socket, driven the way the core drives it (US-1.7, US-1.9, US-1.10, US-1.11.3, D-19).
+//! The holder over its socket, driven the way a protocol 1 core drives it: one attachment, on the session stream
+//! (US-1.7, US-1.9, US-1.10, US-1.11.3).
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -79,7 +80,8 @@ impl Client {
             FrameKind::Control => match serde_json::from_slice(&frame.payload).unwrap() {
                 HolderEvent::Status { status } => self.statuses.push(status),
                 HolderEvent::Exiting => self.exiting = true,
-                HolderEvent::Hello { spec, name } => self.hellos.push((spec, name)),
+                HolderEvent::Hello { spec, name, .. } => self.hellos.push((spec, name)),
+                _ => {}
             },
             other => panic!("unexpected frame {other:?}"),
         }
@@ -177,7 +179,12 @@ async fn started_with_credit(program: &str, credit: u32) -> Client {
     client.command(&HolderCommand::Start {
         spec: Box::new(spec(program)),
     });
-    client.command(&HolderCommand::Attach { credit });
+    client.command(&HolderCommand::Attach {
+        credit,
+        attachment: None,
+        from_offset: None,
+        legacy: false,
+    });
     client
         .until(|c| c.statuses.last().is_some_and(|s| s.state == SessionState::Running))
         .await;
@@ -227,8 +234,13 @@ async fn restarts_with_a_marker_and_keeps_the_scrollback() {
     client
         .until(|c| c.last().state == SessionState::Running && c.last().pid != first_pid)
         .await;
-    client.command(&HolderCommand::Detach);
-    client.command(&HolderCommand::Attach { credit: 1 << 20 });
+    client.command(&HolderCommand::Detach { attachment: None });
+    client.command(&HolderCommand::Attach {
+        credit: 1 << 20,
+        attachment: None,
+        from_offset: None,
+        legacy: false,
+    });
     client.output.clear();
     client
         .until(|c| c.text().contains("before-restart") && c.text().contains("[Restarted at "))

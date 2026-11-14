@@ -132,7 +132,9 @@ async fn introduce_at(path: &Path, id: &SessionId, wait: Duration) -> Introducti
 
 fn greeting(event: Option<HolderEvent>) -> Greeting {
     match event {
-        Some(HolderEvent::Hello { spec: Some(spec), name }) => Greeting::Started(spec, name),
+        Some(HolderEvent::Hello {
+            spec: Some(spec), name, ..
+        }) => Greeting::Started(spec, name),
         Some(HolderEvent::Hello { spec: None, .. }) => Greeting::Unstarted,
         _ => Greeting::Silent,
     }
@@ -184,7 +186,11 @@ mod tests {
 
     #[test]
     fn tells_a_holder_never_started_from_one_that_did_not_answer_in_time() {
-        let unstarted = Some(HolderEvent::Hello { spec: None, name: None });
+        let unstarted = Some(HolderEvent::Hello {
+            spec: None,
+            name: None,
+            proto: None,
+        });
         assert!(matches!(greeting(unstarted), Greeting::Unstarted));
         assert!(matches!(greeting(None), Greeting::Silent));
         assert!(matches!(greeting(Some(HolderEvent::Exiting)), Greeting::Silent));
