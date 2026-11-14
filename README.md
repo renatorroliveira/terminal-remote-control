@@ -26,7 +26,7 @@ screen readers, magnifiers, voice control and keyboard-only use.
 
 ## Features
 
-Planned for the first full release (P0), delivered in seven epics:
+Planned for the first full release (P0), delivered in seven epics, then a general-availability release (E8):
 
 - **Accessible first.** WCAG 2.2 AA, with native integration for VoiceOver, JAWS, NVDA, Narrator, Orca, screen
   magnifiers, Speak Selection and voice control. Terminal text is real, selectable text that the operating system
@@ -50,6 +50,7 @@ Planned for the first full release (P0), delivered in seven epics:
 | E5   | Local sessions on the Mac, and macOS hosts                       |
 | E6   | Windows desktop app                                              |
 | E7   | Linux desktop app                                                |
+| E8   | GA release 1.0.0: downloads site, provenance, signed packages    |
 
 ## How it works
 

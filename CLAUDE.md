@@ -64,8 +64,9 @@ tooling (`tools/*`).
 designs, code reviews and commits:
 
 - Global requirements every epic must meet: `A11Y-*`, `SEC-*`, `NFR-*`.
-- Epics `E1`–`E7`: incremental, usable deliverables. Each epic's acceptance
-  criteria is its list of user stories, `US-<epic>.<n>`.
+- Epics `E1`–`E7`: incremental, usable deliverables; `E8` then prepares the
+  general-availability release (1.0.0). Each epic's acceptance criteria is its
+  list of user stories, `US-<epic>.<n>`.
 
 `docs/TECH_STACK.md` records the chosen languages, libraries, tools, configs and
 the decision log (`D-01`…). Keep the stack minimal: the PRD is the scope, so

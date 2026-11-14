@@ -69,6 +69,10 @@ the text surface. It passed three runs in a row.
   include. **The owner accepted this for E1 on 2026-11-13.** The UI test keeps the PRD's 10 ms on the 100 ms host
   and guards the local link at 15 ms against regressions; E2 may revisit the port path between the renderer and the
   utility process.
+- **Attaching briefly doubles a snapshot in memory** (Rust review M6): the formatter's buffer and its copy coexist,
+  and the gate holds the copy until credit drains it. At the 100,000-line maximum that passes NFR-09's 10 MB per
+  session for a moment; the default and the steady state meet it. The owner deferred streaming the snapshot to E2
+  on 2026-11-13, and the PRD records it as an E1 exception.
 - **S3b tuned the credit window from 256 KiB to 1 MiB.** At 100 ms RTT the window bounds throughput at about the
   window over the round trip: 256 KiB gave 2.2 MiB/s and 1 MiB gives 8.4 MiB/s, while Ctrl+C under a flood still
   arrives within 11 ms at p95. OpenSSH's 2 MiB channel window bounds it beyond that.
