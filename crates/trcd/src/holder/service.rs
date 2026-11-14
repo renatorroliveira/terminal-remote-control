@@ -1,10 +1,10 @@
 //! The holder's event loop: one session's PTY, emulator and output, served to whichever core is connected.
 //!
-//! The session keeps running while no core is connected: output still feeds the emulator, so the next core gets an
-//! up-to-date snapshot.
+//! The session keeps running while no core is connected, and the holder never stops reading the PTY: output feeds the
+//! emulator and the output log, so every client gets an up-to-date snapshot or the output it missed (US-2.1.2, D-04).
 
 use std::io;
-use std::time::Duration;
+use std::time::{Duration, Instant as StdInstant};
 
 use tokio::net::unix::OwnedReadHalf;
 use tokio::net::{UnixListener, UnixStream};
@@ -15,10 +15,11 @@ use trc_protocol::frame::{self, Frame, FrameKind};
 use trc_protocol::{ExitStatus, SessionState, TerminalSize};
 use trc_vt::{GhosttyTerminal, Rgb, TerminalConfig, TerminalEvent, TerminalState};
 
+use super::attachments::{Attachments, Outgoing, Session};
 use super::environment::{Account, session_environment};
 use super::osc7::path_from_file_url;
-use super::output_gate::OutputGate;
-use super::protocol::{HolderCommand, HolderEvent, HolderSpec, HolderStatus, SESSION_STREAM};
+use super::output_log::OutputLog;
+use super::protocol::{HOLDER_PROTOCOL, HolderCommand, HolderEvent, HolderSpec, HolderStatus, SESSION_STREAM};
 use super::pty::{Pty, SpawnSpec};
 use super::stop_plan::{DEFAULT_GRACE, StopSignal, stop_plan};
 use crate::accept_backoff::AcceptBackoff;
@@ -28,6 +29,10 @@ use crate::time::{format_utc, now_millis};
 
 /// How often throttled status changes, such as the last-output time, are reported.
 const STATUS_INTERVAL: Duration = Duration::from_secs(1);
+/// History rows a snapshot sends per scrollback line before it gives up catching up with output, plus the rows
+/// libghostty-vt may keep beyond the limit.
+const SNAPSHOT_ROW_FACTOR: usize = 2;
+const SNAPSHOT_ROW_SLACK: usize = 2_048;
 /// The default foreground and background reported to OSC 10 and 11 queries.
 const DEFAULT_COLORS: (Rgb, Rgb) = (Rgb(0xd4, 0xd4, 0xd4), Rgb(0x1e, 0x1e, 0x1e));
 
@@ -42,7 +47,8 @@ pub struct Holder {
     reader: Option<FrameReader<OwnedReadHalf>>,
     sender: Option<FrameSender>,
     writer: Option<JoinHandle<()>>,
-    gate: OutputGate,
+    log: OutputLog,
+    attachments: Attachments,
     status: HolderStatus,
     stopping: Option<Stopping>,
     after_exit: AfterExit,
@@ -83,7 +89,8 @@ impl Holder {
             reader: None,
             sender: None,
             writer: None,
-            gate: OutputGate::default(),
+            log: OutputLog::default(),
+            attachments: Attachments::default(),
             status: HolderStatus {
                 state: SessionState::Starting,
                 pid: None,
@@ -118,7 +125,6 @@ impl Holder {
     }
 
     async fn step(&mut self, listener: &UnixListener, status_tick: &mut Interval) {
-        let wants_output = self.gate.wants_output();
         tokio::select! {
             biased;
             frame = next_frame(&mut self.reader) => self.on_frame(frame),
@@ -128,8 +134,8 @@ impl Holder {
             () = self.accepting.rested() => self.accepting.resume(),
             status = wait_exit(&mut self.exit) => self.on_exit(status),
             () = stop_deadline(&self.stopping) => self.escalate(),
-            chunk = next_chunk(&mut self.output), if wants_output => self.on_output(chunk),
             _ = status_tick.tick() => self.flush_status(),
+            chunk = next_chunk(&mut self.output) => self.on_output(chunk),
         }
     }
 
@@ -143,7 +149,7 @@ impl Holder {
 
     fn connect(&mut self, stream: UnixStream) {
         let (read, write) = stream.into_split();
-        self.gate.detach();
+        self.attachments.detach(None);
         let (sender, writer) = FrameSender::spawn(write);
         self.reader = Some(FrameReader::new(read));
         self.sender = Some(sender);
@@ -151,6 +157,7 @@ impl Holder {
         self.send_event(&HolderEvent::Hello {
             spec: self.spec.clone().map(Box::new),
             name: self.name.clone(),
+            proto: Some(HOLDER_PROTOCOL),
         });
         self.send_status();
     }
@@ -158,7 +165,7 @@ impl Holder {
     fn disconnect(&mut self) {
         self.reader = None;
         self.sender = None;
-        self.gate.detach();
+        self.attachments.detach(None);
     }
 
     fn on_frame(&mut self, frame: io::Result<Option<Frame>>) {
@@ -168,8 +175,8 @@ impl Holder {
         };
         match frame.kind {
             FrameKind::Control => self.on_control(&frame.payload),
-            FrameKind::Input => self.on_input(frame.payload),
-            FrameKind::Credit => self.on_credit(&frame.payload),
+            FrameKind::Input => self.on_input(frame.stream, frame.payload),
+            FrameKind::Credit => self.on_credit(frame.stream, &frame.payload),
             _ => {}
         }
     }
@@ -180,8 +187,14 @@ impl Holder {
         };
         match command {
             HolderCommand::Start { spec } => self.start(*spec),
-            HolderCommand::Attach { credit } => self.attach(credit),
-            HolderCommand::Detach => self.gate.detach(),
+            HolderCommand::Attach {
+                credit,
+                attachment,
+                from_offset,
+                legacy,
+            } => self.attach(attachment, credit, from_offset, legacy),
+            HolderCommand::Detach { attachment } => self.attachments.detach(attachment),
+            HolderCommand::Refresh { attachment } => self.refresh(attachment),
             HolderCommand::Resize { size } => self.resize(size),
             HolderCommand::Stop { grace_ms } => self.stop(grace_ms, AfterExit::Report),
             HolderCommand::Restart => self.restart(),
@@ -190,15 +203,23 @@ impl Holder {
         }
     }
 
-    fn on_input(&mut self, bytes: Vec<u8>) {
+    fn on_input(&mut self, attachment: u32, bytes: Vec<u8>) {
         if let Some(pty) = &self.pty {
             pty.write(bytes);
         }
+        for notice in self.attachments.input_from(attachment, StdInstant::now()) {
+            self.send(notice);
+        }
     }
 
-    fn on_credit(&mut self, payload: &[u8]) {
+    fn on_credit(&mut self, attachment: u32, payload: &[u8]) {
         if let Some(bytes) = payload.first_chunk::<4>() {
-            self.gate.grant(u32::from_be_bytes(*bytes));
+            let session = Session {
+                terminal: self.terminal.as_ref(),
+                log: &self.log,
+                max_rows: self.max_snapshot_rows(),
+            };
+            self.attachments.grant(attachment, u32::from_be_bytes(*bytes), &session);
         }
     }
 
@@ -252,13 +273,31 @@ impl Holder {
         self.send_status();
     }
 
-    fn attach(&mut self, credit: u32) {
-        let snapshot = self
-            .terminal
-            .as_ref()
-            .and_then(|terminal| terminal.snapshot().ok())
-            .unwrap_or_default();
-        self.gate.attach(credit, snapshot);
+    /// Starts an attachment. One from a protocol 1 core has no identifier: it is that core's one attachment, on
+    /// [`SESSION_STREAM`], and always legacy.
+    fn attach(&mut self, attachment: Option<u32>, credit: u32, from_offset: Option<u64>, legacy: bool) {
+        let id = attachment.unwrap_or(SESSION_STREAM);
+        let session = Session {
+            terminal: self.terminal.as_ref(),
+            log: &self.log,
+            max_rows: self.max_snapshot_rows(),
+        };
+        self.attachments
+            .attach(id, credit, from_offset, legacy || attachment.is_none(), &session);
+    }
+
+    fn refresh(&mut self, attachment: u32) {
+        let session = Session {
+            terminal: self.terminal.as_ref(),
+            log: &self.log,
+            max_rows: self.max_snapshot_rows(),
+        };
+        self.attachments.refresh(attachment, &session);
+    }
+
+    fn max_snapshot_rows(&self) -> usize {
+        let lines = self.spec.as_ref().map_or(0, |spec| spec.scrollback_lines as usize);
+        lines.saturating_mul(SNAPSHOT_ROW_FACTOR) + SNAPSHOT_ROW_SLACK
     }
 
     /// Resizes the emulator first and the PTY only once it has, so a resize the emulator refuses leaves both, and
@@ -373,7 +412,8 @@ impl Holder {
         for event in events {
             self.on_terminal_event(event);
         }
-        self.gate.push(chunk);
+        self.log.push(&chunk);
+        self.attachments.push(&chunk);
         self.status.last_output_at = Some(now_millis());
         self.status_dirty = true;
     }
@@ -398,13 +438,29 @@ impl Holder {
     }
 
     fn flush_output(&mut self) {
-        let Some(sender) = &self.sender else {
+        if self.sender.is_none() || self.attachments.is_empty() {
             return;
+        }
+        let session = Session {
+            terminal: self.terminal.as_ref(),
+            log: &self.log,
+            max_rows: self.max_snapshot_rows(),
         };
-        while let Some(chunk) = self.gate.next_chunk() {
-            if let Ok(encoded) = frame::encode(FrameKind::Output, SESSION_STREAM, &chunk) {
-                sender.send(encoded);
+        for item in self.attachments.drain(&session) {
+            self.send(item);
+        }
+    }
+
+    fn send(&self, item: Outgoing) {
+        match item {
+            Outgoing::Output(attachment, bytes) => {
+                if let (Some(sender), Ok(encoded)) =
+                    (&self.sender, frame::encode(FrameKind::Output, attachment, &bytes))
+                {
+                    sender.send(encoded);
+                }
             }
+            Outgoing::Event(event) => self.send_event(&event),
         }
     }
 

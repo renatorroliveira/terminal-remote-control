@@ -49,7 +49,15 @@ async fn the_shell_inherits_the_holders_umask() {
             spec: Box::new(umask_spec()),
         },
     );
-    command(&sender, &HolderCommand::Attach { credit: 1 << 20 });
+    command(
+        &sender,
+        &HolderCommand::Attach {
+            credit: 1 << 20,
+            attachment: None,
+            from_offset: None,
+            legacy: false,
+        },
+    );
     assert!(output_until(&mut reader, "0027").await);
     command(&sender, &HolderCommand::Shutdown);
     assert!(saw_exiting(&mut reader).await);

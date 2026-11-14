@@ -34,7 +34,7 @@ impl Core {
         };
         for session in link.streams.into_values() {
             self.attachments.remove(&session);
-            self.holder_command(&session, &HolderCommand::Detach);
+            self.holder_command(&session, &HolderCommand::Detach { attachment: None });
         }
         tracing::info!(client, "app disconnected");
     }
@@ -262,7 +262,15 @@ impl Core {
         link.next_stream += 1;
         link.streams.insert(stream, session.clone());
         self.attachments.insert(session.clone(), Attachment { client, stream });
-        self.holder_command(session, &HolderCommand::Attach { credit: CREDIT_WINDOW });
+        self.holder_command(
+            session,
+            &HolderCommand::Attach {
+                credit: CREDIT_WINDOW,
+                attachment: None,
+                from_offset: None,
+                legacy: true,
+            },
+        );
         ServerMessage::Attached {
             request_id,
             session: session.clone(),
@@ -279,7 +287,7 @@ impl Core {
             .is_some_and(|attachment| attachment.client == client)
         {
             self.detach_session(session);
-            self.holder_command(session, &HolderCommand::Detach);
+            self.holder_command(session, &HolderCommand::Detach { attachment: None });
         }
         ServerMessage::Done { request_id }
     }

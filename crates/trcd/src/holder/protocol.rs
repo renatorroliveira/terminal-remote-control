@@ -1,13 +1,16 @@
-//! Messages between the core and a holder, carried as `CONTROL` frames on the holder's socket. `OUTPUT`, `INPUT`
-//! and `CREDIT` frames use [`SESSION_STREAM`].
+//! Messages between the core and a holder, carried as `CONTROL` frames on the holder's socket. In holder protocol 2,
+//! `OUTPUT`, `INPUT` and `CREDIT` frames carry the attachment as their stream; protocol 1 (E1) has one attachment, on
+//! [`SESSION_STREAM`].
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use trc_protocol::{ExitStatus, SessionState, ShellProfile, TerminalSize};
+use trc_protocol::{ExitStatus, Replay, ResyncKind, SessionState, ShellProfile, TerminalSize};
 
-/// The stream that carries the session's output, input and credit on a holder socket.
+/// The stream of holder protocol 1's one attachment, and of an attachment a protocol 1 core makes.
 pub const SESSION_STREAM: u32 = 1;
+/// The holder protocol this build speaks; it also serves protocol 1 cores.
+pub const HOLDER_PROTOCOL: u32 = 2;
 
 /// What a holder needs to start its session.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -40,13 +43,31 @@ pub enum HolderCommand {
         /// What to start.
         spec: Box<HolderSpec>,
     },
-    /// Sends the screen snapshot and then live output, within the given credit.
+    /// Starts an attachment: what the client lacks, then live output, within the given credit.
     Attach {
         /// Output bytes the client may receive before it grants more.
         credit: u32,
+        /// The attachment, which is also its stream; absent from a protocol 1 core, which has one.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        attachment: Option<u32>,
+        /// The first offset the client lacks; a snapshot replaces its terminal when absent or too old.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        from_offset: Option<u64>,
+        /// Whether the client speaks app protocol 1, so a resync is an in-band reset and the whole snapshot.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        legacy: bool,
     },
-    /// Stops sending output.
-    Detach,
+    /// Ends an attachment; every attachment when absent, as from a protocol 1 core.
+    Detach {
+        /// The attachment.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        attachment: Option<u32>,
+    },
+    /// Sends an attachment the whole scrollback and screen again (D-45).
+    Refresh {
+        /// The attachment.
+        attachment: u32,
+    },
     /// Resizes the PTY and the emulator.
     Resize {
         /// The new size.
@@ -113,6 +134,35 @@ pub enum HolderEvent {
         /// The user's name for the session.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         name: Option<String>,
+        /// The holder protocol the holder speaks; absent from protocol 1 holders.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        proto: Option<u32>,
+    },
+    /// Answers `attach`: what the output that follows brings.
+    Attached {
+        /// The attachment.
+        attachment: u32,
+        /// The missed output or a snapshot.
+        replay: Replay,
+    },
+    /// Every output byte after this on the attachment is live output, the first at `offset`.
+    Synced {
+        /// The attachment.
+        attachment: u32,
+        /// The offset of the next output byte.
+        offset: u64,
+    },
+    /// The attachment fell behind or asked for `refresh`: the output up to `synced` recreates the terminal.
+    Resync {
+        /// The attachment.
+        attachment: u32,
+        /// What follows.
+        kind: ResyncKind,
+    },
+    /// Another attachment sent input.
+    PeerInput {
+        /// The attachment told.
+        attachment: u32,
     },
     /// The session changed.
     Status {
