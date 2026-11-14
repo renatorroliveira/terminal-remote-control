@@ -376,7 +376,7 @@ describe('TerminalRegistry: reconnecting hosts (US-1.14.2)', () => {
         expect(labels()).toEqual(['bash, h1, disconnected']);
         transport.hold = undefined;
         release();
-        expect(await reattached).toEqual(['h1/b']);
+        expect(await reattached).toEqual([{ key: 'h1/b', error: new Error('unknownSession') }]);
         expect(labels()).toEqual(['bash, h1']);
     });
 

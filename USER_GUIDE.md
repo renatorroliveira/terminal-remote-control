@@ -53,7 +53,8 @@ when you trust a new host key.
    with it in the same folder, `shasum -a 256 --ignore-missing -c SHA256SUMS.txt` checks that your download is
    complete and intact. It comes from the same Releases page, so it cannot show who made the files.
 2. Open the dmg and drag Terminal Remote Control to Applications.
-3. Open it once from Applications. This release is ad-hoc signed, not notarized, so macOS blocks the first launch.
+3. Open it once from Applications. 0.x releases are alpha, experimental builds: they are ad-hoc signed, not
+   notarized, so macOS blocks the first launch. Signed builds start with 1.0.0.
    Open System Settings, then Privacy & Security, and choose Open Anyway next to the message about Terminal Remote
    Control. Or, in Terminal:
 
@@ -112,7 +113,9 @@ find them in the command palette:
 - **New session**, **Connect**, **Disconnect** or **Cancel connecting**.
 - **Test connection**: connects, says whether it works, and disconnects again.
 - **Change install location**: for a host whose home folder can't run programs (mounted `noexec`), pick another
-  folder, such as one on another disk. The next connection uses it.
+  folder, such as one on another disk. The next connection uses it. Only you, or root, may be able to change that
+  folder and each folder above it; a shared folder is fine only with the sticky bit, as `/var/tmp` has. TRC refuses
+  a location other users could change, since they could swap the daemon it runs.
 - **Forget**: removes the host from TRC after you confirm. Its sessions keep running on the host, and adding the host
   again shows them.
 
@@ -368,6 +371,7 @@ The licenses of the software TRC includes are in the app, in
 | The host key has changed                             | Ask the host's administrator. Only if the new fingerprint matches, run `ssh-keygen -R <host>`. |
 | The host runs a newer daemon than this app           | Another Mac installed a newer TRC on this host. Update the app.                                |
 | The install location doesn't allow running programs  | Choose another install location from the host's actions, then connect again.                   |
+| Other users can change the install location          | Choose a location only you can change, such as one in your home folder, then connect again.    |
 | The daemon couldn't be installed                     | Check free space and permissions in the install location on the host.                          |
 
 If the app doesn't open after you download it, see [Install](#install), step 3.

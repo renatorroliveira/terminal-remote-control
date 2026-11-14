@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { startedRun, unpublished } from './release.ts';
 
 describe('the release trigger (P-21, D-42)', () => {
-    it('follows the newest run the caller dispatched after the dispatch, and none before it', () => {
+    it('follows the caller’s newest run created within the clock-skew window or later, and none before it', () => {
         const since = Date.parse('2026-11-13T10:00:00Z');
         const runs = [
             { databaseId: 3, createdAt: '2026-11-13T10:00:04Z' },

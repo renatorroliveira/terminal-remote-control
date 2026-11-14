@@ -1,4 +1,6 @@
 //! The install layout `<root>/versions/<version>/trcd` and the integrity check every subcommand runs first (SEC-04.4).
+//! Every folder above the root counts too: one that another user can change lets them swap the install between
+//! the check and a run, as OpenSSH reasons about the folders above a key file.
 
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
@@ -39,6 +41,16 @@ pub enum InstallError {
     Writable {
         /// The offending path.
         path: String,
+        /// Its permission bits.
+        mode: u32,
+    },
+    /// A folder above the install root lets another user rename or replace what is in it.
+    #[error("{path}, above the install root, can be changed by other users (owner uid {owner}, mode {mode:o})")]
+    UnsafeParent {
+        /// The offending folder.
+        path: String,
+        /// Its owner.
+        owner: u32,
         /// Its permission bits.
         mode: u32,
     },
@@ -89,11 +101,16 @@ impl InstallLayout {
     }
 
     /// Fails when the binary, its version directory, `versions` or the root is owned by anyone but `uid` or is
-    /// writable by group or others.
+    /// writable by group or others, or when a folder above the root is owned by anyone but `uid` or root, or is
+    /// writable by group or others without the sticky bit.
     pub fn check_integrity(&self, uid: u32) -> Result<(), InstallError> {
         [&self.binary, &self.version_dir, &self.versions, &self.root]
             .into_iter()
-            .try_for_each(|path| check_owned_and_protected(path, uid))
+            .try_for_each(|path| check_owned_and_protected(path, uid))?;
+        self.root
+            .ancestors()
+            .skip(1)
+            .try_for_each(|path| check_parent(path, uid))
     }
 
     /// Where the core writes its logs.
@@ -104,10 +121,7 @@ impl InstallLayout {
 
 fn check_owned_and_protected(path: &Path, uid: u32) -> Result<(), InstallError> {
     let shown = path.display().to_string();
-    let metadata = std::fs::symlink_metadata(path).map_err(|error| InstallError::Unreadable {
-        path: shown.clone(),
-        reason: error.to_string(),
-    })?;
+    let metadata = examine(path)?;
     if metadata.uid() != uid {
         return Err(InstallError::ForeignOwner {
             path: shown,
@@ -120,6 +134,28 @@ fn check_owned_and_protected(path: &Path, uid: u32) -> Result<(), InstallError> 
         return Err(InstallError::Writable { path: shown, mode });
     }
     Ok(())
+}
+
+fn check_parent(path: &Path, uid: u32) -> Result<(), InstallError> {
+    let metadata = examine(path)?;
+    let mode = metadata.mode() & 0o7777;
+    let owned = metadata.uid() == uid || metadata.uid() == 0;
+    let changeable = mode & 0o022 != 0 && mode & 0o1000 == 0;
+    if owned && !changeable {
+        return Ok(());
+    }
+    Err(InstallError::UnsafeParent {
+        path: path.display().to_string(),
+        owner: metadata.uid(),
+        mode,
+    })
+}
+
+fn examine(path: &Path) -> Result<std::fs::Metadata, InstallError> {
+    std::fs::symlink_metadata(path).map_err(|error| InstallError::Unreadable {
+        path: path.display().to_string(),
+        reason: error.to_string(),
+    })
 }
 
 #[cfg(test)]
@@ -202,5 +238,60 @@ mod tests {
             expected: other,
         };
         assert_eq!(layout.check_integrity(other), Err(expected));
+    }
+
+    fn installed_under(parent_mode: u32) -> (InstallLayout, PathBuf) {
+        let base = crate::test_support::temp_dir("install-parent");
+        let shared = base.join("shared");
+        let version_dir = shared.join("root/versions/0123");
+        std::fs::DirBuilder::new()
+            .mode(0o700)
+            .recursive(true)
+            .create(&version_dir)
+            .unwrap();
+        let binary = version_dir.join("trcd");
+        std::fs::write(&binary, b"#!/bin/sh\n").unwrap();
+        std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o700)).unwrap();
+        std::fs::set_permissions(&shared, std::fs::Permissions::from_mode(parent_mode)).unwrap();
+        (InstallLayout::from_binary(&binary).unwrap(), shared)
+    }
+
+    #[test]
+    fn rejects_an_install_under_a_folder_others_can_change() {
+        let uid = rustix::process::geteuid().as_raw();
+        for mode in [0o777, 0o770, 0o2775] {
+            let (layout, shared) = installed_under(mode);
+            let owner = std::fs::metadata(&shared).unwrap().uid();
+            let expected = InstallError::UnsafeParent {
+                path: shared.display().to_string(),
+                owner,
+                mode,
+            };
+            assert_eq!(layout.check_integrity(uid), Err(expected));
+        }
+    }
+
+    #[test]
+    fn accepts_an_install_under_a_sticky_shared_folder() {
+        let uid = rustix::process::geteuid().as_raw();
+        let (layout, _) = installed_under(0o1777);
+        assert_eq!(layout.check_integrity(uid), Ok(()));
+    }
+
+    #[test]
+    fn rejects_a_folder_above_the_root_owned_by_another_user() {
+        let dir = crate::test_support::temp_dir("install-owner");
+        let uid = rustix::process::geteuid().as_raw();
+        let other = uid.wrapping_add(1);
+        let metadata = std::fs::metadata(&dir).unwrap();
+        let expected = InstallError::UnsafeParent {
+            path: dir.display().to_string(),
+            owner: metadata.uid(),
+            mode: metadata.mode() & 0o7777,
+        };
+        if uid != 0 {
+            assert_eq!(check_parent(&dir, other), Err(expected));
+        }
+        assert_eq!(check_parent(&dir, uid), Ok(()));
     }
 }

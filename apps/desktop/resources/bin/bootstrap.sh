@@ -6,9 +6,12 @@
 #   RUN <sha256>
 #   EXIT
 # Errors are `ERROR <code> <detail>`. A failed run leaves nothing behind.
+# `root-unsafe` means another user could change the install location;
+# `root-unusable` means it cannot be created or written.
 # Nothing under the install location runs, or is even reported, unless the
 # location, its versions directory, the version directory and the binary are
-# all the user's own and writable by no one else (SEC-04.4).
+# all the user's own and writable by no one else, and no folder above the
+# location lets another user swap it (SEC-04.4).
 umask 077
 
 say() {
@@ -28,6 +31,7 @@ resolve_root() {
     *) fail "root-unusable the install location must be absolute or start with ~/: $TRC_ROOT" ;;
     esac
     root=${root%/}
+    [ -n "$root" ] || fail "root-unusable the install location cannot be /"
 }
 
 detect_arch() {
@@ -67,13 +71,44 @@ trusted() {
     return 0
 }
 
+# Whether a folder above the install location can be changed only by the user
+# or root: owned by one of them, and writable by its group or others only with
+# the sticky bit, which keeps others from renaming what is in it. OpenSSH asks
+# the same of the folders above a key file.
+safe_parent() {
+    set -- "$1" $(ls -ldn "$1")
+    [ "$4" = 0 ] || [ "$4" = "$uid" ] || return 1
+    case $(printf '%s\n' "$2" | cut -c6,9,10) in
+    ??[tT]) return 0 ;;
+    *w*) return 1 ;;
+    esac
+    return 0
+}
+
+# Rewrites the install location over its folder's physical path, so no symbolic
+# link above it is followed again, and refuses it when a folder from there up
+# to / is not safe_parent: then no other user can swap the location between a
+# check and a run.
+check_parents() {
+    parent=$(cd "${root%/*}/" 2>/dev/null && pwd -P) || fail "root-unusable ${root%/*} is missing or cannot be entered"
+    parent=${parent%/}
+    root=$parent/${root##*/}
+    dir=${parent:-/}
+    while :; do
+        safe_parent "$dir" || fail "root-unsafe $dir lets other users change $root"
+        [ "$dir" = / ] && return 0
+        dir=${dir%/*}
+        dir=${dir:-/}
+    done
+}
+
 # Refuses an install location that exists and is not trusted, before anything
 # in it is run.
 check_root() {
-    [ -L "$root" ] && fail "root-unusable $root is a symbolic link"
+    [ -L "$root" ] && fail "root-unsafe $root is a symbolic link"
     [ -e "$root" ] || return 0
-    [ -O "$root" ] || fail "root-unusable $root belongs to another user"
-    trusted "$root" || fail "root-unusable $root is writable by other users"
+    [ -O "$root" ] || fail "root-unsafe $root belongs to another user"
+    trusted "$root" || fail "root-unsafe $root is writable by other users"
 }
 
 installed_versions() {
@@ -101,7 +136,7 @@ make_dir() {
 }
 
 prepare_root() {
-    [ -L "$root" ] && fail "root-unusable $root is a symbolic link"
+    [ -L "$root" ] && fail "root-unsafe $root is a symbolic link"
     if make_dir "$root"; then
         created_root=1
     fi
@@ -109,7 +144,7 @@ prepare_root() {
     if make_dir "$root/versions"; then
         created_versions=1
     fi
-    trusted "$root/versions" || fail "root-unusable $root/versions is not yours alone"
+    trusted "$root/versions" || fail "root-unsafe $root/versions is not yours alone"
 }
 
 take_lock() {
@@ -176,7 +211,7 @@ upload() {
     say "PROGRESS testing"
     self_test "$staging/trcd" "$2"
     if [ -d "$root/versions/$2" ]; then
-        trusted "$root/versions/$2" || fail "root-unusable $root/versions/$2 is not yours alone"
+        trusted "$root/versions/$2" || fail "root-unsafe $root/versions/$2 is not yours alone"
         mv -f "$staging/trcd" "$root/versions/$2/trcd" || fail "root-unusable cannot install into $root/versions/$2"
         rm -rf "$staging"
     else
@@ -195,7 +230,7 @@ run_bridge() {
     bin=$root/versions/$1/trcd
     [ -x "$bin" ] || fail "not-installed $1"
     trusted "$root/versions" && trusted "$root/versions/$1" && trusted "$bin" ||
-        fail "root-unusable $root/versions/$1 is not yours alone"
+        fail "root-unsafe $root/versions/$1 is not yours alone"
     trap - EXIT HUP INT TERM
     say "RUNNING"
     exec "$bin" bridge
@@ -212,7 +247,9 @@ cleanup() {
 main() {
     trap cleanup EXIT
     trap 'exit 1' HUP INT TERM
+    uid=$(id -u)
     resolve_root
+    check_parents
     check_root
     os=$(uname -s)
     machine=$(uname -m)

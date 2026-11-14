@@ -48,9 +48,9 @@ export interface TerminalHost {
     setHostConnected(hostId: string, connected: boolean): void;
     /**
      * Attaches a reconnected host's terminals to their sessions again; each takes input once attached, and the
-     * sessions that could not attach are returned (US-1.14.2, US-1.14.3).
+     * sessions that could not attach are returned with why, their terminals removed (US-1.14.2, US-1.14.3).
      */
-    reattachHost(hostId: string): Promise<readonly SessionKey[]>;
+    reattachHost(hostId: string): Promise<readonly AttachFailure[]>;
     /** Removes the terminals of a host whose connection closed. */
     closeHost(hostId: string): void;
     /** Removes the terminal of a session the daemon closed. */
@@ -58,6 +58,12 @@ export interface TerminalHost {
 }
 
 /** The settings that change how sessions start, stop and end (US-1.7.1, US-1.10.2, US-1.10.7). */
+/** A terminal that could not attach to its session again, and why (US-1.14.3). */
+export interface AttachFailure {
+    readonly key: SessionKey;
+    readonly error: unknown;
+}
+
 export type SessionPreferences = Pick<Settings, 'autoClose' | 'stopGraceSeconds' | 'newSessionFolder'>;
 
 /** What a new session may set beyond its size (US-1.7.2). */
@@ -408,8 +414,8 @@ export class WorkspaceController {
     async #reattach(hostId: string): Promise<void> {
         const failed = await this.#terminals.reattachHost(hostId);
         if (failed.length > 0) {
-            this.#closeOpen(failed);
-            this.#failed('reattach', hostId);
+            this.#closeOpen(failed.map((failure) => failure.key));
+            this.#failed('reattach', hostId, failed[0]?.error);
         }
     }
 

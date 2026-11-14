@@ -16,7 +16,7 @@ export type AppRoots = Readonly<Record<string, string>>;
 
 /**
  * Maps an `app://<host>/...` URL to a file inside that host's root, or returns `undefined` when the URL has another
- * scheme or an unknown host, or would escape the root.
+ * scheme or an unknown host, has a malformed escape, or would escape the root.
  */
 export function resolveAppRequest(url: string, roots: AppRoots): string | undefined {
     const parsed = URL.canParse(url) ? new URL(url) : undefined;
@@ -24,12 +24,23 @@ export function resolveAppRequest(url: string, roots: AppRoots): string | undefi
     if (parsed?.protocol !== `${APP_IDENTITY.appScheme}:` || root === undefined) {
         return undefined;
     }
-    const relative = decodeURIComponent(parsed.pathname).replace(/^\/+/, '') || 'index.html';
-    const file = resolve(root, relative);
+    const decoded = decodedPath(parsed.pathname);
+    if (decoded === undefined) {
+        return undefined;
+    }
+    const file = resolve(root, decoded.replace(/^\/+/, '') || 'index.html');
     return file.startsWith(root + sep) ? file : undefined;
 }
 
 /** Returns the Content-Type header for a renderer asset path. */
 export function contentTypeFor(path: string): string {
     return CONTENT_TYPES[extname(path)] ?? 'application/octet-stream';
+}
+
+function decodedPath(pathname: string): string | undefined {
+    try {
+        return decodeURIComponent(pathname);
+    } catch {
+        return undefined;
+    }
 }

@@ -1,6 +1,6 @@
 import type { SessionInfo } from '@trc/protocol';
 import { DEFAULT_TERMINAL_APPEARANCE, type TerminalAppearance } from '../../shared/terminal-appearance';
-import type { SessionKey, SessionOptions, TerminalHost } from '../sessions/workspace-controller';
+import type { AttachFailure, SessionKey, SessionOptions, TerminalHost } from '../sessions/workspace-controller';
 import type { TerminalPalette } from '../ui/themes';
 import type { FindOptions, FindResult } from './find';
 import type { TerminalLink } from './hyperlinks';
@@ -269,11 +269,11 @@ export class TerminalRegistry implements TerminalHost {
      * refusing typing until its attach answers (US-1.14.2); returns the sessions that could not attach, whose terminals
      * are removed.
      */
-    async reattachHost(hostId: string): Promise<readonly SessionKey[]> {
+    async reattachHost(hostId: string): Promise<readonly AttachFailure[]> {
         this.#offline.delete(hostId);
         const keys = [...this.#entries.keys()].filter((key) => key.startsWith(`${hostId}/`));
         const failed = await Promise.all(keys.map((key) => this.#reattach(key)));
-        return failed.filter((key): key is SessionKey => key !== undefined);
+        return failed.filter((failure): failure is AttachFailure => failure !== undefined);
     }
 
     /** Detaches and removes the terminals of a host whose connection closed. */
@@ -322,7 +322,7 @@ export class TerminalRegistry implements TerminalHost {
         }
     }
 
-    async #reattach(key: SessionKey): Promise<SessionKey | undefined> {
+    async #reattach(key: SessionKey): Promise<AttachFailure | undefined> {
         const entry = this.#entries.get(key);
         if (entry === undefined) {
             return undefined;
@@ -332,9 +332,9 @@ export class TerminalRegistry implements TerminalHost {
             await entry.link.reattach();
             entry.view.setConnected(true);
             return undefined;
-        } catch {
+        } catch (error) {
             this.#removeIfCurrent(key, entry);
-            return key;
+            return { key, error };
         }
     }
 

@@ -5,7 +5,13 @@ import { DEFAULT_INSTALL_ROOT, isInstallRoot, type KnownHost } from '../../share
 import { type ClientRequest, HostRequestError } from '../connection/host-client';
 import type { FindResult } from '../terminal/find';
 import type { TerminalLink } from '../terminal/hyperlinks';
-import type { KnownHostStore, SessionOptions, TerminalHost, WorkspaceClient } from './workspace-controller';
+import type {
+    AttachFailure,
+    KnownHostStore,
+    SessionOptions,
+    TerminalHost,
+    WorkspaceClient,
+} from './workspace-controller';
 
 /** A login bash session for tests. */
 export function bashSession(id: string): SessionInfo {
@@ -194,7 +200,7 @@ export class FakeTerminalHost implements TerminalHost {
     }
 
     /** Records the re-attach; every terminal attaches again. */
-    reattachHost(hostId: string): Promise<readonly string[]> {
+    reattachHost(hostId: string): Promise<readonly AttachFailure[]> {
         this.reattached.push(hostId);
         return Promise.resolve([]);
     }

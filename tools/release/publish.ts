@@ -13,7 +13,7 @@ import { basename, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { releaseAssets, sha256Sums } from './assets.ts';
 import { releaseTitle } from './notes.ts';
-import { commitVersion, query, run, setVersion, VERSION_FILES } from './repository.ts';
+import { type Attempt, attempt, capture, commitVersion, run, setVersion, VERSION_FILES } from './repository.ts';
 import { devVersion } from './versions.ts';
 
 /** A downloaded file: its HTTP status and its text. */
@@ -26,8 +26,10 @@ export interface Download {
 export interface PublishSeams {
     /** Runs a command; the release fails when it fails. */
     run(command: string, args: readonly string[]): void;
-    /** Runs a command and returns its trimmed output, or undefined when it fails. */
-    query(command: string, args: readonly string[]): string | undefined;
+    /** Runs a command and returns its trimmed output; the release fails when it fails. */
+    capture(command: string, args: readonly string[]): string;
+    /** Whether the tag's GitHub release is absent, a draft or published; the release fails when gh cannot tell. */
+    releaseState(tag: string): ReleaseState;
     /** Downloads a URL without credentials. */
     download(url: string): Promise<Download>;
     /** Waits before trying again. */
@@ -37,6 +39,9 @@ export interface PublishSeams {
     /** Commits the version files through the repository's hooks. */
     commitVersion(subject: string, body: string): void;
 }
+
+/** Where a tag's GitHub release stands. */
+export type ReleaseState = 'absent' | 'draft' | 'published';
 
 /** One release to publish. */
 export interface ReleaseInput {
@@ -55,6 +60,20 @@ export interface ReleaseInput {
 
 const PUBLIC_ATTEMPTS = 6;
 
+/**
+ * Reads `gh release view --json isDraft` for `tag`: only gh's "release not found" means there is none, so a failure
+ * of any other kind, such as the network, never leads to a second draft.
+ */
+export function releaseStateOf(viewed: Attempt, tag: string): ReleaseState {
+    if (viewed.ok) {
+        return viewed.output === 'true' ? 'draft' : 'published';
+    }
+    if (/release not found/i.test(viewed.stderr)) {
+        return 'absent';
+    }
+    throw new Error(`gh could not say whether ${tag} has a release: ${viewed.stderr}`);
+}
+
 /** Publishes the checked-out release commit, resuming whatever an earlier run of the same release left undone. */
 export async function publish(input: ReleaseInput, seams: PublishSeams): Promise<void> {
     checkReleaseCommit(input.base, seams);
@@ -65,11 +84,11 @@ export async function publish(input: ReleaseInput, seams: PublishSeams): Promise
 }
 
 function checkReleaseCommit(base: string, seams: PublishSeams): void {
-    const parent = seams.query('git', ['rev-parse', 'HEAD~1']);
+    const parent = seams.capture('git', ['rev-parse', 'HEAD~1']);
     if (parent !== base) {
         throw new Error(`the release commit must sit on ${base}, the commit the workflow started from, not ${parent}`);
     }
-    const changed = (seams.query('git', ['diff', '--name-only', 'HEAD~1', 'HEAD']) ?? '').split('\n');
+    const changed = seams.capture('git', ['diff', '--name-only', 'HEAD~1', 'HEAD']).split('\n');
     const unexpected = changed.filter((file) => !(VERSION_FILES as readonly string[]).includes(file));
     if (unexpected.length > 0) {
         throw new Error(`the release commit may change only the version files, but changes ${unexpected.join(', ')}`);
@@ -78,9 +97,9 @@ function checkReleaseCommit(base: string, seams: PublishSeams): void {
 
 function pushTag(version: string, seams: PublishSeams): void {
     const tag = `v${version}`;
-    const head = seams.query('git', ['rev-parse', 'HEAD']);
-    const listed = seams.query('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`, `refs/tags/${tag}^{}`]);
-    const tagged = taggedCommit(listed ?? '', tag);
+    const head = seams.capture('git', ['rev-parse', 'HEAD']);
+    const listed = seams.capture('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`, `refs/tags/${tag}^{}`]);
+    const tagged = taggedCommit(listed, tag);
     if (tagged === undefined) {
         seams.run('git', ['tag', '-a', tag, '-m', releaseTitle(version)]);
         seams.run('git', ['push', '--atomic', 'origin', 'HEAD:refs/heads/main', `refs/tags/${tag}`]);
@@ -101,11 +120,11 @@ function taggedCommit(listing: string, tag: string): string | undefined {
 
 function publishRelease(input: ReleaseInput, seams: PublishSeams): void {
     const tag = `v${input.version}`;
-    const draft = seams.query('gh', ['release', 'view', tag, '--json', 'isDraft', '--jq', '.isDraft']);
-    if (draft === 'false') {
+    const state = seams.releaseState(tag);
+    if (state === 'published') {
         return;
     }
-    if (draft === undefined) {
+    if (state === 'absent') {
         const title = releaseTitle(input.version);
         seams.run('gh', [
             'release',
@@ -122,7 +141,8 @@ function publishRelease(input: ReleaseInput, seams: PublishSeams): void {
     } else {
         seams.run('gh', ['release', 'upload', tag, '--clobber', ...input.assets]);
     }
-    const uploaded = (seams.query('gh', ['release', 'view', tag, '--json', 'assets', '--jq', '.assets[].name']) ?? '')
+    const uploaded = seams
+        .capture('gh', ['release', 'view', tag, '--json', 'assets', '--jq', '.assets[].name'])
         .split('\n')
         .filter((name) => name !== '');
     const missing = input.assets.map((path) => basename(path)).filter((name) => !uploaded.includes(name));
@@ -135,7 +155,7 @@ function publishRelease(input: ReleaseInput, seams: PublishSeams): void {
 function startNextVersion(version: string, seams: PublishSeams): void {
     const next = devVersion(version);
     seams.run('git', ['fetch', '--quiet', 'origin', 'main']);
-    const manifest = JSON.parse(seams.query('git', ['show', 'FETCH_HEAD:package.json']) ?? '{}') as {
+    const manifest = JSON.parse(seams.capture('git', ['show', 'FETCH_HEAD:package.json'])) as {
         readonly version?: string;
     };
     if (manifest.version === next) {
@@ -188,7 +208,9 @@ function releaseInput(version: string, notes: string, packages: string): Release
 
 const REAL_SEAMS: PublishSeams = {
     run,
-    query,
+    capture,
+    releaseState: (tag) =>
+        releaseStateOf(attempt('gh', ['release', 'view', tag, '--json', 'isDraft', '--jq', '.isDraft']), tag),
     download: async (url) => {
         const response = await fetch(url);
         return { status: response.status, text: await response.text() };

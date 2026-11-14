@@ -7,9 +7,10 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import {
     type CargoMetadata,
+    copyrightHolder,
     fontLicenses,
     formatNotices,
     isLicenseFile,
@@ -18,6 +19,7 @@ import {
     npmPackages,
     rustPackages,
     type ShippedPackage,
+    unnoticedDependencies,
 } from './notices-format.ts';
 
 const ROOT = resolve(import.meta.dirname, '../..');
@@ -25,6 +27,12 @@ const DESKTOP = join(ROOT, 'apps/desktop');
 const OUTPUT = join(DESKTOP, 'resources/notices/THIRD_PARTY_NOTICES.txt');
 const FONTS = join(DESKTOP, 'src/renderer/ui/fonts');
 const DAEMON_TARGETS = ['x86_64-unknown-linux-musl', 'aarch64-unknown-linux-musl'] as const;
+/** The copyright holders of MIT packages that ship no license file and name no author, from their repository. */
+const MIT_HOLDERS: Readonly<Record<string, string>> = {
+    'client-only': 'Meta Platforms, Inc. and affiliates',
+};
+/** The folders of libghostty-vt's dependencies that only its build runs, by name prefix: the C translator. */
+const BUILD_ONLY_DEPENDENCIES = ['aro-', 'translate_c-'] as const;
 const FONT_NAMES: Readonly<Record<string, string>> = {
     'atkinson-hyperlegible-next.OFL.txt': 'Atkinson Hyperlegible Next',
     'intel-one-mono.OFL.txt': 'Intel One Mono',
@@ -65,13 +73,24 @@ function native(): readonly Notice[] {
     const source = join(cache, 'libghostty-vt', version, 'src', `libghostty-vt-${version}`);
     const deps = `${source}-deps`;
     const within = `in libghostty-vt ${version}`;
+    const highway = zigDependency(source, deps, 'highway');
+    const wuffs = zigDependency(source, deps, 'wuffs');
+    const uucode = folderStarting(deps, 'uucode-');
+    const unnoticed = unnoticedDependencies(
+        readdirSync(deps),
+        [highway, wuffs, uucode].map((folder) => basename(folder)),
+        BUILD_ONLY_DEPENDENCIES,
+    );
+    if (unnoticed.length > 0) {
+        throw new Error(`libghostty-vt ${version} vendors ${unnoticed.join(', ')}; give each a notice in native()`);
+    }
     return [
         { name: 'libghostty-vt', version, license: 'MIT', texts: licenseTexts(source) },
         {
             name: 'Highway',
             version: within,
             license: 'Apache-2.0 OR BSD-3-Clause',
-            texts: licenseTexts(zigDependency(source, deps, 'highway')),
+            texts: licenseTexts(highway),
         },
         {
             name: 'simdutf',
@@ -83,13 +102,13 @@ function native(): readonly Notice[] {
             name: 'uucode',
             version: within,
             license: 'MIT',
-            texts: licenseTexts(join(deps, folderStarting(deps, 'uucode-'))),
+            texts: licenseTexts(join(deps, uucode)),
         },
         {
             name: 'Wuffs',
             version: within,
             license: 'Apache-2.0 OR MIT',
-            texts: licenseTexts(zigDependency(source, deps, 'wuffs')),
+            texts: licenseTexts(wuffs),
         },
     ];
 }
@@ -108,7 +127,7 @@ function fonts(): readonly Notice[] {
 function packageTexts(entry: ShippedPackage): readonly string[] {
     const texts = licenseTexts(entry.folder);
     return texts.length === 0 && entry.license === 'MIT'
-        ? [mitLicense(holderOf(entry.folder) ?? `the ${entry.name} authors`)]
+        ? [mitLicense(copyrightHolder(entry.name, holderOf(entry.folder), MIT_HOLDERS))]
         : texts;
 }
 

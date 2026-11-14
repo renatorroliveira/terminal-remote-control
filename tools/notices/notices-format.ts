@@ -68,6 +68,37 @@ export function npmPackages(
     return byName([...new Map(shipped.map((entry) => [`${entry.name}@${entry.version}`, entry])).values()]);
 }
 
+/**
+ * The copyright holder of an MIT package that ships no license file: the author its manifest names, or else the one
+ * `known` records from its repository's license. Fails for a package with neither, so its notice is never left
+ * without a holder.
+ */
+export function copyrightHolder(
+    name: string,
+    declared: string | undefined,
+    known: Readonly<Record<string, string>>,
+): string {
+    const holder = declared ?? known[name];
+    if (holder === undefined) {
+        throw new Error(`${name} is MIT with no license file and names no author; record its holder in MIT_HOLDERS`);
+    }
+    return holder;
+}
+
+/**
+ * The vendored dependency folders of a native library that have no notice and are not build-time tools, matched by
+ * the folder name prefixes in `buildOnly`.
+ */
+export function unnoticedDependencies(
+    folders: readonly string[],
+    noticed: readonly string[],
+    buildOnly: readonly string[],
+): readonly string[] {
+    return folders.filter(
+        (folder) => !noticed.includes(folder) && !buildOnly.some((prefix) => folder.startsWith(prefix)),
+    );
+}
+
 /** The MIT license with `holder`'s copyright, for a package that declares MIT but ships no license file. */
 export function mitLicense(holder: string): string {
     return [

@@ -114,7 +114,9 @@ describe('SessionLink', () => {
         transport.listeners.get(7)?.(new Uint8Array([33]));
         expect(output).toEqual([new Uint8Array([33])]);
     });
+});
 
+describe('SessionLink: disposal (US-1.14)', () => {
     it('detaches an attach that answers after the link was disposed, and routes none of its output', async () => {
         const transport = new FakeTransport();
         let release = (): void => undefined;

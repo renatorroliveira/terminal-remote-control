@@ -4,6 +4,7 @@ export type BootstrapErrorCode =
     | 'unsupported-arch'
     | 'missing-tool'
     | 'root-unusable'
+    | 'root-unsafe'
     | 'noexec'
     | 'checksum-mismatch'
     | 'short-upload'
@@ -46,6 +47,7 @@ const ERROR_CODES: ReadonlySet<string> = new Set<BootstrapErrorCode>([
     'unsupported-arch',
     'missing-tool',
     'root-unusable',
+    'root-unsafe',
     'noexec',
     'checksum-mismatch',
     'short-upload',

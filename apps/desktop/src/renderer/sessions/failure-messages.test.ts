@@ -38,6 +38,7 @@ const FAILURES: readonly ConnectionFailure[] = [
     })),
     { kind: 'update-app', installedVersion: '9.0.0', details: '' },
     { kind: 'install', code: 'noexec', details: '' },
+    { kind: 'install', code: 'root-unsafe', details: '' },
     { kind: 'install', code: 'upload', details: '' },
     { kind: 'incompatible', minProto: 3, maxProto: 4, details: '' },
     { kind: 'other', details: '' },
@@ -75,5 +76,12 @@ describe('connection failure messages (US-1.3.1, WCAG 3.3.3)', () => {
         const { problem, remedy } = failureMessage(intl, 'devbox-1', { kind: 'install', code: 'noexec', details: '' });
         expect(problem).toContain('mounted noexec');
         expect(remedy).toContain('Choose another install location for devbox-1');
+    });
+
+    it('says when other users could change the install location, and how to choose a safe one (SEC-04.4)', () => {
+        const failure: ConnectionFailure = { kind: 'install', code: 'root-unsafe', details: '' };
+        const { problem, remedy } = failureMessage(intl, 'devbox-1', failure);
+        expect(problem).toBe('Other users can change the install location on devbox-1, or a folder above it.');
+        expect(remedy).toContain('only you can change');
     });
 });
