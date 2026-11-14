@@ -70,7 +70,9 @@ function exists(alias: string, path: string): boolean {
 
 function freshRoot(alias: string, base = '$HOME'): string {
     const root = `${base}/.trct-${randomBytes(4).toString('hex')}`;
-    cleanups.push(() => remote(alias, `kill $(cat "${root}/run/core.lock" 2>/dev/null) 2>/dev/null; rm -rf "${root}"`));
+    cleanups.push(() =>
+        remote(alias, `kill $(head -n 1 "${root}/run/core.lock" 2>/dev/null) 2>/dev/null; rm -rf "${root}"`),
+    );
     return root;
 }
 

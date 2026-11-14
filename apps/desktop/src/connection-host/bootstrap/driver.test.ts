@@ -82,13 +82,13 @@ describe('runBootstrap', () => {
 });
 
 describe('runBootstrap failures', () => {
-    it('stops with the plan when the host is unsupported or newer, and tells the script to exit', async () => {
+    it('stops with the plan when the host is unsupported, and tells the script to exit', async () => {
         const host = fakeHost();
         const outcome = runBootstrap(host, options([]));
-        say(host, `HELLO os=Linux arch=arm64 checksum=sha256sum installed=${'e'.repeat(64)}:9.0.0`);
+        say(host, `HELLO os=Darwin arch=arm64 checksum=sha256sum installed=${'e'.repeat(64)}:9.0.0`);
         await expect(outcome).resolves.toEqual({
             kind: 'failed',
-            failure: { kind: 'plan', plan: { kind: 'update-app', installedVersion: '9.0.0' } },
+            failure: { kind: 'plan', plan: { kind: 'unsupported', missing: 'os', os: 'Darwin', arch: 'arm64' } },
         });
         expect(host.received().endsWith('EXIT\n')).toBe(true);
     });

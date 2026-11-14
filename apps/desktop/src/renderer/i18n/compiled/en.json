@@ -825,6 +825,38 @@
       "value": "Update the app, then connect again."
     }
   ],
+  "failure.incompatibleOlder.problem": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " runs an older daemon, which speaks protocol versions "
+    },
+    {
+      "type": 1,
+      "value": "minProto"
+    },
+    {
+      "type": 0,
+      "value": " to "
+    },
+    {
+      "type": 1,
+      "value": "maxProto"
+    },
+    {
+      "type": 0,
+      "value": ", and it wasn’t replaced."
+    }
+  ],
+  "failure.incompatibleOlder.remedy": [
+    {
+      "type": 0,
+      "value": "Select Upgrade daemon. Your sessions keep running while the daemon is replaced."
+    }
+  ],
   "failure.install.problem": [
     {
       "type": 0,
@@ -1311,30 +1343,6 @@
     {
       "type": 0,
       "value": "Connect to a Linux host on x86_64 or arm64."
-    }
-  ],
-  "failure.updateApp.problem": [
-    {
-      "type": 1,
-      "value": "name"
-    },
-    {
-      "type": 0,
-      "value": " runs a newer daemon, version "
-    },
-    {
-      "type": 1,
-      "value": "installedVersion"
-    },
-    {
-      "type": 0,
-      "value": ", than this app."
-    }
-  ],
-  "failure.updateApp.remedy": [
-    {
-      "type": 0,
-      "value": "Update the app, then connect again."
     }
   ],
   "find.close": [

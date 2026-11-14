@@ -33,12 +33,12 @@ describe('planInstall', () => {
         expect(planInstall(hello({ installed }), manifest).kind).toBe('upload');
     });
 
-    it('never downgrades: a newer daemon asks for an app update', () => {
+    it('installs beside a newer daemon, which keeps running: only the protocol decides compatibility (D-46)', () => {
         const installed = [
             { sha256: 'c'.repeat(64), version: '0.1.0' },
             { sha256: 'e'.repeat(64), version: '0.10.0' },
         ];
-        expect(planInstall(hello({ installed }), manifest)).toEqual({ kind: 'update-app', installedVersion: '0.10.0' });
+        expect(planInstall(hello({ installed }), manifest).kind).toBe('upload');
     });
 
     it('lets development and release daemons sit side by side: a -dev version never counts as newer', () => {
