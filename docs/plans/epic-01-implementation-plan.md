@@ -999,27 +999,27 @@ SEC-05 has nothing to store on the daemon side in E1, because persistence arrive
 
 ## 10. Status
 
-| Story | Status                                                                                                         | Commit |
-| ----- | -------------------------------------------------------------------------------------------------------------- | ------ |
-| ST-0  | Done                                                                                                           | —      |
-| ST-1  | Done                                                                                                           | —      |
-| ST-2  | Done                                                                                                           | —      |
-| ST-3  | Done                                                                                                           | —      |
-| ST-4  | Done                                                                                                           | —      |
-| ST-5  | Done                                                                                                           | —      |
-| ST-6  | Done                                                                                                           | —      |
-| ST-7  | Done                                                                                                           | —      |
-| ST-8  | Done                                                                                                           | —      |
-| ST-9  | Done                                                                                                           | —      |
-| ST-10 | Done                                                                                                           | —      |
-| ST-11 | Done                                                                                                           | —      |
-| ST-12 | Done                                                                                                           | —      |
-| ST-13 | Done                                                                                                           | —      |
-| ST-14 | Done                                                                                                           | —      |
-| ST-15 | Done                                                                                                           | —      |
-| ST-16 | Done                                                                                                           | —      |
-| ST-17 | Done                                                                                                           | —      |
-| ST-18 | Done                                                                                                           | —      |
-| ST-19 | Done                                                                                                           | —      |
-| ST-20 | Done                                                                                                           | —      |
-| ST-21 | In progress: reviews done (3 rounds, no critical or high left); the owner's manual AT passes and v0.2.0 remain | —      |
+| Story | Status                                                                                                                                                                                              | Commit    |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| ST-0  | Done                                                                                                                                                                                                | —         |
+| ST-1  | Done                                                                                                                                                                                                | —         |
+| ST-2  | Done                                                                                                                                                                                                | —         |
+| ST-3  | Done                                                                                                                                                                                                | —         |
+| ST-4  | Done                                                                                                                                                                                                | —         |
+| ST-5  | Done                                                                                                                                                                                                | —         |
+| ST-6  | Done                                                                                                                                                                                                | —         |
+| ST-7  | Done                                                                                                                                                                                                | —         |
+| ST-8  | Done                                                                                                                                                                                                | —         |
+| ST-9  | Done                                                                                                                                                                                                | —         |
+| ST-10 | Done                                                                                                                                                                                                | —         |
+| ST-11 | Done                                                                                                                                                                                                | —         |
+| ST-12 | Done                                                                                                                                                                                                | —         |
+| ST-13 | Done                                                                                                                                                                                                | —         |
+| ST-14 | Done                                                                                                                                                                                                | —         |
+| ST-15 | Done                                                                                                                                                                                                | —         |
+| ST-16 | Done                                                                                                                                                                                                | —         |
+| ST-17 | Done                                                                                                                                                                                                | —         |
+| ST-18 | Done                                                                                                                                                                                                | —         |
+| ST-19 | Done                                                                                                                                                                                                | —         |
+| ST-20 | Done: dry run 43539970939; v0.2.0 built, checked and published by run 43546880803                                                                                                                   | `feccc93` |
+| ST-21 | Done: 3 review rounds with no critical or high left; the owner tested the packaged build and accepted the gate on 2026-11-13; the scripted passes in `E1-manual-at.md` were not reported one by one | `feccc93` |
