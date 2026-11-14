@@ -1,7 +1,7 @@
 {
     "name": "@trc/desktop",
     "productName": "Terminal Remote Control",
-    "version": "0.2.0-dev",
+    "version": "0.2.0",
     "description": "Accessible terminal sessions that live on your hosts",
     "author": "Renato Oliveira",
     "private": true,

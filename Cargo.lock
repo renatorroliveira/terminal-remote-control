@@ -97,7 +97,7 @@ dependencies = [
 
 [[package]]
 name = "ghostty-vt-sys"
-version = "0.2.0-dev"
+version = "0.2.0"
 
 [[package]]
 name = "hybrid-array"
@@ -481,7 +481,7 @@ dependencies = [
 
 [[package]]
 name = "trc-protocol"
-version = "0.2.0-dev"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -491,7 +491,7 @@ dependencies = [
 
 [[package]]
 name = "trc-vt"
-version = "0.2.0-dev"
+version = "0.2.0"
 dependencies = [
  "ghostty-vt-sys",
  "serde_json",
@@ -500,7 +500,7 @@ dependencies = [
 
 [[package]]
 name = "trcd"
-version = "0.2.0-dev"
+version = "0.2.0"
 dependencies = [
  "rustix",
  "serde",
