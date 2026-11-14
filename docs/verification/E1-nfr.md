@@ -60,7 +60,7 @@ the text surface. It passed three runs in a row.
 
 ## Findings
 
-- **NFR-02 is not met on a sub-millisecond link, by about 1 ms.** From keydown to the echo parsed in the terminal
+- **NFR-02 is not met on a sub-millisecond link, by 0.2 to 0.7 ms.** From keydown to the echo parsed in the terminal
   the app adds 10.2 to 10.7 ms at p95 on `trc-ubuntu` (11.1 to 11.6 ms measured against a 0.9 ms round trip), above
   the 10 ms budget; on `trc-latency` it adds 7 ms and passes. The renderer posts the key within 0.2 ms; the spread,
   2.6 to 12 ms, is in Electron's message delivery between the renderer and the connection host's utility process,

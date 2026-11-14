@@ -2,7 +2,7 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.9                      |
+| Status       | Draft v0.10                     |
 | Owner        | Renato Oliveira                 |
 | Last updated | 2026-11-13                      |
 | Scope        | P0 in seven epics, then GA (E8) |
@@ -544,10 +544,11 @@ path cannot be used to plant code.
 
 1. Desktop app builds are code-signed: Apple Developer ID with notarization on
    macOS, Authenticode on Windows, signed packages on Linux.
-   **E1 exception:** E1 builds are ad-hoc signed and not notarized, because no
-   Developer ID identity exists yet. Items 2–4 apply in full. The exception
-   ends no later than the first build distributed beyond the owner. Platform
-   signing is delivered by E8 (US-8.3).
+   **Pre-1.0 exception:** 0.x releases are alpha, experimental builds, not a
+   distribution; 1.0.0 is the first official release. 0.x builds are ad-hoc
+   signed and not notarized, because no Developer ID identity exists yet.
+   Items 2–4 apply in full. The exception ends with 1.0.0, whose platform
+   signing E8 delivers (US-8.3).
 2. Daemon binaries ship inside the signed app bundle. The app never downloads
    them from the network at install time.
 3. After upload to a remote host, the binary's SHA-256 checksum is verified
@@ -620,7 +621,7 @@ applies from the epic in the last column onward.
 `docs/verification/E1-nfr.md`):
 
 - NFR-02: on a link with a sub-millisecond round trip, the app adds about
-  10.7 ms at p95, about 1 ms over the target, from message delivery between
+  10.7 ms at p95, 0.7 ms over the target, from message delivery between
   Electron's renderer and the connection host's utility process. E1 guards it
   at 15 ms; E2 revisits that path. On a 100 ms link the target holds.
 - NFR-09: when the app attaches, the holder briefly keeps about twice the
@@ -630,9 +631,11 @@ applies from the epic in the last column onward.
 
 ## 9. Epics
 
-P0 is delivered in seven epics, in order. Each epic ships a signed build that
-users install and use for real. E8 then prepares the general-availability
-release, 1.0.0: distribution, provenance and signing.
+P0 is delivered in seven epics, in order. Each epic ships a build that users
+install and use for real: a 0.x alpha release, ad-hoc signed under the
+SEC-04.1 exception. E8 then prepares the general-availability release, 1.0.0,
+the first official distribution: downloads, provenance, signing and automatic
+updates.
 
 An epic is done when all of the following hold:
 
@@ -667,9 +670,9 @@ number of terminal sessions on it from a fully accessible app.
 that outlive the app or a disconnect (E2), recovery after a host reboot (E3),
 command navigation (E4), local sessions (E5).
 
-**Acceptance criteria.** US-1.1 to US-1.14 are fully implemented, and the epic
-completion conditions in §9 hold on the macOS cells of the AT matrix. Risks
-retired: R1, R2, R9, R10.
+**Acceptance criteria.** US-1.1 to US-1.14 are fully implemented, as amended by
+the E1 notes below, and the epic completion conditions in §9 hold on the macOS
+cells of the AT matrix. Risks retired: R1, R2, R9, R10.
 
 #### US-1.1 — Add a Linux host
 
@@ -1077,12 +1080,13 @@ Acceptance criteria:
 
 **Outcome.** When a Linux host reboots, its sessions come back with the same
 shell, working directory and name, and with the previous output above a
-marker. Users see and manage each host's daemon from the app, and the app
-keeps itself up to date.
+marker. Users see and manage each host's daemon from the app. Automatic app
+updates come with E8 (US-8.5), because macOS updates need a Developer ID
+signature.
 
 **Scope.** macOS desktop app; Linux hosts.
 
-**Acceptance criteria.** US-3.1 to US-3.4 are fully implemented, and the epic
+**Acceptance criteria.** US-3.1 to US-3.3 are fully implemented, and the epic
 completion conditions in §9 hold on the macOS cells of the AT matrix.
 
 #### US-3.1 — Sessions come back after a host reboot
@@ -1143,26 +1147,6 @@ Acceptance criteria:
 4. "Forget host" asks whether to leave the host's sessions running or to stop
    them and remove the daemon.
 5. Documentation describes manual removal for every platform delivered so far.
-
-#### US-3.4 — The app keeps itself up to date
-
-> As **Jordan**, I want the app to update itself, so that I always run a
-> version my hosts' daemons support without hunting for downloads.
-
-Acceptance criteria:
-
-1. The app checks for updates at launch and once a day, downloads them in the
-   background, and installs an update only after verifying its code signature.
-2. An update installs only when the user chooses to restart now or on the next
-   quit. Checking and downloading never steal focus or interrupt typing.
-   Update availability is announced politely and listed in the status bar
-   notifications.
-3. Updating ends no session (US-2.1) and the app reattaches every session after
-   the restart (US-2.3). Host daemons are then upgraded as in US-2.5, keeping
-   sessions.
-4. Users can turn automatic checks off and check manually from the menu.
-5. Before this story ships (E1 and E2), each release is a signed, notarized
-   download that users install by hand.
 
 ### 9.4 E4 — Command-aware terminal
 
@@ -1420,15 +1404,16 @@ Acceptance criteria:
 
 ### 9.8 E8 — General availability release
 
-**Outcome.** Version 1.0.0 is published for everyone: a website offers the
-downloads, every package is signed for its platform, and users can verify that
-a download is complete and that it was built from this repository by its
-release workflow.
+**Outcome.** Version 1.0.0, the first official release, is published for
+everyone: a website offers the downloads, every package is signed for its
+platform, users can verify that a download is complete and that it was built
+from this repository by its release workflow, and the app keeps itself up to
+date.
 
-**Scope.** Release distribution and supply chain for every desktop platform of
-E1–E7. No product features.
+**Scope.** Release distribution, supply chain and automatic updates for every
+desktop platform of E1–E7. No other product features.
 
-**Acceptance criteria.** US-8.1 to US-8.4 are fully implemented, the epic
+**Acceptance criteria.** US-8.1 to US-8.5 are fully implemented, the epic
 completion conditions in §9 hold, and the SEC-04.1 exception has ended.
 
 #### US-8.1 — A website with the downloads
@@ -1485,6 +1470,28 @@ Acceptance criteria:
    key is published on the website and in the repository.
 2. The user guide shows how to check the signature, then the checksums.
 3. Losing or rotating the key has a documented procedure.
+
+#### US-8.5 — The app keeps itself up to date
+
+> As **Jordan**, I want the app to update itself, so that I always run a
+> version my hosts' daemons support without hunting for downloads.
+
+Acceptance criteria:
+
+1. The app checks for updates at launch and once a day, downloads them in the
+   background, and installs an update only after verifying its code signature.
+2. An update installs only when the user chooses to restart now or on the next
+   quit. Checking and downloading never steal focus or interrupt typing.
+   Update availability is announced politely and listed in the status bar
+   notifications.
+3. Updating ends no session (US-2.1) and the app reattaches every session after
+   the restart (US-2.3). Host daemons are then upgraded as in US-2.5, keeping
+   sessions.
+4. Users can turn automatic checks off and check manually from the menu.
+5. Updates cover every desktop platform delivered by E1–E7, each through an
+   updater that meets SEC-01 and SEC-07.
+6. Before this story ships, each 0.x release is an alpha download that users
+   install by hand.
 
 ## 10. WCAG 2.2 conformance mapping
 
@@ -1551,7 +1558,7 @@ navigable, selectable — but not for the semantics of a program's own layout.
 | 3.3.7       | Redundant Entry                           | A     | Previously entered hosts and session settings are offered again.                                                                                                                                                           | A11Y-11, US-1.1                   |
 | 3.3.8       | Accessible Authentication (Minimum)       | AA    | Key-based SSH: no passwords and no cognitive test. Host-key fingerprints are copyable for comparison.                                                                                                                      | US-1.1, US-1.2                    |
 | 4.1.2       | Name, Role, Value                         | A     | Every control and the terminal expose name, role, state and value.                                                                                                                                                         | A11Y-01, A11Y-11                  |
-| 4.1.3       | Status Messages                           | AA    | State changes, progress, results and errors are announced without moving focus.                                                                                                                                            | A11Y-12, A11Y-04, US-3.4          |
+| 4.1.3       | Status Messages                           | AA    | State changes, progress, results and errors are announced without moving focus.                                                                                                                                            | A11Y-12, A11Y-04, US-8.5          |
 
 WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
 
@@ -1586,8 +1593,8 @@ WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
    delivered so far.
    **E1 note:** E1 defers items 4 and 5. E1 is done when the automated checks
    (item 2) pass and the owner completes the manual passes (item 3). The
-   usability sessions and the first conformance report happen before any build
-   is distributed beyond the owner.
+   usability sessions and the first conformance report happen before 1.0.0,
+   the first official distribution; 0.x releases are alpha builds (SEC-04.1).
 6. **Release gate.** No open high-severity accessibility defect. Every WCAG 2.2
    A and AA criterion passes or is documented as not applicable with rationale.
 
@@ -1625,14 +1632,14 @@ WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
 
 ## 14. Open questions
 
-| ID   | Question                                                                                                                                 | Resolution                                                                                                                                                                                                                                                     |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OQ-1 | Should persisted scrollback be encrypted at rest, with the key held in the OS keychain or credential store?                              | No. User-only permissions (SEC-05) are the control. [TECH_STACK.md](TECH_STACK.md) D-05.                                                                                                                                                                       |
-| OQ-2 | Which language and runtime produce the daemon as a small, self-contained binary for every target OS and architecture? (Design decision.) | Rust: static musl binaries on Linux, universal2 on macOS, MSVC on Windows. [TECH_STACK.md](TECH_STACK.md) D-01.                                                                                                                                                |
-| OQ-3 | What are the distribution channels and update mechanism for the desktop app on each OS?                                                  | macOS: signed downloads from GitHub Releases in E1–E2; automatic updates through Electron's built-in updater from E3 (US-3.4). Windows (E6) and Linux (E7) mechanisms are chosen in those epics within SEC-01 and SEC-07. [TECH_STACK.md](TECH_STACK.md) D-06. |
-| OQ-4 | Does the product collect any telemetry? If yes, it must be opt-in and exclude terminal content.                                          | No telemetry and no crash uploads in P0. [TECH_STACK.md](TECH_STACK.md) D-09.                                                                                                                                                                                  |
-| OQ-5 | What is the final product name?                                                                                                          | Resolved: Terminal Remote Control, TRC for short (owner, M1).                                                                                                                                                                                                  |
-| OQ-6 | Which shell integration sequences beyond OSC 133 (for example VS Code's OSC 633) should the app read?                                    | Open. OSC 133 and OSC 7 are read in any case.                                                                                                                                                                                                                  |
+| ID   | Question                                                                                                                                 | Resolution                                                                                                                                                                                                                                                                               |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OQ-1 | Should persisted scrollback be encrypted at rest, with the key held in the OS keychain or credential store?                              | No. User-only permissions (SEC-05) are the control. [TECH_STACK.md](TECH_STACK.md) D-05.                                                                                                                                                                                                 |
+| OQ-2 | Which language and runtime produce the daemon as a small, self-contained binary for every target OS and architecture? (Design decision.) | Rust: static musl binaries on Linux, universal2 on macOS, MSVC on Windows. [TECH_STACK.md](TECH_STACK.md) D-01.                                                                                                                                                                          |
+| OQ-3 | What are the distribution channels and update mechanism for the desktop app on each OS?                                                  | Downloads from GitHub Releases: ad-hoc-signed 0.x alpha builds until 1.0.0 (SEC-04.1). Automatic updates arrive with E8 (US-8.5): Electron's built-in updater on macOS, and Windows and Linux updaters chosen there within SEC-01 and SEC-07. [TECH_STACK.md](TECH_STACK.md) D-06, D-43. |
+| OQ-4 | Does the product collect any telemetry? If yes, it must be opt-in and exclude terminal content.                                          | No telemetry and no crash uploads in P0. [TECH_STACK.md](TECH_STACK.md) D-09.                                                                                                                                                                                                            |
+| OQ-5 | What is the final product name?                                                                                                          | Resolved: Terminal Remote Control, TRC for short (owner, M1).                                                                                                                                                                                                                            |
+| OQ-6 | Which shell integration sequences beyond OSC 133 (for example VS Code's OSC 633) should the app read?                                    | Open. OSC 133 and OSC 7 are read in any case.                                                                                                                                                                                                                                            |
 
 ## 15. References
 
