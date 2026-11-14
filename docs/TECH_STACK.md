@@ -611,7 +611,7 @@ the session registry, holder supervision, install, upgrade and restore.
   its spec and the user's name for the session, so a new core recovers both;
   the order falls back to start time. Sockets nobody serves are removed.
 - One core per user: it holds an exclusive `flock` on `run/core.lock` (which
-  also records its PID) for its lifetime, so a stale `core.sock` is removed
+  also records its PID and, from E2, its version and SHA-256) for its lifetime, so a stale `core.sock` is removed
   safely. A second core exits with status 75.
 - It creates its files with umask 077 and gives holders, and so their shells,
   the umask it inherited. Holders start in their own session, with an empty

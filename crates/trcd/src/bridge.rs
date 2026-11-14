@@ -1,5 +1,6 @@
-//! `trcd bridge`: what the app runs over its SSH exec channel. It relays stdio to the core's socket and starts a
-//! detached core when none is running, so the channel works even when SSH forwarding is disabled (US-1.5.3, P-17).
+//! `trcd bridge`: what the app runs over its SSH exec channel. It relays stdio to the core's socket and starts a core
+//! when none is running, so the channel works even when SSH forwarding is disabled (US-1.5.3, P-17). A bridge newer
+//! than the running core replaces it first, which upgrades the daemon without ending a session (US-2.5.3, D-46).
 
 use std::io;
 use std::process::Stdio;
@@ -14,6 +15,7 @@ use crate::private_dir::verify_private_dir;
 use crate::run_dir::RunDir;
 use crate::service::{ServiceMode, read_host_facts, start_unit};
 use crate::socket::connect_with_retry;
+use crate::upgrade::{newest_core_binary, running_core, should_replace, stop_core};
 
 /// How long the bridge waits for a core it started.
 const CORE_START_TIMEOUT: Duration = Duration::from_secs(10);
@@ -36,6 +38,7 @@ async fn connect_or_start(layout: &InstallLayout) -> io::Result<UnixStream> {
     let run = RunDir::for_root(&layout.root, uid);
     if run.dir.exists() {
         verify_private_dir(&run.dir, uid)?;
+        replace_older_core(layout, &run);
         if let Ok(stream) = UnixStream::connect(run.core_socket()).await {
             return trusted(stream);
         }
@@ -44,6 +47,20 @@ async fn connect_or_start(layout: &InstallLayout) -> io::Result<UnixStream> {
     let stream = connect_with_retry(&run.core_socket(), CORE_START_TIMEOUT).await?;
     verify_private_dir(&run.dir, uid)?;
     trusted(stream)
+}
+
+/// Stops a running core older than this bridge, so the core started next is this version. A core that will not stop
+/// keeps serving: the app then talks to it in a protocol both speak.
+fn replace_older_core(layout: &InstallLayout, run: &RunDir) {
+    let Some(core) = running_core(run) else {
+        return;
+    };
+    if !should_replace(core.version.as_deref(), env!("CARGO_PKG_VERSION")) {
+        return;
+    }
+    if let Err(error) = stop_core(&core, layout, run) {
+        eprintln!("trcd: the older core was not replaced: {error}");
+    }
 }
 
 fn trusted(stream: UnixStream) -> io::Result<UnixStream> {
@@ -57,16 +74,17 @@ fn trusted(stream: UnixStream) -> io::Result<UnixStream> {
 /// Starts the core as D-44 says: a systemd user unit where that keeps sessions longer, otherwise detached; a unit that
 /// cannot start falls back to detached.
 fn start_core(layout: &InstallLayout) -> io::Result<()> {
+    let binary = newest_core_binary(layout);
     let user = std::env::var("USER").unwrap_or_default();
     let facts = read_host_facts(&user, rustix::process::geteuid().as_raw());
     if facts.mode() == ServiceMode::Systemd {
         let umask = current_umask();
-        match start_unit(&layout.binary, &layout.root, umask) {
+        match start_unit(&binary, &layout.root, umask) {
             Ok(()) => return Ok(()),
             Err(error) => eprintln!("trcd: {error}; starting the core detached"),
         }
     }
-    start_detached(layout)
+    start_detached(&binary)
 }
 
 fn current_umask() -> u32 {
@@ -75,8 +93,8 @@ fn current_umask() -> u32 {
     u32::from(mask.bits())
 }
 
-fn start_detached(layout: &InstallLayout) -> io::Result<()> {
-    let status = std::process::Command::new(&layout.binary)
+fn start_detached(binary: &std::path::Path) -> io::Result<()> {
+    let status = std::process::Command::new(binary)
         .args(["core", "--detach"])
         .current_dir("/")
         .stdin(Stdio::null())

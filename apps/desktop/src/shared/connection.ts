@@ -45,7 +45,6 @@ export type ConnectionFailureKind =
           readonly os: string;
           readonly arch: string;
       }
-    | { readonly kind: 'update-app'; readonly installedVersion: string }
     | { readonly kind: 'install'; readonly code: string }
     | { readonly kind: 'incompatible'; readonly minProto: number; readonly maxProto: number }
     | { readonly kind: 'no-answer' }

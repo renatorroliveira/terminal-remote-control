@@ -59,12 +59,15 @@ export class LiveHost {
     readonly #watchers = new Set<(message: ServerMessage, at: number) => void>();
     readonly #streams = new Map<number, StreamBuffer>();
 
-    /** A host connection for `alias` whose daemon installs under `~/<root>`; call `connection.connect()` next. */
-    constructor(alias: string, root: string, env?: Readonly<Record<string, string | undefined>>) {
+    /**
+     * A host connection for `alias` whose daemon installs under `~/<root>`, from the app's bundled daemons or those in
+     * `daemons`; call `connection.connect()` next.
+     */
+    constructor(alias: string, root: string, options: LiveOptions = {}) {
         this.alias = alias;
         this.root = root;
         this.connection = new HostConnection(
-            runtime(env),
+            runtime(options.env, options.daemons),
             alias,
             { destination: alias, installRoot: `~/${root}` },
             {
@@ -134,6 +137,11 @@ export class LiveHost {
         };
     }
 
+    /** The last 64 KiB received on a stream. */
+    tailOf(stream: number): string {
+        return this.#bufferOf(stream).tail;
+    }
+
     #onMessage(message: ServerMessage): void {
         const at = performance.now();
         for (const watcher of [...this.#watchers]) {
@@ -157,12 +165,18 @@ const DEFAULT_SPEC: CreateSessionSpec = { env: {}, size: { cols: 120, rows: 40 }
 const opened: LiveHost[] = [];
 let nextRequest = 1;
 
-/** Connects `alias` with a fresh install and returns once the daemon answers. */
-export async function connectLive(
-    alias: string,
-    env?: Readonly<Record<string, string | undefined>>,
-): Promise<LiveHost> {
-    const host = new LiveHost(alias, `.trc-nfr-${randomBytes(4).toString('hex')}`, env);
+/** How a live host connects: the environment ssh gets, the daemons to install, and the install root to reuse. */
+export interface LiveOptions {
+    readonly env?: Readonly<Record<string, string | undefined>>;
+    /** A folder holding `manifest.json`, `linux-x64/trcd` and `linux-arm64/trcd`, like the app's `resources/daemon`. */
+    readonly daemons?: string;
+    /** The install root under the home folder; a fresh one when absent. */
+    readonly root?: string;
+}
+
+/** Connects `alias` and returns once the daemon answers; a fresh install unless `options.root` names one. */
+export async function connectLive(alias: string, options: LiveOptions = {}): Promise<LiveHost> {
+    const host = new LiveHost(alias, options.root ?? `.trc-nfr-${randomBytes(4).toString('hex')}`, options);
     opened.push(host);
     await host.connection.connect();
     await waitFor(() => ['connected', 'failed', 'host-key'].includes(host.states.at(-1)?.status ?? ''), 120_000);
@@ -219,7 +233,7 @@ export async function waitFor(condition: () => boolean, timeoutMs = 30_000): Pro
 
 /** Stops the daemon under the host's scratch root and removes it; `[/]` keeps pkill off the shell running it. */
 function removeInstall(host: LiveHost): void {
-    const script = `kill $(cat ~/${host.root}/run/core.lock 2>/dev/null) 2>/dev/null; pkill -f "[/]${host.root}/versions"; rm -rf ~/${host.root}`;
+    const script = `kill $(head -n 1 ~/${host.root}/run/core.lock 2>/dev/null) 2>/dev/null; pkill -f "[/]${host.root}/versions"; rm -rf ~/${host.root}`;
     try {
         ssh(host.alias, script);
     } catch {
@@ -269,10 +283,13 @@ class StreamBuffer {
     }
 }
 
-function runtime(env: Readonly<Record<string, string | undefined>> = process.env): ConnectionRuntime {
+function runtime(
+    env: Readonly<Record<string, string | undefined>> = process.env,
+    daemons = join(resources, 'daemon'),
+): ConnectionRuntime {
     const knownHosts = join(mkdtempSync(join(scratch, 'kh-')), 'known_hosts');
     copyFileSync(join(run, 'known_hosts.smoke'), knownHosts);
-    const manifest = parseDaemonManifest(readFileSync(join(resources, 'daemon/manifest.json'), 'utf8'));
+    const manifest = parseDaemonManifest(readFileSync(join(daemons, 'manifest.json'), 'utf8'));
     return {
         ssh: '/usr/bin/ssh',
         helpers: { askpass: join(resources, 'bin/askpass'), knownHosts: join(resources, 'bin/known-hosts') },
@@ -282,7 +299,7 @@ function runtime(env: Readonly<Record<string, string | undefined>> = process.env
         appVersion: manifest.version,
         bootstrapTemplate: readFileSync(join(resources, 'bin/bootstrap.sh'), 'utf8'),
         manifest,
-        readBinary: async (platform) => readFile(join(resources, 'daemon', platform, 'trcd')),
+        readBinary: async (platform) => readFile(join(daemons, platform, 'trcd')),
         log: createAppLogger(APP_LOGS),
     };
 }

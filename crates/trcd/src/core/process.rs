@@ -19,6 +19,7 @@ use crate::private_dir::ensure_private_dir;
 use crate::run_dir::RunDir;
 use crate::service::{ScopeLauncher, read_host_facts};
 use crate::socket::bind_private;
+use crate::upgrade::lock_contents;
 
 /// Why the core did not start.
 #[derive(Debug, Error)]
@@ -42,7 +43,8 @@ pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
     for dir in [layout.logs_dir(), run.dir.clone(), run.holders()] {
         ensure_private_dir(&dir, uid)?;
     }
-    let _lock = lock_single_instance(&run.core_lock())?;
+    let binary_sha256 = sha256_file(&layout.binary)?;
+    let _lock = lock_single_instance(&run.core_lock(), &binary_sha256)?;
     crate::logging::init(&layout.logs_dir())?;
     remove_stale(&run.core_socket())?;
     let listener = bind_private(&run.core_socket())?;
@@ -52,7 +54,7 @@ pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
     let scope = if systemd { ScopeLauncher::find() } else { None };
     let context = CoreContext {
         binary: layout.binary.clone(),
-        binary_sha256: sha256_file(&layout.binary)?,
+        binary_sha256,
         run,
         account,
         holder_umask: login_umask,
@@ -95,7 +97,9 @@ pub fn launch_detached(layout: &InstallLayout) -> io::Result<()> {
         .map(drop)
 }
 
-fn lock_single_instance(path: &Path) -> Result<File, StartError> {
+/// Takes the one-core-per-user lock and records the PID, version and checksum in it, so a newer bridge can tell
+/// whether to replace this core (D-46).
+fn lock_single_instance(path: &Path, sha256: &str) -> Result<File, StartError> {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
@@ -109,7 +113,7 @@ fn lock_single_instance(path: &Path) -> Result<File, StartError> {
         Err(error) => return Err(io::Error::from(error).into()),
     }
     file.set_len(0)?;
-    writeln!(file, "{}", std::process::id())?;
+    file.write_all(lock_contents(std::process::id(), env!("CARGO_PKG_VERSION"), sha256).as_bytes())?;
     Ok(file)
 }
 

@@ -40,8 +40,6 @@ export function fromBootstrap(failure: Exclude<BootstrapFailure, { kind: 'closed
     switch (plan.kind) {
         case 'unsupported':
             return { kind: 'unsupported', missing: plan.missing, os: plan.os, arch: plan.arch, details: '' };
-        case 'update-app':
-            return { kind: 'update-app', installedVersion: plan.installedVersion, details: '' };
         default:
             return { kind: 'other', details: `unexpected plan ${plan.kind}` };
     }

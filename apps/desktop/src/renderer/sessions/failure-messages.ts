@@ -1,3 +1,4 @@
+import { PROTOCOL_VERSION } from '@trc/protocol';
 import { defineMessage, type IntlShape, type MessageDescriptor } from 'react-intl';
 import type { AuthenticationCause, ConnectionFailure, NetworkCause } from '../../shared/connection';
 
@@ -15,7 +16,9 @@ export function failureMessage(intl: IntlShape, name: string, failure: Connectio
 }
 
 type FailureKey =
-    | Exclude<ConnectionFailure['kind'], 'authentication' | 'jump-failed' | 'unsupported'>
+    | Exclude<ConnectionFailure['kind'], 'authentication' | 'jump-failed' | 'unsupported' | 'incompatible'>
+    | 'incompatible-newer'
+    | 'incompatible-older'
     | 'noexec'
     | 'root-unsafe'
     | `authentication-${AuthenticationCause}`
@@ -30,7 +33,6 @@ interface FailureValues {
     readonly version: string;
     readonly os: string;
     readonly arch: string;
-    readonly installedVersion: string;
     readonly code: string;
     readonly minProto: number;
     readonly maxProto: number;
@@ -44,7 +46,6 @@ const NO_VALUES = {
     version: '',
     os: '',
     arch: '',
-    installedVersion: '',
     code: '',
     minProto: 0,
     maxProto: 0,
@@ -285,18 +286,6 @@ const FAILURE_MESSAGES: Readonly<
             description: 'How to fix a failed connection.',
         }),
     },
-    'update-app': {
-        problem: defineMessage<FailureValues>({
-            id: 'failure.updateApp.problem',
-            defaultMessage: '{name} runs a newer daemon, version {installedVersion}, than this app.',
-            description: 'What went wrong when a connection failed.',
-        }),
-        remedy: defineMessage<FailureValues>({
-            id: 'failure.updateApp.remedy',
-            defaultMessage: 'Update the app, then connect again.',
-            description: 'How to fix a failed connection.',
-        }),
-    },
     noexec: {
         problem: defineMessage<FailureValues>({
             id: 'failure.noexec.problem',
@@ -348,17 +337,30 @@ const FAILURE_MESSAGES: Readonly<
             description: 'How to fix a failed connection.',
         }),
     },
-    incompatible: {
+    'incompatible-newer': {
         problem: defineMessage<FailureValues>({
             id: 'failure.incompatible.problem',
             defaultMessage:
                 'The daemon on {name} speaks protocol versions {minProto} to {maxProto}, which this app doesn’t.',
-            description: 'What went wrong when a connection failed.',
+            description: 'What went wrong when a connection failed: the host runs a newer daemon than the app.',
         }),
         remedy: defineMessage<FailureValues>({
             id: 'failure.incompatible.remedy',
             defaultMessage: 'Update the app, then connect again.',
             description: 'How to fix a failed connection.',
+        }),
+    },
+    'incompatible-older': {
+        problem: defineMessage<FailureValues>({
+            id: 'failure.incompatibleOlder.problem',
+            defaultMessage:
+                '{name} runs an older daemon, which speaks protocol versions {minProto} to {maxProto}, and it wasn’t replaced.',
+            description: 'What went wrong when a connection failed: the host runs an older daemon than the app.',
+        }),
+        remedy: defineMessage<FailureValues>({
+            id: 'failure.incompatibleOlder.remedy',
+            defaultMessage: 'Select Upgrade daemon. Your sessions keep running while the daemon is replaced.',
+            description: 'How to fix a failed connection (US-2.5.4). "Upgrade daemon" names the button.',
         }),
     },
     other: {
@@ -385,6 +387,8 @@ function failureKey(failure: ConnectionFailure): FailureKey {
             return `unsupported-${failure.missing}`;
         case 'install':
             return failure.code === 'noexec' || failure.code === 'root-unsafe' ? failure.code : 'install';
+        case 'incompatible':
+            return failure.minProto > PROTOCOL_VERSION ? 'incompatible-newer' : 'incompatible-older';
         default:
             return failure.kind;
     }

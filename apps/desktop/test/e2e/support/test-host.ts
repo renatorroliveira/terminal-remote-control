@@ -56,7 +56,7 @@ export function scratchInstallRoot(): string {
 /** Stops the daemon a test installed under `root` on `alias`, and removes the install. */
 export function removeInstall(alias: string, root: string): void {
     const path = root.replace('~', '$HOME');
-    const script = `kill $(cat "${path}/run/core.lock" 2>/dev/null) 2>/dev/null; pkill -f "${path}/" ; rm -rf "${path}"`;
+    const script = `kill $(head -n 1 "${path}/run/core.lock" 2>/dev/null) 2>/dev/null; pkill -f "${path}/" ; rm -rf "${path}"`;
     try {
         execFileSync(
             'ssh',

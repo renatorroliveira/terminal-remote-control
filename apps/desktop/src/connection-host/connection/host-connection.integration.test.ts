@@ -123,7 +123,11 @@ describe('HostConnection sessions over real ssh', () => {
         await observed.connection.connect();
         expect(await settled(observed)).toMatchObject({
             status: 'connected',
-            daemon: { version: manifest.version, proto: 1 },
+            daemon: {
+                version: manifest.version,
+                proto: 2,
+                service: { manager: 'detached', sessionsEndAtLogout: false },
+            },
         });
         const steps = observed.states.flatMap((state) => (state.status === 'connecting' ? [state.step] : []));
         expect(steps).toEqual(['connecting', 'checking', 'uploading', 'verifying', 'starting', 'handshake']);
@@ -240,7 +244,7 @@ function agentAnswers(socket: string): boolean {
 /** Best-effort removal of a test install; hosts that are unreachable on purpose have nothing to remove. */
 function removeInstall(alias: string, root: string): void {
     const known = `UserKnownHostsFile=${join(run, 'known_hosts.smoke')}`;
-    const command = `kill $(cat ${root}/run/core.lock 2>/dev/null) 2>/dev/null; rm -rf ${root}`;
+    const command = `kill $(head -n 1 ${root}/run/core.lock 2>/dev/null) 2>/dev/null; rm -rf ${root}`;
     try {
         execFileSync('ssh', ['-F', join(run, 'ssh_config'), '-o', known, '-o', 'ConnectTimeout=3', alias, command], {
             stdio: 'ignore',

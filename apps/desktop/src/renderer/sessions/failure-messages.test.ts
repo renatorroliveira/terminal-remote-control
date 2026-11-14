@@ -36,11 +36,11 @@ const FAILURES: readonly ConnectionFailure[] = [
         arch: 'riscv64',
         details: '',
     })),
-    { kind: 'update-app', installedVersion: '9.0.0', details: '' },
     { kind: 'install', code: 'noexec', details: '' },
     { kind: 'install', code: 'root-unsafe', details: '' },
     { kind: 'install', code: 'upload', details: '' },
     { kind: 'incompatible', minProto: 3, maxProto: 4, details: '' },
+    { kind: 'incompatible', minProto: 0, maxProto: 0, details: '' },
     { kind: 'other', details: '' },
 ];
 
@@ -70,6 +70,15 @@ describe('connection failure messages (US-1.3.1, WCAG 3.3.3)', () => {
         });
         expect(problem).toBe('devbox-1 didn’t answer on port 22 within 15 seconds.');
         expect(remedy).toContain('VPN or proxy');
+    });
+
+    it('asks for an app update when the daemon is newer, and offers Upgrade daemon when it is older (US-2.5.4)', () => {
+        const newer = failureMessage(intl, 'devbox-1', { kind: 'incompatible', minProto: 3, maxProto: 4, details: '' });
+        expect(newer.remedy).toBe('Update the app, then connect again.');
+        const older = failureMessage(intl, 'devbox-1', { kind: 'incompatible', minProto: 0, maxProto: 0, details: '' });
+        expect(older.problem).toContain('an older daemon');
+        expect(older.remedy).toContain('Upgrade daemon');
+        expect(older.remedy).toContain('keep running');
     });
 
     it('tells a noexec home to move the install location (US-1.4.3)', () => {

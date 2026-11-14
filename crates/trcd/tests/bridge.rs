@@ -79,7 +79,8 @@ fn core_pid(installed: &Installed) -> i32 {
     wait_for(&lock);
     let deadline = std::time::Instant::now() + support::WAIT;
     loop {
-        if let Ok(pid) = std::fs::read_to_string(&lock).unwrap_or_default().trim().parse() {
+        let contents = std::fs::read_to_string(&lock).unwrap_or_default();
+        if let Ok(pid) = contents.lines().next().unwrap_or_default().trim().parse() {
             return pid;
         }
         assert!(std::time::Instant::now() < deadline, "the core never wrote its pid");

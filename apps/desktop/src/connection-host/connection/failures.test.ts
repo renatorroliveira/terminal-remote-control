@@ -45,11 +45,6 @@ describe('fromBootstrap', () => {
         expect(
             fromBootstrap({ kind: 'plan', plan: { kind: 'unsupported', missing: 'os', os: 'Darwin', arch: 'arm64' } }),
         ).toEqual({ kind: 'unsupported', missing: 'os', os: 'Darwin', arch: 'arm64', details: '' });
-        expect(fromBootstrap({ kind: 'plan', plan: { kind: 'update-app', installedVersion: '9.0.0' } })).toEqual({
-            kind: 'update-app',
-            installedVersion: '9.0.0',
-            details: '',
-        });
     });
 
     it('reports a host that stopped answering during the bootstrap (US-1.4.5)', () => {

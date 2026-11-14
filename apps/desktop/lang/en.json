@@ -333,11 +333,19 @@
   },
   "failure.incompatible.problem": {
     "defaultMessage": "The daemon on {name} speaks protocol versions {minProto} to {maxProto}, which this app doesn’t.",
-    "description": "What went wrong when a connection failed."
+    "description": "What went wrong when a connection failed: the host runs a newer daemon than the app."
   },
   "failure.incompatible.remedy": {
     "defaultMessage": "Update the app, then connect again.",
     "description": "How to fix a failed connection."
+  },
+  "failure.incompatibleOlder.problem": {
+    "defaultMessage": "{name} runs an older daemon, which speaks protocol versions {minProto} to {maxProto}, and it wasn’t replaced.",
+    "description": "What went wrong when a connection failed: the host runs an older daemon than the app."
+  },
+  "failure.incompatibleOlder.remedy": {
+    "defaultMessage": "Select Upgrade daemon. Your sessions keep running while the daemon is replaced.",
+    "description": "How to fix a failed connection (US-2.5.4). \"Upgrade daemon\" names the button."
   },
   "failure.install.problem": {
     "defaultMessage": "The daemon couldn’t be installed on {name} ({code}).",
@@ -521,14 +529,6 @@
   },
   "failure.unsupportedOs.remedy": {
     "defaultMessage": "Connect to a Linux host on x86_64 or arm64.",
-    "description": "How to fix a failed connection."
-  },
-  "failure.updateApp.problem": {
-    "defaultMessage": "{name} runs a newer daemon, version {installedVersion}, than this app.",
-    "description": "What went wrong when a connection failed."
-  },
-  "failure.updateApp.remedy": {
-    "defaultMessage": "Update the app, then connect again.",
     "description": "How to fix a failed connection."
   },
   "find.close": {
