@@ -10,7 +10,12 @@ import {
     terminalReconnectingMessage,
     terminalReviewMessage,
 } from '../sessions/messages';
-import { type KnownHostStore, type SessionKey, WorkspaceController } from '../sessions/workspace-controller';
+import {
+    type KnownHostStore,
+    type SessionCacheStore,
+    type SessionKey,
+    WorkspaceController,
+} from '../sessions/workspace-controller';
 import { sessionName } from '../sessions/workspace-model';
 import type { TerminalLink } from '../terminal/hyperlinks';
 import type { TerminalNotice } from '../terminal/notices';
@@ -33,6 +38,8 @@ export interface WorkspaceSources {
     readonly palette: TerminalPalette;
     /** Where known hosts are kept (P-18). */
     readonly hosts: KnownHostStore;
+    /** Where each host's sessions are cached for the next launch (P-30). */
+    readonly sessionCache?: SessionCacheStore;
     /** Where the open session's output is spoken, and when (A11Y-02). */
     readonly speech: SpeechSources;
     /** The user opened a link in a terminal (US-1.12.3). */
@@ -108,7 +115,10 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
         onClipboardWrite: sources.onClipboardWrite,
         onAttachFailed: (key, error) => workspace?.attachFailed(key, error),
     });
-    workspace = new WorkspaceController(sources.client, terminals, sources.hosts, sources.settings);
+    workspace = new WorkspaceController(sources.client, terminals, sources.hosts, {
+        preferences: sources.settings,
+        ...(sources.sessionCache === undefined ? {} : { cache: sources.sessionCache }),
+    });
     return { workspace, terminals };
 }
 

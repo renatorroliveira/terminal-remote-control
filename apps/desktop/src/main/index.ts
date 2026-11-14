@@ -28,6 +28,7 @@ import { disableNetworkSwitches, lockDownNetwork } from './network-guard';
 import { openExternalFor } from './open-external';
 import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, GUIDE_CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
+import { SessionCacheFile } from './session-cache';
 import { sshConfigFilesFor, sshConfigHosts } from './ssh-config-hosts';
 import { NO_TEST_SEAM, readTestSeam } from './test-seam';
 import { trcHome } from './trc-home';
@@ -119,6 +120,7 @@ async function start(): Promise<void> {
                 guide.open(section);
                 return undefined;
             },
+            ...sessionHandlers(new SessionCacheFile(home)),
         },
         (event) => isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
     );
@@ -135,6 +137,17 @@ type HostHandlers = Pick<
     | 'hosts:set-install-root'
     | 'hosts:set-clipboard-writes'
 >;
+
+/** Reads and keeps each host's sessions as last listed (US-2.3.2, P-30). */
+function sessionHandlers(cache: SessionCacheFile): Pick<InvokeHandlers, 'sessions:load' | 'sessions:save'> {
+    return {
+        'sessions:load': () => cache.read(),
+        'sessions:save': async (sessions) => {
+            await cache.write(sessions);
+            return undefined;
+        },
+    };
+}
 
 /** Keeps every page off the network and denies it every permission (SEC-01.1, SEC-06). */
 function lockDownPages(): void {

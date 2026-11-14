@@ -4,6 +4,7 @@ import type { GuideSection } from './guide';
 import type { KnownHost } from './hosts';
 import type { CommandId } from './keymap';
 import type { LinkCheck } from './links';
+import type { SessionCache } from './session-cache';
 import type { Settings } from './settings';
 
 /** Requests the renderer makes of the main process with `ipcRenderer.invoke`: arguments and result per channel. */
@@ -41,6 +42,8 @@ export interface InvokeContract {
         readonly args: readonly [section: GuideSection | undefined];
         readonly result: undefined;
     };
+    readonly 'sessions:load': { readonly args: readonly []; readonly result: SessionCache };
+    readonly 'sessions:save': { readonly args: readonly [cache: SessionCache]; readonly result: undefined };
 }
 
 /** One invoke channel. */
@@ -88,6 +91,12 @@ export interface TrcBridge {
         setInstallRoot(id: string, installRoot: string): Promise<KnownHost>;
         /** Lets a host's programs write the clipboard with OSC 52, or stops them (SEC-06.1). */
         setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost>;
+    };
+    readonly sessions: {
+        /** Each host's sessions as the app last listed them (US-2.3.2, P-30). */
+        load(): Promise<SessionCache>;
+        /** Keeps each host's sessions as listed now in `sessions.json`. */
+        save(cache: SessionCache): Promise<void>;
     };
     readonly links: {
         /** The link as it would open, its origin, and whether a trusted prefix lets it open without asking. */

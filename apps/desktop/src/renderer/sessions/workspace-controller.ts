@@ -3,9 +3,11 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ConnectionState } from '../../shared/connection';
 import type { TrcBridge } from '../../shared/contract';
 import type { KnownHost } from '../../shared/hosts';
+import type { CachedSession, SessionCache } from '../../shared/session-cache';
 import type { Settings } from '../../shared/settings';
 import { type ClientRequest, type HostClient, HostRequestError } from '../connection/host-client';
 import type { TerminalConnection } from '../terminal/terminal-view';
+import { cachedSessions, restoredSession, type SessionCacheStore, watchSessionCache } from './session-cache';
 import {
     EMPTY_WORKSPACE,
     type FailedAction,
@@ -14,6 +16,7 @@ import {
     hostAdded,
     hostGroups,
     hostRemoved,
+    hostRestored,
     hostStateChanged,
     hostToggled,
     hostUpdated,
@@ -28,6 +31,7 @@ import {
     type Workspace,
 } from './workspace-model';
 
+export type { SessionCacheStore } from './session-cache';
 export type { SessionKey } from './workspace-model';
 
 /** The host client operations the workspace uses. */
@@ -75,6 +79,14 @@ export interface AttachFailure {
 /** The settings that change how sessions start, stop and end (US-1.7.1, US-1.10.2, US-1.10.7). */
 export type SessionPreferences = Pick<Settings, 'autoClose' | 'stopGraceSeconds' | 'newSessionFolder'>;
 
+/** What a workspace may use beyond the host client, the terminals and the known hosts. */
+export interface WorkspaceOptions {
+    /** The settings that change how sessions start, stop and end. */
+    readonly preferences?: () => SessionPreferences;
+    /** Where each host's sessions are cached for the next launch (P-30). */
+    readonly cache?: SessionCacheStore;
+}
+
 /** What a new session may set beyond its size (US-1.7.2). */
 export type SessionOptions = Partial<Pick<CreateSessionSpec, 'profileId' | 'cwd' | 'name' | 'env'>>;
 
@@ -101,27 +113,46 @@ export class WorkspaceController {
     readonly #forgotten = new Set<string>();
     /** Stops following each host's connection states and daemon messages. */
     readonly #unfollow = new Map<string, () => void>();
+    readonly #cache: SessionCacheStore | undefined;
+    #stopCache: () => void = () => undefined;
     /** The host a session was last opened or created on (US-1.7.1). */
     #lastHost: string | undefined;
 
-    /** Creates an empty workspace; without `preferences`, the daemon's defaults and auto-close apply. */
+    /**
+     * Creates an empty workspace; without `options.preferences`, the daemon's defaults and auto-close apply, and
+     * without `options.cache`, no session shows before its host connects.
+     */
     constructor(
         client: WorkspaceClient,
         terminals: TerminalHost,
         hosts: KnownHostStore,
-        preferences?: () => SessionPreferences,
+        options: WorkspaceOptions = {},
     ) {
         this.#client = client;
         this.#terminals = terminals;
         this.#hosts = hosts;
-        this.#preferences = preferences;
+        this.#preferences = options.preferences;
+        this.#cache = options.cache;
         this.store = createStore<Workspace>(() => EMPTY_WORKSPACE);
     }
 
-    /** Loads the known hosts, none of them connected yet. */
+    /**
+     * Loads the known hosts, none of them connected yet, each with the sessions cached at the last run, shown as
+     * Reconnecting (US-2.3.2); from then on the cache follows the session list.
+     */
     async load(): Promise<void> {
-        for (const host of await this.#hosts.list()) {
+        const none: SessionCache = {};
+        const [hosts, cached] = await Promise.all([
+            this.#hosts.list(),
+            this.#cache?.load().catch(() => none) ?? Promise.resolve(none),
+        ]);
+        for (const host of hosts) {
             this.#add(host);
+            this.#restore(host.id, cached[host.id] ?? []);
+        }
+        if (this.#cache !== undefined) {
+            this.#stopCache();
+            this.#stopCache = watchSessionCache(this.store, this.#cache, cachedSessions(this.store.getState()));
         }
     }
 
@@ -464,6 +495,13 @@ export class WorkspaceController {
         this.#unfollow.delete(hostId);
         this.#terminals.closeHost(hostId);
         this.#update((workspace) => hostRemoved(workspace, hostId));
+    }
+
+    #restore(hostId: string, cached: readonly CachedSession[]): void {
+        if (cached.length > 0) {
+            this.#update((workspace) => hostRestored(workspace, hostId, cached.map(restoredSession)));
+            this.#terminals.setHostConnection(hostId, 'reconnecting');
+        }
     }
 
     #add(host: KnownHost): void {

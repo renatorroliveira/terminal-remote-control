@@ -5,6 +5,7 @@ import type { InvokeChannel, InvokeContract } from '../shared/contract';
 import { GUIDE_SECTION_NAMES } from '../shared/guide';
 import { SIDEBAR_WIDTH } from '../shared/layout';
 import { MAX_LINK_LENGTH } from '../shared/links';
+import { SESSION_CACHE_SCHEMA } from './session-cache';
 import { SETTINGS_CHANGE_SCHEMA } from './settings-schema';
 
 /** The part of `ipcMain` the registry uses. */
@@ -42,6 +43,8 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'settings:set': z.tuple([SETTINGS_CHANGE_SCHEMA]),
     'hosts:set-clipboard-writes': z.tuple([HOST_ID, z.boolean()]),
     'help:open-guide': z.tuple([z.enum(GUIDE_SECTION_NAMES).or(z.undefined())]),
+    'sessions:load': z.tuple([]),
+    'sessions:save': z.tuple([SESSION_CACHE_SCHEMA]),
 };
 
 /**

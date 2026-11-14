@@ -435,7 +435,10 @@ either way.
       screen-reader mode and the sidebar layout, each field falling back to its
       own default; `hosts.json` holds the known hosts (address, port, install
       location and OSC 52 permission), which the main process serves over the
-      `hosts:*` channels.
+      `hosts:*` channels; `sessions.json` holds each host's sessions as last
+      listed (ID, name, title, shell name, order and state, nothing more; P-30),
+      over `sessions:load` and `sessions:save`, so they show at launch before
+      their host connects.
     - The settings page (A11Y-10.3) reads and changes settings over
       `settings:get` and `settings:set`. A change must name known settings,
       each exactly within its range (`src/main/settings-schema.ts`), or it is

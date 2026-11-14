@@ -181,6 +181,11 @@ As built (ST-29 and ST-30, 2026-11-14):
 - `sessions.json`, parallel connects, cached sessions shown as Reconnecting, failures that show their reason and
   retry.
 
+As built (ST-31, 2026-11-14): `sessions.json` keeps each session's shell name too, which names a session without a
+name or title; the cache follows the session list half a second after it settles, and a host the user disconnects
+drops out of it. A restored host shows its cached sessions as Reconnecting until it lists its own; its terminals
+refuse typing as "Reconnecting — input not sent" until they attach.
+
 **ST-32 Shared sessions in the app** (US-2.6)
 
 - P-31's size rule and indicator, the "Input from another client" announcement, and an e2e with a second client
@@ -241,7 +246,7 @@ As built (ST-29 and ST-30, 2026-11-14):
 | ST-28 | Done    | —      |
 | ST-29 | Done    | —      |
 | ST-30 | Done    | —      |
-| ST-31 | Pending | —      |
+| ST-31 | Done    | —      |
 | ST-32 | Pending | —      |
 | ST-33 | Pending | —      |
 | ST-34 | Pending | —      |

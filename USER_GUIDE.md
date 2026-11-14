@@ -121,8 +121,9 @@ find them in the command palette:
 
 ## Connect
 
-When the app opens, it connects to every known host. A host that fails shows no dialog; if the network might fix
-the failure, TRC keeps trying, as after a lost connection.
+When the app opens, it connects to every known host at once. The sessions each host had when you last quit show
+right away, marked Reconnecting, and you can work in any host that is back while the others reconnect. A host
+that fails shows no dialog; if the network might fix the failure, TRC keeps trying, as after a lost connection.
 
 Each host in the Hosts section shows its state as an icon and as text: Not connected, Connecting, Connected,
 Reconnecting, Connection failed or Disconnected. Its button connects, cancels or disconnects it; while the host
@@ -347,9 +348,10 @@ On your Mac, TRC keeps its settings in the TRC home, `~/.trc`:
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `config.json`      | Your [settings](#settings), the screen-reader mode, and the sidebar's width (`sidebarWidth`, 300 to 800) and whether it is hidden (`sidebarCollapsed`)                                                  |
 | `hosts.json`       | The known hosts, and per host `allowClipboardWrites` (off unless `true`)                                                                                                                                |
+| `sessions.json`    | Each host's sessions as TRC last listed them (name, title, shell, order and state), so they show at once at the next launch. TRC rewrites it; the host's own list always wins                           |
 | `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example` |
 
-Both files are readable only by you. Edit `config.json` while the app is closed; a value TRC can't use falls back
+These files are readable only by you. Edit `config.json` while the app is closed; a value TRC can't use falls back
 to its default.
 
 To use another folder, set `TRC_HOME` when you start the app. A leading `~` means your home folder, and a relative
