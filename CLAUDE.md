@@ -4,7 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-E1 is in progress (M1 shipped as v0.1.0); see
+E1 shipped as v0.2.0 (M1 was v0.1.0); 0.x releases are alpha builds, and 1.0.0
+is the first official release (D-43). See
 `docs/plans/epic-01-implementation-plan.md` for the story status. Usage is in
 `USER_GUIDE.md`. The monorepo holds the Electron app (`apps/desktop`), the
 protocol package (`packages/protocol`), the Rust crates (`crates/*`) and
