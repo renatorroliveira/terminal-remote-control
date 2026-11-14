@@ -41,16 +41,16 @@ Planned for the first full release (P0), delivered in seven epics, then a genera
 - **Secure by default.** No network listener anywhere, not even on loopback. SSH is the only door to a remote host,
   authentication is key-based only, and terminal output is treated as untrusted.
 
-| Epic | Delivers                                                         |
-| ---- | ---------------------------------------------------------------- |
-| E1   | Accessible macOS app running sessions on Linux hosts             |
-| E2   | Sessions that outlive the app and the network; shared sessions   |
-| E3   | Sessions that survive a host reboot; daemon management; updates  |
-| E4   | Command-aware terminal: jump between commands, background events |
-| E5   | Local sessions on the Mac, and macOS hosts                       |
-| E6   | Windows desktop app                                              |
-| E7   | Linux desktop app                                                |
-| E8   | GA release 1.0.0: downloads site, provenance, signed packages    |
+| Epic | Delivers                                                                         |
+| ---- | -------------------------------------------------------------------------------- |
+| E1   | Accessible macOS app running sessions on Linux hosts                             |
+| E2   | Sessions that outlive the app and the network; shared sessions                   |
+| E3   | Sessions that survive a host reboot; daemon management                           |
+| E4   | Command-aware terminal: jump between commands, background events                 |
+| E5   | Local sessions on the Mac, and macOS hosts                                       |
+| E6   | Windows desktop app                                                              |
+| E7   | Linux desktop app                                                                |
+| E8   | GA release 1.0.0: downloads site, provenance, signed packages, automatic updates |
 
 ## How it works
 
@@ -75,8 +75,8 @@ Desktop app (Electron)                        Host
 
 1. Download the dmg for your Mac (Apple silicon or Intel) from the
    [latest release](https://github.com/renatorroliveira/terminal-remote-control/releases/latest) and drag the app to
-   Applications. Builds are ad-hoc signed, so the first launch needs Open Anyway in System Settings, Privacy &
-   Security.
+   Applications. 0.x releases are alpha, experimental builds, ad-hoc signed until 1.0.0, so the first launch needs
+   Open Anyway in System Settings, Privacy & Security.
 2. Make sure `ssh <host>` works in Terminal with a key in your SSH agent and no password.
 3. Open the app, type the host in the Hosts field (an SSH alias or `user@host:port`) and choose Add host.
 4. Choose the + next to the host to start a session.
