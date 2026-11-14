@@ -13,7 +13,8 @@ An accessible desktop terminal manager whose sessions outlive the app, the netwo
 > **Status: alpha.** Version 0.2 delivers Epic 1: a macOS app that adds Linux hosts over SSH, installs its daemon on
 > them, and runs and manages terminal sessions there, with VoiceOver, Zoom, Voice Control and keyboard support. 0.x
 > releases are experimental, ad-hoc-signed builds; 1.0.0 is the first official release. The
-> [E1 implementation plan](docs/plans/epic-01-implementation-plan.md) records how E1 was built.
+> [E1 implementation plan](docs/plans/epic-01-implementation-plan.md) records how E1 was built, and the
+> [E2 implementation plan](docs/plans/epic-02-implementation-plan.md) tracks E2, in progress for v0.3.0.
 
 ## Why
 
@@ -95,6 +96,7 @@ the app does today.
 - [Tech stack](docs/TECH_STACK.md): the chosen languages, libraries and tools, and the decision log.
 - [E1 implementation plan](docs/plans/epic-01-implementation-plan.md): the stories that deliver Epic 1 and their
   status.
+- [E2 implementation plan](docs/plans/epic-02-implementation-plan.md): the same for Epic 2.
 
 ## Development
 

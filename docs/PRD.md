@@ -2,7 +2,7 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.10                     |
+| Status       | Draft v0.11                     |
 | Owner        | Renato Oliveira                 |
 | Last updated | 2026-11-13                      |
 | Scope        | P0 in seven epics, then GA (E8) |
@@ -975,8 +975,10 @@ Acceptance criteria:
 3. When the app reconnects, every session shows its current state and the output
    produced while the app was away.
 4. An explicit, confirmed "Quit and stop all sessions" command exists.
-5. On first run, the app tells the user that sessions keep running after the app
-   closes and how to stop them.
+5. The first time the user quits while sessions run, a dialog tells them that
+   sessions keep running after the app closes and how to stop them, and offers
+   Quit, Quit and Stop All Sessions, and Cancel. It is not shown again (owner,
+   2026-11-13).
 
 #### US-2.2 — Sessions survive disconnects and reconnect by themselves
 

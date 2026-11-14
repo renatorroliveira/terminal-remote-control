@@ -1,11 +1,11 @@
 # Terminal Remote Control — Tech Stack
 
-| Field        | Value                                                                   |
-| ------------ | ----------------------------------------------------------------------- |
-| Status       | Decisions accepted (v1.3). S1–S5 done (§11); S6–S10 may revise details. |
-| Owner        | Renato Oliveira                                                         |
-| Last updated | 2026-11-13                                                              |
-| Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.        |
+| Field        | Value                                                                                |
+| ------------ | ------------------------------------------------------------------------------------ |
+| Status       | Decisions accepted (v1.4). S1–S5 done (§11); S6 and S11–S13 run in E2, S7–S10 later. |
+| Owner        | Renato Oliveira                                                                      |
+| Last updated | 2026-11-13                                                                           |
+| Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.                     |
 
 This document records the technology choices for P0 and why each one was made.
 Versions were checked against the npm registry and crates.io on 2026-11-11.
@@ -651,21 +651,28 @@ exits with status 78. The
 binary must sit at `<root>/versions/<version>/trcd`. `trcd --version` prints the
 version and the binary's SHA-256 and runs anywhere.
 
-**Linux service mode (US-2.4).**
+**Linux service mode (US-2.4, D-44).** The app uses systemd only as the host
+already has it: it never runs `loginctl enable-linger` and writes nothing
+outside the install root.
 
-1. If `loginctl show-user` reports `Linger=yes`, install `trcd.service` as a
-   systemd user unit.
-2. Otherwise, try `loginctl enable-linger --no-ask-password`. Polkit usually
-   refuses it over SSH. If it succeeds, use the unit.
-3. Otherwise, the core and holders double-fork and call `setsid`.
-4. If `KillUserProcesses=yes` and lingering is unavailable, the app warns that
-   sessions cannot outlive the last connection (US-2.4.4).
+1. If `loginctl show-user` reports `Linger=yes`, the bridge starts the core as
+   a transient user unit, `systemd-run --user --unit trcd-<root hash>` with
+   `Restart=on-failure`, so systemd restarts it after a crash.
+2. If lingering is off and logind ends user processes at logout
+   (`KillUserProcesses=yes`), the core runs the same way, under the user
+   manager, which lives until the last connection closes; a detached core
+   would die with the connection that started it. The core reports that
+   sessions end when the last connection closes, and the app warns
+   (US-2.4.4).
+3. Otherwise, or without a systemd user manager, the core and holders run
+   detached (`setsid`), as in E1, and survive logout.
 
 **Staying out of the kill scope.**
 
-- **Linux unit.** The core keeps the default `KillMode=control-group`. Each
-  holder starts through `systemd-run --user --scope --collect` before its
-  shell, which takes it out of the unit's control group. tmux does the same.
+- **Linux unit.** The core keeps the default `KillMode=control-group`. When
+  the core runs as a unit, each holder starts through
+  `systemd-run --user --scope --collect` before its shell, which takes it out
+  of the unit's control group. tmux does the same.
 - **macOS (E5).**
     - Holders call `setsid()`, and the LaunchAgent sets `AbandonProcessGroup`.
     - Registration uses Electron's
@@ -676,11 +683,15 @@ version and the binary's SHA-256 and runs anywhere.
       `CREATE_BREAKAWAY_FROM_JOB | DETACHED_PROCESS`.
     - Microsoft's redistributable `conpty.dll` (MIT) ships next to the binary.
 
-**Upgrade without session loss (US-2.5).**
+**Upgrade without session loss (US-2.5, D-46).**
 
 1. Upload the new binary, verify it and rename it into `versions/<sha256>/`.
-2. Swap the `current` symlink atomically.
-3. Restart the core, which speaks holder protocol versions N and N−1.
+2. The new version's bridge reads `core.lock`. If the core holding the lock is
+   older, it stops that core (its unit, or `SIGTERM` once its executable is
+   found in this install's `versions/`), waits for the lock, and starts its
+   own core. It never replaces a newer core.
+3. The new core adopts every holder; it speaks holder protocol versions N and
+   N−1.
 
 Holders are never upgraded in place. An old session keeps its old holder until
 it ends, and unused versions are deleted after that. VS Code Server uses the
@@ -790,9 +801,11 @@ needs Rust. Every request carries a `requestId`.
       bound by the control-frame limit (1 MiB).
     - From E2: `fromOffset` on `Attach` and `offset` on `Attached`.
     - `Detach` and `Resize`.
-    - `ReadRows { session, fromRow, count }`, which returns scrollback rows the
-      client lacks.
-    - Reconnecting is an `Attach` with `fromOffset` (US-2.2).
+    - `Refresh { session }`, which asks for the whole scrollback and screen
+      again (D-45).
+    - Reconnecting is an `Attach` with `fromOffset` (US-2.2): the daemon
+      replays the output since that offset when it still holds it, and
+      otherwise sends a snapshot. Either ends with `Synced { offset }`.
 6. **Semantic events.** The daemon parses OSC 133, OSC 7, OSC 0/2 and BEL into
    `CommandFinished`, `Cwd`, `Title`, `Bell` and `Activity`.
     - Background sessions attach in `events` mode, so no output flows for them.
@@ -812,9 +825,12 @@ needs Rust. Every request carries a `requestId`.
 - **Resync.** A client that runs out of credit gets nothing more until it
   catches up. It then receives `Resync` with the current screen instead of the
   backlog, as mosh does.
-- **Gaps.** Scrollback skipped this way is backfilled with `ReadRows` once
-  output pauses. Opening review mode or find first fetches any gap, so both
-  see every line even during a sustained flood (A11Y-02.3, A11Y-03).
+- **Gaps (D-45).** Scrollback skipped this way is filled by rebuilding the
+  client's terminal from the whole scrollback and screen (`Refresh`), streamed,
+  once output pauses. Opening review mode or find rebuilds first, so both see
+  every line even during a sustained flood (A11Y-02.3, A11Y-03). xterm.js cannot
+  insert rows into the middle of its buffer, so fetching single rows would not
+  help.
 - **Input first.** `INPUT` and `CONTROL` frames never queue behind `OUTPUT`, so
   Ctrl+C reaches the program within NFR-03.
 
@@ -840,8 +856,9 @@ needs Rust. Every request carries a `requestId`.
 **E1 (D-19).** E1 attaches one client per session, so it uses backpressure
 instead of skip-to-latest: when the client's credit runs out, the holder stops
 reading the PTY until credit returns, and programs block as in any terminal.
-`INPUT` and `CONTROL` still never queue behind `OUTPUT`. `Resync`, `ReadRows`
-and "never block" arrive in E2 with multiple clients.
+`INPUT` and `CONTROL` still never queue behind `OUTPUT`. `Resync` and "never
+block" arrive in E2 with multiple clients; protocol 1 clients of an E2 daemon
+get an in-band reset and the full snapshot when they catch up.
 
 ### Not used
 
@@ -1367,7 +1384,7 @@ Chromium, and Cargo.
 | Epic | What the epic adds to the stack                                                                                                                                                                                                                                                                                                                                      |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | E1   | §4.1–§4.4; macOS packaging, ad-hoc signed, and manual downloads (§4.5, D-17); the protocol (§6) with backpressure flow control instead of skip-to-latest (D-19); SSH and bootstrap (§7); POSIX shell profiles (§8); `trcd core`, `bridge` and `holder` on Linux musl, the core started detached by the bridge, without kill-scope isolation (D-20); all tooling (§9) |
-| E2   | Holders outside the kill scope and the Linux service-mode rule (§5.4); reconnect from an offset; skip-to-latest flow control (D-04) with `Resync` and `ReadRows` backfill; soak tests (NFR-11)                                                                                                                                                                       |
+| E2   | Holders outside the kill scope and the Linux service-mode rule (§5.4, D-44); upgrades in place (D-46); protocol 2 with reconnect from an offset and skip-to-latest flow control (D-04) with `Resync` and rebuild (D-45); automatic reconnect and restore at launch; soak tests (NFR-11)                                                                              |
 | E3   | Persistence and restore (§5.5); daemon management                                                                                                                                                                                                                                                                                                                    |
 | E4   | Shell-integration scripts and semantic events (§6, §8)                                                                                                                                                                                                                                                                                                               |
 | E5   | macOS `trcd` (universal2, LaunchAgent through SMAppService); local bridge; detached core on remote Macs                                                                                                                                                                                                                                                              |
@@ -1387,6 +1404,9 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | S4  | E1   | `KnownHostsCommand` and `SSH_ASKPASS` behavior; the stderr message corpus for US-1.3; agent discovery for GUI launches                                                              | US-1.2, US-1.3               |
 | S5  | E1   | Bootstrap on Alpine/busybox, Ubuntu and RHEL; noexec home directories; LDAP users                                                                                                   | R10                          |
 | S6  | E2   | A 1,000-cycle soak of daemon kill and upgrade, with and without lingering, and across logout                                                                                        | R4, R5, R6 (Linux), NFR-11   |
+| S11 | E2   | systemd in a container: a transient-unit core with `Restart=on-failure`, holders in transient scopes, lingering and `KillUserProcesses` detection, what survives logout             | R4, R5, R6 (Linux)           |
+| S12 | E2   | Streaming a snapshot in blocks of rows through the formatter selection and tracked grid references while output arrives                                                             | NFR-09                       |
+| S13 | E2   | The renderer to connection-host message path on a sub-millisecond link                                                                                                              | NFR-02                       |
 | S7  | E3   | Consistency of the persistence logs after a power cut                                                                                                                               | NFR-08                       |
 | S8  | E5   | `setsid` + `AbandonProcessGroup`; SMAppService registration; detached core on remote Macs                                                                                           | R4, R5, R7 (macOS)           |
 | S9  | E6   | ConPTY holder outside the app's job object; libghostty-vt on MSVC; re-verify the ATS with JAWS, NVDA and Narrator                                                                   | R1, R2, R4, R5, R8 (Windows) |
@@ -1439,6 +1459,9 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | D-41 | The in-app user guide is `USER_GUIDE.md` rendered to `resources/docs/index.html` by a small in-repo converter (`tools/user-docs`, `pnpm docs:guide`) for the Markdown the guide uses; a test fails while the committed page is stale. The Help menu opens it in a sandboxed window with no preload, served from its own `app://docs` host with a script-free CSP                                                                                                                                                                                                                                                                                                                                                  | One source for the repository's guide and the app's, so they never drift (A11Y-10.4, P-18); the page has headings, lists and tables, a `main` landmark and the guide's language                                                                                                    | None; serves A11Y-10.4 and keeps SEC-01 (no scripts, no network)                                                   |
 | D-42 | Releases run entirely in GitHub Actions (`.github/workflows/release.yml`), started by hand with a bump level and an optional dry run: a prepare job commits the version as `github-actions[bot]`, `ci.yml` runs as a reusable workflow on that commit, Ubuntu builds both musl daemons, `macos-15` packages the arm64 and x64 dmg and zip with them, `macos-15` and `macos-15-intel` run the release-artifact checks on their own architecture, and only then a publish job (the only one with `contents: write`) tags, pushes `main` and the tag atomically, publishes `TRC v<version>` with notes and SHA-256 sums, and moves `main` to the next `-dev` version. `pnpm release` starts and watches the workflow | Owner's choice (2026-11-13): builds from a clean runner, both architectures smoke-tested natively, nothing pushed or published until every job passes                                                                                                                              | Tag pushed locally with CI publishing; CI building a draft the owner publishes; building on the owner's Mac (D-34) |
 | D-43 | 0.x releases are alpha, experimental builds, not an official release; 1.0.0 is the first official release. Automatic updates move from E3 to E8                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Owner's choice (2026-11-13). Squirrel.Mac installs only updates whose Developer ID signature matches the running app, and Developer ID signing arrives with E8; alternatives were signing in E3, or draft-only releases until signing exists                                       | SEC-04.1's exception ends with 1.0.0; E3's update story becomes US-8.5; §9, OQ-3 and the §11.5 E1 note follow      |
+| D-44 | Linux service mode uses systemd only as the host has it: a transient user unit for the core and transient scopes for holders when lingering is on, or when logind ends user processes at logout; otherwise detached. The app never enables lingering and writes nothing outside the install root                                                                                                                                                                                                                                                                                                                                                                                                                  | Owner's choice (2026-11-13): no host settings changed. Alternatives were enabling lingering (a persistent change for the account), asking per host, or never using systemd                                                                                                         | US-2.4 and §5.4 follow; R6 keeps its mitigation                                                                    |
+| D-45 | A client that skipped output during a flood is rebuilt from the daemon's whole scrollback and screen, streamed, once output pauses and before review mode or find opens; `ReadRows` is dropped                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Owner's choice (2026-11-13). xterm.js cannot insert rows into the middle of its buffer; alternatives were backpressure while one client is attached, or fetching rows for review mode and find only                                                                                | A11Y-02.3 and A11Y-03 keep every line                                                                              |
+| D-46 | The app upgrades a host's daemon in place on connect when it bundles a newer one: the new bridge stops an older core and starts its own, which adopts every holder; holders are never upgraded. A newer installed daemon is used when the protocol overlaps; only `Incompatible` asks for an app update                                                                                                                                                                                                                                                                                                                                                                                                           | US-2.5.3 and NFR-12: sessions never end, and two Macs with different app versions share a host                                                                                                                                                                                     | US-1.4.6 applies to protocol incompatibility only                                                                  |
 
 ## 13. Versions (verified 2026-11-11)
 
