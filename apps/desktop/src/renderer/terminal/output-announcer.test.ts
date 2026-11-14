@@ -129,6 +129,26 @@ describe('OutputAnnouncer: the open session’s output is spoken (A11Y-02, NFR-0
     });
 });
 
+describe('OutputAnnouncer: replays (US-2.2.2, D-04)', () => {
+    it('speaks none of a replay however long it takes, then speaks live output again (US-2.2.2, D-04)', async () => {
+        const { clock, spoken, state, announcer, write, primed } = setUp();
+        await primed();
+        await write('waiting\r\n');
+        announcer.hold();
+        expect(state.cancels).toBe(1);
+        for (let block = 0; block < 5; block += 1) {
+            await write(lines(30));
+            clock.advance(1_000);
+        }
+        announcer.release();
+        clock.advance(1_000);
+        expect(spoken).toEqual([]);
+        await write('live\r\n$ ');
+        clock.advance(1_000);
+        expect(spoken).toEqual(['live\n$']);
+    });
+});
+
 describe('OutputAnnouncer: floods, silence and interruptions (A11Y-02.3, A11Y-02.6, A11Y-02.7)', () => {
     it('summarizes a flood once output pauses, then speaks line by line again (A11Y-02.3)', async () => {
         const { clock, spoken, write, primed } = setUp();

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { THEMES } from '../ui/themes';
 import { SELECTION_CAP } from './ats-surface';
+import { bufferText } from './buffer-text';
 import type { TerminalLink } from './hyperlinks';
 import { TERMINAL_FONT_SIZE, TerminalView, type TerminalViewOptions } from './terminal-view';
 
@@ -49,7 +50,9 @@ function mount(overrides: Partial<TerminalViewOptions> = {}): Harness {
         outputBelow: 'New output below',
         review: 'Review build, devbox-1',
         disconnected: 'build, devbox-1, disconnected',
+        reconnecting: 'build, devbox-1, reconnecting',
         inputRefused: 'Disconnected — input not sent',
+        inputReconnecting: 'Reconnecting — input not sent',
         inputNotReady: 'Session still opening — input not sent',
     });
     views.push(view);
@@ -60,6 +63,11 @@ async function written(view: TerminalView, text: string): Promise<void> {
     await view.ready;
     await view.write(new TextEncoder().encode(text));
     await frames();
+}
+
+/** Waits past the output announcer's settle time. */
+function settled(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 400));
 }
 
 function frames(): Promise<void> {
@@ -776,7 +784,7 @@ describe('TerminalView: a lost connection (US-1.14.2)', () => {
         const notices: unknown[] = [];
         const { view, host, inputs } = mount({ onNotice: (notice) => notices.push(notice) });
         await written(view, '$ ');
-        view.setConnected(false);
+        view.setConnection('disconnected');
         expect(view.surface.getAttribute('aria-label')).toBe('build, devbox-1, disconnected');
         view.surface.focus();
         beforeInput(view.surface, 'insertText', 'ls');
@@ -789,7 +797,7 @@ describe('TerminalView: a lost connection (US-1.14.2)', () => {
             { kind: 'input-refused', reason: 'disconnected' },
             { kind: 'input-refused', reason: 'disconnected' },
         ]);
-        view.setConnected(true);
+        view.setConnection('connected');
         expect(refused?.hidden).toBe(true);
         expect(view.surface.getAttribute('aria-label')).toBe('build, devbox-1');
         beforeInput(view.surface, 'insertText', 'ls');
@@ -811,6 +819,58 @@ describe('TerminalView: a lost connection (US-1.14.2)', () => {
             { kind: 'input-refused', reason: 'opening' },
             { kind: 'input-refused', reason: 'disconnected' },
         ]);
+    });
+});
+
+describe('TerminalView: reconnecting and replays (US-2.2.2, D-04, D-45)', () => {
+    it('names itself reconnecting, and says typing is not sent while its host reconnects', async () => {
+        const notices: unknown[] = [];
+        const { view, host, inputs } = mount({ onNotice: (notice) => notices.push(notice) });
+        await written(view, '$ ');
+        view.setConnection('reconnecting');
+        expect(view.surface.getAttribute('aria-label')).toBe('build, devbox-1, reconnecting');
+        view.surface.focus();
+        beforeInput(view.surface, 'insertText', 'ls');
+        expect(inputs).toEqual([]);
+        expect(host.querySelector<HTMLElement>('[data-input-refused]')?.textContent).toBe(
+            'Reconnecting — input not sent',
+        );
+        expect(notices).toEqual([{ kind: 'input-refused', reason: 'reconnecting' }]);
+    });
+
+    it('adds the output missed to the buffer for a delta, keeping review mode open, and speaks none of it', async () => {
+        const spoken: string[] = [];
+        const speech = {
+            enabled: () => true,
+            speak: (text: string) => spoken.push(text),
+            cancel: () => undefined,
+            floodThreshold: () => 20,
+            summary: (lines: number) => `${lines} lines`,
+        };
+        const { view } = mount({ speech });
+        await written(view, 'before\r\n$ ');
+        await settled();
+        view.toggleReview();
+        view.beginReplay('delta');
+        await written(view, 'missed\r\n$ ');
+        view.endReplay();
+        await settled();
+        expect(view.reviewOpen).toBe(true);
+        expect(bufferText(view.terminal).lines.slice(0, 3)).toEqual(['before', '$ missed', '$']);
+        view.toggleReview();
+        await written(view, 'live\r\n$ ');
+        await settled();
+        expect(spoken).toEqual(['live\n$']);
+    });
+
+    it('replaces the buffer for a snapshot or a resync, ending a search', async () => {
+        const { view } = mount();
+        await written(view, 'old line\r\n$ ');
+        view.find('old', { caseSensitive: false, regex: false });
+        view.beginReplay('replace');
+        expect(view.terminal.hasSelection()).toBe(false);
+        await written(view, 'new screen\r\n$ ');
+        expect(bufferText(view.terminal).lines.slice(0, 2)).toEqual(['new screen', '$']);
     });
 });
 

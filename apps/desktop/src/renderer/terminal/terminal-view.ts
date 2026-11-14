@@ -39,8 +39,12 @@ export interface TerminalLabel {
     readonly review: string;
     /** The terminal's name while its host is disconnected (US-1.14.1). */
     readonly disconnected: string;
+    /** The terminal's name while its host reconnects (US-2.2.2). */
+    readonly reconnecting: string;
     /** What a keystroke shows while the host is disconnected (US-1.14.2). */
     readonly inputRefused: string;
+    /** What a keystroke shows while the host reconnects (US-2.2.2). */
+    readonly inputReconnecting: string;
     /** What a keystroke shows before the session has attached (US-1.14.2). */
     readonly inputNotReady: string;
 }
@@ -86,6 +90,12 @@ export interface TerminalViewOptions {
     readonly onClipboardWrite?: (text: string) => void;
 }
 
+/** Whether a terminal's host is connected, and if not, whether it is reconnecting by itself (US-1.14, US-2.2). */
+export type TerminalConnection = 'connected' | 'disconnected' | 'reconnecting';
+
+/** What a replay from the daemon does to the buffer: a delta adds to it, a snapshot or a resync replaces it. */
+export type ReplayMode = 'delta' | 'replace';
+
 /** The terminal font, embedded in the app. */
 export const TERMINAL_FONT_FAMILY = '"Intel One Mono", monospace';
 /** The terminal font size, in CSS pixels. */
@@ -121,7 +131,7 @@ export class TerminalView {
     readonly #blink: CursorBlink;
     #review: ReviewField | undefined;
     #label: TerminalLabel | undefined;
-    #connected = true;
+    #connection: TerminalConnection = 'connected';
     #find: FindState | undefined;
     #wantsBlink = false;
     #reducedMotion = false;
@@ -223,10 +233,10 @@ export class TerminalView {
 
     /**
      * Records whether the host is connected. While it is not, input is refused and never buffered: each keystroke
-     * shows and reports that it was not sent (US-1.14.2).
+     * shows and reports that it was not sent, and whether the host is reconnecting (US-1.14.2, US-2.2.2).
      */
-    setConnected(connected: boolean): void {
-        this.#connected = connected;
+    setConnection(connection: TerminalConnection): void {
+        this.#connection = connection;
         this.#inputRefused.hidden = true;
         this.#showConnection();
     }
@@ -238,7 +248,7 @@ export class TerminalView {
     refuseInput(reason: InputRefusal): void {
         const label = this.#label;
         if (label !== undefined) {
-            this.#inputRefused.textContent = reason === 'opening' ? label.inputNotReady : label.inputRefused;
+            this.#inputRefused.textContent = refusalText(label, reason);
         }
         this.#inputRefused.hidden = false;
         this.#options.onNotice?.({ kind: 'input-refused', reason });
@@ -255,6 +265,35 @@ export class TerminalView {
         this.terminal.reset();
         this.#outputBelow.hidden = true;
         this.#scheduler.request();
+    }
+
+    /**
+     * Starts a replay from the daemon (US-2.2.2, D-04): a delta adds the output missed and keeps the buffer, scroll
+     * position and review mode; a snapshot or a resync replaces the buffer, once the output written before it is
+     * parsed, and ends a search. Pending credit belongs to the old stream and is dropped, and nothing replayed is
+     * spoken.
+     */
+    beginReplay(mode: ReplayMode): void {
+        this.#announcer?.hold();
+        this.#credit.reset();
+        if (mode === 'replace') {
+            this.endFind();
+            this.#outputBelow.hidden = true;
+            this.terminal.write('', () => {
+                this.terminal.reset();
+                this.#scheduler.request();
+            });
+        }
+    }
+
+    /** Ends a replay once the output written so far is parsed; what follows is live and spoken again. */
+    endReplay(): void {
+        void this.parsed().then(() => this.#announcer?.release());
+    }
+
+    /** Settles once the output written so far is parsed into the buffer. */
+    parsed(): Promise<void> {
+        return new Promise((resolve) => this.terminal.write('', resolve));
     }
 
     /** Opens review mode on the cursor's line, or closes it and returns to the terminal (A11Y-03.1). */
@@ -601,9 +640,9 @@ export class TerminalView {
     #showConnection(): void {
         const label = this.#label;
         if (label !== undefined) {
-            this.surface.setAttribute('aria-label', this.#connected ? label.name : label.disconnected);
+            this.surface.setAttribute('aria-label', connectionName(label, this.#connection));
         }
-        if (this.#connected) {
+        if (this.#connection === 'connected') {
             this.#inputRefused.hidden = true;
         }
     }
@@ -634,14 +673,14 @@ export class TerminalView {
     }
 
     #deliver(text: string): void {
-        if (this.#connected) {
+        if (this.#connection === 'connected') {
             this.#options.onInput(text);
         }
     }
 
     #send(text: string): void {
-        if (!this.#connected) {
-            this.refuseInput('disconnected');
+        if (this.#connection !== 'connected') {
+            this.refuseInput(this.#connection);
             return;
         }
         if (!this.#options.onInput(text)) {
@@ -776,4 +815,26 @@ function loadTerminalFonts(): Promise<void> {
         () => undefined,
         () => undefined,
     );
+}
+
+function connectionName(label: TerminalLabel, connection: TerminalConnection): string {
+    switch (connection) {
+        case 'connected':
+            return label.name;
+        case 'disconnected':
+            return label.disconnected;
+        case 'reconnecting':
+            return label.reconnecting;
+    }
+}
+
+function refusalText(label: TerminalLabel, reason: InputRefusal): string {
+    switch (reason) {
+        case 'opening':
+            return label.inputNotReady;
+        case 'disconnected':
+            return label.inputRefused;
+        case 'reconnecting':
+            return label.inputReconnecting;
+    }
 }

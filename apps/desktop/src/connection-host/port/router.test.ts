@@ -7,6 +7,7 @@ class FakeConnection implements HostConnectionLike {
     readonly calls: string[] = [];
     readonly listener: ConnectionListener;
     connected = true;
+    state: ConnectionState = { status: 'idle' };
 
     constructor(listener: ConnectionListener) {
         this.listener = listener;
@@ -33,8 +34,17 @@ class FakeConnection implements HostConnectionLike {
     rejectHostKey(): void {
         this.calls.push('reject');
     }
+    checkAlive(): void {
+        this.calls.push('check');
+    }
     close(): void {
         this.calls.push('close');
+    }
+
+    /** Reports a state, as the real connection does through its listener. */
+    report(state: ConnectionState): void {
+        this.state = state;
+        this.listener.state(state);
     }
 }
 
@@ -142,5 +152,104 @@ describe('ConnectionRouter events', () => {
         created[0]?.listener.state({ status: 'closed' });
         router.handle({ type: 'connect', hostId: 'h1', target });
         expect(created).toHaveLength(2);
+    });
+});
+
+const lost: ConnectionState = { status: 'disconnected', reason: 'channel-closed' };
+
+function useFakeTimers(): void {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+}
+
+describe('ConnectionRouter reconnecting (US-2.2)', () => {
+    useFakeTimers();
+
+    it('reconnects a lost host by itself, reporting reconnecting first', () => {
+        const { router, created, posted } = setup();
+        router.handle({ type: 'connect', hostId: 'h1', target });
+        created[0]?.report(lost);
+        expect(posted.at(-1)).toMatchObject({ type: 'state', state: { status: 'reconnecting', attempt: 1 } });
+        vi.advanceTimersByTime(0);
+        expect(created[0]?.calls).toEqual(['connect', 'connect']);
+    });
+
+    it('reports a failed attempt only as reconnecting with its failure, so retries raise no failure', () => {
+        const { router, created, posted } = setup();
+        router.handle({ type: 'connect', hostId: 'h1', target });
+        created[0]?.report(lost);
+        vi.advanceTimersByTime(0);
+        const before = posted.length;
+        created[0]?.report({ status: 'failed', failure: { kind: 'timeout', host: 'h', port: 22, details: '' } });
+        expect(posted.slice(before)).toEqual([
+            {
+                type: 'state',
+                hostId: 'h1',
+                state: expect.objectContaining({ status: 'reconnecting', attempt: 2, failure: expect.anything() }),
+            },
+        ]);
+    });
+
+    it('reports a first connection the user started that fails, and does not retry it (US-1.3)', () => {
+        const { router, created, posted } = setup();
+        router.handle({ type: 'connect', hostId: 'h1', target });
+        created[0]?.report({ status: 'failed', failure: { kind: 'timeout', host: 'h', port: 22, details: '' } });
+        expect(posted.at(-1)).toMatchObject({ type: 'state', state: { status: 'failed' } });
+        vi.advanceTimersByTime(60_000);
+        expect(created[0]?.calls).toEqual(['connect']);
+    });
+
+    it('retries a host the launch restores until it connects (US-2.3.3)', () => {
+        const { router, created, posted } = setup();
+        router.handle({ type: 'connect', hostId: 'h1', target, restore: true });
+        created[0]?.report({ status: 'failed', failure: { kind: 'timeout', host: 'h', port: 22, details: '' } });
+        expect(posted.at(-1)).toMatchObject({ type: 'state', state: { status: 'reconnecting', attempt: 1 } });
+        vi.advanceTimersByTime(0);
+        expect(created[0]?.calls).toEqual(['connect', 'connect']);
+    });
+});
+
+describe('ConnectionRouter: retry now and stop retrying (US-2.2.3)', () => {
+    useFakeTimers();
+
+    it('stops reconnecting once the user disconnects', () => {
+        const { router, created } = setup();
+        router.handle({ type: 'connect', hostId: 'h1', target });
+        router.handle({ type: 'disconnect', hostId: 'h1' });
+        created[0]?.report(lost);
+        vi.advanceTimersByTime(60_000);
+        expect(created[0]?.calls).toEqual(['connect', 'close']);
+    });
+
+    it('retries now, or stops retrying and shows the last state again (US-2.2.3)', () => {
+        const { router, created, posted } = setup();
+        router.handle({ type: 'connect', hostId: 'h1', target });
+        created[0]?.report(lost);
+        vi.advanceTimersByTime(0);
+        created[0]?.report({ status: 'failed', failure: { kind: 'timeout', host: 'h', port: 22, details: '' } });
+        router.handle({ type: 'retry', hostId: 'h1' });
+        expect(created[0]?.calls).toEqual(['connect', 'connect', 'connect']);
+        created[0]?.report({ status: 'failed', failure: { kind: 'timeout', host: 'h', port: 22, details: '' } });
+        router.handle({ type: 'stop-retrying', hostId: 'h1' });
+        expect(posted.at(-1)).toMatchObject({ type: 'state', state: { status: 'failed' } });
+        vi.advanceTimersByTime(60_000);
+        expect(created[0]?.calls).toHaveLength(3);
+    });
+
+    it('after a wake or network change, retries waiting hosts and checks connected ones', () => {
+        const { router, created } = setup();
+        router.handle({ type: 'connect', hostId: 'h1', target });
+        router.handle({ type: 'connect', hostId: 'h2', target });
+        created[0]?.report({ status: 'connected', daemon: { version: '0.3.0', sha256: 'a', proto: 2 } });
+        created[1]?.report(lost);
+        vi.advanceTimersByTime(0);
+        created[1]?.report({ status: 'failed', failure: { kind: 'dns', host: 'h', details: '' } });
+        router.retryAll();
+        expect(created[0]?.calls).toEqual(['connect', 'check']);
+        expect(created[1]?.calls).toEqual(['connect', 'connect', 'connect']);
     });
 });

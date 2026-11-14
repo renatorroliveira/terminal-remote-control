@@ -170,7 +170,7 @@ describe('HostsPanel: failures and accessibility (US-1.3)', () => {
             failure: { kind: 'dns', host: 'devbox-1', details: 'no such host' },
         });
         await expect
-            .element(screen.getByRole('button', { name: 'Connect devbox-1' }))
+            .element(screen.getByRole('button', { name: 'Retry connecting to devbox-1' }))
             .toHaveAccessibleDescription('Connection failed: no such host');
     });
 

@@ -81,10 +81,11 @@
 <li><strong>Forget</strong>: removes the host from TRC after you confirm. Its sessions keep running on the host, and adding the host again shows them.</li>
 </ul>
 <h2 id="connect">Connect</h2>
-<p>When the app opens, it connects to every known host. A host that fails stays disconnected and shows no dialog.</p>
-<p>Each host in the Hosts section shows its state as an icon and as text: Not connected, Connecting, Connected, Connection failed or Disconnected. Its button connects, cancels or disconnects it.</p>
+<p>When the app opens, it connects to every known host. A host that fails shows no dialog; if the network might fix the failure, TRC keeps trying, as after a lost connection.</p>
+<p>Each host in the Hosts section shows its state as an icon and as text: Not connected, Connecting, Connected, Reconnecting, Connection failed or Disconnected. Its button connects, cancels or disconnects it; while the host reconnects, it tries again now, and after a failure it retries.</p>
 <p>If your key is a security key, TRC shows and says &quot;Touch your security key for &lt;host&gt;&quot; while ssh waits for the touch.</p>
-<p>When a working connection drops, TRC says &quot;Connection to &lt;host&gt; lost&quot; and lists it in the notifications. The host's sessions stay in the list, marked Disconnected, and their terminals take no input: a key press is not sent and not kept for later, and TRC shows and says &quot;Disconnected — input not sent&quot;. Choose the host's Connect button to reconnect: the sessions still running on the host come back, and each open terminal attaches to its session again.</p>
+<p>When a working connection drops, TRC says &quot;Connection to &lt;host&gt; lost&quot;, lists it in the notifications, and reconnects by itself: at once, then after 1, 2 and 4 seconds, then every 5 seconds for 5 minutes, then every 30 seconds. When your Mac wakes or its network changes, it tries at once. Your sessions keep running on the host the whole time. While TRC reconnects, the host's sessions show Reconnecting and their terminals take no input: a key press is not sent and not kept for later, and TRC shows and says &quot;Reconnecting — input not sent&quot;. Once the host is back, TRC says &quot;Reconnected to &lt;host&gt;&quot; and each open terminal picks up where it left off, with the output it missed added below what it already showed. When a host has more missed output than it keeps, the terminal shows the session's whole buffer again instead.</p>
+<p>To stop TRC trying, choose Stop reconnecting to &lt;host&gt; in the host's context menu or the command palette; the host's sessions then show Disconnected until you connect it. When reconnecting needs you, for example because the agent has no key the host accepts, TRC stops trying, says why and lists it, and the host's button retries.</p>
 <p>When a connection you started fails, a dialog names the host, explains the reason (for example, the agent has no key the host accepts, the host is unreachable, or the connection timed out) and offers the details ssh reported. Choose OK to close it.</p>
 <h2 id="sessions">Sessions</h2>
 <p>The Sessions list is a tree: each connected host, then its sessions. It is one stop for Tab.</p>
@@ -160,7 +161,7 @@
 <li><strong>Send next key.</strong> After Shift-Command-K, the next key goes to the program even if it is an app shortcut.</li>
 <li><strong>Command palette.</strong> Type part of a name, then press Return. The palette lists every command with its shortcut, every host action (connect, disconnect, new session) and every session to open. Escape closes it.</li>
 <li><strong>Status bar.</strong> It shows the open session's host and its connection, the daemon version on that host, the Tab focus mode and mute buttons, and how many notifications are waiting.</li>
-<li><strong>Notifications.</strong> Connection failures and lost connections stay in the list until you dismiss them, including failures while connecting at launch. TRC also says when a host connects or its connection is lost.</li>
+<li><strong>Notifications.</strong> Connection failures and lost connections stay in the list until you dismiss them, including failures while connecting at launch. TRC also says when a host connects, reconnects or loses its connection.</li>
 <li><strong>Menus.</strong> View and Terminal hold the same commands, with their Command shortcuts.</li>
 </ul>
 <h2 id="settings">Settings</h2>

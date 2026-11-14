@@ -227,27 +227,23 @@ test.describe('a live terminal on a Linux host: review mode and find (A11Y-03, U
     });
 });
 
-test.describe('a live terminal on a Linux host: connection loss (US-1.14, US-1.5.5)', () => {
+test.describe('a live terminal on a Linux host: connection loss (US-1.14, US-2.2)', () => {
     const install = liveHost();
 
-    test('shows the lost connection, refuses typing, and re-attaches the session after Connect', async () => {
+    test('reconnects by itself after the connection drops, keeps the buffer, adds what it missed, and says so', async () => {
         const { app, window, home } = await launchWithTestHosts(install.root);
         const terminal = await openTerminal(window, 'trc-ubuntu');
         await terminal.focus();
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
         await recordSpeech(window);
+        await window.keyboard.type('echo before-loss; sleep 3; echo missed-while-away');
+        await window.keyboard.press('Enter');
+        await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('before-loss');
         execFileSync('pkill', ['-f', `${dirname(home)}/known_hosts`]);
-        const lost = window.getByRole('textbox', { name: /, trc-ubuntu, disconnected$/ });
-        await expect(lost).toBeVisible({ timeout: 30_000 });
-        await expect(window.getByRole('treeitem', { name: /^bash.*, Disconnected$/ })).toBeVisible();
-        await lost.focus();
-        await window.keyboard.type('x');
-        await expect(window.getByText('Disconnected — input not sent', { exact: true })).toBeVisible();
-        await expect.poll(() => spokenWith(window, 'input not sent')).toHaveLength(1);
-        await window.getByRole('button', { name: 'Connect trc-ubuntu' }).click();
+        await expect.poll(() => spokenWith(window, 'Reconnected to trc-ubuntu'), { timeout: 60_000 }).toHaveLength(1);
         const restored = window.getByRole('textbox', { name: /, trc-ubuntu$/ });
-        await expect(restored).toBeVisible({ timeout: 60_000 });
-        await expect.poll(() => screenText(restored), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => rowTexts(restored), { timeout: 30_000 }).toContain('missed-while-away');
+        expect(await rowTexts(restored)).toContain('before-loss');
         await restored.focus();
         await window.keyboard.type('echo back-again');
         await window.keyboard.press('Enter');

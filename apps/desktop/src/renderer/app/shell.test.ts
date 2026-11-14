@@ -354,27 +354,28 @@ describe('Shell bell and new output below (A11Y-08.2, A11Y-08.4)', () => {
     });
 });
 
-describe('Shell review mode and find (A11Y-03, US-1.13)', () => {
-    async function withSession() {
-        const harness = await setup();
-        harness.client.push('host-0', CONNECTED);
-        await expect.poll(() => harness.workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
-        harness.workspace.open('host-0/a');
-        harness.spoken.length = 0;
-        return harness;
-    }
+/** The shell with one host connected and its session open. */
+async function sessionOpen() {
+    const harness = await setup();
+    harness.client.push('host-0', CONNECTED);
+    await expect.poll(() => harness.workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
+    harness.workspace.open('host-0/a');
+    harness.spoken.length = 0;
+    return harness;
+}
 
+describe('Shell review mode and find (A11Y-03, US-1.13)', () => {
     it('toggles review mode for the open session, and says when there is none', async () => {
         const plain = await setup();
         plain.shell.run('review.toggle');
         expect(plain.spoken).toEqual(['No session is open.']);
-        const { shell, terminals } = await withSession();
+        const { shell, terminals } = await sessionOpen();
         shell.run('review.toggle');
         expect(terminals.reviewOpen).toBe(true);
     });
 
     it('searches as the user types, announces "match 3 of 17", steps, and ends the search on close', async () => {
-        const { shell, terminals, spoken } = await withSession();
+        const { shell, terminals, spoken } = await sessionOpen();
         terminals.matches = 17;
         shell.run('terminal.find');
         expect(shell.state.getState().find).toEqual({
@@ -399,7 +400,7 @@ describe('Shell review mode and find (A11Y-03, US-1.13)', () => {
     });
 
     it('keeps and announces the result when Find opens again over a search', async () => {
-        const { shell, terminals, spoken } = await withSession();
+        const { shell, terminals, spoken } = await sessionOpen();
         terminals.matches = 3;
         shell.run('terminal.find');
         shell.updateFind({ query: 'err' });
@@ -409,9 +410,24 @@ describe('Shell review mode and find (A11Y-03, US-1.13)', () => {
     });
 
     it('announces output that arrives in review mode', async () => {
-        const { shell, spoken } = await withSession();
+        const { shell, spoken } = await sessionOpen();
         shell.terminalNotice('host-0/a', { kind: 'review-output' });
         expect(spoken).toEqual(['New output. Command-Down Arrow goes to the end.']);
+    });
+});
+
+describe('Shell find over rows a resync skipped (D-45)', () => {
+    it('fetches the rows a resync skipped when Find opens, and searches them again (D-45)', async () => {
+        const { shell, terminals } = await sessionOpen();
+        terminals.matches = 3;
+        shell.run('terminal.find');
+        expect(terminals.fills).toBe(0);
+        shell.updateFind({ query: 'err' });
+        terminals.gap = true;
+        terminals.matches = 5;
+        shell.run('terminal.find');
+        expect(terminals.fills).toBe(1);
+        await vi.waitFor(() => expect(shell.state.getState().find?.result).toEqual({ index: 4, count: 5 }));
     });
 });
 
@@ -570,6 +586,20 @@ describe('Shell host reports (A11Y-12.1, A11Y-12.2)', () => {
         expect(spoken).toEqual(['devbox-1 connected.', '! Connection to devbox-1 lost.']);
         expect(shell.notifications.store.getState().items.map((item) => item.text)).toEqual([
             'Connection to devbox-1 lost.',
+        ]);
+    });
+
+    it('announces and lists Reconnected once a lost host is back, and not the steps of each attempt (US-2.2.2)', async () => {
+        const { shell, client, spoken } = await setup();
+        client.push('host-0', CONNECTED);
+        client.push('host-0', { status: 'disconnected', reason: 'ping-timeout' });
+        client.push('host-0', { status: 'reconnecting', attempt: 1, nextAttemptAt: 0, failure: undefined });
+        client.push('host-0', { status: 'connecting', step: 'connecting', touch: undefined });
+        client.push('host-0', CONNECTED);
+        expect(spoken).toEqual(['devbox-1 connected.', '! Connection to devbox-1 lost.', 'Reconnected to devbox-1.']);
+        expect(shell.notifications.store.getState().items.map((item) => [item.text, item.level])).toEqual([
+            ['Reconnected to devbox-1.', 'info'],
+            ['Connection to devbox-1 lost.', 'error'],
         ]);
     });
 

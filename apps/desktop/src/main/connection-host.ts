@@ -1,4 +1,4 @@
-import { app, type BrowserWindow, MessageChannelMain, utilityProcess } from 'electron';
+import { app, type BrowserWindow, MessageChannelMain, powerMonitor, utilityProcess } from 'electron';
 import connectionHostPath from '../connection-host/index?modulePath';
 import { CONNECTION_HOST_NAME, CONNECTION_PORT_CHANNEL } from '../shared/connection-port';
 import { connectionHostInit } from './connection-host-init';
@@ -6,8 +6,9 @@ import type { TestSeam } from './test-seam';
 
 /**
  * Starts the connection host and gives the window a fresh MessagePort to it after every page load, so a reload
- * reconnects to the same connections (TECH_STACK §4.2). `resources` holds the bundled daemons and helpers, and
- * `seam` is the P-14 test seam, empty in release builds.
+ * reconnects to the same connections (TECH_STACK §4.2). It also tells the connection host when the Mac wakes, so lost
+ * hosts reconnect at once (US-2.2.2). `resources` holds the bundled daemons and helpers, and `seam` is the P-14 test
+ * seam, empty in release builds.
  */
 export function startConnectionHost(window: BrowserWindow, resources: string, seam: TestSeam): void {
     const child = utilityProcess.fork(connectionHostPath, [], { serviceName: CONNECTION_HOST_NAME });
@@ -24,5 +25,6 @@ export function startConnectionHost(window: BrowserWindow, resources: string, se
         first = false;
         window.webContents.postMessage(CONNECTION_PORT_CHANNEL, null, [port2]);
     });
+    powerMonitor.on('resume', () => child.postMessage({ type: 'wake' }));
     app.on('before-quit', () => child.kill());
 }

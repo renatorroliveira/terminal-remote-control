@@ -53,6 +53,7 @@ export class OutputAnnouncer {
     readonly #flood: FloodControl;
     readonly #parsed: IDisposable;
     #primed = false;
+    #held = false;
     #firstOutput: number | undefined;
     #lastOutput = Number.NEGATIVE_INFINITY;
     #lastInput = Number.NEGATIVE_INFINITY;
@@ -91,6 +92,22 @@ export class OutputAnnouncer {
         this.#primed = false;
     }
 
+    /** Drops waiting output and speaks none until {@link OutputAnnouncer.release}: the daemon replays the session. */
+    hold(): void {
+        this.#stopFlush();
+        this.#speech.cancel();
+        this.#held = true;
+    }
+
+    /** Ends a hold once the replay is parsed: what was written so far stays unspoken, and live output is spoken. */
+    release(): void {
+        this.#held = false;
+        this.#primed = true;
+        this.#stopFlush();
+        this.#flood.reset();
+        this.#reader.skip();
+    }
+
     /** Stops speaking and tracking the terminal. */
     dispose(): void {
         this.#stopFlush();
@@ -116,7 +133,7 @@ export class OutputAnnouncer {
 
     #flush(): void {
         this.#stopFlush();
-        if (!this.#primed || !this.#speech.enabled()) {
+        if (this.#held || !this.#primed || !this.#speech.enabled()) {
             this.#primed = true;
             this.#flood.reset();
             this.#reader.skip();

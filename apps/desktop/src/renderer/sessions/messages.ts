@@ -1,4 +1,6 @@
 import { defineMessage, defineMessages } from 'react-intl';
+import type { ConnectionState } from '../../shared/connection';
+import type { ConnectionAction } from './workspace-controller';
 
 /** The session sidebar's UI strings (NFR-13). */
 export const sidebarMessages = defineMessages({
@@ -81,7 +83,19 @@ export const hostStateMessages = defineMessages({
     connected: { id: 'host.connected', defaultMessage: 'Connected', description: 'Host connection state.' },
     failed: { id: 'host.failed', defaultMessage: 'Connection failed', description: 'Host connection state.' },
     disconnected: { id: 'host.disconnected', defaultMessage: 'Disconnected', description: 'Host connection state.' },
+    reconnecting: {
+        id: 'host.reconnecting',
+        defaultMessage: 'Reconnecting',
+        description: 'Host connection state while the app reconnects a lost host by itself.',
+    },
     closed: { id: 'host.closed', defaultMessage: 'Closed', description: 'Host connection state.' },
+});
+
+/** A session whose host reconnects by itself (US-2.2.2). */
+export const sessionReconnectingMessage = defineMessage({
+    id: 'session.reconnecting',
+    defaultMessage: 'Reconnecting',
+    description: 'Session state while its host reconnects by itself.',
 });
 
 /** Session states as text (US-1.9.2, US-1.9.3). */
@@ -117,6 +131,11 @@ export const terminalMessages = defineMessages({
         id: 'terminal.inputRefused',
         defaultMessage: 'Disconnected — input not sent',
         description: 'Shown and announced when the user types while the host is disconnected; nothing was sent.',
+    },
+    inputReconnecting: {
+        id: 'terminal.inputReconnecting',
+        defaultMessage: 'Reconnecting — input not sent',
+        description: 'Shown and announced when the user types while the host reconnects; nothing was sent.',
     },
     inputNotReady: {
         id: 'terminal.inputNotReady',
@@ -210,7 +229,31 @@ export const connectionActionMessages = {
         defaultMessage: 'Review the host key of {host}',
         description: 'Accessible name of the connection button while a host key waits for the user.',
     }),
+    retry: defineMessage<{ host: string }>({
+        id: 'host.action.retry',
+        defaultMessage: 'Reconnect {host} now',
+        description: 'Accessible name of the connection button while the host waits to reconnect by itself.',
+    }),
 };
+
+/** The connection button's name on a host whose connection failed (US-1.3, US-2.2.4). */
+export const retryFailedMessage = defineMessage<{ host: string }>({
+    id: 'host.action.retryFailed',
+    defaultMessage: 'Retry connecting to {host}',
+    description: 'Accessible name of the connection button of a host whose connection failed.',
+});
+
+/** The name of the action that a host's connection button runs, such as "Connect devbox-1". */
+export function connectionActionMessage(action: ConnectionAction, status: ConnectionState['status']) {
+    return action === 'connect' && status === 'failed' ? retryFailedMessage : connectionActionMessages[action];
+}
+
+/** A reconnecting host's state with why its last attempt failed, as the connection button's description. */
+export const hostReconnectingMessage = defineMessage<{ details: string }>({
+    id: 'host.reconnectingDetails',
+    defaultMessage: 'Reconnecting. Last attempt: {details}',
+    description: 'Description of a host that reconnects by itself, with what ssh or the host reported last time.',
+});
 
 /** A host's connection state with its failure, as the connection button's description. */
 export const hostFailureMessage = defineMessage<{ details: string }>({
@@ -252,6 +295,13 @@ export const terminalDisconnectedMessage = defineMessage<{ session: string; host
     id: 'terminal.labelDisconnected',
     defaultMessage: '{session}, {host}, disconnected',
     description: 'Accessible name of a terminal whose host is not connected.',
+});
+
+/** A terminal's accessible name while its host reconnects (US-2.2.2). */
+export const terminalReconnectingMessage = defineMessage<{ session: string; host: string }>({
+    id: 'terminal.labelReconnecting',
+    defaultMessage: '{session}, {host}, reconnecting',
+    description: 'Accessible name of a terminal whose host reconnects by itself.',
 });
 
 /** Review mode's accessible name, naming the session and host (A11Y-03). */

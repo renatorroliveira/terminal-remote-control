@@ -5,6 +5,7 @@ import type { TrcBridge } from '../../shared/contract';
 import type { KnownHost } from '../../shared/hosts';
 import type { Settings } from '../../shared/settings';
 import { type ClientRequest, type HostClient, HostRequestError } from '../connection/host-client';
+import type { TerminalConnection } from '../terminal/terminal-view';
 import {
     EMPTY_WORKSPACE,
     type FailedAction,
@@ -32,7 +33,15 @@ export type { SessionKey } from './workspace-model';
 /** The host client operations the workspace uses. */
 export type WorkspaceClient = Pick<
     HostClient,
-    'connect' | 'disconnect' | 'acceptHostKey' | 'rejectHostKey' | 'onState' | 'onMessage' | 'request'
+    | 'connect'
+    | 'disconnect'
+    | 'retry'
+    | 'stopRetrying'
+    | 'acceptHostKey'
+    | 'rejectHostKey'
+    | 'onState'
+    | 'onMessage'
+    | 'request'
 >;
 
 /** Where known hosts are kept: the main process's `hosts.json` (P-18). */
@@ -44,8 +53,8 @@ export interface TerminalHost {
     show(key: SessionKey, hostId: string, session: SessionInfo): void;
     /** Creates a session on a host at the terminal area's size, with the options given. */
     create(hostId: string, options?: SessionOptions): Promise<SessionInfo>;
-    /** Lets a host's terminals send input, or refuses it while the host is disconnected (US-1.14.2). */
-    setHostConnected(hostId: string, connected: boolean): void;
+    /** Lets a host's terminals send input, or refuses it while the host is disconnected or reconnecting (US-1.14.2). */
+    setHostConnection(hostId: string, connection: TerminalConnection): void;
     /**
      * Attaches a reconnected host's terminals to their sessions again; each takes input once attached, and the
      * sessions that could not attach are returned with why, their terminals removed (US-1.14.2, US-1.14.3).
@@ -70,7 +79,7 @@ export type SessionPreferences = Pick<Settings, 'autoClose' | 'stopGraceSeconds'
 export type SessionOptions = Partial<Pick<CreateSessionSpec, 'profileId' | 'cwd' | 'name' | 'env'>>;
 
 /** What pressing a host's connection button does now. */
-export type ConnectionAction = 'connect' | 'disconnect' | 'cancel' | 'review-key';
+export type ConnectionAction = 'connect' | 'disconnect' | 'cancel' | 'review-key' | 'retry';
 
 /**
  * Keeps the workspace read model current from the connection host, and carries out what the sidebar asks: add,
@@ -132,33 +141,52 @@ export class WorkspaceController {
                 return 'cancel';
             case 'host-key':
                 return 'review-key';
+            case 'reconnecting':
+                return 'retry';
             default:
                 return 'connect';
         }
     }
 
-    /** Connects every host that is not connected or connecting, as at launch; failures leave them disconnected. */
+    /**
+     * Connects every host that is not connected or connecting, as at launch, to restore it: a failure the network may
+     * fix retries as after a loss, and none raises a dialog (US-2.3.3).
+     */
     connectAll(): void {
         for (const host of this.store.getState().hosts) {
             if (this.connectionAction(host) === 'connect') {
                 this.#automatic.add(host.id);
-                this.#client.connect(host.id, { ...host.address, installRoot: host.installRoot });
+                this.#client.connect(host.id, { ...host.address, installRoot: host.installRoot }, { restore: true });
             }
         }
     }
 
-    /** Connects a disconnected host, or disconnects or cancels a connected or connecting one. */
+    /**
+     * Connects a disconnected host, retries a reconnecting one now (US-2.2.3), or disconnects or cancels a connected
+     * or connecting one.
+     */
     toggleConnection(hostId: string): void {
         const host = this.#host(hostId);
         if (host === undefined) {
             return;
         }
-        this.#automatic.delete(hostId);
         const action = this.connectionAction(host);
+        if (action === 'retry') {
+            this.#client.retry(host.id);
+            return;
+        }
+        this.#automatic.delete(hostId);
         if (action === 'connect') {
             this.#client.connect(host.id, { ...host.address, installRoot: host.installRoot });
         } else if (action !== 'review-key') {
             this.#client.disconnect(host.id);
+        }
+    }
+
+    /** Stops a reconnecting host retrying by itself; it shows its last state until the user connects it (US-2.2.3). */
+    stopRetrying(hostId: string): void {
+        if (this.#host(hostId)?.state.status === 'reconnecting') {
+            this.#client.stopRetrying(hostId);
         }
     }
 
@@ -451,8 +479,11 @@ export class WorkspaceController {
             if (this.#forgotten.has(hostId)) {
                 return;
             }
+            if (state.status === 'reconnecting') {
+                this.#automatic.add(hostId);
+            }
             const notifyFailure = !this.#automatic.has(hostId);
-            if (state.status !== 'connecting' && state.status !== 'host-key') {
+            if (!CONNECTION_UNDER_WAY.has(state.status)) {
                 this.#automatic.delete(hostId);
             }
             this.#update((workspace) => hostStateChanged(workspace, hostId, state, { notifyFailure }));
@@ -484,7 +515,10 @@ export class WorkspaceController {
                 break;
             case 'disconnected':
             case 'failed':
-                this.#terminals.setHostConnected(hostId, false);
+                this.#terminals.setHostConnection(hostId, 'disconnected');
+                break;
+            case 'reconnecting':
+                this.#terminals.setHostConnection(hostId, 'reconnecting');
                 break;
             case 'closed':
                 this.#terminals.closeHost(hostId);
@@ -550,6 +584,13 @@ export class WorkspaceController {
         this.store.setState(change(this.store.getState()), true);
     }
 }
+
+/** States in which a connection the app started on its own is still under way. */
+const CONNECTION_UNDER_WAY: ReadonlySet<ConnectionState['status']> = new Set([
+    'connecting',
+    'host-key',
+    'reconnecting',
+]);
 
 function exitedCleanly(session: SessionInfo): boolean {
     return session.state === 'exited' && session.exit?.code === 0;

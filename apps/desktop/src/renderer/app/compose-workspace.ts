@@ -7,6 +7,7 @@ import {
     terminalDisconnectedMessage,
     terminalLabelMessage,
     terminalMessages,
+    terminalReconnectingMessage,
     terminalReviewMessage,
 } from '../sessions/messages';
 import { type KnownHostStore, type SessionKey, WorkspaceController } from '../sessions/workspace-controller';
@@ -79,7 +80,12 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
                 session: sessionName(session),
                 host: destination(hostId),
             }),
+            reconnecting: intl.formatMessage(terminalReconnectingMessage, {
+                session: sessionName(session),
+                host: destination(hostId),
+            }),
             inputRefused: intl.formatMessage(terminalMessages.inputRefused),
+            inputReconnecting: intl.formatMessage(terminalMessages.inputReconnecting),
             inputNotReady: intl.formatMessage(terminalMessages.inputNotReady),
             review: intl.formatMessage(terminalReviewMessage, {
                 session: sessionName(session),

@@ -7,12 +7,18 @@ import type { FindOptions, FindResult } from './find';
 import type { TerminalLink } from './hyperlinks';
 import type { TerminalNotice } from './notices';
 import type { OutputSpeech } from './output-announcer';
-import { SessionLink, type SessionTransport } from './session-link';
+import { type LinkEvents, type ReplayStart, SessionLink, type SessionTransport } from './session-link';
 import styles from './terminal-registry.module.css';
-import { DEFAULT_SCROLLBACK_LINES, TERMINAL_FONT_SIZE, type TerminalLabel, TerminalView } from './terminal-view';
+import {
+    DEFAULT_SCROLLBACK_LINES,
+    TERMINAL_FONT_SIZE,
+    type TerminalConnection,
+    type TerminalLabel,
+    TerminalView,
+} from './terminal-view';
 
-/** A terminal's accessible names and texts. */
-export type { TerminalLabel } from './terminal-view';
+/** A terminal's accessible names and texts, and whether its host is connected. */
+export type { TerminalConnection, TerminalLabel } from './terminal-view';
 
 /** How sessions' output is spoken (A11Y-02); the registry adds that only the open session speaks. */
 export interface SessionSpeech {
@@ -68,8 +74,8 @@ interface Entry {
 export class TerminalRegistry implements TerminalHost {
     readonly #options: TerminalRegistryOptions;
     readonly #entries = new Map<SessionKey, Entry>();
-    /** Hosts whose connection is lost, whose terminals refuse input (US-1.14.2). */
-    readonly #offline = new Set<string>();
+    /** Hosts whose connection is lost or reconnecting, whose terminals refuse input (US-1.14.2, US-2.2.2). */
+    readonly #offline = new Map<string, Exclude<TerminalConnection, 'connected'>>();
     /** Each host's creates in flight, which a `show` of a session not yet known waits for. */
     readonly #creating = new Map<string, Set<Promise<unknown>>>();
     readonly #stopInputRefused: () => void;
@@ -156,11 +162,36 @@ export class TerminalRegistry implements TerminalHost {
         return this.#openEntry()?.view.passingNextKey ?? false;
     }
 
-    /** Opens or closes the open terminal's review mode; false when no session is open (A11Y-03.1). */
+    /**
+     * Opens or closes the open terminal's review mode; false when no session is open (A11Y-03.1). Rows a resync
+     * skipped are fetched first, so review mode reads every line (D-45).
+     */
     toggleReview(): boolean {
         const entry = this.#openEntry();
-        entry?.view.toggleReview();
-        return entry !== undefined;
+        if (entry === undefined) {
+            return false;
+        }
+        if (entry.view.reviewOpen || !entry.link.hasGap) {
+            entry.view.toggleReview();
+            return true;
+        }
+        void this.#filled(entry).then(() => {
+            if (this.#openEntry() === entry && !entry.view.reviewOpen) {
+                entry.view.toggleReview();
+            }
+        });
+        return true;
+    }
+
+    /** Whether the open terminal lacks rows a resync skipped (D-45). */
+    hasGap(): boolean {
+        return this.#openEntry()?.link.hasGap ?? false;
+    }
+
+    /** Fetches the rows a resync skipped from the open terminal's session, so a search sees every line (D-45). */
+    fillGap(): Promise<void> {
+        const entry = this.#openEntry();
+        return entry === undefined ? Promise.resolve() : this.#filled(entry);
     }
 
     /** Searches the open terminal; undefined when no session is open (US-1.13). */
@@ -253,22 +284,26 @@ export class TerminalRegistry implements TerminalHost {
         return tracked;
     }
 
-    /** Lets a host's terminals send input again, or refuses it while the host is disconnected (US-1.14.2). */
-    setHostConnected(hostId: string, connected: boolean): void {
-        if (connected) {
+    /**
+     * Lets a host's terminals send input again, or refuses it while the host is disconnected or reconnecting
+     * (US-1.14.2, US-2.2.2).
+     */
+    setHostConnection(hostId: string, connection: TerminalConnection): void {
+        if (connection === 'connected') {
             this.#offline.delete(hostId);
         } else {
-            this.#offline.add(hostId);
+            this.#offline.set(hostId, connection);
         }
         for (const entry of this.#entriesOf(hostId)) {
-            entry.view.setConnected(connected);
+            entry.view.setConnection(connection);
         }
     }
 
     /**
-     * Attaches a reconnected host's terminals to their sessions again, each on a fresh screen (US-1.14.3). Each keeps
-     * refusing typing until its attach answers (US-1.14.2); returns the sessions that could not attach, whose terminals
-     * are removed.
+     * Attaches a reconnected host's terminals to their sessions again (US-1.14.3): from where each left off, keeping
+     * its buffer, when the daemon has the output missed, otherwise on a fresh screen (US-2.2.2). Each keeps refusing
+     * typing until its attach answers (US-1.14.2); returns the sessions that could not attach, whose terminals are
+     * removed.
      */
     async reattachHost(hostId: string): Promise<readonly AttachFailure[]> {
         this.#offline.delete(hostId);
@@ -311,6 +346,11 @@ export class TerminalRegistry implements TerminalHost {
         this.#entries.clear();
     }
 
+    async #filled(entry: Entry): Promise<void> {
+        await entry.link.fillGap();
+        await entry.view.parsed();
+    }
+
     #showIfWanted(key: SessionKey, hostId: string, session: SessionInfo): void {
         if (this.#wanted === key) {
             this.show(key, hostId, session);
@@ -319,7 +359,7 @@ export class TerminalRegistry implements TerminalHost {
 
     #inputRefused(hostId: string): void {
         if (this.#open?.startsWith(`${hostId}/`) === true) {
-            this.#openEntry()?.view.refuseInput('disconnected');
+            this.#openEntry()?.view.refuseInput(this.#offline.get(hostId) ?? 'disconnected');
         }
     }
 
@@ -328,10 +368,9 @@ export class TerminalRegistry implements TerminalHost {
         if (entry === undefined) {
             return undefined;
         }
-        entry.view.restart();
         try {
             await entry.link.reattach();
-            entry.view.setConnected(true);
+            entry.view.setConnection('connected');
             return undefined;
         } catch (error) {
             if (droppedConnection(error)) {
@@ -421,7 +460,7 @@ export class TerminalRegistry implements TerminalHost {
         this.#entries.set(key, entry);
         void entry.view.ready
             .then(() => entry.link.attach(session.id))
-            .then(() => entry.view.setConnected(!this.#offline.has(hostId)))
+            .then(() => entry.view.setConnection(this.#connectionOf(hostId)))
             .catch((error: unknown) => this.#attachFailed(key, entry, error));
         return entry;
     }
@@ -432,10 +471,15 @@ export class TerminalRegistry implements TerminalHost {
         frame.hidden = true;
         this.#area?.append(frame);
         let view: TerminalView | undefined;
-        const link = new SessionLink(this.#options.transport, hostId, (data) => {
-            void view?.write(data);
-            this.#activity(link);
-        });
+        const link = new SessionLink(
+            this.#options.transport,
+            hostId,
+            (data) => {
+                void view?.write(data);
+                this.#activity(link);
+            },
+            replayEvents(() => view),
+        );
         const speech = this.#speechFor(() => link);
         view = new TerminalView({
             palette: this.#palette,
@@ -456,7 +500,7 @@ export class TerminalRegistry implements TerminalHost {
                 withKey(this.#keyOf(link), (key) => this.#options.onClipboardWrite?.(key, text)),
         });
         view.mount(frame);
-        view.setConnected(!this.#offline.has(hostId));
+        view.setConnection(this.#connectionOf(hostId));
         view.setHints(this.#hints);
         view.setMinimumContrast(this.#minimumContrast);
         view.setTabFocusMode(this.#tabFocusMode);
@@ -466,10 +510,42 @@ export class TerminalRegistry implements TerminalHost {
         return { frame, view, link };
     }
 
+    #connectionOf(hostId: string): TerminalConnection {
+        return this.#offline.get(hostId) ?? 'connected';
+    }
+
     #dispose(entry: Entry): void {
         entry.link.dispose();
         entry.view.dispose();
         entry.frame.remove();
+    }
+}
+
+/** What a terminal does as its session link replays, resyncs and catches up. */
+function replayEvents(view: () => TerminalView | undefined): LinkEvents {
+    let attached = false;
+    return {
+        replay: (replay) => {
+            const shown = view();
+            if (shown !== undefined) {
+                startReplay(shown, replay, !attached);
+            }
+            attached = true;
+        },
+        synced: () => view()?.endReplay(),
+        resync: () => view()?.beginReplay('replace'),
+    };
+}
+
+/**
+ * Prepares a terminal for an attach's replay: protocol 2 says what it is and when it ends (US-2.2.2); protocol 1
+ * always sends a fresh screen, which a terminal attached before must start over for (US-1.14.3).
+ */
+function startReplay(view: TerminalView, replay: ReplayStart, first: boolean): void {
+    if (replay.endsWithSynced) {
+        view.beginReplay(replay.kind === 'delta' ? 'delta' : 'replace');
+    } else if (!first) {
+        view.restart();
     }
 }
 

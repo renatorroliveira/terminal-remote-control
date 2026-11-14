@@ -151,6 +151,11 @@ export class HostConnection implements HostConnectionLike {
         }
     }
 
+    /** Checks at once that a connected daemon still answers, after a wake or a network change (NFR-07). */
+    checkAlive(): void {
+        this.#pinger?.checkNow();
+    }
+
     /** Closes the connection for good. */
     close(): void {
         this.#dispatch({ type: 'close' });

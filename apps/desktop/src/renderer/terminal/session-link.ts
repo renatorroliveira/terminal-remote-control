@@ -1,38 +1,89 @@
-import type { CreateSessionSpec, SessionId, SessionInfo, TerminalSize } from '@trc/protocol';
+import type { CreateSessionSpec, ResyncKind, ServerMessage, SessionId, SessionInfo, TerminalSize } from '@trc/protocol';
 import type { HostClient } from '../connection/host-client';
 
 /** The part of the host client a session link uses. */
-export type SessionTransport = Pick<HostClient, 'request' | 'input' | 'credit' | 'onOutput' | 'onInputRefused'>;
+export type SessionTransport = Pick<
+    HostClient,
+    'request' | 'input' | 'credit' | 'onOutput' | 'onInputRefused' | 'onMessage'
+>;
+
+/** How an attach replays the session: what the output that follows is, and whether `synced` ends it. */
+export interface ReplayStart {
+    /** A `delta` adds the output missed to the terminal as it is; a `snapshot` replaces it. */
+    readonly kind: 'delta' | 'snapshot';
+    /** Protocol 2 ends a replay with `synced`; protocol 1 says nothing, so its screen ends when output settles. */
+    readonly endsWithSynced: boolean;
+}
+
+/** What a session link reports beyond output. */
+export interface LinkEvents {
+    /** An attach answered, before any of the replay's output arrives (US-2.2.2). */
+    readonly replay?: (replay: ReplayStart) => void;
+    /** A replay or a resync ended: what follows is live output (protocol 2). */
+    readonly synced?: () => void;
+    /** The daemon starts over after the client fell behind: the terminal is replaced by what follows (D-04). */
+    readonly resync?: (kind: ResyncKind) => void;
+    /** Another client typed into the session (US-2.6.4). */
+    readonly peerInput?: () => void;
+}
 
 interface Attachment {
     readonly session: SessionId;
     readonly stream: number;
     readonly stopOutput: () => void;
+    readonly stopMessages: () => void;
 }
+
+/** A gap is filled once output has paused this long, so a flood is not interrupted by refreshes (D-45). */
+const GAP_QUIET_MS = 1_000;
+/** How long a gap may take to fill before review mode or find opens without it. */
+const FILL_TIMEOUT_MS = 5_000;
 
 /**
  * Joins one daemon session to a terminal view: output in, and input, credit and size changes out. Input before
  * the session is attached has nowhere to go and is refused, so the view can say it was not sent (US-1.14.2).
+ *
+ * With protocol 2 it also keeps the offset of the next output byte from the daemon's `synced`, so a reattach gets only
+ * the output missed (US-2.2.2), and after a resync that skipped rows it asks for the whole buffer again once output
+ * pauses (D-45).
  */
 export class SessionLink {
     readonly #transport: SessionTransport;
     readonly #hostId: string;
     readonly #onOutput: (data: Uint8Array) => void;
+    readonly #events: LinkEvents;
     #size: TerminalSize | undefined;
     #session: SessionId | undefined;
     #attachment: Attachment | undefined;
     #disposed = false;
+    /** The offset of the next live byte, once the daemon has said; undefined during a replay. */
+    #offset: number | undefined;
+    /** Rows were skipped: a screen resync left the scrollback incomplete. */
+    #gap = false;
+    #quiet: ReturnType<typeof setTimeout> | undefined;
+    #filled: (() => void)[] = [];
 
     /** Creates a link for a host; `onOutput` receives the attached session's output. */
-    constructor(transport: SessionTransport, hostId: string, onOutput: (data: Uint8Array) => void) {
+    constructor(
+        transport: SessionTransport,
+        hostId: string,
+        onOutput: (data: Uint8Array) => void,
+        events: LinkEvents = {},
+    ) {
         this.#transport = transport;
         this.#hostId = hostId;
         this.#onOutput = onOutput;
+        this.#events = events;
     }
 
     /** Whether a session is attached. */
     get attached(): boolean {
         return this.#attachment !== undefined;
+    }
+
+    /** Whether the terminal lacks rows a resync skipped, until the next whole buffer arrives (D-45). */
+    get hasGap(): boolean {
+        return this.#gap;
     }
 
     /** Creates a session at the terminal's current size and attaches to it. */
@@ -54,29 +105,19 @@ export class SessionLink {
      * was disposed detaches at once and routes nothing.
      */
     async attach(session: SessionId): Promise<void> {
-        this.#session = session;
-        const reply = await this.#transport.request(this.#hostId, { type: 'attach', session, mode: 'full' });
-        if (reply.type !== 'attached') {
-            throw new Error(`unexpected reply ${reply.type}`);
-        }
-        if (this.#disposed) {
-            this.#detach(session);
-            return;
-        }
-        const stopOutput = this.#transport.onOutput(this.#hostId, reply.stream, this.#onOutput);
-        this.#attachment = { session, stream: reply.stream, stopOutput };
-        this.#sendSize();
+        await this.#attach(session, undefined);
     }
 
     /**
-     * Attaches again to the last session asked for, over a connection that replaced a lost one; the old stream's
-     * output stops at once (US-1.14.3).
+     * Attaches again to the last session asked for, over a connection that replaced a lost one, from the offset of the
+     * output received when the daemon said where it stood; the old stream's output stops at once (US-1.14.3,
+     * US-2.2.2).
      */
     async reattach(): Promise<void> {
-        this.#attachment?.stopOutput();
-        this.#attachment = undefined;
+        const from = this.#offset;
+        this.#stopAttachment();
         if (this.#session !== undefined) {
-            await this.attach(this.#session);
+            await this.#attach(this.#session, from);
         }
     }
 
@@ -102,16 +143,123 @@ export class SessionLink {
         this.#sendSize();
     }
 
+    /**
+     * Asks for the whole buffer now when rows are missing, and resolves once it has arrived, or after 5 s, so review
+     * mode and find see every line (A11Y-02.3, A11Y-03). Resolves at once when nothing is missing.
+     */
+    fillGap(): Promise<void> {
+        if (!this.#gap || this.#attachment === undefined) {
+            return Promise.resolve();
+        }
+        const filled = new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, FILL_TIMEOUT_MS);
+            this.#filled.push(() => {
+                clearTimeout(timer);
+                resolve();
+            });
+        });
+        this.#refresh();
+        return filled;
+    }
+
     /** Stops routing output and detaches from the session. */
     dispose(): void {
         this.#disposed = true;
         const attachment = this.#attachment;
-        this.#attachment = undefined;
-        if (attachment === undefined) {
+        this.#stopAttachment();
+        if (attachment !== undefined) {
+            this.#detach(attachment.session);
+        }
+    }
+
+    async #attach(session: SessionId, fromOffset: number | undefined): Promise<void> {
+        this.#session = session;
+        const request = { type: 'attach', session, mode: 'full' } as const;
+        const reply = await this.#transport.request(
+            this.#hostId,
+            fromOffset === undefined ? request : { ...request, fromOffset },
+        );
+        if (reply.type !== 'attached') {
+            throw new Error(`unexpected reply ${reply.type}`);
+        }
+        if (this.#disposed) {
+            this.#detach(session);
             return;
         }
-        attachment.stopOutput();
-        this.#detach(attachment.session);
+        this.#offset = undefined;
+        this.#gap = false;
+        this.#events.replay?.({
+            kind: reply.replay === 'delta' ? 'delta' : 'snapshot',
+            endsWithSynced: reply.replay !== undefined,
+        });
+        const { stream } = reply;
+        const stopOutput = this.#transport.onOutput(this.#hostId, stream, (data) => this.#output(data));
+        const stopMessages = this.#transport.onMessage(this.#hostId, (message) => this.#message(stream, message));
+        this.#attachment = { session, stream, stopOutput, stopMessages };
+        this.#sendSize();
+    }
+
+    #output(data: Uint8Array): void {
+        if (this.#offset !== undefined) {
+            this.#offset += data.length;
+        }
+        if (this.#gap) {
+            this.#awaitQuiet();
+        }
+        this.#onOutput(data);
+    }
+
+    #message(stream: number, message: ServerMessage): void {
+        if (!('stream' in message) || message.stream !== stream || message.type === 'attached') {
+            return;
+        }
+        switch (message.type) {
+            case 'synced':
+                this.#synced(message.offset);
+                break;
+            case 'resync':
+                this.#offset = undefined;
+                this.#gap = message.kind === 'screen';
+                this.#events.resync?.(message.kind);
+                break;
+            case 'peerInput':
+                this.#events.peerInput?.();
+                break;
+        }
+    }
+
+    #synced(offset: number): void {
+        this.#offset = offset;
+        this.#events.synced?.();
+        if (this.#gap) {
+            this.#awaitQuiet();
+            return;
+        }
+        for (const filled of this.#filled.splice(0)) {
+            filled();
+        }
+    }
+
+    #awaitQuiet(): void {
+        clearTimeout(this.#quiet);
+        this.#quiet = setTimeout(() => this.#refresh(), GAP_QUIET_MS);
+    }
+
+    #refresh(): void {
+        clearTimeout(this.#quiet);
+        this.#quiet = undefined;
+        const session = this.#attachment?.session;
+        if (session !== undefined) {
+            this.#transport.request(this.#hostId, { type: 'refresh', session }).catch(ignore);
+        }
+    }
+
+    #stopAttachment(): void {
+        clearTimeout(this.#quiet);
+        this.#quiet = undefined;
+        this.#attachment?.stopOutput();
+        this.#attachment?.stopMessages();
+        this.#attachment = undefined;
     }
 
     #detach(session: SessionId): void {

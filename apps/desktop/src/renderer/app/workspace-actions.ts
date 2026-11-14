@@ -2,7 +2,7 @@ import type { IntlShape, MessageDescriptor } from 'react-intl';
 import { SCREEN_READER_MODES } from '../../shared/accessibility';
 import { formatChord } from '../../shared/keymap';
 import { hostActionMessages } from '../sessions/host-messages';
-import { connectionActionMessages, hostSessionsMessages } from '../sessions/messages';
+import { connectionActionMessage, hostSessionsMessages } from '../sessions/messages';
 import { paletteSessionMessages, sessionActionMessages } from '../sessions/session-messages';
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import { type HostEntry, hostGroups, isConnected, type SessionItem } from '../sessions/workspace-model';
@@ -40,7 +40,15 @@ export function hostActions(
     const connection =
         action === 'review-key'
             ? []
-            : [named(action, connectionActionMessages[action], () => workspace.toggleConnection(host.id))];
+            : [
+                  named(action, connectionActionMessage(action, host.state.status), () =>
+                      workspace.toggleConnection(host.id),
+                  ),
+              ];
+    const stopRetrying =
+        action === 'retry'
+            ? [named('stop-retrying', hostActionMessages.stopRetrying, () => workspace.stopRetrying(host.id))]
+            : [];
     const managed =
         shell === undefined
             ? []
@@ -55,7 +63,7 @@ export function hostActions(
                       shell.setHostDialog({ kind: 'forget', hostId: host.id }),
                   ),
               ];
-    return [...create, ...connection, ...managed];
+    return [...create, ...connection, ...stopRetrying, ...managed];
 }
 
 /** Where a session sits among its host's sessions. */

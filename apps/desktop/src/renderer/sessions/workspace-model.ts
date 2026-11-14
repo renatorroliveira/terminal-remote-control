@@ -9,6 +9,8 @@ export interface HostEntry extends KnownHost {
     /** The address as the user typed it, which names the host in the UI. */
     readonly destination: string;
     readonly state: ConnectionState;
+    /** Whether it is reconnecting by itself: waiting for its next attempt or making one (US-2.2.2). */
+    readonly reconnecting: boolean;
 }
 
 /** Identifies a session across hosts. */
@@ -61,6 +63,8 @@ export interface SessionItem {
     readonly bell: boolean;
     /** Whether its host is not connected, so it takes no input (US-1.14.1). */
     readonly disconnected: boolean;
+    /** Whether its host is reconnecting by itself (US-2.2.2). */
+    readonly reconnecting: boolean;
 }
 
 /** A host in the Sessions area, with its sessions; the sidebar hides them while the host is collapsed. */
@@ -103,14 +107,20 @@ export function hostAdded(workspace: Workspace, host: KnownHost): Workspace {
     if (workspace.hosts.some((entry) => entry.id === host.id)) {
         return workspace;
     }
-    const entry: HostEntry = { ...host, destination: formatHostAddress(host.address), state: { status: 'idle' } };
+    const entry: HostEntry = {
+        ...host,
+        destination: formatHostAddress(host.address),
+        state: { status: 'idle' },
+        reconnecting: false,
+    };
     return { ...workspace, hosts: [...workspace.hosts, entry] };
 }
 
 /**
  * Records a host's new connection state. A failure waits for the user to acknowledge it, unless the user caused it
  * by rejecting the host key or the app started the connection on its own; a closed connection takes its sessions
- * out of the sidebar.
+ * out of the sidebar. A host stays reconnecting from its `reconnecting` state through the attempts that follow, until
+ * it connects or stops (US-2.2.2).
  */
 export function hostStateChanged(
     workspace: Workspace,
@@ -118,7 +128,9 @@ export function hostStateChanged(
     state: ConnectionState,
     options: StateChangeOptions = { notifyFailure: true },
 ): Workspace {
-    const hosts = workspace.hosts.map((host) => (host.id === hostId ? { ...host, state } : host));
+    const hosts = workspace.hosts.map((host) =>
+        host.id === hostId ? { ...host, state, reconnecting: stillReconnecting(host, state) } : host,
+    );
     if (state.status === 'failed' && options.notifyFailure && state.failure.kind !== 'host-key-rejected') {
         return { ...workspace, hosts, failureNotice: hostId };
     }
@@ -152,7 +164,9 @@ export function hostUpdated(workspace: Workspace, known: KnownHost): Workspace {
     return {
         ...workspace,
         hosts: workspace.hosts.map((host) =>
-            host.id === known.id ? { ...known, destination: host.destination, state: host.state } : host,
+            host.id === known.id
+                ? { ...known, destination: host.destination, state: host.state, reconnecting: host.reconnecting }
+                : host,
         ),
     };
 }
@@ -241,10 +255,23 @@ export function hostGroups(workspace: Workspace): readonly HostGroup[] {
                 unread: workspace.unread.has(sessionKey(host.id, session.id)),
                 bell: workspace.bells.has(sessionKey(host.id, session.id)),
                 disconnected: !isConnected(host),
+                reconnecting: host.reconnecting,
                 label: sessionName(session),
                 session,
             })),
         }));
+}
+
+function stillReconnecting(host: HostEntry, state: ConnectionState): boolean {
+    switch (state.status) {
+        case 'reconnecting':
+            return true;
+        case 'connecting':
+        case 'host-key':
+            return host.reconnecting;
+        default:
+            return false;
+    }
 }
 
 function withSessions(workspace: Workspace, hostId: string, sessions: readonly SessionInfo[]): Workspace {

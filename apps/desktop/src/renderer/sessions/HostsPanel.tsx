@@ -24,7 +24,7 @@ import { ADD_HOST_ATTRIBUTE } from './HostDialogs';
 import styles from './HostsPanel.module.css';
 import { addHostMessages } from './host-messages';
 import { hostStateText } from './host-state-text';
-import { connectionActionMessages, hostFailureMessage, sidebarMessages } from './messages';
+import { connectionActionMessage, hostFailureMessage, hostReconnectingMessage, sidebarMessages } from './messages';
 import type { WorkspaceController } from './workspace-controller';
 import type { HostEntry } from './workspace-model';
 
@@ -82,7 +82,9 @@ function HostRow({ host, workspace }: { readonly host: HostEntry; readonly works
             <Button
                 className={styles['badge'] ?? ''}
                 data-badge={badge}
-                aria-label={intl.formatMessage(connectionActionMessages[action], { host: host.destination })}
+                aria-label={intl.formatMessage(connectionActionMessage(action, host.state.status), {
+                    host: host.destination,
+                })}
                 aria-describedby={descriptionId}
                 onPress={press}
             >
@@ -204,6 +206,7 @@ function badgeOf(host: HostEntry): Badge {
             return 'connected';
         case 'connecting':
         case 'host-key':
+        case 'reconnecting':
             return 'busy';
         default:
             return 'disconnected';
@@ -214,6 +217,9 @@ function hostDescription(intl: IntlShape, host: HostEntry): string {
     const { state } = host;
     if (state.status === 'failed') {
         return intl.formatMessage(hostFailureMessage, { details: state.failure.details || state.failure.kind });
+    }
+    if (state.status === 'reconnecting' && state.failure !== undefined) {
+        return intl.formatMessage(hostReconnectingMessage, { details: state.failure.details || state.failure.kind });
     }
     return hostStateText(intl, host);
 }
