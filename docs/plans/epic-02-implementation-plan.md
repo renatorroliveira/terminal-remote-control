@@ -137,6 +137,22 @@ full-screen program runs, which ST-25 fixes.
 - The install plan and bridge rules of P-27; "Upgrade daemon" on an incompatible older daemon. Tests upgrade from
   a 0.2.0 install with running sessions and from a protocol-2 core, and check that no newer core is replaced.
 
+As built (ST-24 to ST-28, 2026-11-14):
+
+- The holder streams snapshots in blocks of 256 rows from `trc-vt`'s `SnapshotStream`; while the alternate screen is
+  active the primary screen and its scrollback come from a binary-snapshot copy, which fixes S12's E1 bug.
+- A client queue over 1 MiB falls behind; it is resynced once 512 KiB of its credit is back. Input from one client
+  tells the others at most once a second.
+- The core replies to `attach` when the holder says `attached`; E1 holders keep one attachment and refuse `refresh`.
+- Service mode: the bridge reads `loginctl`, `busctl` and `systemctl --user`; the unit is `trcd-<8 hex of the root's
+SHA-256>.service` with `RestartPreventExitStatus=75 78` and the login umask; holders start through
+  `systemd-run --user --scope`, falling back to a direct start.
+- Upgrade: the bridge runs another installed binary, even for `--version`, only after the integrity check and its
+  checksum pass, since the planted-daemon tests caught it running one that had not. `pnpm test:integration` upgrades
+  the 0.2.0 release (`tools/test-hosts/fetch-old-daemon.sh`) with running sessions on a detached and a systemd host.
+- The `update-app` failure is gone: an incompatible handshake says to update the app when the daemon is newer, and
+  offers Upgrade daemon when it is older.
+
 **ST-29 Automatic reconnect in the connection host** (US-2.2, NFR-07)
 
 - The `reconnecting` state, the P-29 policy, retry now, stop retrying, network and wake triggers.
@@ -204,11 +220,11 @@ full-screen program runs, which ST-25 fixes.
 | ----- | ------- | ------ |
 | ST-22 | Done    | —      |
 | ST-23 | Done    | —      |
-| ST-24 | Pending | —      |
-| ST-25 | Pending | —      |
-| ST-26 | Pending | —      |
-| ST-27 | Pending | —      |
-| ST-28 | Pending | —      |
+| ST-24 | Done    | —      |
+| ST-25 | Done    | —      |
+| ST-26 | Done    | —      |
+| ST-27 | Done    | —      |
+| ST-28 | Done    | —      |
 | ST-29 | Pending | —      |
 | ST-30 | Pending | —      |
 | ST-31 | Pending | —      |

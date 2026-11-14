@@ -51,7 +51,12 @@ pub fn running_core(run: &RunDir) -> Option<RunningCore> {
         .next()
         .map(|line| line.trim().to_owned())
         .filter(|line| !line.is_empty())
-        .or_else(|| executable.as_deref().filter(|binary| trustworthy(binary)).and_then(version_of));
+        .or_else(|| {
+            executable
+                .as_deref()
+                .filter(|binary| trustworthy(binary))
+                .and_then(version_of)
+        });
     Some(RunningCore {
         pid,
         version,
