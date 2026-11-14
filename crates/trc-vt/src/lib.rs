@@ -1,10 +1,13 @@
 //! Terminal state for one session, behind the [`TerminalState`] trait, with libghostty-vt as the engine (D-02).
 
 mod ghostty;
+mod grid;
 mod sanitize;
+mod stream;
 
 pub use ghostty::GhosttyTerminal;
 pub use sanitize::strip_controls;
+pub use stream::{SnapshotScope, SnapshotStream};
 use thiserror::Error;
 
 /// Terminal dimensions in cells.
