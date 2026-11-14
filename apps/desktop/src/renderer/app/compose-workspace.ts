@@ -99,6 +99,7 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
         clipboardWrites: (hostId) =>
             workspace?.store.getState().hosts.find((host) => host.id === hostId)?.allowClipboardWrites === true,
         onClipboardWrite: sources.onClipboardWrite,
+        onAttachFailed: (key, error) => workspace?.attachFailed(key, error),
     });
     workspace = new WorkspaceController(sources.client, terminals, sources.hosts, sources.settings);
     return { workspace, terminals };

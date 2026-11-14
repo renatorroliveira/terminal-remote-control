@@ -162,20 +162,31 @@ export class WorkspaceController {
     }
 
     /** Forgets a host: closes its connection and drops it and its sessions from the app (A11Y-11.9). */
+    /**
+     * Forgets a host: closes its connection and drops it and its sessions from the app (A11Y-11.9). A host
+     * `hosts.json` could not forget stays as it was, and the failure is reported by its name.
+     */
     async forgetHost(hostId: string): Promise<void> {
-        const host = this.#host(hostId);
-        if (host === undefined) {
+        if (this.#host(hostId) === undefined) {
             return;
         }
-        if (this.connectionAction(host) !== 'connect') {
-            this.#client.disconnect(hostId);
+        try {
+            await this.#hosts.remove(hostId);
+        } catch (error) {
+            this.#failed('forget', hostId, error);
+            return;
         }
-        this.#forgotten.add(hostId);
-        this.#unfollow.get(hostId)?.();
-        this.#unfollow.delete(hostId);
-        this.#terminals.closeHost(hostId);
-        this.#update((workspace) => hostRemoved(workspace, hostId));
-        await this.#attempt('forget', hostId, () => this.#hosts.remove(hostId));
+        this.#drop(hostId);
+    }
+
+    /**
+     * Reports a session shown for the first time whose terminal could not attach, and leaves nothing open in its
+     * place (US-1.14.2, WCAG 3.3.1).
+     */
+    attachFailed(key: SessionKey, error: unknown): void {
+        const hostId = this.#find(key)?.hostId ?? hostIdOf(key);
+        this.#closeOpen([key]);
+        this.#failed('open', hostId, error);
     }
 
     /** Moves a host's install location; the next connection uses it (US-1.4.3). */
@@ -184,10 +195,12 @@ export class WorkspaceController {
         this.#update((workspace) => hostUpdated(workspace, moved));
     }
 
-    /** Lets a host's programs write the clipboard with OSC 52, or stops them (SEC-06.1). */
+    /** Lets a host's programs write the clipboard with OSC 52, or stops them (SEC-06.1); a refused save is reported. */
     async setClipboardWrites(hostId: string, allowed: boolean): Promise<void> {
-        const changed = await this.#hosts.setClipboardWrites(hostId, allowed);
-        this.#update((workspace) => hostUpdated(workspace, changed));
+        await this.#attempt('clipboard', hostId, async () => {
+            const changed = await this.#hosts.setClipboardWrites(hostId, allowed);
+            this.#update((workspace) => hostUpdated(workspace, changed));
+        });
     }
 
     /**
@@ -304,7 +317,11 @@ export class WorkspaceController {
         const { open, hosts } = this.store.getState();
         const connected = (id: string | undefined): boolean =>
             hosts.some((host) => host.id === id && isConnected(host));
-        const candidates = [open?.split('/')[0], this.#lastHost, hosts.find(isConnected)?.id];
+        const candidates = [
+            open === undefined ? undefined : hostIdOf(open),
+            this.#lastHost,
+            hosts.find(isConnected)?.id,
+        ];
         return candidates.find(connected);
     }
 
@@ -391,8 +408,29 @@ export class WorkspaceController {
     async #reattach(hostId: string): Promise<void> {
         const failed = await this.#terminals.reattachHost(hostId);
         if (failed.length > 0) {
+            this.#closeOpen(failed);
             this.#failed('reattach', hostId);
         }
+    }
+
+    #closeOpen(keys: readonly SessionKey[]): void {
+        this.#update((workspace) =>
+            workspace.open !== undefined && keys.includes(workspace.open)
+                ? { ...workspace, open: undefined }
+                : workspace,
+        );
+    }
+
+    #drop(hostId: string): void {
+        const host = this.#host(hostId);
+        if (host !== undefined && this.connectionAction(host) !== 'connect') {
+            this.#client.disconnect(hostId);
+        }
+        this.#forgotten.add(hostId);
+        this.#unfollow.get(hostId)?.();
+        this.#unfollow.delete(hostId);
+        this.#terminals.closeHost(hostId);
+        this.#update((workspace) => hostRemoved(workspace, hostId));
     }
 
     #add(host: KnownHost): void {
@@ -510,4 +548,8 @@ export class WorkspaceController {
 
 function exitedCleanly(session: SessionInfo): boolean {
     return session.state === 'exited' && session.exit?.code === 0;
+}
+
+function hostIdOf(key: SessionKey): string {
+    return key.split('/', 1)[0] ?? key;
 }

@@ -101,7 +101,13 @@ export type HostEvent =
     | { readonly type: 'state'; readonly hostId: string; readonly state: ConnectionState }
     | { readonly type: 'message'; readonly hostId: string; readonly message: ServerMessage }
     | { readonly type: 'output'; readonly hostId: string; readonly stream: number; readonly data: Uint8Array }
-    | { readonly type: 'refused'; readonly hostId: string; readonly reason: 'not-connected' | 'invalid' };
+    | {
+          readonly type: 'refused';
+          readonly hostId: string;
+          readonly reason: 'not-connected' | 'invalid';
+          /** What the connection host could not deliver: a request, typed input, or output credit. */
+          readonly what: 'request' | 'input' | 'credit';
+      };
 
 /** Request identifiers the connection host keeps for its own pings; the renderer uses the ones below. */
 export const RESERVED_REQUEST_IDS = 0x8000_0000;

@@ -440,14 +440,26 @@ mod tests {
 
     #[tokio::test]
     async fn closes_the_pty_when_dropped_even_while_a_descendant_holds_the_terminal() {
-        let (pty, mut output) = Pty::spawn(&spec("trap '' HUP; sleep 30 & echo started; exit 0")).unwrap();
+        let (pty, mut output) = Pty::spawn(&spec("trap '' HUP; sleep 30 & echo \"descendant=$!\"; exit 0")).unwrap();
         (&mut output.exit).await.unwrap();
         drop(pty);
+        let mut text = Vec::new();
         let drained = tokio::time::timeout(Duration::from_secs(5), async {
-            while output.chunks.recv().await.is_some() {}
+            while let Some(chunk) = output.chunks.recv().await {
+                text.extend(chunk);
+            }
         })
         .await;
+        let descendant = String::from_utf8_lossy(&text)
+            .split("descendant=")
+            .nth(1)
+            .and_then(|rest| rest.split_whitespace().next()?.parse::<i32>().ok())
+            .and_then(Pid::from_raw);
+        if let Some(pid) = descendant {
+            let _ = kill_process(pid, Signal::KILL);
+        }
         assert!(drained.is_ok(), "the PTY reader still holds the terminal open");
+        assert!(descendant.is_some(), "the descendant's pid was not printed");
     }
 
     #[tokio::test]

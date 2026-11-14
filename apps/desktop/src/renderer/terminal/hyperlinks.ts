@@ -44,7 +44,8 @@ export class TerminalLinks {
     constructor(terminal: Terminal, onActivate: (link: TerminalLink) => void, modifier: LinkModifier = COMMAND_CLICK) {
         this.#terminal = terminal;
         terminal.options.linkHandler = {
-            activate: (event, target) => modifier(event) && onActivate({ text: target, target }),
+            activate: (event, target) =>
+                modifier(event) && usableTarget(target) && onActivate({ text: target, target }),
             allowNonHttpProtocols: true,
         };
         this.#disposables = [

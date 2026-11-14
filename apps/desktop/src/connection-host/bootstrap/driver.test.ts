@@ -141,6 +141,21 @@ describe('runBootstrap limits (SEC-06, US-1.4.5)', () => {
         });
     });
 
+    it('fails when the host stops reading the upload, instead of waiting for the write forever', async () => {
+        const output = new PassThrough();
+        const input = new Writable({
+            write: (chunk: Buffer, _encoding, done) => {
+                if (chunk.length !== 5) {
+                    done();
+                }
+            },
+        });
+        const timing = { helloMs: 1_000, stepMs: 30, uploadBytesPerSecond: 1_000_000 };
+        const outcome = runBootstrap({ input, output }, { ...options([]), timing });
+        output.write(`${nonce} HELLO os=Linux arch=arm64 checksum=sha256sum installed=-\n`);
+        await expect(outcome).resolves.toEqual({ kind: 'failed', failure: { kind: 'silent' } });
+    });
+
     it('fails when the host does not answer in time, even while it keeps sending progress', async () => {
         const silent = fakeHost();
         const timing = { helloMs: 30, stepMs: 30, uploadBytesPerSecond: 1_000_000 };

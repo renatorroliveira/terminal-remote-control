@@ -657,6 +657,20 @@
       "value": "Add the key to your SSH agent with ssh-add, which asks for the PIN, then connect again."
     }
   ],
+  "failure.clipboard": [
+    {
+      "type": 0,
+      "value": "Couldn’t change whether "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " may write the clipboard."
+    }
+  ],
   "failure.close": [
     {
       "type": 0,
@@ -963,6 +977,20 @@
     {
       "type": 0,
       "value": "OK"
+    }
+  ],
+  "failure.open": [
+    {
+      "type": 0,
+      "value": "Couldn’t open the session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
     }
   ],
   "failure.other.problem": [

@@ -34,7 +34,10 @@ function mount(overrides: Partial<TerminalViewOptions> = {}): Harness {
         palette: THEMES.midnight.terminal,
         isMac: true,
         assistiveTechnology: () => false,
-        onInput: (text) => inputs.push(text),
+        onInput: (text) => {
+            inputs.push(text);
+            return true;
+        },
         onCredit: (bytes) => credits.push(bytes),
         onResize: (size) => sizes.push(size),
         ...overrides,
@@ -787,6 +790,17 @@ describe('TerminalView: a lost connection (US-1.14.2)', () => {
         expect(view.surface.getAttribute('aria-label')).toBe('build, devbox-1');
         beforeInput(view.surface, 'insertText', 'ls');
         expect(inputs).toEqual(['ls']);
+    });
+
+    it('reports typing its session could not take, and a refusal the connection sends back', async () => {
+        const notices: unknown[] = [];
+        const { view, host } = mount({ onInput: () => false, onNotice: (notice) => notices.push(notice) });
+        await written(view, '$ ');
+        view.surface.focus();
+        beforeInput(view.surface, 'insertText', 'ls');
+        view.refuseInput();
+        expect(host.querySelector<HTMLElement>('[data-input-refused]')?.hidden).toBe(false);
+        expect(notices).toEqual([{ kind: 'input-refused' }, { kind: 'input-refused' }]);
     });
 });
 

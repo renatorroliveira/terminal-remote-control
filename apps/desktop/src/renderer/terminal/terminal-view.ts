@@ -56,8 +56,8 @@ export interface TerminalViewOptions {
     readonly isMac: boolean;
     /** Whether assistive technology is active, which slows the ATS cadence (S3a). */
     readonly assistiveTechnology: () => boolean;
-    /** Bytes for the process, as text. */
-    readonly onInput: (text: string) => void;
+    /** Bytes for the process, as text; false when they could not be sent, which the view then reports. */
+    readonly onInput: (text: string) => boolean;
     /** Output credit to return to the daemon (D-19). */
     readonly onCredit: (bytes: number) => void;
     /** The terminal's size changed; the PTY follows (US-1.11.3). */
@@ -228,6 +228,12 @@ export class TerminalView {
         this.#connected = connected;
         this.#inputRefused.hidden = true;
         this.#showConnection();
+    }
+
+    /** Shows and reports that typing was not sent, as the connection refused it (US-1.14.2). */
+    refuseInput(): void {
+        this.#inputRefused.hidden = false;
+        this.#options.onNotice?.({ kind: 'input-refused' });
     }
 
     /**
@@ -594,11 +600,6 @@ export class TerminalView {
         }
     }
 
-    #refuseInput(): void {
-        this.#inputRefused.hidden = false;
-        this.#options.onNotice?.({ kind: 'input-refused' });
-    }
-
     #noticeOutputBelow(): void {
         const buffer = this.terminal.buffer.active;
         if (buffer.viewportY < buffer.baseY && this.#outputBelow.hidden) {
@@ -631,8 +632,8 @@ export class TerminalView {
     }
 
     #send(text: string): void {
-        if (!this.#connected) {
-            this.#refuseInput();
+        if (!(this.#connected && this.#options.onInput(text))) {
+            this.refuseInput();
             return;
         }
         this.#scheduler.input();
@@ -641,7 +642,6 @@ export class TerminalView {
         this.terminal.clearSelection();
         this.terminal.scrollToBottom();
         this.#ats.placeCaret();
-        this.#options.onInput(text);
     }
 
     #inputSink() {

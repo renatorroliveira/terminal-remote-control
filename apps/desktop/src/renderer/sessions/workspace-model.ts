@@ -35,7 +35,8 @@ export interface Workspace {
 }
 
 /** The actions whose failure the shell reports. */
-export type FailedAction = 'create' | 'rename' | 'stop' | 'restart' | 'close' | 'move' | 'forget' | 'reattach';
+export type FailedAction =
+    'create' | 'open' | 'rename' | 'stop' | 'restart' | 'close' | 'move' | 'forget' | 'clipboard' | 'reattach';
 
 /** An action the daemon, the connection or the app refused (US-1.10, US-1.14.3). */
 export interface ActionFailure {

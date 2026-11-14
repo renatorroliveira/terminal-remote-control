@@ -32,7 +32,22 @@ class FakeTransport implements SessionTransport {
     /** While set, create replies wait for it. */
     holdCreate: Promise<void> | undefined;
     readonly #outputs = new Map<number, (data: Uint8Array) => void>();
+    readonly #refusedListeners = new Set<(hostId: string) => void>();
+    /** Input sent on each stream. */
+    readonly inputs: string[] = [];
     #stream = 0;
+
+    /** Says the connection refused input for a host, as the connection host does once it is gone. */
+    refuseInputs(hostId: string): void {
+        for (const listener of this.#refusedListeners) {
+            listener(hostId);
+        }
+    }
+
+    onInputRefused(listener: (hostId: string) => void): () => void {
+        this.#refusedListeners.add(listener);
+        return () => this.#refusedListeners.delete(listener);
+    }
 
     /** Sends output on the stream the session attached with. */
     output(stream: number, text: string): void {
@@ -70,8 +85,8 @@ class FakeTransport implements SessionTransport {
         return Promise.resolve({ type: 'done', requestId: 3 });
     }
 
-    input(): void {
-        return;
+    input(_hostId: string, stream: number, text: string): void {
+        this.inputs.push(`${stream}:${text}`);
     }
 
     credit(): void {
@@ -121,6 +136,8 @@ class FakeSpeech implements SessionSpeech {
 
 function setup() {
     const speech = new FakeSpeech();
+    const notices: string[] = [];
+    const failed: string[] = [];
     const area = document.createElement('div');
     area.style.width = '1200px';
     area.style.height = '500px';
@@ -141,10 +158,27 @@ function setup() {
             inputRefused: 'Disconnected — input not sent',
         }),
         speech,
+        onNotice: (key, notice) => notices.push(`${key} ${notice.kind}`),
+        onAttachFailed: (key) => failed.push(key),
     });
     registry.attach(area);
     registries.push(registry);
-    return { area, transport, registry, speech };
+    return { area, transport, registry, speech, notices, failed };
+}
+
+/** Waits two animation frames, after which pending work has run. */
+function frames(): Promise<void> {
+    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
+
+/** Types text into the visible terminal, as the keyboard does. */
+function typeInto(area: HTMLElement, text: string): void {
+    const surface = [...area.querySelectorAll<HTMLElement>('[role="textbox"]')].find(
+        (candidate) => candidate.closest('[hidden]') === null,
+    );
+    surface?.dispatchEvent(
+        new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: text }),
+    );
 }
 
 function requestsOf(transport: FakeTransport, type: ClientRequest['type']): number {
@@ -244,6 +278,50 @@ describe('TerminalRegistry: creating sessions (US-1.7.1, A11Y-01.1)', () => {
     });
 });
 
+describe('TerminalRegistry: input that cannot be sent (US-1.14.2, WCAG 3.3.1)', () => {
+    it('says typing before a new terminal has attached was not sent, and reports a first attach that fails', async () => {
+        const { area, transport, registry, notices, failed } = setup();
+        let release = (): void => undefined;
+        transport.hold = new Promise((done) => {
+            release = done;
+        });
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => requestsOf(transport, 'attach')).toBe(1);
+        typeInto(area, 'ls');
+        expect(transport.inputs).toEqual([]);
+        expect(notices).toEqual(['h1/a input-refused']);
+        transport.hold = undefined;
+        release();
+        transport.refuse.add('b');
+        registry.show('h1/b', 'h1', info('b'));
+        await expect.poll(() => failed).toEqual(['h1/b']);
+        expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(1);
+    });
+
+    it('says so on the open terminal when the connection refuses its host’s input', async () => {
+        const { transport, registry, notices } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        registry.show('h2/b', 'h2', info('b'));
+        await expect.poll(() => requestsOf(transport, 'attach')).toBe(2);
+        transport.refuseInputs('h1');
+        transport.refuseInputs('h2');
+        expect(notices).toEqual(['h2/b input-refused']);
+    });
+
+    it('shows the latest session asked for when an earlier show waited for a create', async () => {
+        const { area, registry, transport } = setup();
+        const release = heldCreate(transport);
+        const created = registry.create('h1');
+        await expect.poll(() => requestsOf(transport, 'create')).toBe(1);
+        registry.show('h1/x', 'h1', info('x'));
+        release();
+        await created;
+        registry.show('h1/new', 'h1', info('new'));
+        await frames();
+        expect(area.querySelectorAll('[role="textbox"]')).toHaveLength(1);
+    });
+});
+
 describe('TerminalRegistry: closing and losing hosts (US-1.8, US-1.14)', () => {
     it('removes the terminals of a host whose connection closed, and only those', () => {
         const { area, registry } = setup();
@@ -295,11 +373,11 @@ describe('TerminalRegistry: reconnecting hosts (US-1.14.2)', () => {
         const labels = (): (string | null)[] =>
             [...area.querySelectorAll('[role="textbox"]')].map((surface) => surface.getAttribute('aria-label'));
         await expect.poll(() => requestsOf(transport, 'attach')).toBe(4);
-        expect(labels()).toEqual(['bash, h1, disconnected', 'bash, h1, disconnected']);
+        expect(labels()).toEqual(['bash, h1, disconnected']);
         transport.hold = undefined;
         release();
         expect(await reattached).toEqual(['h1/b']);
-        expect(labels()).toEqual(['bash, h1', 'bash, h1, disconnected']);
+        expect(labels()).toEqual(['bash, h1']);
     });
 
     it('removes the terminal of a session the daemon closed', () => {
