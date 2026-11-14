@@ -6,7 +6,7 @@ mod support;
 use std::collections::BTreeMap;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
-use support::{AppClient, Installed, stop, wait_child};
+use support::{AppClient, Installed, parent_of, stop, wait_child};
 use trc_protocol::{
     AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, ServerMessage, SessionChange, SessionId, SessionInfo,
     SessionState, TerminalSize,
@@ -326,6 +326,53 @@ async fn sessions_survive_a_core_crash_and_are_adopted_by_the_next_core() {
     client.until(|c| c.text(stream).contains("before-crash")).await;
     client.input(stream, "echo after-crash\r");
     client.until(|c| c.text(stream).contains("after-crash\r\n")).await;
+    stop(next);
+}
+
+#[tokio::test]
+async fn serves_at_once_while_holders_it_finds_do_not_answer() {
+    let installed = Installed::new();
+    stop(installed.start_core());
+    let holders = installed.root.join("run/holders");
+    let silent: Vec<_> = (0..3)
+        .map(|n| std::os::unix::net::UnixListener::bind(holders.join(format!("{n:016x}.sock"))).unwrap())
+        .collect();
+    let started = std::time::Instant::now();
+    let core = installed.start_core();
+    let _client = AppClient::greeted(&installed.core_socket()).await;
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(8),
+        "the core answered after {:?}",
+        started.elapsed()
+    );
+    drop(silent);
+    stop(core);
+}
+
+#[tokio::test]
+async fn adopts_a_holder_that_answers_late_and_announces_its_session() {
+    let installed = Installed::new();
+    let core = installed.start_core();
+    let mut client = AppClient::greeted(&installed.core_socket()).await;
+    let (id, _stream) = running_session(&mut client, Some("late")).await;
+    client.send(&ClientMessage::ListSessions { request_id: 3 });
+    let ServerMessage::Sessions { sessions, .. } = client.take(|m| matches!(m, ServerMessage::Sessions { .. })).await
+    else {
+        unreachable!()
+    };
+    let shell = i32::try_from(sessions[0].pid.unwrap()).unwrap();
+    let holder = rustix::process::Pid::from_raw(parent_of(shell)).unwrap();
+    stop(core);
+    client.until_closed().await;
+    rustix::process::kill_process(holder, rustix::process::Signal::STOP).unwrap();
+    let next = installed.start_core();
+    let mut client = AppClient::greeted(&installed.core_socket()).await;
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    rustix::process::kill_process(holder, rustix::process::Signal::CONT).unwrap();
+    let announced = client
+        .take(|m| matches!(m, ServerMessage::SessionEvent { change: SessionChange::Created { session } } if session.id == id))
+        .await;
+    assert!(matches!(announced, ServerMessage::SessionEvent { .. }));
     stop(next);
 }
 

@@ -357,3 +357,34 @@ async fn sends_a_title_change_within_the_status_tick_while_output_floods() {
         "the title reached the client only after the flood"
     );
 }
+
+#[tokio::test]
+async fn sends_a_title_change_within_the_status_tick_while_a_detached_session_floods() {
+    let socket = start_holder();
+    let mut client = loop {
+        if socket.exists() {
+            break Client::connect(&socket).await;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    };
+    client.command(&HolderCommand::Start {
+        spec: Box::new(spec("/bin/sh")),
+    });
+    client
+        .until(|c| c.statuses.last().is_some_and(|s| s.state == SessionState::Running))
+        .await;
+    client.input("printf '\\033]0;flooding\\007'; yes trc-flood | head -c 400000000; printf '\\033]0;done\\007'\r");
+    client
+        .until(|c| {
+            matches!(
+                c.statuses.last().and_then(|s| s.title.as_deref()),
+                Some("flooding" | "done")
+            )
+        })
+        .await;
+    assert_eq!(
+        client.statuses.last().and_then(|s| s.title.as_deref()),
+        Some("flooding"),
+        "the title reached the core only after the flood"
+    );
+}

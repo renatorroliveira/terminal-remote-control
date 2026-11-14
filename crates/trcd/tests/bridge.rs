@@ -6,7 +6,7 @@ mod support;
 use std::io::{Read, Write};
 use std::process::{Child, ChildStdin, ChildStdout, Stdio};
 
-use support::{Installed, wait_child, wait_for};
+use support::{Installed, parent_of, wait_child, wait_for};
 use trc_protocol::frame::{self, FrameDecoder, FrameKind};
 use trc_protocol::{ClientMessage, ServerMessage, SessionChange, TerminalSize};
 
@@ -85,18 +85,6 @@ fn core_pid(installed: &Installed) -> i32 {
         assert!(std::time::Instant::now() < deadline, "the core never wrote its pid");
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
-}
-
-fn parent_of(pid: i32) -> i32 {
-    let output = std::process::Command::new("ps")
-        .args(["-o", "ppid=", "-p", &pid.to_string()])
-        .output();
-    if let Some(output) = output.ok().filter(|output| output.status.success()) {
-        return String::from_utf8_lossy(&output.stdout).trim().parse().unwrap();
-    }
-    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).unwrap();
-    let after_name = &stat[stat.rfind(')').unwrap() + 2..];
-    after_name.split(' ').nth(1).unwrap().parse().unwrap()
 }
 
 fn kill(pid: i32) {

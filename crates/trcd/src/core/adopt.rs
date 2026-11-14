@@ -1,14 +1,15 @@
 //! Adopting the holders a previous core started: every live socket in `run/holders` is reconnected and its
-//! session recovered from the holder's `hello`; sockets nobody serves are removed (TECH_STACK §5.4). A holder that
-//! is slow to answer is asked again, and one that still does not answer keeps its socket for the next core: only a
-//! holder that says it never started a session is shut down (US-2.1, US-2.5).
+//! session recovered from the holder's `hello`; sockets nobody serves are removed (TECH_STACK §5.4). Every holder is
+//! asked at once and given 2 s, so the core serves the app promptly however many holders it finds. One that is slow
+//! to answer is asked again in the background, and one that still does not answer keeps its socket for the next
+//! core: only a holder that says it never started a session is shut down (US-2.1, US-2.5).
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use tokio::net::UnixStream;
 use tokio::net::unix::OwnedReadHalf;
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 use tokio::time::timeout;
 use trc_protocol::SessionId;
 use trc_protocol::frame::{self, FrameKind};
@@ -19,8 +20,11 @@ use crate::holder::protocol::{HolderCommand, HolderEvent, HolderSpec};
 use crate::run_dir::RunDir;
 use crate::session_id::is_session_id;
 
-/// How long a live holder has to introduce itself, the first time and when asked again.
-const INTRODUCTION_TIMEOUTS: [Duration; 2] = [Duration::from_secs(2), Duration::from_secs(10)];
+/// How long the holders have to introduce themselves when the core starts, all asked at once: well within the app's
+/// 15 s handshake, so the core never keeps the app waiting on a holder.
+const FIRST_INTRODUCTION: Duration = Duration::from_secs(2);
+/// How long a holder that was silent at start has when asked again in the background.
+const LATE_INTRODUCTION: Duration = Duration::from_secs(10);
 
 /// A session recovered from a running holder, with the open connection to it.
 pub struct Adopted {
@@ -34,20 +38,54 @@ pub struct Adopted {
     pub writer: JoinHandle<()>,
 }
 
-/// Reconnects to every live holder, ordered by session start time, and removes stale sockets.
-pub async fn adopt_holders(run: &RunDir) -> Vec<Adopted> {
+/// The holders a starting core found.
+#[derive(Default)]
+pub struct Adoption {
+    /// Those that introduced themselves in time, ordered by session start time.
+    pub adopted: Vec<Adopted>,
+    /// The sockets of live holders that did not answer in time, to ask again with [`adopt_late`].
+    pub silent: Vec<(PathBuf, SessionId)>,
+}
+
+/// Asks every live holder at once to introduce itself, and removes stale sockets.
+pub async fn adopt_holders(run: &RunDir) -> Adoption {
     let Ok(entries) = std::fs::read_dir(run.holders()) else {
-        return Vec::new();
+        return Adoption::default();
     };
-    let mut adopted = Vec::new();
+    let mut asked = JoinSet::new();
     for path in entries.filter_map(|entry| entry.ok().map(|entry| entry.path())) {
-        let Some(id) = session_id_of(&path) else {
-            continue;
-        };
-        adopted.extend(adopt(&path, &id).await);
+        if let Some(id) = session_id_of(&path) {
+            asked.spawn(async move {
+                let introduction = introduce_at(&path, &id, FIRST_INTRODUCTION).await;
+                (path, id, introduction)
+            });
+        }
     }
-    adopted.sort_by_key(|found| (found.record.info.started_at.is_none(), found.record.info.started_at));
-    adopted
+    let mut adoption = Adoption::default();
+    while let Some(Ok((path, id, introduction))) = asked.join_next().await {
+        match introduction {
+            Introduction::Adopted(found) => adoption.adopted.push(*found),
+            Introduction::Silent => adoption.silent.push((path, id)),
+            Introduction::Gone => {}
+        }
+    }
+    adoption
+        .adopted
+        .sort_by_key(|found| (found.record.info.started_at.is_none(), found.record.info.started_at));
+    adoption
+}
+
+/// Asks a holder that was silent at start again; its session, or `None` when it is gone or still does not answer, in
+/// which case its socket stays for the next core.
+pub async fn adopt_late(path: &Path, id: &SessionId) -> Option<Adopted> {
+    match introduce_at(path, id, LATE_INTRODUCTION).await {
+        Introduction::Adopted(found) => Some(*found),
+        Introduction::Silent => {
+            tracing::warn!("a holder did not introduce itself; its socket is kept for the next core");
+            None
+        }
+        Introduction::Gone => None,
+    }
 }
 
 fn session_id_of(path: &Path) -> Option<SessionId> {
@@ -67,25 +105,20 @@ enum Greeting {
 
 /// How an introduction went.
 enum Introduction {
+    /// The holder runs a session, now adopted.
     Adopted(Box<Adopted>),
-    Unstarted,
+    /// Nothing serves the socket, which is removed, or the holder never started a session and was shut down.
+    Gone,
+    /// The holder did not answer in time.
     Silent,
 }
 
-async fn adopt(path: &Path, id: &SessionId) -> Option<Adopted> {
-    for wait in INTRODUCTION_TIMEOUTS {
-        let Ok(stream) = UnixStream::connect(path).await else {
-            let _ = std::fs::remove_file(path);
-            return None;
-        };
-        match introduce(id.clone(), stream, wait).await {
-            Introduction::Adopted(found) => return Some(*found),
-            Introduction::Unstarted => return None,
-            Introduction::Silent => {}
-        }
-    }
-    tracing::warn!("a holder did not introduce itself; its socket is kept for the next core");
-    None
+async fn introduce_at(path: &Path, id: &SessionId, wait: Duration) -> Introduction {
+    let Ok(stream) = UnixStream::connect(path).await else {
+        let _ = std::fs::remove_file(path);
+        return Introduction::Gone;
+    };
+    introduce(id.clone(), stream, wait).await
 }
 
 fn greeting(event: Option<HolderEvent>) -> Greeting {
@@ -104,7 +137,7 @@ async fn introduce(id: SessionId, stream: UnixStream, wait: Duration) -> Introdu
         Greeting::Started(spec, name) => (spec, name),
         Greeting::Unstarted => {
             send_shutdown(&sender);
-            return Introduction::Unstarted;
+            return Introduction::Gone;
         }
         Greeting::Silent => return Introduction::Silent,
     };

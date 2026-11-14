@@ -16,9 +16,9 @@ use tokio::net::unix::OwnedReadHalf;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 use trc_protocol::frame::{self, Frame, FrameKind};
-use trc_protocol::{ServerMessage, SessionId};
+use trc_protocol::{ServerMessage, SessionChange, SessionId, SessionInfo};
 
-use super::adopt::adopt_holders;
+use super::adopt::{Adopted, adopt_holders, adopt_late};
 use super::launch::launch_holder;
 use super::registry::Registry;
 use crate::accept_backoff::AcceptBackoff;
@@ -86,6 +86,8 @@ enum CoreEvent {
     HolderFailed(SessionId, String),
     HolderFrame(SessionId, Frame),
     HolderClosed(SessionId),
+    /// A holder that was silent when the core started has introduced itself.
+    HolderAdopted(Box<Adopted>),
 }
 
 impl Core {
@@ -107,19 +109,22 @@ impl Core {
 
     /// Takes over every live holder a previous core started.
     pub async fn adopt(&mut self) {
-        let adopted = adopt_holders(&self.context.run).await;
-        tracing::info!(sessions = adopted.len(), "adopted running sessions");
-        for found in adopted {
-            let id = found.record.info.id.clone();
-            self.registry.insert(found.record);
-            self.holders.insert(
-                id.clone(),
-                HolderLink {
-                    sender: Some(found.sender),
-                    pending: Vec::new(),
-                },
-            );
-            self.spawn_holder_reader(id, found.reader);
+        let adoption = adopt_holders(&self.context.run).await;
+        tracing::info!(
+            sessions = adoption.adopted.len(),
+            waiting = adoption.silent.len(),
+            "adopted running sessions"
+        );
+        for found in adoption.adopted {
+            self.register_adopted(found);
+        }
+        for (path, id) in adoption.silent {
+            let events = self.events_tx.clone();
+            tokio::spawn(async move {
+                if let Some(found) = adopt_late(&path, &id).await {
+                    let _ = events.send(CoreEvent::HolderAdopted(Box::new(found))).await;
+                }
+            });
         }
     }
 
@@ -170,7 +175,28 @@ impl Core {
             CoreEvent::HolderFailed(session, reason) => self.on_holder_failed(&session, &reason),
             CoreEvent::HolderFrame(session, frame) => self.on_holder_frame(&session, &frame),
             CoreEvent::HolderClosed(session) => self.on_holder_closed(&session),
+            CoreEvent::HolderAdopted(found) => {
+                let session = self.register_adopted(*found);
+                self.broadcast(&ServerMessage::SessionEvent {
+                    change: SessionChange::Created { session },
+                });
+            }
         }
+    }
+
+    /// Takes over a session from a holder a previous core started.
+    fn register_adopted(&mut self, found: Adopted) -> SessionInfo {
+        let id = found.record.info.id.clone();
+        let info = self.registry.insert(found.record);
+        self.holders.insert(
+            id.clone(),
+            HolderLink {
+                sender: Some(found.sender),
+                pending: Vec::new(),
+            },
+        );
+        self.spawn_holder_reader(id, found.reader);
+        info
     }
 
     fn spawn_client_reader(&self, client: ClientId, mut reader: FrameReader<OwnedReadHalf>) {
