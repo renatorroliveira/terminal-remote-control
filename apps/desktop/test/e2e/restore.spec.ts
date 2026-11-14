@@ -41,7 +41,7 @@ test.describe('restoring sessions at launch (US-2.1, US-2.3)', () => {
         expect(statSync(cacheFile).mode & 0o777).toBe(0o600);
         expect(readFileSync(cacheFile, 'utf8')).not.toMatch(/"(cwd|env|pid|size)"/);
         await first.app.close();
-        const second = await launchWithTestHosts(install.root, [], first.scratch);
+        const second = await launchWithTestHosts(install.root, { scratch: first.scratch });
         const session = second.window.getByRole('treeitem', { name: /, (Reconnecting|Running)$/ });
         await expect(session).toBeVisible({ timeout: 10_000 });
         await expect(second.window.getByRole('button', { name: 'Disconnect trc-ubuntu' })).toBeVisible({

@@ -63,6 +63,7 @@ export function renderApp(savedWidth = 400) {
     const guides: (GuideSection | undefined)[] = [];
     const settingsSource = new RecordingSettingsSource();
     const settings = new SettingsStore(settingsSource);
+    const quits: string[] = [];
     const shell = new Shell({
         workspace,
         terminals,
@@ -86,6 +87,10 @@ export function renderApp(savedWidth = 400) {
         isNarrow: () => window.innerWidth <= 800,
         guide: { open: (section) => guides.push(section) },
         settings,
+        quitControls: {
+            quit: async () => void quits.push('quit'),
+            quitNoticeOpened: async () => void quits.push('notice'),
+        },
     });
     return {
         client,
@@ -96,6 +101,7 @@ export function renderApp(savedWidth = 400) {
         spoken,
         guides,
         settingsSource,
+        quits,
         rendered: render(
             <AppProviders locale="en">
                 <App workspace={workspace} terminals={terminals} shell={shell} />

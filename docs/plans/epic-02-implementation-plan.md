@@ -202,6 +202,13 @@ the second client over its own ssh connection with the NFR harness's `LiveHost`.
 - "Quit and Stop All Sessions…", the first-quit dialog, and e2e checks that quit, crash and force-kill end no
   session.
 
+As built (ST-33, 2026-11-14): the main process holds the first quit, from the menu, the shortcut or closing the
+window, and asks the page, which quits at once when no session runs or shows the notice and marks it shown in
+`config.json` (`quitNoticeShown`); a page that cannot answer within 2 s lets the app quit. The connection host
+now stops on `will-quit`, so a held quit keeps every connection. Quit and Stop All Sessions sends `stop` with the
+grace period Settings sets to each running session on each connected host and quits once all are done; e2e
+launches start with the notice marked shown, except the test of the notice.
+
 **ST-34 Hosts where sessions end at logout** (US-2.4.4)
 
 - The host's status says sessions end when the last connection closes, and a warning precedes the first session
@@ -254,7 +261,7 @@ the second client over its own ssh connection with the NFR harness's `LiveHost`.
 | ST-30 | Done    | —      |
 | ST-31 | Done    | —      |
 | ST-32 | Done    | —      |
-| ST-33 | Pending | —      |
+| ST-33 | Done    | —      |
 | ST-34 | Pending | —      |
 | ST-35 | Pending | —      |
 | ST-36 | Pending | —      |

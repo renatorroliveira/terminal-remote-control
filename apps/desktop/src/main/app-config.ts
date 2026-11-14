@@ -16,6 +16,8 @@ export interface AppConfig extends Settings {
     readonly sidebarCollapsed: boolean;
     /** Whether screen-reader mode follows Chromium's detection or is forced on or off (A11Y-10.2). */
     readonly screenReaderMode: ScreenReaderMode;
+    /** Whether the first-quit notice was shown, which it never is again (US-2.1.5). */
+    readonly quitNoticeShown: boolean;
 }
 
 /** The configuration of a new install. */
@@ -24,6 +26,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
     sidebarWidth: SIDEBAR_WIDTH.initial,
     sidebarCollapsed: false,
     screenReaderMode: 'auto',
+    quitNoticeShown: false,
 };
 
 const APPEARANCE_SCHEMA: z.ZodType<TerminalAppearance> = z.object(
@@ -36,6 +39,7 @@ const CONFIG_SCHEMA: z.ZodType<AppConfig> = z.object({
     sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max).catch(DEFAULT_APP_CONFIG.sidebarWidth),
     sidebarCollapsed: z.boolean().catch(DEFAULT_APP_CONFIG.sidebarCollapsed),
     screenReaderMode: z.enum(SCREEN_READER_MODES).catch(DEFAULT_APP_CONFIG.screenReaderMode),
+    quitNoticeShown: z.boolean().catch(DEFAULT_APP_CONFIG.quitNoticeShown),
 });
 
 /** The settings page's settings in a configuration, without the layout. */

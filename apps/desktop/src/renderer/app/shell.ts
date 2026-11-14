@@ -29,6 +29,7 @@ import { type HelpContext, helpContext } from './help/help-context';
 import { linkAnnouncements } from './link-messages';
 import type { NotificationCenter } from './notifications';
 import { clipboardWrittenMessage, copyCappedMessage } from './paste-messages';
+import { QuitFlow, type QuitFlowOptions } from './quit-flow';
 import { RegionCycler } from './regions';
 import type { SettingsStore } from './settings/settings-store';
 import {
@@ -184,6 +185,8 @@ export interface ShellOptions {
     readonly menus?: { readonly ignoreShortcuts: (ignore: boolean) => void };
     /** Plays sound cues beside announcements; without it, the app is silent (A11Y-12.4). */
     readonly cues?: { readonly play: (cue: AudioCue) => void };
+    /** Quits the app as the quit flow decides; without it, quitting does nothing. */
+    readonly quitControls?: QuitFlowOptions['controls'];
 }
 
 /** Opens the bundled user guide in its own window (A11Y-10.4). */
@@ -226,6 +229,8 @@ export class Shell {
     readonly notifications: NotificationCenter;
     /** Where the sidebar's width and visibility are kept. */
     readonly sidebar: SidebarSettings;
+    /** Quitting: the first-quit notice and Quit and Stop All Sessions (US-2.1.4, US-2.1.5). */
+    readonly quit: QuitFlow;
     readonly #options: ShellOptions;
     readonly #regions: RegionCycler;
     /** Where focus returns when the palette, help or the settings page closes (A11Y-05.8). */
@@ -238,6 +243,13 @@ export class Shell {
     /** Builds the shell and registers its commands. */
     constructor(options: ShellOptions) {
         this.#options = options;
+        this.quit = new QuitFlow({
+            workspace: options.workspace,
+            controls: options.quitControls ?? { quit: async () => undefined, quitNoticeOpened: async () => undefined },
+            announcer: options.announcer,
+            notifications: options.notifications,
+            intl: options.intl,
+        });
         this.#keymap = options.keymap;
         this.notifications = options.notifications;
         this.sidebar = options.sidebar;
@@ -629,6 +641,7 @@ export class Shell {
             'help.accessibility': () => this.openHelp(),
             'help.userGuide': () => this.openGuide(),
             'settings.show': () => void this.openSettings(),
+            'app.quitAndStopAll': () => this.quit.requestStopAll(),
         };
         for (const [id, run] of Object.entries(actions) as [CommandId, () => void][]) {
             this.commands.register({ id, label: this.#options.intl.formatMessage(commandMessages[id]), run });

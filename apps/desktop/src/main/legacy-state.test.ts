@@ -26,6 +26,7 @@ describe('migrateLegacyState: settings and hosts from the old @trc/desktop profi
             sidebarWidth: 400,
             sidebarCollapsed: false,
             screenReaderMode: 'auto',
+            quitNoticeShown: false,
             terminalZoom: 100,
             terminalAppearance: {
                 lineHeight: 1,

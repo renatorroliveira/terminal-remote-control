@@ -43,6 +43,8 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'settings:set': z.tuple([SETTINGS_CHANGE_SCHEMA]),
     'hosts:set-clipboard-writes': z.tuple([HOST_ID, z.boolean()]),
     'help:open-guide': z.tuple([z.enum(GUIDE_SECTION_NAMES).or(z.undefined())]),
+    'app:quit': z.tuple([]),
+    'app:quit-notice-opened': z.tuple([]),
     'sessions:load': z.tuple([]),
     'sessions:save': z.tuple([SESSION_CACHE_SCHEMA]),
 };

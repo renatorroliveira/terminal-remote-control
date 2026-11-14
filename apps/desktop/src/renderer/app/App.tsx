@@ -20,6 +20,7 @@ import { AccessibilityHelp } from './help/AccessibilityHelp';
 import { LinkDialogs } from './LinkDialogs';
 import { NotificationsDialog } from './NotificationsDialog';
 import { PasteDialog } from './PasteDialog';
+import { QuitDialogs } from './QuitDialogs';
 import { REGION_ATTRIBUTE } from './regions';
 import { SidebarSplitter } from './SidebarSplitter';
 import { StatusBar } from './StatusBar';
@@ -63,6 +64,7 @@ export function App({ workspace, terminals, shell }: AppProps) {
                 <NotificationsDialog shell={shell} />
                 <LinkDialogs shell={shell} />
                 <PasteDialog shell={shell} />
+                <QuitDialogs quit={shell.quit} />
                 <AccessibilityHelp shell={shell} />
                 <SettingsDialog shell={shell} workspace={workspace} />
             </div>

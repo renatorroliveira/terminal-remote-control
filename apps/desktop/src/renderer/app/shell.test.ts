@@ -170,6 +170,7 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'Accessibility help',
             'User guide',
             'Settings…',
+            'Quit and Stop All Sessions…',
         ]);
     });
 

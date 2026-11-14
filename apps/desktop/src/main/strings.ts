@@ -33,5 +33,6 @@ export const MAIN_STRINGS = {
     themeHighContrastDark: 'High Contrast Dark',
     userGuide: 'Terminal Remote Control Help',
     settings: 'Settings…',
+    quitAndStopAll: 'Quit and Stop All Sessions…',
     accessibilityHelp: 'Accessibility Help',
 } as const;

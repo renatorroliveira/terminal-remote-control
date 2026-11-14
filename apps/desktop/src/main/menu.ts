@@ -49,6 +49,7 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
                 { role: 'hideOthers' },
                 { role: 'unhide' },
                 { type: 'separator' },
+                command(options, 'app.quitAndStopAll', MAIN_STRINGS.quitAndStopAll),
                 { role: 'quit' },
             ],
         },

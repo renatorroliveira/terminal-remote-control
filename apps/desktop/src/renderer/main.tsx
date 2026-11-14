@@ -55,6 +55,7 @@ const cues = new AudioCues(() => settings.current, webAudioContext);
 const narrow = window.matchMedia('(max-width: 800px)');
 let shell: Shell | undefined;
 let stopTerminalSettings = (): void => undefined;
+let stopQuitRequests = (): void => undefined;
 window.trc.commands.onCommand((command) => shell?.run(command));
 const container = document.getElementById('root');
 if (container !== null) {
@@ -78,14 +79,7 @@ if (container !== null) {
             onNotice: (key, notice) => shell?.terminalNotice(key, notice),
             onPeerInput: (key) => shell?.peerInput(key),
             onContextMenu: (canCopy) => void window.trc.menus.terminal(canCopy),
-            onClipboardWrite: (key, text) => {
-                const hostId = key.split('/')[0] ?? '';
-                void window.trc.clipboard.write(hostId, text).then((written) => {
-                    if (written) {
-                        shell?.terminalNotice(key, { kind: 'clipboard-written' });
-                    }
-                });
-            },
+            onClipboardWrite: writeClipboard,
             settings: () => settings.current,
         });
         const { workspace, terminals } = composed;
@@ -108,7 +102,9 @@ if (container !== null) {
             guide: { open: (section) => void window.trc.help.openGuide(section) },
             menus: { ignoreShortcuts: (ignore) => void window.trc.menus.ignoreShortcuts(ignore) },
             cues,
+            quitControls: window.trc.app,
         });
+        followQuitRequests(shell);
         void settingsLoaded.then(() => workspace.load()).then(() => workspace.connectAll());
         reactRoot.render(
             <StrictMode>
@@ -118,4 +114,20 @@ if (container !== null) {
             </StrictMode>,
         );
     });
+}
+
+/** Puts what a program wrote with OSC 52 on the clipboard, when its host allows it (SEC-06.1). */
+function writeClipboard(key: string, text: string): void {
+    const hostId = key.split('/')[0] ?? '';
+    void window.trc.clipboard.write(hostId, text).then((written) => {
+        if (written) {
+            shell?.terminalNotice(key, { kind: 'clipboard-written' });
+        }
+    });
+}
+
+/** Lets the shell's quit flow answer the main process's quit requests (US-2.1.5). */
+function followQuitRequests(current: Shell): void {
+    stopQuitRequests();
+    stopQuitRequests = window.trc.app.onQuitRequested(() => current.quit.quitRequested());
 }
