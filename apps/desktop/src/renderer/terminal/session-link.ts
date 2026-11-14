@@ -56,6 +56,8 @@ export class SessionLink {
     #session: SessionId | undefined;
     #attachment: Attachment | undefined;
     #disposed = false;
+    /** Whether this client sets the session's size; not while another client set it (P-31). */
+    #holdsSize = true;
     /** The offset of the next live byte, once the daemon has said; undefined during a replay. */
     #offset: number | undefined;
     /** Rows were skipped: a screen resync left the scrollback incomplete. */
@@ -140,7 +142,13 @@ export class SessionLink {
     /** Records the terminal's size and sends it to the attached session (US-1.11.3). */
     resize({ cols, rows }: TerminalSize): void {
         this.#size = { cols, rows };
+        this.#holdsSize = true;
         this.#sendSize();
+    }
+
+    /** Another client set the session's size: attaching again no longer sends this client's size (P-31). */
+    releaseSize(): void {
+        this.#holdsSize = false;
     }
 
     /**
@@ -267,7 +275,7 @@ export class SessionLink {
     }
 
     #sendSize(): void {
-        if (this.#attachment === undefined || this.#size === undefined) {
+        if (this.#attachment === undefined || this.#size === undefined || !this.#holdsSize) {
             return;
         }
         const request = { type: 'resize', session: this.#attachment.session, size: this.#size } as const;

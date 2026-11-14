@@ -68,6 +68,8 @@ export interface TerminalHost {
     closeHost(hostId: string): void;
     /** Removes the terminal of a session the daemon closed. */
     closeSession(key: SessionKey): void;
+    /** Takes a session's info as the daemon lists or changes it, such as its PTY size (US-2.6.2, US-2.6.3). */
+    updateSession(key: SessionKey, session: SessionInfo): void;
 }
 
 /** A terminal that could not attach to its session, and why; its terminal is removed (US-1.14.2, US-1.14.3). */
@@ -533,6 +535,10 @@ export class WorkspaceController {
                 return;
             }
             this.#update((workspace) => sessionChanged(workspace, hostId, message.change));
+            if (message.change.kind === 'created' || message.change.kind === 'updated') {
+                const { session } = message.change;
+                this.#terminals.updateSession(sessionKey(hostId, session.id), session);
+            }
             if (message.change.kind === 'updated') {
                 this.#closeIfClean(hostId, [message.change.session]);
             } else if (message.change.kind === 'closed') {
@@ -582,6 +588,9 @@ export class WorkspaceController {
         const reply = await this.#client.request(hostId, { type: 'listSessions' }).catch(() => undefined);
         if (reply?.type === 'sessions') {
             this.#update((workspace) => sessionsListed(workspace, hostId, reply.sessions));
+            for (const session of reply.sessions) {
+                this.#terminals.updateSession(sessionKey(hostId, session.id), session);
+            }
             this.#closeIfClean(hostId, reply.sessions);
         }
     }

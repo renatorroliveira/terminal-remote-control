@@ -10,6 +10,8 @@ export type TerminalNotice =
     | { readonly kind: 'output-below' }
     /** Output arrived while review mode was open (A11Y-03.5). */
     | { readonly kind: 'review-output' }
+    /** Another client set a shared session's size, which this terminal shows, or this one took it back (US-2.6.2). */
+    | { readonly kind: 'size'; readonly setElsewhere: boolean }
     /** The user typed while the host was disconnected, or before the session attached; nothing was sent (US-1.14.2). */
     | { readonly kind: 'input-refused'; readonly reason: InputRefusal };
 

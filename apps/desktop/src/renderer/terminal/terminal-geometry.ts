@@ -13,6 +13,20 @@ export interface GeometryElements {
     readonly measurer: HTMLElement;
 }
 
+/** A grid's columns and rows. */
+export interface GridSize {
+    readonly cols: number;
+    readonly rows: number;
+}
+
+/** How a terminal's grid is sized. */
+export interface GeometryOptions {
+    /** The widest the grid gets. */
+    readonly maxColumns: number;
+    /** Hears the grid that fits the frame, after every fit. */
+    readonly onFit: (size: GridSize) => void;
+}
+
 /** The width xterm keeps for its scrollbar, in CSS pixels. */
 export const SCROLLBAR_WIDTH = 14;
 
@@ -29,16 +43,28 @@ export class TerminalGeometry {
     readonly #ats: AtsSurface;
     readonly #maxColumns: number;
     #observer: ResizeObserver | undefined;
+    readonly #onFit: (size: GridSize) => void;
     #fitted: () => void = () => undefined;
     #extraSpacing = 0;
+    #forced: GridSize | undefined;
 
-    /** Binds the geometry to a terminal and its elements. */
-    constructor(terminal: Terminal, elements: GeometryElements, ats: AtsSurface, maxColumns: number) {
+    /** Binds the geometry to a terminal and its elements; `options.onFit` hears the grid each fit finds. */
+    constructor(terminal: Terminal, elements: GeometryElements, ats: AtsSurface, options: GeometryOptions) {
         this.#terminal = terminal;
         this.#elements = elements;
         this.#ats = ats;
-        this.#maxColumns = maxColumns;
+        this.#maxColumns = options.maxColumns;
+        this.#onFit = options.onFit;
         elements.measurer.textContent = 'W'.repeat(MEASURE_GLYPHS);
+    }
+
+    /**
+     * Shows the grid at `size` whatever the frame fits, as another client set a shared session's size (P-31), or
+     * fits the frame again when `undefined`.
+     */
+    setForcedSize(size: GridSize | undefined): void {
+        this.#forced = size;
+        this.fit();
     }
 
     /**
@@ -71,13 +97,17 @@ export class TerminalGeometry {
         if (this.#terminal.options.letterSpacing !== spacing) {
             this.#terminal.options.letterSpacing = spacing;
         }
-        const grid = this.#grid();
-        if (grid === undefined) {
+        const cell = this.#cell();
+        const grid = cell === undefined ? undefined : this.#grid(cell);
+        if (cell === undefined || grid === undefined) {
             return;
         }
-        this.#elements.host.style.width = `${grid.width + padding(this.#elements.host).width}px`;
-        if (grid.cols !== this.#terminal.cols || grid.rows !== this.#terminal.rows) {
-            this.#terminal.resize(grid.cols, grid.rows);
+        this.#onFit({ cols: grid.cols, rows: grid.rows });
+        const shown = this.#forced ?? grid;
+        const width = shown.cols * cell.width + SCROLLBAR_WIDTH;
+        this.#elements.host.style.width = `${width + padding(this.#elements.host).width}px`;
+        if (shown.cols !== this.#terminal.cols || shown.rows !== this.#terminal.rows) {
+            this.#terminal.resize(shown.cols, shown.rows);
         }
         this.align();
         this.#fitted();
@@ -107,12 +137,11 @@ export class TerminalGeometry {
         return this.#elements.measurer.getBoundingClientRect().width / MEASURE_GLYPHS;
     }
 
-    #grid(): GridFit | undefined {
-        const cell = this.#cell();
+    #grid(cell: CellSize): GridFit | undefined {
         const frame = contentBox(this.#elements.frame);
         const inner = padding(this.#elements.host);
         const space = { width: frame.width - inner.width, height: frame.height - inner.height };
-        if (cell === undefined || space.width <= 0 || space.height <= 0) {
+        if (space.width <= 0 || space.height <= 0) {
             return undefined;
         }
         return fitGrid({

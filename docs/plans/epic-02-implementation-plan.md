@@ -191,6 +191,12 @@ refuse typing as "Reconnecting — input not sent" until they attach.
 - P-31's size rule and indicator, the "Input from another client" announcement, and an e2e with a second client
   driven over ssh by the test.
 
+As built (ST-32, 2026-11-14): a terminal sends a size only when the grid its frame fits changes, and not at all
+while another client set the size; a size it asked for in the last 10 s counts as its own when the daemon reports
+it. It takes the size back on focus or typing, and a reattach no longer sends its size while another client holds
+it. "Input from another client" is announced in the open session when none came in the 3 s before. The e2e drives
+the second client over its own ssh connection with the NFR harness's `LiveHost`.
+
 **ST-33 Quitting** (US-2.1.1/4/5)
 
 - "Quit and Stop All Sessions…", the first-quit dialog, and e2e checks that quit, crash and force-kill end no
@@ -247,7 +253,7 @@ refuse typing as "Reconnecting — input not sent" until they attach.
 | ST-29 | Done    | —      |
 | ST-30 | Done    | —      |
 | ST-31 | Done    | —      |
-| ST-32 | Pending | —      |
+| ST-32 | Done    | —      |
 | ST-33 | Pending | —      |
 | ST-34 | Pending | —      |
 | ST-35 | Pending | —      |

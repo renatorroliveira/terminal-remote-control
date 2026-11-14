@@ -24,7 +24,7 @@ export interface StatusBarProps {
 export function StatusBar({ workspace, shell }: StatusBarProps) {
     const intl = useIntl();
     const state = useStore(workspace.store);
-    const { tabFocusMode, muted, bell } = useStore(shell.state);
+    const { tabFocusMode, muted, bell, sizeSetElsewhere } = useStore(shell.state);
     const count = useStore(shell.notifications.store, (notifications) => notifications.items.length);
     return (
         <section
@@ -35,6 +35,9 @@ export function StatusBar({ workspace, shell }: StatusBarProps) {
             <span className={styles['item']}>{connectionText(intl, state)}</span>
             <span className={styles['item']}>{daemonText(intl, state)}</span>
             {bell && <span className={styles['item']}>{intl.formatMessage(statusMessages.bell)}</span>}
+            {state.open !== undefined && sizeSetElsewhere.has(state.open) && (
+                <span className={styles['item']}>{intl.formatMessage(statusMessages.sizeSetElsewhere)}</span>
+            )}
             <span className={styles['controls']}>
                 <ToggleButton
                     className={`${BUTTON} ${styles['toggle'] ?? ''}`}

@@ -52,6 +52,8 @@ export interface WorkspaceSources {
     readonly onContextMenu: (canCopy: boolean) => void;
     /** A program wrote the clipboard while its host allowed it (SEC-06.1). */
     readonly onClipboardWrite: (key: SessionKey, text: string) => void;
+    /** Another client typed into a session (US-2.6.4). */
+    readonly onPeerInput?: (key: SessionKey) => void;
     /** The settings page's current settings (A11Y-10.3). */
     readonly settings: () => Settings;
 }
@@ -94,6 +96,7 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
             inputRefused: intl.formatMessage(terminalMessages.inputRefused),
             inputReconnecting: intl.formatMessage(terminalMessages.inputReconnecting),
             inputNotReady: intl.formatMessage(terminalMessages.inputNotReady),
+            sizeSetElsewhere: intl.formatMessage(terminalMessages.sizeSetElsewhere),
             review: intl.formatMessage(terminalReviewMessage, {
                 session: sessionName(session),
                 host: destination(hostId),
@@ -114,6 +117,7 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
             workspace?.store.getState().hosts.find((host) => host.id === hostId)?.allowClipboardWrites === true,
         onClipboardWrite: sources.onClipboardWrite,
         onAttachFailed: (key, error) => workspace?.attachFailed(key, error),
+        ...(sources.onPeerInput === undefined ? {} : { onPeerInput: sources.onPeerInput }),
     });
     workspace = new WorkspaceController(sources.client, terminals, sources.hosts, {
         preferences: sources.settings,
