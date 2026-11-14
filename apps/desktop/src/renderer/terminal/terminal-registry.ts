@@ -1,5 +1,6 @@
 import type { SessionInfo } from '@trc/protocol';
 import { DEFAULT_TERMINAL_APPEARANCE, type TerminalAppearance } from '../../shared/terminal-appearance';
+import { HostRequestError } from '../connection/host-client';
 import type { AttachFailure, SessionKey, SessionOptions, TerminalHost } from '../sessions/workspace-controller';
 import type { TerminalPalette } from '../ui/themes';
 import type { FindOptions, FindResult } from './find';
@@ -318,7 +319,7 @@ export class TerminalRegistry implements TerminalHost {
 
     #inputRefused(hostId: string): void {
         if (this.#open?.startsWith(`${hostId}/`) === true) {
-            this.#openEntry()?.view.refuseInput();
+            this.#openEntry()?.view.refuseInput('disconnected');
         }
     }
 
@@ -333,13 +334,16 @@ export class TerminalRegistry implements TerminalHost {
             entry.view.setConnected(true);
             return undefined;
         } catch (error) {
+            if (droppedConnection(error)) {
+                return undefined;
+            }
             this.#removeIfCurrent(key, entry);
             return { key, error };
         }
     }
 
     #attachFailed(key: SessionKey, entry: Entry, error: unknown): void {
-        if (this.#removeIfCurrent(key, entry)) {
+        if (!droppedConnection(error) && this.#removeIfCurrent(key, entry)) {
             this.#options.onAttachFailed?.(key, error);
         }
     }
@@ -417,6 +421,7 @@ export class TerminalRegistry implements TerminalHost {
         this.#entries.set(key, entry);
         void entry.view.ready
             .then(() => entry.link.attach(session.id))
+            .then(() => entry.view.setConnected(!this.#offline.has(hostId)))
             .catch((error: unknown) => this.#attachFailed(key, entry, error));
         return entry;
     }
@@ -472,4 +477,9 @@ function withKey(key: SessionKey | undefined, run: (key: SessionKey) => void): v
     if (key !== undefined) {
         run(key);
     }
+}
+
+/** Whether an attach failed only because the connection dropped first, so the terminal waits for the next one. */
+function droppedConnection(error: unknown): boolean {
+    return error instanceof HostRequestError && error.code === 'disconnected';
 }

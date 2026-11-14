@@ -234,7 +234,7 @@
 <tr><td>The host key has changed</td><td>Ask the host's administrator. Only if the new fingerprint matches, run <code>ssh-keygen -R &lt;host&gt;</code>.</td></tr>
 <tr><td>The host runs a newer daemon than this app</td><td>Another Mac installed a newer TRC on this host. Update the app.</td></tr>
 <tr><td>The install location doesn't allow running programs</td><td>Choose another install location from the host's actions, then connect again.</td></tr>
-<tr><td>Other users can change the install location</td><td>Choose a location only you can change, such as one in your home folder, then connect again.</td></tr>
+<tr><td>Other users can change the install location</td><td>If the folder named in the details is yours, run <code>chmod go-w</code> on it on the host; otherwise choose a location only you can change. Then connect again.</td></tr>
 <tr><td>The daemon couldn't be installed</td><td>Check free space and permissions in the install location on the host.</td></tr>
 </tbody>
 </table>

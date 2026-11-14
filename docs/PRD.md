@@ -544,11 +544,11 @@ path cannot be used to plant code.
 
 1. Desktop app builds are code-signed: Apple Developer ID with notarization on
    macOS, Authenticode on Windows, signed packages on Linux.
-   **Pre-1.0 exception:** 0.x releases are alpha, experimental builds, not a
-   distribution; 1.0.0 is the first official release. 0.x builds are ad-hoc
-   signed and not notarized, because no Developer ID identity exists yet.
-   Items 2–4 apply in full. The exception ends with 1.0.0, whose platform
-   signing E8 delivers (US-8.3).
+   **Pre-1.0 exception:** 0.x releases are alpha, experimental builds, not an
+   official release; 1.0.0 is the first official release. 0.x macOS builds are
+   ad-hoc signed and not notarized, because no Developer ID identity exists
+   yet, and 0.x Windows and Linux builds are unsigned. Items 2–4 apply in full.
+   The exception ends with 1.0.0, whose platform signing E8 delivers (US-8.3).
 2. Daemon binaries ship inside the signed app bundle. The app never downloads
    them from the network at install time.
 3. After upload to a remote host, the binary's SHA-256 checksum is verified
@@ -649,16 +649,16 @@ An epic is done when all of the following hold:
 The implementation breakdown of each epic lives in a separate plan per epic,
 `docs/plans/epic-NN-implementation-plan.md`.
 
-| Epic                                                               | Users can…                                                                                                           | Desktop               | Hosts                       | User stories |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | --------------------- | --------------------------- | ------------ |
-| [E1](#91-e1--accessible-remote-terminal-macos-app-to-linux-hosts)  | Run and manage terminal sessions on Linux hosts from an accessible macOS app                                         | macOS                 | Linux                       | 14           |
-| [E2](#92-e2--remote-sessions-that-outlive-the-app-and-the-network) | Quit, sleep or roam and come back to the same running sessions, from more than one Mac                               | macOS                 | Linux                       | 6            |
-| [E3](#93-e3--sessions-that-survive-a-host-reboot)                  | Get sessions back, with their history, after a host restarts, manage each host's daemon, and keep the app up to date | macOS                 | Linux                       | 4            |
-| [E4](#94-e4--command-aware-terminal)                               | Jump between commands, hear exit status and background events, reach any session fast                                | macOS                 | Linux                       | 4            |
-| [E5](#95-e5--local-sessions-on-the-mac-and-macos-hosts)            | Run persistent local sessions on the Mac, and add macOS hosts                                                        | macOS                 | Linux, macOS, this Mac      | 5            |
-| [E6](#96-e6--windows-desktop)                                      | Do everything above from Windows, with persistent local Windows sessions                                             | macOS, Windows        | Linux, macOS, this computer | 3            |
-| [E7](#97-e7--linux-desktop)                                        | Do everything above from Linux, with persistent local Linux sessions                                                 | macOS, Windows, Linux | Linux, macOS, this computer | 2            |
-| [E8](#98-e8--general-availability-release)                         | Download signed releases from a website, and verify where each one came from                                         | macOS, Windows, Linux | Linux, macOS, this computer | 4            |
+| Epic                                                               | Users can…                                                                                          | Desktop               | Hosts                       | User stories |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | --------------------- | --------------------------- | ------------ |
+| [E1](#91-e1--accessible-remote-terminal-macos-app-to-linux-hosts)  | Run and manage terminal sessions on Linux hosts from an accessible macOS app                        | macOS                 | Linux                       | 14           |
+| [E2](#92-e2--remote-sessions-that-outlive-the-app-and-the-network) | Quit, sleep or roam and come back to the same running sessions, from more than one Mac              | macOS                 | Linux                       | 6            |
+| [E3](#93-e3--sessions-that-survive-a-host-reboot)                  | Get sessions back, with their history, after a host restarts, and manage each host's daemon         | macOS                 | Linux                       | 3            |
+| [E4](#94-e4--command-aware-terminal)                               | Jump between commands, hear exit status and background events, reach any session fast               | macOS                 | Linux                       | 4            |
+| [E5](#95-e5--local-sessions-on-the-mac-and-macos-hosts)            | Run persistent local sessions on the Mac, and add macOS hosts                                       | macOS                 | Linux, macOS, this Mac      | 5            |
+| [E6](#96-e6--windows-desktop)                                      | Do everything above from Windows, with persistent local Windows sessions                            | macOS, Windows        | Linux, macOS, this computer | 3            |
+| [E7](#97-e7--linux-desktop)                                        | Do everything above from Linux, with persistent local Linux sessions                                | macOS, Windows, Linux | Linux, macOS, this computer | 2            |
+| [E8](#98-e8--general-availability-release)                         | Download signed releases from a website, verify where each one came from, and get automatic updates | macOS, Windows, Linux | Linux, macOS, this computer | 5            |
 
 ### 9.1 E1 — Accessible remote terminal: macOS app to Linux hosts
 

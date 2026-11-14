@@ -83,5 +83,6 @@ describe('connection failure messages (US-1.3.1, WCAG 3.3.3)', () => {
         const { problem, remedy } = failureMessage(intl, 'devbox-1', failure);
         expect(problem).toBe('Other users can change the install location on devbox-1, or a folder above it.');
         expect(remedy).toContain('only you can change');
+        expect(remedy).toContain('chmod go-w');
     });
 });

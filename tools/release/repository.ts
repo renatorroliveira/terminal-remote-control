@@ -32,19 +32,6 @@ export function run(command: string, args: readonly string[]): void {
     execFileSync(command, args, { cwd: ROOT, stdio: 'inherit' });
 }
 
-/** How a command run with {@link attempt} went: its trimmed output, or what it wrote to stderr when it failed. */
-export type Attempt = { readonly ok: true; readonly output: string } | { readonly ok: false; readonly stderr: string };
-
-/** Runs a command in the repository and returns its trimmed output, or its stderr when it fails. */
-export function attempt(command: string, args: readonly string[]): Attempt {
-    try {
-        return { ok: true, output: capture(command, args) };
-    } catch (error) {
-        const stderr = (error as { readonly stderr?: string | Buffer }).stderr;
-        return { ok: false, stderr: String(stderr ?? error).trim() };
-    }
-}
-
 /** Runs a command in the repository and returns its trimmed output. */
 export function capture(command: string, args: readonly string[]): string {
     return execFileSync(command, args, { cwd: ROOT, encoding: 'utf8' }).trim();

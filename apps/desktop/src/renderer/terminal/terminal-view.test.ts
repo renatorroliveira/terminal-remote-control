@@ -50,6 +50,7 @@ function mount(overrides: Partial<TerminalViewOptions> = {}): Harness {
         review: 'Review build, devbox-1',
         disconnected: 'build, devbox-1, disconnected',
         inputRefused: 'Disconnected — input not sent',
+        inputNotReady: 'Session still opening — input not sent',
     });
     views.push(view);
     return { view, host, inputs, credits, sizes };
@@ -784,7 +785,10 @@ describe('TerminalView: a lost connection (US-1.14.2)', () => {
         const refused = host.querySelector<HTMLElement>('[data-input-refused]');
         expect(refused?.hidden).toBe(false);
         expect(refused?.textContent).toBe('Disconnected — input not sent');
-        expect(notices).toEqual([{ kind: 'input-refused' }, { kind: 'input-refused' }]);
+        expect(notices).toEqual([
+            { kind: 'input-refused', reason: 'disconnected' },
+            { kind: 'input-refused', reason: 'disconnected' },
+        ]);
         view.setConnected(true);
         expect(refused?.hidden).toBe(true);
         expect(view.surface.getAttribute('aria-label')).toBe('build, devbox-1');
@@ -798,9 +802,15 @@ describe('TerminalView: a lost connection (US-1.14.2)', () => {
         await written(view, '$ ');
         view.surface.focus();
         beforeInput(view.surface, 'insertText', 'ls');
-        view.refuseInput();
-        expect(host.querySelector<HTMLElement>('[data-input-refused]')?.hidden).toBe(false);
-        expect(notices).toEqual([{ kind: 'input-refused' }, { kind: 'input-refused' }]);
+        const refused = host.querySelector<HTMLElement>('[data-input-refused]');
+        expect(refused?.hidden).toBe(false);
+        expect(refused?.textContent).toBe('Session still opening — input not sent');
+        view.refuseInput('disconnected');
+        expect(refused?.textContent).toBe('Disconnected — input not sent');
+        expect(notices).toEqual([
+            { kind: 'input-refused', reason: 'opening' },
+            { kind: 'input-refused', reason: 'disconnected' },
+        ]);
     });
 });
 

@@ -37,6 +37,7 @@ import {
     hostAnnouncements,
     muteAnnouncements,
     openAnnouncements,
+    refusalMessages,
     screenReaderAnnouncements,
     shellAnnouncements,
     terminalAnnouncements,
@@ -377,7 +378,7 @@ export class Shell {
                 break;
             case 'input-refused':
                 this.playCue('input-refused');
-                announcer.announce(intl.formatMessage(terminalAnnouncements.inputRefused), {
+                announcer.announce(intl.formatMessage(refusalMessages[notice.reason]), {
                     group: `refused:${key}`,
                     politeness: 'assertive',
                 });

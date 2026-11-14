@@ -57,13 +57,13 @@ export interface TerminalHost {
     closeSession(key: SessionKey): void;
 }
 
-/** The settings that change how sessions start, stop and end (US-1.7.1, US-1.10.2, US-1.10.7). */
-/** A terminal that could not attach to its session again, and why (US-1.14.3). */
+/** A terminal that could not attach to its session, and why; its terminal is removed (US-1.14.2, US-1.14.3). */
 export interface AttachFailure {
     readonly key: SessionKey;
     readonly error: unknown;
 }
 
+/** The settings that change how sessions start, stop and end (US-1.7.1, US-1.10.2, US-1.10.7). */
 export type SessionPreferences = Pick<Settings, 'autoClose' | 'stopGraceSeconds' | 'newSessionFolder'>;
 
 /** What a new session may set beyond its size (US-1.7.2). */
@@ -167,7 +167,6 @@ export class WorkspaceController {
         return this.#hosts.suggestions();
     }
 
-    /** Forgets a host: closes its connection and drops it and its sessions from the app (A11Y-11.9). */
     /**
      * Forgets a host: closes its connection and drops it and its sessions from the app (A11Y-11.9). A host
      * `hosts.json` could not forget stays as it was, and the failure is reported by its name.

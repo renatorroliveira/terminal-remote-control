@@ -358,6 +358,8 @@ async fn sends_a_title_change_within_the_status_tick_while_output_floods() {
     );
 }
 
+/// The command is typed once the shell has printed its prompt and settled, since a line editor that is still starting
+/// (busybox ash's, for one) can drop what was typed; with no client attached, nothing else shows the prompt.
 #[tokio::test]
 async fn sends_a_title_change_within_the_status_tick_while_a_detached_session_floods() {
     let socket = start_holder();
@@ -371,8 +373,9 @@ async fn sends_a_title_change_within_the_status_tick_while_a_detached_session_fl
         spec: Box::new(spec("/bin/sh")),
     });
     client
-        .until(|c| c.statuses.last().is_some_and(|s| s.state == SessionState::Running))
+        .until(|c| c.statuses.last().is_some_and(|s| s.last_output_at.is_some()))
         .await;
+    tokio::time::sleep(Duration::from_secs(1)).await;
     client.input("printf '\\033]0;flooding\\007'; yes trc-flood | head -c 400000000; printf '\\033]0;done\\007'\r");
     client
         .until(|c| {

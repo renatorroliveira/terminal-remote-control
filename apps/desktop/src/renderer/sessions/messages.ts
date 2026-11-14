@@ -118,6 +118,11 @@ export const terminalMessages = defineMessages({
         defaultMessage: 'Disconnected — input not sent',
         description: 'Shown and announced when the user types while the host is disconnected; nothing was sent.',
     },
+    inputNotReady: {
+        id: 'terminal.inputNotReady',
+        defaultMessage: 'Session still opening — input not sent',
+        description: 'Shown when the user types before a session has attached; nothing was sent.',
+    },
 });
 
 /** A host or session row's accessible name. */
