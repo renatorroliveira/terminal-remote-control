@@ -20,7 +20,7 @@ export type AppRoots = Readonly<Record<string, string>>;
  */
 export function resolveAppRequest(url: string, roots: AppRoots): string | undefined {
     const parsed = URL.canParse(url) ? new URL(url) : undefined;
-    const root = parsed === undefined ? undefined : roots[parsed.host];
+    const root = parsed !== undefined && Object.hasOwn(roots, parsed.host) ? roots[parsed.host] : undefined;
     if (parsed?.protocol !== `${APP_IDENTITY.appScheme}:` || root === undefined) {
         return undefined;
     }

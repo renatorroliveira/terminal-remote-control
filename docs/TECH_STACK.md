@@ -970,18 +970,23 @@ noise is ignored. The driver (`connection-host/bootstrap/`) sends nothing after
 the script until it has read `HELLO`.
 
 1. **Hello.**
-    - `umask 077`, then `<nonce> HELLO os=… arch=… checksum=… installed=…`:
-      `uname -s`; `x86_64`, `arm64` or `unsupported`; the checksum tool or
-      `none`; and `<sha256>:<version>` pairs, comma-separated, or `-`. Each
-      installed version comes from that binary's `--version`.
+    - `umask 077`. If the root exists, it must be the user's, not a symlink,
+      and not writable by group or others; otherwise the script stops with
+      `root-unusable` before running or reporting anything in it (SEC-04.4).
+    - Then `<nonce> HELLO os=… arch=… checksum=… installed=…`: `uname -s`;
+      `x86_64`, `arm64` or `unsupported`; the checksum tool or `none`; and
+      `<sha256>:<version>` pairs, comma-separated, or `-`. A version counts only
+      when `versions/`, `versions/<sha256>/` and its `trcd` pass the same
+      ownership and mode test and the binary matches its checksum; its version
+      then comes from its `--version`.
     - An unsupported OS or architecture gets an error that names both, before
       anything is created.
 2. **Commands**, one per line: `UPLOAD <size> <sha256> <version>` followed by
    exactly `<size>` bytes, `RUN <sha256>`, or `EXIT`.
 3. **Upload.**
     1. Create the root (its parent must exist) and `versions/`, remembering
-       which it created. The root must be the user's, not a symlink, and not
-       writable by group or others.
+       which it created. Both must pass the ownership and mode test, and so must
+       an existing `versions/<sha256>/` the upload replaces a binary in.
     2. Take an atomic `mkdir` lock, breaking it when its PID is gone and
        waiting up to 60 s (`sleep 1`).
     3. Read exactly the stated number of bytes (`head -c`, falling back to `dd`)
@@ -997,7 +1002,8 @@ the script until it has read `HELLO`.
     `INSTALLED <sha256> <version>`. On any failure, a trap removes the staging
     directory, the lock and the directories this run created.
 
-4. **Run.** Print `RUNNING`, then `exec "$bin" bridge`. Protocol frames follow on
+4. **Run.** Check the version directory and binary pass the same test, print
+   `RUNNING`, then `exec "$bin" bridge`. Protocol frames follow on
    the same channel.
 5. **Errors** are `ERROR <code> <detail>`, with the codes `unsupported-os`,
    `unsupported-arch`, `missing-tool`, `root-unusable`, `noexec`,

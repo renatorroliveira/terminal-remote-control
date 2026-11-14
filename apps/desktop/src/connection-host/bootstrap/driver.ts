@@ -138,19 +138,37 @@ async function upload(
     await send(channel.input, bytes);
     for (;;) {
         const result = await next(reader, options.nonce, deadline);
-        if ('failure' in result) {
-            return result;
-        }
-        const { line } = result;
-        if (line.kind === 'installed') {
-            return { daemon: { sha256: line.sha256, version: line.version } };
-        }
-        if (line.kind === 'progress' && line.step === 'verifying') {
-            options.onStep('verifying');
-        } else if (line.kind !== 'progress') {
-            return { failure: unexpected(line) };
+        const answer = 'failure' in result ? result : uploadAnswer(result.line, plan, options);
+        if (answer !== undefined) {
+            return answer;
         }
     }
+}
+
+/** What a line the host sends during an upload means: the installed daemon, a failure, or `undefined` to read on. */
+function uploadAnswer(
+    line: BootstrapLine,
+    plan: Extract<InstallPlan, { kind: 'upload' }>,
+    options: BootstrapOptions,
+): { readonly daemon: InstalledDaemon } | { readonly failure: BootstrapFailure } | undefined {
+    if (line.kind === 'installed') {
+        return line.sha256 === plan.binary.sha256
+            ? { daemon: { sha256: plan.binary.sha256, version: line.version } }
+            : {
+                  failure: {
+                      kind: 'host',
+                      code: 'protocol',
+                      detail: 'the host installed another daemon than the one uploaded',
+                  },
+              };
+    }
+    if (line.kind !== 'progress') {
+        return { failure: unexpected(line) };
+    }
+    if (line.step === 'verifying') {
+        options.onStep('verifying');
+    }
+    return undefined;
 }
 
 async function start(
