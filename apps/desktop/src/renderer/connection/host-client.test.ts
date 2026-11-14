@@ -111,3 +111,18 @@ describe('HostClient: messages and streams', () => {
         expect(await next()).toEqual({ type: 'credit', hostId: 'h1', stream: 3, bytes: 65_536 });
     });
 });
+
+describe('HostClient: refused deliveries (US-1.14.2)', () => {
+    it('tells input listeners about refused input, rejects requests only for a refused request, and ignores credit', async () => {
+        const { client, emit } = harness();
+        const refused: string[] = [];
+        client.onInputRefused((hostId) => refused.push(hostId));
+        const pending = client.request('h1', { type: 'listSessions' });
+        emit({ type: 'refused', hostId: 'h1', reason: 'not-connected', what: 'credit' });
+        emit({ type: 'refused', hostId: 'h1', reason: 'not-connected', what: 'input' });
+        await expect.poll(() => refused).toEqual(['h1']);
+        emit({ type: 'refused', hostId: 'h1', reason: 'not-connected', what: 'request' });
+        await expect(pending).rejects.toBeInstanceOf(HostRequestError);
+        expect(refused).toEqual(['h1']);
+    });
+});

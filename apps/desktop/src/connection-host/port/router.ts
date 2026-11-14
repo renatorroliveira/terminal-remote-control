@@ -65,13 +65,15 @@ export class ConnectionRouter {
                 void this.#connectionFor(request.hostId, request.target).connect();
                 break;
             case 'send':
-                this.#deliver(request.hostId, (connection) => connection.send(request.message));
+                this.#deliver(request.hostId, 'request', (connection) => connection.send(request.message));
                 break;
             case 'input':
-                this.#deliver(request.hostId, (connection) => connection.input(request.stream, request.data));
+                this.#deliver(request.hostId, 'input', (connection) => connection.input(request.stream, request.data));
                 break;
             case 'credit':
-                this.#deliver(request.hostId, (connection) => connection.credit(request.stream, request.bytes));
+                this.#deliver(request.hostId, 'credit', (connection) =>
+                    connection.credit(request.stream, request.bytes),
+                );
                 break;
             case 'accept-host-key':
                 this.#accept(existing, request.hostId, request.fingerprint);
@@ -91,10 +93,14 @@ export class ConnectionRouter {
         });
     }
 
-    #deliver(hostId: string, action: (connection: HostConnectionLike) => boolean): void {
+    #deliver(
+        hostId: string,
+        what: 'request' | 'input' | 'credit',
+        action: (connection: HostConnectionLike) => boolean,
+    ): void {
         const connection = this.#connections.get(hostId);
         if (connection === undefined || !action(connection)) {
-            this.#post({ type: 'refused', hostId, reason: 'not-connected' });
+            this.#post({ type: 'refused', hostId, reason: 'not-connected', what });
         }
     }
 

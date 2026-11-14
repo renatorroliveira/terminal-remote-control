@@ -295,7 +295,7 @@ export class FakeKnownHostStore implements KnownHostStore {
         return Promise.resolve();
     }
 
-    /** Moves a host's install location, refusing a relative one. */
+    /** Lets a host's programs write the clipboard, or stops them. */
     setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost> {
         const index = this.#hosts.findIndex((host) => host.id === id);
         const found = this.#hosts[index];

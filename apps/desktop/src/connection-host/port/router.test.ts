@@ -95,9 +95,11 @@ describe('ConnectionRouter', () => {
             created[0].connected = false;
         }
         router.handle({ type: 'input', hostId: 'h1', stream: 1, data: new Uint8Array([1]) });
+        router.handle({ type: 'credit', hostId: 'h1', stream: 1, bytes: 10 });
         expect(posted).toEqual([
-            { type: 'refused', hostId: 'nobody', reason: 'not-connected' },
-            { type: 'refused', hostId: 'h1', reason: 'not-connected' },
+            { type: 'refused', hostId: 'nobody', reason: 'not-connected', what: 'input' },
+            { type: 'refused', hostId: 'h1', reason: 'not-connected', what: 'input' },
+            { type: 'refused', hostId: 'h1', reason: 'not-connected', what: 'credit' },
         ]);
     });
 

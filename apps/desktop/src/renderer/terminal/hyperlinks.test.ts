@@ -90,6 +90,16 @@ describe('TerminalLinks: untrusted hyperlinks (SEC-06.4)', () => {
         expect(links.linkAt(0, 0)).toBeUndefined();
     });
 
+    it('opens through xterm’s own OSC 8 path only a target it would list', () => {
+        const { terminal, activated } = setUp();
+        const click = { metaKey: true } as MouseEvent;
+        const range = { start: { x: 1, y: 1 }, end: { x: 1, y: 1 } };
+        terminal.options.linkHandler?.activate(click, 'https://good.example\u202elave/moc', range);
+        terminal.options.linkHandler?.activate(click, `https://example.com/${'a'.repeat(9_000)}`, range);
+        terminal.options.linkHandler?.activate(click, 'https://example.com/ok', range);
+        expect(activated).toEqual(['https://example.com/ok']);
+    });
+
     it('lists a hyperlink’s text without control or bidirectional formatting characters', async () => {
         const { links, write } = setUp();
         await write(osc8('https://example.com', 'a\u202eb\u2066c'));

@@ -2,7 +2,7 @@ import type { CreateSessionSpec, SessionId, SessionInfo, TerminalSize } from '@t
 import type { HostClient } from '../connection/host-client';
 
 /** The part of the host client a session link uses. */
-export type SessionTransport = Pick<HostClient, 'request' | 'input' | 'credit' | 'onOutput'>;
+export type SessionTransport = Pick<HostClient, 'request' | 'input' | 'credit' | 'onOutput' | 'onInputRefused'>;
 
 interface Attachment {
     readonly session: SessionId;
@@ -12,7 +12,7 @@ interface Attachment {
 
 /**
  * Joins one daemon session to a terminal view: output in, and input, credit and size changes out. Input before
- * the session is attached has nowhere to go and is dropped.
+ * the session is attached has nowhere to go and is refused, so the view can say it was not sent (US-1.14.2).
  */
 export class SessionLink {
     readonly #transport: SessionTransport;
@@ -21,6 +21,7 @@ export class SessionLink {
     #size: TerminalSize | undefined;
     #session: SessionId | undefined;
     #attachment: Attachment | undefined;
+    #disposed = false;
 
     /** Creates a link for a host; `onOutput` receives the attached session's output. */
     constructor(transport: SessionTransport, hostId: string, onOutput: (data: Uint8Array) => void) {
@@ -48,12 +49,19 @@ export class SessionLink {
         return reply.session;
     }
 
-    /** Attaches to a session's full output, then sends it the terminal's size. */
+    /**
+     * Attaches to a session's full output, then sends it the terminal's size. An attach that answers after the link
+     * was disposed detaches at once and routes nothing.
+     */
     async attach(session: SessionId): Promise<void> {
         this.#session = session;
         const reply = await this.#transport.request(this.#hostId, { type: 'attach', session, mode: 'full' });
         if (reply.type !== 'attached') {
             throw new Error(`unexpected reply ${reply.type}`);
+        }
+        if (this.#disposed) {
+            this.#detach(session);
+            return;
         }
         const stopOutput = this.#transport.onOutput(this.#hostId, reply.stream, this.#onOutput);
         this.#attachment = { session, stream: reply.stream, stopOutput };
@@ -72,11 +80,13 @@ export class SessionLink {
         }
     }
 
-    /** Sends typed text or key bytes to the session. */
-    input(text: string): void {
-        if (this.#attachment !== undefined) {
-            this.#transport.input(this.#hostId, this.#attachment.stream, text);
+    /** Sends typed text or key bytes to the session; false when no session is attached to send them to. */
+    input(text: string): boolean {
+        if (this.#attachment === undefined) {
+            return false;
         }
+        this.#transport.input(this.#hostId, this.#attachment.stream, text);
+        return true;
     }
 
     /** Returns output credit once the terminal has parsed `bytes` (D-19). */
@@ -94,13 +104,18 @@ export class SessionLink {
 
     /** Stops routing output and detaches from the session. */
     dispose(): void {
+        this.#disposed = true;
         const attachment = this.#attachment;
         this.#attachment = undefined;
         if (attachment === undefined) {
             return;
         }
         attachment.stopOutput();
-        this.#transport.request(this.#hostId, { type: 'detach', session: attachment.session }).catch(ignore);
+        this.#detach(attachment.session);
+    }
+
+    #detach(session: SessionId): void {
+        this.#transport.request(this.#hostId, { type: 'detach', session }).catch(ignore);
     }
 
     #sendSize(): void {

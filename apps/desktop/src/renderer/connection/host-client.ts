@@ -49,6 +49,7 @@ export class HostClient {
     readonly #states = new Map<string, Set<Listener<ConnectionState>>>();
     readonly #messages = new Map<string, Set<Listener<ServerMessage>>>();
     readonly #outputs = new Map<string, Set<Listener<Uint8Array>>>();
+    readonly #inputRefused = new Set<Listener<string>>();
     readonly #encoder = new TextEncoder();
     #nextRequestId = 1;
 
@@ -113,6 +114,12 @@ export class HostClient {
         return subscribe(this.#outputs, outputKey(hostId, stream), listener);
     }
 
+    /** Listens for input the connection host could not send, with the host it was for (US-1.14.2). */
+    onInputRefused(listener: Listener<string>): () => void {
+        this.#inputRefused.add(listener);
+        return () => this.#inputRefused.delete(listener);
+    }
+
     #post(request: HostRequest): void {
         this.#port.postMessage(request);
     }
@@ -135,7 +142,7 @@ export class HostClient {
                 notify(this.#outputs, outputKey(event.hostId, event.stream), event.data);
                 break;
             case 'refused':
-                this.#rejectHost(event.hostId, `request refused: ${event.reason}`);
+                this.#onRefused(event);
                 break;
         }
     }
@@ -159,6 +166,16 @@ export class HostClient {
             pending.reject(new HostRequestError(message.code, message.message));
         } else {
             pending.resolve(message);
+        }
+    }
+
+    #onRefused(event: Extract<HostEvent, { type: 'refused' }>): void {
+        if (event.what === 'request') {
+            this.#rejectHost(event.hostId, `request refused: ${event.reason}`);
+        } else if (event.what === 'input') {
+            for (const listener of this.#inputRefused) {
+                listener(event.hostId);
+            }
         }
     }
 

@@ -259,6 +259,11 @@ export const failedActionMessages = defineMessages<FailedAction>({
         defaultMessage: 'Couldn’t create a session on {host}.',
         description: 'Reported when a new session fails.',
     },
+    open: {
+        id: 'failure.open',
+        defaultMessage: 'Couldn’t open the session on {host}.',
+        description: 'Reported when a session shown for the first time fails to attach.',
+    },
     rename: {
         id: 'failure.rename',
         defaultMessage: 'Couldn’t rename the session on {host}.',
@@ -288,6 +293,11 @@ export const failedActionMessages = defineMessages<FailedAction>({
         id: 'failure.forget',
         defaultMessage: 'Couldn’t forget {host}.',
         description: 'Reported when forgetting a host fails.',
+    },
+    clipboard: {
+        id: 'failure.clipboard',
+        defaultMessage: 'Couldn’t change whether {host} may write the clipboard.',
+        description: 'Reported when saving a host’s clipboard-write setting fails.',
     },
     reattach: {
         id: 'failure.reattach',

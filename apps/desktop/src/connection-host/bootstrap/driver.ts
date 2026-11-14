@@ -90,7 +90,7 @@ export async function runBootstrap(channel: BootstrapChannel, options: Bootstrap
     channel.input.on('error', ignoreWriteErrors);
     try {
         const deadline = Date.now() + timing.helloMs;
-        await send(channel.input, options.script);
+        await send(channel.input, options.script, deadline);
         const hello = await next(reader, options.nonce, deadline);
         if ('failure' in hello) {
             return failed(hello.failure);
@@ -122,7 +122,7 @@ async function follow(
             return 'failure' in uploaded ? failed(uploaded.failure) : start(conversation, uploaded.daemon);
         }
         default:
-            await send(conversation.channel.input, 'EXIT\n');
+            await send(conversation.channel.input, 'EXIT\n', Date.now() + conversation.timing.stepMs);
             return failed({ kind: 'plan', plan });
     }
 }
@@ -134,8 +134,8 @@ async function upload(
     options.onStep('uploading');
     const bytes = await options.readBinary(plan.platform);
     const deadline = Date.now() + timing.stepMs + (bytes.length / timing.uploadBytesPerSecond) * 1_000;
-    await send(channel.input, `UPLOAD ${bytes.length} ${plan.binary.sha256} ${plan.version}\n`);
-    await send(channel.input, bytes);
+    await send(channel.input, `UPLOAD ${bytes.length} ${plan.binary.sha256} ${plan.version}\n`, deadline);
+    await send(channel.input, bytes, deadline);
     for (;;) {
         const result = await next(reader, options.nonce, deadline);
         const answer = 'failure' in result ? result : uploadAnswer(result.line, plan, options);
@@ -177,7 +177,7 @@ async function start(
 ): Promise<BootstrapOutcome> {
     options.onStep('starting');
     const deadline = Date.now() + timing.stepMs;
-    await send(channel.input, `RUN ${daemon.sha256}\n`);
+    await send(channel.input, `RUN ${daemon.sha256}\n`, deadline);
     const result = await next(reader, options.nonce, deadline);
     if ('failure' in result) {
         return failed(result.failure);
@@ -246,11 +246,14 @@ function failed(failure: BootstrapFailure): BootstrapOutcome {
 }
 
 /**
- * Writes to the host and resolves once the data is handed over, or as soon as the write fails: the host reports
- * why it stopped reading on its output, which the caller reads next.
+ * Writes to the host and resolves once the data is handed over, as soon as the write fails, or at `deadline` when the
+ * host stops reading: the next read then reports why the host stopped, or that it went silent.
  */
-function send(stream: Writable, data: string | Uint8Array): Promise<void> {
-    return new Promise((resolve) => {
-        stream.write(data, () => resolve());
-    });
+async function send(stream: Writable, data: string | Uint8Array, deadline: number): Promise<void> {
+    await within(
+        new Promise<void>((resolve) => {
+            stream.write(data, () => resolve());
+        }),
+        deadline,
+    );
 }

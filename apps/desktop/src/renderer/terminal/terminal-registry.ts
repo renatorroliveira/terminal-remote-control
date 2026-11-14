@@ -49,6 +49,8 @@ export interface TerminalRegistryOptions {
     readonly clipboardWrites?: (hostId: string) => boolean;
     /** A program in a session wrote the clipboard while its host allowed it. */
     readonly onClipboardWrite?: (key: SessionKey, text: string) => void;
+    /** A session shown for the first time could not attach; its terminal is gone (US-1.14.2, WCAG 3.3.1). */
+    readonly onAttachFailed?: (key: SessionKey, error: unknown) => void;
 }
 
 interface Entry {
@@ -69,9 +71,12 @@ export class TerminalRegistry implements TerminalHost {
     readonly #offline = new Set<string>();
     /** Each host's creates in flight, which a `show` of a session not yet known waits for. */
     readonly #creating = new Map<string, Set<Promise<unknown>>>();
+    readonly #stopInputRefused: () => void;
     #area: HTMLElement | undefined;
     #palette: TerminalPalette;
     #open: SessionKey | undefined;
+    /** The session last asked for, so a show that waited for a create never overrides a newer one. */
+    #wanted: SessionKey | undefined;
     #tabFocusMode = false;
     #fontSize = TERMINAL_FONT_SIZE;
     #appearance: TerminalAppearance = DEFAULT_TERMINAL_APPEARANCE;
@@ -84,6 +89,7 @@ export class TerminalRegistry implements TerminalHost {
     constructor(options: TerminalRegistryOptions) {
         this.#options = options;
         this.#palette = options.palette;
+        this.#stopInputRefused = options.transport.onInputRefused((hostId) => this.#inputRefused(hostId));
     }
 
     /** Sets the element terminals are shown in; their frames move with it. The same element again changes nothing. */
@@ -97,11 +103,15 @@ export class TerminalRegistry implements TerminalHost {
         }
     }
 
-    /** Shows a session's terminal, attaching it the first time, and focuses it. */
+    /**
+     * Shows a session's terminal, attaching it the first time, and focuses it. One not yet known while a create on its
+     * host is in flight waits for it, and is shown then only if no other session was asked for meanwhile.
+     */
     show(key: SessionKey, hostId: string, session: SessionInfo): void {
+        this.#wanted = key;
         const creating = this.#creating.get(hostId);
         if (!this.#entries.has(key) && creating !== undefined) {
-            void Promise.allSettled([...creating]).then(() => this.show(key, hostId, session));
+            void Promise.allSettled([...creating]).then(() => this.#showIfWanted(key, hostId, session));
             return;
         }
         const entry = this.#entries.get(key) ?? this.#attachNew(key, hostId, session);
@@ -257,7 +267,7 @@ export class TerminalRegistry implements TerminalHost {
     /**
      * Attaches a reconnected host's terminals to their sessions again, each on a fresh screen (US-1.14.3). Each keeps
      * refusing typing until its attach answers (US-1.14.2); returns the sessions that could not attach, whose terminals
-     * stay refusing.
+     * are removed.
      */
     async reattachHost(hostId: string): Promise<readonly SessionKey[]> {
         this.#offline.delete(hostId);
@@ -268,11 +278,9 @@ export class TerminalRegistry implements TerminalHost {
 
     /** Detaches and removes the terminals of a host whose connection closed. */
     closeHost(hostId: string): void {
-        for (const [key, entry] of this.#entries) {
+        for (const key of this.#entries.keys()) {
             if (key.startsWith(`${hostId}/`)) {
-                this.#dispose(entry);
-                this.#entries.delete(key);
-                this.#open = this.#open === key ? undefined : this.#open;
+                this.closeSession(key);
             }
         }
     }
@@ -281,9 +289,7 @@ export class TerminalRegistry implements TerminalHost {
     closeSession(key: SessionKey): void {
         const entry = this.#entries.get(key);
         if (entry !== undefined) {
-            this.#dispose(entry);
-            this.#entries.delete(key);
-            this.#open = this.#open === key ? undefined : this.#open;
+            this.#remove(key, entry);
         }
     }
 
@@ -295,12 +301,25 @@ export class TerminalRegistry implements TerminalHost {
         }
     }
 
-    /** Detaches and removes every terminal. */
+    /** Detaches and removes every terminal, and stops listening to the connection. */
     dispose(): void {
+        this.#stopInputRefused();
         for (const entry of this.#entries.values()) {
             this.#dispose(entry);
         }
         this.#entries.clear();
+    }
+
+    #showIfWanted(key: SessionKey, hostId: string, session: SessionInfo): void {
+        if (this.#wanted === key) {
+            this.show(key, hostId, session);
+        }
+    }
+
+    #inputRefused(hostId: string): void {
+        if (this.#open?.startsWith(`${hostId}/`) === true) {
+            this.#openEntry()?.view.refuseInput();
+        }
     }
 
     async #reattach(key: SessionKey): Promise<SessionKey | undefined> {
@@ -314,8 +333,29 @@ export class TerminalRegistry implements TerminalHost {
             entry.view.setConnected(true);
             return undefined;
         } catch {
+            this.#removeIfCurrent(key, entry);
             return key;
         }
+    }
+
+    #attachFailed(key: SessionKey, entry: Entry, error: unknown): void {
+        if (this.#removeIfCurrent(key, entry)) {
+            this.#options.onAttachFailed?.(key, error);
+        }
+    }
+
+    #removeIfCurrent(key: SessionKey, entry: Entry): boolean {
+        const current = this.#entries.get(key) === entry;
+        if (current) {
+            this.#remove(key, entry);
+        }
+        return current;
+    }
+
+    #remove(key: SessionKey, entry: Entry): void {
+        this.#dispose(entry);
+        this.#entries.delete(key);
+        this.#open = this.#open === key ? undefined : this.#open;
     }
 
     #entriesOf(hostId: string): readonly Entry[] {
@@ -375,7 +415,9 @@ export class TerminalRegistry implements TerminalHost {
     #attachNew(key: SessionKey, hostId: string, session: SessionInfo): Entry {
         const entry = this.#newEntry(hostId);
         this.#entries.set(key, entry);
-        void entry.view.ready.then(() => entry.link.attach(session.id)).catch(() => undefined);
+        void entry.view.ready
+            .then(() => entry.link.attach(session.id))
+            .catch((error: unknown) => this.#attachFailed(key, entry, error));
         return entry;
     }
 

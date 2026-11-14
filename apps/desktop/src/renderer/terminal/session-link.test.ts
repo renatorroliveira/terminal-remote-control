@@ -26,6 +26,8 @@ class FakeTransport implements SessionTransport {
     readonly sent: string[] = [];
     readonly credits: number[] = [];
     readonly listeners = new Map<number, (data: Uint8Array) => void>();
+    /** While set, attach replies wait for it. */
+    hold: Promise<void> | undefined;
 
     request(_hostId: string, request: ClientRequest): Promise<ServerMessage> {
         this.requests.push(request);
@@ -33,7 +35,14 @@ class FakeTransport implements SessionTransport {
             return Promise.resolve({ type: 'created', requestId: 1, session });
         }
         if (request.type === 'attach') {
-            return Promise.resolve({ type: 'attached', requestId: 2, session: request.session, stream: 7, credit: 1 });
+            const attached: ServerMessage = {
+                type: 'attached',
+                requestId: 2,
+                session: request.session,
+                stream: 7,
+                credit: 1,
+            };
+            return (this.hold ?? Promise.resolve()).then(() => attached);
         }
         return Promise.resolve({ type: 'done', requestId: 3 });
     }
@@ -50,6 +59,10 @@ class FakeTransport implements SessionTransport {
         this.listeners.set(stream, listener);
         return () => this.listeners.delete(stream);
     }
+
+    onInputRefused(): () => void {
+        return () => undefined;
+    }
 }
 
 describe('SessionLink', () => {
@@ -57,7 +70,7 @@ describe('SessionLink', () => {
         const transport = new FakeTransport();
         const output: Uint8Array[] = [];
         const link = new SessionLink(transport, 'h1', (data) => output.push(data));
-        link.input('dropped before attach');
+        expect(link.input('refused before attach')).toBe(false);
         link.resize({ cols: 100, rows: 30 });
         const created = await link.create({ env: {} });
         expect(created.id).toBe(session.id);
@@ -68,7 +81,7 @@ describe('SessionLink', () => {
         ]);
         transport.listeners.get(7)?.(new Uint8Array([104, 105]));
         expect(output).toEqual([new Uint8Array([104, 105])]);
-        link.input('ls\r');
+        expect(link.input('ls\r')).toBe(true);
         link.credit(65_536);
         expect(transport.sent).toEqual(['ls\r']);
         expect(transport.credits).toEqual([65_536]);
@@ -100,5 +113,21 @@ describe('SessionLink', () => {
         expect(transport.requests.some((request) => request.type === 'detach')).toBe(false);
         transport.listeners.get(7)?.(new Uint8Array([33]));
         expect(output).toEqual([new Uint8Array([33])]);
+    });
+
+    it('detaches an attach that answers after the link was disposed, and routes none of its output', async () => {
+        const transport = new FakeTransport();
+        let release = (): void => undefined;
+        transport.hold = new Promise((done) => {
+            release = done;
+        });
+        const link = new SessionLink(transport, 'h1', () => undefined);
+        const attaching = link.attach(session.id);
+        link.dispose();
+        release();
+        await attaching;
+        expect(transport.listeners.size).toBe(0);
+        expect(link.attached).toBe(false);
+        expect(transport.requests.at(-1)).toEqual({ type: 'detach', session: session.id });
     });
 });

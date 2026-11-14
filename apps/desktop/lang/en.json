@@ -283,6 +283,10 @@
     "defaultMessage": "Add the key to your SSH agent with ssh-add, which asks for the PIN, then connect again.",
     "description": "How to fix a failed connection."
   },
+  "failure.clipboard": {
+    "defaultMessage": "Couldn’t change whether {host} may write the clipboard.",
+    "description": "Reported when saving a host’s clipboard-write setting fails."
+  },
   "failure.close": {
     "defaultMessage": "Couldn’t close the session on {host}.",
     "description": "Reported when closing a session fails."
@@ -386,6 +390,10 @@
   "failure.ok": {
     "defaultMessage": "OK",
     "description": "Button that closes the failed-connection dialog."
+  },
+  "failure.open": {
+    "defaultMessage": "Couldn’t open the session on {host}.",
+    "description": "Reported when a session shown for the first time fails to attach."
   },
   "failure.other.problem": {
     "defaultMessage": "The connection to {name} failed.",

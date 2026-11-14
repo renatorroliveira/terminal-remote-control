@@ -126,9 +126,19 @@ class FakeTerminals implements TerminalHost {
 
 class FakeHosts extends FakeKnownHostStore {
     readonly hosts: KnownHost[] = [];
+    /** Whether `hosts.json` refuses changes. */
+    readOnly = false;
 
     override list(): Promise<readonly KnownHost[]> {
         return Promise.resolve(this.hosts);
+    }
+
+    override remove(id: string): Promise<void> {
+        return this.readOnly ? Promise.reject(new Error('read-only')) : super.remove(id);
+    }
+
+    override setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost> {
+        return this.readOnly ? Promise.reject(new Error('read-only')) : super.setClipboardWrites(id, allowed);
     }
 }
 
@@ -315,6 +325,17 @@ describe('WorkspaceController: forgetting, moving and testing hosts (US-1.1.5, U
         expect(client.states.has(host.id)).toBe(false);
     });
 
+    it('keeps a host it could not forget, connected and named, and reports it (WCAG 3.3.1)', async () => {
+        const { client, hosts, terminals, host, workspace } = await connectedSetup();
+        hosts.readOnly = true;
+        await workspace.forgetHost(host.id);
+        expect(workspace.store.getState().actionFailure).toMatchObject({ action: 'forget', hostId: host.id });
+        expect(workspace.store.getState().hosts.map((entry) => entry.destination)).toEqual(['devbox-1']);
+        expect(workspace.store.getState().sessions.get(host.id)).toHaveLength(2);
+        expect(client.calls).not.toContain(`disconnect ${host.id}`);
+        expect(terminals.closed).toEqual([]);
+    });
+
     it('moves a host’s install location for its next connection', async () => {
         const { client, workspace } = setup();
         const host = await workspace.addHost('devbox-1');
@@ -330,6 +351,15 @@ describe('WorkspaceController: forgetting, moving and testing hosts (US-1.1.5, U
         await workspace.setClipboardWrites(host.id, true);
         expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBe(true);
         await workspace.setClipboardWrites(host.id, false);
+        expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBeUndefined();
+    });
+
+    it('reports a clipboard change hosts.json refused, and keeps the host as it was (WCAG 3.3.1)', async () => {
+        const { hosts, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        hosts.readOnly = true;
+        await workspace.setClipboardWrites(host.id, true);
+        expect(workspace.store.getState().actionFailure).toMatchObject({ action: 'clipboard', hostId: host.id });
         expect(workspace.store.getState().hosts[0]?.allowClipboardWrites).toBeUndefined();
     });
 
@@ -423,14 +453,28 @@ describe('WorkspaceController: failed actions (US-1.10, US-1.14.3, WCAG 3.3.1)',
         expect(workspace.store.getState().actionFailure).toMatchObject({ action: 'create', code: 'spawnFailed' });
     });
 
-    it('reports each terminal that could not attach again after a reconnect', async () => {
+    it('reports each terminal that could not attach again after a reconnect, and closes the open one', async () => {
         const { client, terminals, host, workspace } = await connectedSetup();
+        workspace.open(`${host.id}/b`);
         terminals.unattachable = [`${host.id}/b`];
         client.states.get(host.id)?.({ status: 'disconnected', reason: 'ping-timeout' });
         client.states.get(host.id)?.(connected);
         await expect
             .poll(() => workspace.store.getState().actionFailure)
             .toMatchObject({ action: 'reattach', hostId: host.id });
+        expect(workspace.store.getState().open).toBeUndefined();
+    });
+
+    it('reports a session that could not be opened, with the reason, and leaves nothing open (US-1.14.2)', async () => {
+        const { host, workspace } = await connectedSetup();
+        workspace.open(`${host.id}/a`);
+        workspace.attachFailed(`${host.id}/a`, new HostRequestError('unknownSession', 'gone'));
+        expect(workspace.store.getState().actionFailure).toMatchObject({
+            action: 'open',
+            hostId: host.id,
+            code: 'unknownSession',
+        });
+        expect(workspace.store.getState().open).toBeUndefined();
     });
 });
 
