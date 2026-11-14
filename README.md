@@ -5,6 +5,7 @@
 
 <p align="center">
   <a href="https://github.com/renatorroliveira/terminal-remote-control/actions/workflows/ci.yml"><img src="https://github.com/renatorroliveira/terminal-remote-control/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://github.com/renatorroliveira/terminal-remote-control/releases/latest"><img src="https://img.shields.io/github/v/release/renatorroliveira/terminal-remote-control?sort=semver&label=release" alt="Latest release"></a>
 </p>
 
 An accessible desktop terminal manager whose sessions outlive the app, the network and the client computer.
