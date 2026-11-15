@@ -15,7 +15,7 @@ use rustix::process::{Pid, Signal};
 use crate::digest::sha256_file;
 use crate::install::InstallLayout;
 use crate::run_dir::RunDir;
-use crate::service::unit_name;
+use crate::service::stop_unit;
 
 /// How long a core has to exit after it is asked to.
 const STOP_TIMEOUT: Duration = Duration::from_secs(5);
@@ -102,12 +102,7 @@ pub fn stop_core(core: &RunningCore, layout: &InstallLayout, run: &RunDir) -> io
     if !holds_lock(run, core.pid) {
         return Ok(());
     }
-    let _ = Command::new("systemctl")
-        .args(["--user", "stop", &unit_name(&layout.root)])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+    stop_unit(&layout.root);
     if wait_unlocked(run, Duration::from_millis(200)) {
         return Ok(());
     }
@@ -144,7 +139,7 @@ pub fn newest_core_binary(layout: &InstallLayout) -> PathBuf {
 /// Whether another installed binary may be run, even just for `--version`: it passes the integrity check that every
 /// other subcommand runs on itself (SEC-04.4), and its SHA-256 still matches its folder's name, `versions/<sha256>/`,
 /// as when the app verified it (SEC-04.3). `--version` answers before that check, so this is its only guard. The
-/// bootstrap holds installed versions to the same rules.
+/// bootstrap holds installed versions to the same rules when it lists them.
 fn trustworthy(binary: &Path) -> bool {
     let intact = InstallLayout::from_binary(binary)
         .and_then(|layout| layout.check_integrity(rustix::process::geteuid().as_raw()))
@@ -211,7 +206,11 @@ fn version_key(version: &str) -> Option<(Vec<u64>, bool)> {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Write;
+    use std::os::unix::fs::PermissionsExt;
+
     use super::*;
+    use crate::test_support::temp_dir;
 
     #[test]
     fn replaces_only_a_strictly_older_core_d_46() {
@@ -235,11 +234,6 @@ mod tests {
     fn writes_the_pid_version_and_checksum() {
         assert_eq!(lock_contents(42, "0.3.0", "ab"), "42\n0.3.0\nab\n");
     }
-
-    use std::io::Write;
-    use std::os::unix::fs::PermissionsExt;
-
-    use crate::test_support::temp_dir;
 
     /// An install root around this build's binary, an empty file at `versions/own/trcd`.
     fn install(label: &str) -> InstallLayout {

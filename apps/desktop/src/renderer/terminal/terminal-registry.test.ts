@@ -563,6 +563,17 @@ describe('TerminalRegistry: shared sessions (US-2.6, P-31)', () => {
         expect(resized.map((request) => request.session)).toEqual(['b']);
     });
 
+    it('reports input from another client in a session', async () => {
+        const peers: string[] = [];
+        const { transport, registry } = setup({ onPeerInput: (key) => peers.push(key) });
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(1)).toBe(true);
+        transport.push({ type: 'peerInput', session: 'a', stream: 1 });
+        expect(peers).toEqual(['h1/a']);
+    });
+});
+
+describe('TerminalRegistry: a session another client took (P-27, P-34)', () => {
     it('says when another client took a session, and takes it back when it is opened again (P-27)', async () => {
         const { area, transport, registry, notices } = setup();
         registry.show('h1/a', 'h1', info('a'));
@@ -580,13 +591,14 @@ describe('TerminalRegistry: shared sessions (US-2.6, P-31)', () => {
         expect(transport.inputs).toEqual(['2:ls']);
     });
 
-    it('reports input from another client in a session', async () => {
-        const peers: string[] = [];
-        const { transport, registry } = setup({ onPeerInput: (key) => peers.push(key) });
+    it('leaves a session another client took to that client across a reconnect (P-34)', async () => {
+        const { transport, registry } = setup();
         registry.show('h1/a', 'h1', info('a'));
         await expect.poll(() => transport.attached(1)).toBe(true);
-        transport.push({ type: 'peerInput', session: 'a', stream: 1 });
-        expect(peers).toEqual(['h1/a']);
+        transport.push({ type: 'detached', session: 'a', stream: 1, reason: 'attachedElsewhere' });
+        registry.setHostConnection('h1', 'reconnecting');
+        await registry.reattachHost('h1');
+        expect(requestsOf(transport, 'attach')).toBe(1);
     });
 });
 

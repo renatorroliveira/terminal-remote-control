@@ -315,7 +315,9 @@ export class TerminalRegistry implements TerminalHost {
      */
     async reattachHost(hostId: string): Promise<readonly AttachFailure[]> {
         this.#offline.delete(hostId);
-        const keys = [...this.#entries.keys()].filter((key) => key.startsWith(`${hostId}/`));
+        const keys = [...this.#entries]
+            .filter(([key, entry]) => key.startsWith(`${hostId}/`) && !entry.link.displaced)
+            .map(([key]) => key);
         const failed = await Promise.all(keys.map((key) => this.#reattach(key)));
         return failed.filter((failure): failure is AttachFailure => failure !== undefined);
     }

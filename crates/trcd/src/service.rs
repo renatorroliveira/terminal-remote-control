@@ -130,6 +130,12 @@ pub fn unit_is_running(root: &Path) -> bool {
     .is_some_and(|state| unit_running(&state))
 }
 
+/// Asks systemd to stop the core's unit for `root`, waiting no longer than a probe may, so a user manager that does
+/// not answer never holds up an upgrade; a core still running is then signalled.
+pub fn stop_unit(root: &Path) {
+    let _ = probe("systemctl", &["--user", "stop", &unit_name(root)]);
+}
+
 /// What a core running as a unit needs to start holders in their own scopes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeLauncher {
@@ -209,11 +215,12 @@ fn parse_string_array(output: &str) -> Vec<String> {
     output.split('"').skip(1).step_by(2).map(str::to_owned).collect()
 }
 
-/// Runs a probe and returns its standard output when it succeeds within [`PROBE_TIMEOUT`].
+/// Whether a unit's `ActiveState` means it runs, or systemd is starting or restarting it.
 fn unit_running(active_state: &str) -> bool {
     matches!(active_state.trim(), "active" | "activating" | "reloading")
 }
 
+/// Runs a probe and returns its standard output when it succeeds within [`PROBE_TIMEOUT`].
 fn probe(program: &str, args: &[&str]) -> Option<String> {
     let mut child = Command::new(program)
         .args(args)

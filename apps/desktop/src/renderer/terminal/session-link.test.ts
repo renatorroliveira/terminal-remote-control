@@ -31,6 +31,8 @@ class FakeTransport implements SessionTransport {
     hold: Promise<void> | undefined;
     /** What the next attach reply says it replays; absent like a protocol 1 daemon's. */
     replay: 'delta' | 'snapshot' | undefined;
+    /** The stream each next attach gets, or the error it fails with; stream 7 once none are left. */
+    readonly attachReplies: (number | Error)[] = [];
 
     request(_hostId: string, request: ClientRequest): Promise<ServerMessage> {
         this.requests.push(request);
@@ -38,15 +40,19 @@ class FakeTransport implements SessionTransport {
             return Promise.resolve({ type: 'created', requestId: 1, session });
         }
         if (request.type === 'attach') {
+            const planned = this.attachReplies.shift() ?? 7;
             const attached: ServerMessage = {
                 type: 'attached',
                 requestId: 2,
                 session: request.session,
-                stream: 7,
+                stream: planned instanceof Error ? 0 : planned,
                 credit: 1,
                 ...(this.replay === undefined ? {} : { replay: this.replay }),
             };
-            return (this.hold ?? Promise.resolve()).then(() => attached);
+            const replied = this.hold ?? Promise.resolve();
+            return planned instanceof Error
+                ? replied.then(() => Promise.reject(planned))
+                : replied.then(() => attached);
         }
         return Promise.resolve({ type: 'done', requestId: 3 });
     }
@@ -327,5 +333,40 @@ describe('SessionLink: other clients (P-27, P-31)', () => {
         await link.reattach();
         expect([link.displaced, link.input('ls')]).toEqual([false, true]);
         expect(seen).toEqual(['replay snapshot (protocol 1)', 'detached', 'replay snapshot (protocol 1)']);
+    });
+});
+
+describe('SessionLink: attaches in flight together', () => {
+    function held(transport: FakeTransport): () => void {
+        let release = (): void => undefined;
+        transport.hold = new Promise((done) => {
+            release = done;
+        });
+        return () => release();
+    }
+
+    it('routes only the latest of two attaches in flight', async () => {
+        const transport = new FakeTransport();
+        const link = new SessionLink(transport, 'h1', () => undefined);
+        const release = held(transport);
+        transport.attachReplies.push(5, 6);
+        const first = link.attach(session.id);
+        const second = link.reattach();
+        release();
+        await Promise.all([first, second]);
+        expect([...transport.listeners.keys()]).toEqual([6]);
+    });
+
+    it('drops the error of an attach a later one replaced', async () => {
+        const transport = new FakeTransport();
+        const link = new SessionLink(transport, 'h1', () => undefined);
+        const release = held(transport);
+        transport.attachReplies.push(new Error('a later attach replaced this one'), 6);
+        const first = link.attach(session.id);
+        const second = link.reattach();
+        release();
+        await expect(first).resolves.toBeUndefined();
+        await second;
+        expect([...transport.listeners.keys()]).toEqual([6]);
     });
 });

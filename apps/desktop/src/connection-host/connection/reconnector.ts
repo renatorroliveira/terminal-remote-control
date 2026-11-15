@@ -17,9 +17,6 @@ export const SYSTEM_CLOCK: ReconnectClock = {
     clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
-/** Network changes and wakes start a try at most this often, so a flapping interface cannot drive ssh. */
-const RETRY_SOON_SPACING_MS = 5_000;
-
 /** How a host was connected, which decides whether a failed first connection is retried. */
 export interface EnableOptions {
     /** The launch restores it, so even its first connection retries (US-2.3.3); otherwise the user is there to see it. */
@@ -43,10 +40,8 @@ export class Reconnector {
     #attempt = 0;
     #lostAt: number | undefined;
     #timer: unknown;
-    /** Install failures retried in a row since the host connected or the user connected it. */
+    /** Install failures retried in a row since the host connected, the user connected it, or another failure. */
     #installRetries = 0;
-    /** When the last try a network change or wake started was due. */
-    #soonAt: number | undefined;
 
     /** A reconnector that attempts with `connect` and reports `reconnecting` with `report`. */
     constructor(connect: () => void, report: (state: ConnectionState) => void, clock: ReconnectClock = SYSTEM_CLOCK) {
@@ -99,7 +94,7 @@ export class Reconnector {
                 return;
             case 'failed':
                 if (this.retries(state)) {
-                    this.#installRetries += state.failure.kind === 'install' ? 1 : 0;
+                    this.#installRetries = state.failure.kind === 'install' ? this.#installRetries + 1 : 0;
                     this.#schedule(state.failure);
                 } else {
                     this.#cancel();
@@ -114,37 +109,15 @@ export class Reconnector {
         }
     }
 
-    /** Tries now and starts the backoff again: the user chose Retry. */
+    /** Tries now and starts the backoff again, after a network change, a wake, or the user's Retry (P-29, P-34). */
     retryNow(): void {
         if (!this.#enabled || this.#timer === undefined) {
             return;
         }
-        this.#restart(0);
-    }
-
-    /**
-     * Tries soon and starts the backoff again, after a network change or a wake: now, unless such a try started less
-     * than 5 s ago, and then 5 s after it (NFR-07).
-     */
-    retrySoon(): void {
-        if (!this.#enabled || this.#timer === undefined) {
-            return;
-        }
-        const now = this.#clock.now();
-        const wait = this.#soonAt === undefined ? 0 : Math.max(0, this.#soonAt + RETRY_SOON_SPACING_MS - now);
-        this.#soonAt = now + wait;
-        this.#restart(wait);
-    }
-
-    #restart(wait: number): void {
         this.#cancel();
         this.#attempt = 0;
         this.#lostAt = this.#clock.now();
-        if (wait === 0) {
-            this.#fire();
-        } else {
-            this.#timer = this.#clock.setTimeout(() => this.#fire(), wait);
-        }
+        this.#fire();
     }
 
     #schedule(failure: ConnectionFailure | undefined): void {
