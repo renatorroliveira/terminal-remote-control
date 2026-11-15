@@ -592,13 +592,14 @@ describe('TerminalRegistry: a session another client took (P-27, P-34)', () => {
     });
 
     it('leaves a session another client took to that client across a reconnect (P-34)', async () => {
-        const { transport, registry } = setup();
+        const { area, transport, registry } = setup();
         registry.show('h1/a', 'h1', info('a'));
         await expect.poll(() => transport.attached(1)).toBe(true);
         transport.push({ type: 'detached', session: 'a', stream: 1, reason: 'attachedElsewhere' });
         registry.setHostConnection('h1', 'reconnecting');
         await registry.reattachHost('h1');
         expect(requestsOf(transport, 'attach')).toBe(1);
+        expect(area.querySelector('[role="textbox"]')?.getAttribute('aria-label')).toBe('bash, h1');
     });
 });
 

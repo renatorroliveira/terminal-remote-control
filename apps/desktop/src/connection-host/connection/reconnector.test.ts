@@ -212,3 +212,22 @@ describe('Reconnector: when it retries (US-2.2.3, US-2.3.3)', () => {
         expect(attempts).toBe(0);
     });
 });
+
+describe('Reconnector: trying now (P-29, P-34)', () => {
+    it('counts a try now as the first of the sequence, so the next waits 1 s, every time (P-29, P-34)', () => {
+        const { clock, reconnector, attempts } = fixture();
+        reconnector.onState(lost);
+        clock.advance(0);
+        for (let change = 0; change < 3; change += 1) {
+            reconnector.onState(unreachable);
+            const before = attempts();
+            reconnector.retryNow();
+            expect(attempts()).toBe(before + 1);
+            reconnector.onState(unreachable);
+            clock.advance(999);
+            expect(attempts()).toBe(before + 1);
+            clock.advance(1);
+            expect(attempts()).toBe(before + 2);
+        }
+    });
+});

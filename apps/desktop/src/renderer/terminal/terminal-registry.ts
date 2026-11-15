@@ -311,13 +311,16 @@ export class TerminalRegistry implements TerminalHost {
      * Attaches a reconnected host's terminals to their sessions again (US-1.14.3): from where each left off, keeping
      * its buffer, when the daemon has the output missed, otherwise on a fresh screen (US-2.2.2). Each keeps refusing
      * typing until its attach answers (US-1.14.2); returns the sessions that could not attach, whose terminals are
-     * removed.
+     * removed. A session another client took stays with that client: its terminal is connected again but refuses
+     * typing until the user opens it (P-34).
      */
     async reattachHost(hostId: string): Promise<readonly AttachFailure[]> {
         this.#offline.delete(hostId);
-        const keys = [...this.#entries]
-            .filter(([key, entry]) => key.startsWith(`${hostId}/`) && !entry.link.displaced)
-            .map(([key]) => key);
+        const entries = [...this.#entries].filter(([key]) => key.startsWith(`${hostId}/`));
+        for (const [, entry] of entries.filter(([, other]) => other.link.displaced)) {
+            entry.view.setConnection('connected');
+        }
+        const keys = entries.filter(([, entry]) => !entry.link.displaced).map(([key]) => key);
         const failed = await Promise.all(keys.map((key) => this.#reattach(key)));
         return failed.filter((failure): failure is AttachFailure => failure !== undefined);
     }

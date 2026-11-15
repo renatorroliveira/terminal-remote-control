@@ -74,6 +74,15 @@ describe('watchSessionCache', () => {
         vi.advanceTimersByTime(1_000);
         expect(saves).toHaveLength(1);
     });
+});
+
+describe('watchSessionCache: failed saves', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
 
     it('saves the list again after a save failed', async () => {
         let attempts = 0;
@@ -95,5 +104,25 @@ describe('watchSessionCache', () => {
         expect(attempts).toBe(2);
         await vi.advanceTimersByTimeAsync(60_000);
         expect(attempts).toBe(4);
+    });
+
+    it('tries no failed save again once stopped, even one that fails after', async () => {
+        let attempts = 0;
+        const store = createStore<Workspace>(() => EMPTY_WORKSPACE);
+        const stop = watchSessionCache(
+            store,
+            {
+                save: () => {
+                    attempts += 1;
+                    return new Promise((_, fail) => setTimeout(() => fail(new Error('disk full')), 2_000));
+                },
+            },
+            {},
+        );
+        store.setState(listed([bashSession('a')]), true);
+        await vi.advanceTimersByTimeAsync(1_000);
+        stop();
+        await vi.advanceTimersByTimeAsync(60_000);
+        expect(attempts).toBe(1);
     });
 });
