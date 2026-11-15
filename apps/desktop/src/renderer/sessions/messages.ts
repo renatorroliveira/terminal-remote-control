@@ -152,6 +152,12 @@ export const terminalMessages = defineMessages({
         defaultMessage: 'Session still opening — input not sent',
         description: 'Shown when the user types before a session has attached; nothing was sent.',
     },
+    inputElsewhere: {
+        id: 'terminal.inputElsewhere',
+        defaultMessage: 'Opened on another client — input not sent',
+        description:
+            'Shown when the user types into a session another computer opened, which serves one client at a time; nothing was sent.',
+    },
 });
 
 /** A host or session row's accessible name. */

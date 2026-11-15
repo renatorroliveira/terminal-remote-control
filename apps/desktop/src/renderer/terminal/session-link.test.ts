@@ -93,6 +93,7 @@ function recorder(): { readonly events: LinkEvents; readonly seen: string[] } {
             synced: () => seen.push('synced'),
             resync: (kind) => seen.push(`resync ${kind}`),
             peerInput: () => seen.push('peer input'),
+            detached: () => seen.push('detached'),
         },
     };
 }
@@ -200,6 +201,29 @@ describe('SessionLink: protocol 2 (US-2.2.2, D-04, D-45)', () => {
         expect(seen).toEqual(['replay snapshot', 'synced', 'replay delta']);
     });
 
+    it('sends no input or credit once the connection is lost, and reattaches from where output stood', async () => {
+        const transport = new FakeTransport();
+        const link = new SessionLink(transport, 'h1', () => undefined);
+        transport.replay = 'snapshot';
+        await link.attach(session.id);
+        transport.push(synced(100));
+        transport.output(20);
+        link.connectionLost();
+        expect(link.input('lost')).toBe(false);
+        link.credit(65_536);
+        expect(transport.listeners.size).toBe(0);
+        expect([transport.sent, transport.credits]).toEqual([[], []]);
+        transport.replay = 'delta';
+        await link.reattach();
+        expect(transport.requests.filter((request) => request.type === 'attach').at(-1)).toEqual({
+            type: 'attach',
+            session: session.id,
+            mode: 'full',
+            fromOffset: 120,
+        });
+        expect(link.input('back')).toBe(true);
+    });
+
     it('asks for a fresh snapshot when the daemon never said where output stands, as protocol 1', async () => {
         const transport = new FakeTransport();
         const { events, seen } = recorder();
@@ -271,5 +295,37 @@ describe('SessionLink: resyncs and gaps (D-04, D-45, US-2.6.4)', () => {
         transport.push({ type: 'peerInput', session: session.id, stream: 9 });
         transport.push({ type: 'peerInput', session: session.id, stream: 7 });
         expect(seen).toEqual(['replay snapshot', 'peer input']);
+    });
+});
+
+describe('SessionLink: other clients (P-27, P-31)', () => {
+    it('sends its size on a reattach only when asked, as the open terminal does (P-31)', async () => {
+        const transport = new FakeTransport();
+        const link = new SessionLink(transport, 'h1', () => undefined);
+        link.resize({ cols: 80, rows: 24 });
+        await link.attach(session.id);
+        await link.reattach();
+        await link.reattach({ sendSize: true });
+        expect(transport.requests.map((request) => request.type)).toEqual([
+            'attach',
+            'resize',
+            'attach',
+            'attach',
+            'resize',
+        ]);
+    });
+
+    it('stops when another client takes the session, and attaches again when asked (P-27)', async () => {
+        const transport = new FakeTransport();
+        const { events, seen } = recorder();
+        const link = new SessionLink(transport, 'h1', () => undefined, events);
+        await link.attach(session.id);
+        transport.push({ type: 'detached', session: session.id, stream: 8, reason: 'attachedElsewhere' });
+        expect(link.displaced).toBe(false);
+        transport.push({ type: 'detached', session: session.id, stream: 7, reason: 'attachedElsewhere' });
+        expect([link.displaced, link.input('ls'), transport.listeners.size]).toEqual([true, false, 0]);
+        await link.reattach();
+        expect([link.displaced, link.input('ls')]).toEqual([false, true]);
+        expect(seen).toEqual(['replay snapshot (protocol 1)', 'detached', 'replay snapshot (protocol 1)']);
     });
 });

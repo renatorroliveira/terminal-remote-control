@@ -176,6 +176,12 @@ export const terminalAnnouncements = {
         defaultMessage: 'Session still opening — input not sent.',
         description: 'Announced assertively when the user types before a session has attached.',
     }),
+    inputElsewhere: defineMessage({
+        id: 'announce.inputElsewhere',
+        defaultMessage: 'Opened on another client — input not sent. Open the session again to take it back.',
+        description:
+            'Announced assertively when another computer opened the session, which serves one client at a time, or the user types into it then.',
+    }),
 };
 
 /** What refused typing announces, by why it was refused (US-1.14.2). */
@@ -183,6 +189,7 @@ export const refusalMessages: Readonly<Record<InputRefusal, MessageDescriptor>> 
     disconnected: terminalAnnouncements.inputRefused,
     reconnecting: terminalAnnouncements.inputReconnecting,
     opening: terminalAnnouncements.inputNotReady,
+    elsewhere: terminalAnnouncements.inputElsewhere,
 };
 
 /** Find and review mode (US-1.13, A11Y-03). */

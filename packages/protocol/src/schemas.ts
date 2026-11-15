@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { AttachMode } from './generated/AttachMode';
 import type { ClientMessage } from './generated/ClientMessage';
 import type { CreateSessionSpec } from './generated/CreateSessionSpec';
+import type { DetachReason } from './generated/DetachReason';
 import type { ErrorCode } from './generated/ErrorCode';
 import type { ExitStatus } from './generated/ExitStatus';
 import type { Integration } from './generated/Integration';
@@ -42,6 +43,7 @@ const errorCode: z.ZodType<ErrorCode> = z
 
 const replay: z.ZodType<Replay> = z.enum(['delta', 'snapshot', 'unspecified']).catch('unspecified');
 const resyncKind: z.ZodType<ResyncKind> = z.enum(['screen', 'full', 'unspecified']).catch('unspecified');
+const detachReason: z.ZodType<DetachReason> = z.enum(['attachedElsewhere', 'unspecified']).catch('unspecified');
 const serviceManager: z.ZodType<ServiceManager> = z.enum(['systemd', 'detached', 'unspecified']).catch('unspecified');
 const serviceInfo: z.ZodType<ServiceInfo> = z.object({ manager: serviceManager, sessionsEndAtLogout: z.boolean() });
 
@@ -120,6 +122,7 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnio
     z.object({ type: z.literal('synced'), session: sessionId, stream: u32, offset }),
     z.object({ type: z.literal('resync'), session: sessionId, stream: u32, kind: resyncKind }),
     z.object({ type: z.literal('peerInput'), session: sessionId, stream: u32 }),
+    z.object({ type: z.literal('detached'), session: sessionId, stream: u32, reason: detachReason }),
     z.object({ type: z.literal('done'), requestId: u32 }),
     z.object({ type: z.literal('sessionEvent'), change: sessionChange }),
     z.object({ type: z.literal('error'), requestId: u32.exactOptional(), code: errorCode, message: z.string() }),

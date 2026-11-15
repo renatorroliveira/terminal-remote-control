@@ -204,6 +204,10 @@ shows the session at that size, and the status bar and the terminal's descriptio
 client"; focus the terminal or type to take the size back. When the other computer types into the session you
 have open, TRC says "Input from another client" once, until it stops typing for a few seconds.
 
+A session started before you updated the host's daemon from 0.2.0 serves one computer at a time until you close
+it. When another computer opens it, your terminal says "Opened on another client — input not sent"; open the
+session again to take it back.
+
 ## The terminal
 
 The terminal takes every key you type, including Escape, Tab and the arrow keys, and sends it to the session. The

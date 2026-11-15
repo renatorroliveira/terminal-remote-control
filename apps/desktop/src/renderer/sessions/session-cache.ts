@@ -1,6 +1,6 @@
 import type { SessionInfo } from '@trc/protocol';
 import type { StoreApi } from 'zustand/vanilla';
-import type { CachedSession, SessionCache } from '../../shared/session-cache';
+import { CACHE_LIMITS, type CachedSession, type SessionCache } from '../../shared/session-cache';
 import type { Workspace } from './workspace-model';
 
 /** Where the session cache is kept: the main process's `sessions.json` (P-30). */
@@ -12,12 +12,18 @@ export interface SessionCacheStore {
 /** How long the session list must stay the same before it is saved, so a burst of updates is one write. */
 const SAVE_DELAY_MS = 500;
 
-/** What the session list shows of each host's sessions, as the cache keeps it (P-30). */
+/**
+ * What the session list shows of each host's sessions, as the cache keeps it (P-30): within what `sessions.json`
+ * takes, so one long title or a crowded host never stops the cache from saving.
+ */
 export function cachedSessions(workspace: Workspace): SessionCache {
     const hosts: Record<string, readonly CachedSession[]> = {};
-    for (const [hostId, sessions] of workspace.sessions) {
-        if (sessions.length > 0) {
-            hosts[hostId] = sessions.map(cachedSession);
+    let room: number = CACHE_LIMITS.sessions;
+    for (const [hostId, sessions] of [...workspace.sessions].slice(0, CACHE_LIMITS.hosts)) {
+        const kept = sessions.slice(0, Math.min(CACHE_LIMITS.sessionsPerHost, room));
+        if (kept.length > 0) {
+            hosts[hostId] = kept.map(cachedSession);
+            room -= kept.length;
         }
     }
     return hosts;
@@ -55,7 +61,7 @@ export function watchSessionCache(
     cache: Pick<SessionCacheStore, 'save'>,
     saved: SessionCache,
 ): () => void {
-    let last = JSON.stringify(saved);
+    let last: string | undefined = JSON.stringify(saved);
     let timer: ReturnType<typeof setTimeout> | undefined;
     const save = (): void => {
         timer = undefined;
@@ -63,7 +69,9 @@ export function watchSessionCache(
         const text = JSON.stringify(next);
         if (text !== last) {
             last = text;
-            cache.save(next).catch(() => undefined);
+            cache.save(next).catch(() => {
+                last = undefined;
+            });
         }
     };
     const stop = store.subscribe((state, previous) => {
@@ -81,10 +89,23 @@ export function watchSessionCache(
 function cachedSession(session: SessionInfo): CachedSession {
     return {
         id: session.id,
-        ...(session.customName === undefined ? {} : { name: session.customName }),
-        ...(session.title === undefined ? {} : { title: session.title }),
-        shell: session.profile.name,
+        ...(session.customName === undefined ? {} : { name: clipped(session.customName) }),
+        ...(session.title === undefined ? {} : { title: clipped(session.title) }),
+        shell: clipped(session.profile.name),
         order: session.order,
         state: session.state,
     };
+}
+
+/** Cuts text to what the cache takes, never inside a surrogate pair. */
+function clipped(text: string): string {
+    if (text.length <= CACHE_LIMITS.text) {
+        return text;
+    }
+    const end = isHighSurrogate(text.charCodeAt(CACHE_LIMITS.text - 1)) ? CACHE_LIMITS.text - 1 : CACHE_LIMITS.text;
+    return text.slice(0, end);
+}
+
+function isHighSurrogate(code: number): boolean {
+    return code >= 0xd8_00 && code <= 0xdb_ff;
 }

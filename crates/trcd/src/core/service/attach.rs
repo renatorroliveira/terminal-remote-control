@@ -2,7 +2,7 @@
 //! attachment of the same identifier. A holder protocol 1 session (an E1 holder) serves one client at a time, as E1 did.
 
 use trc_protocol::frame::{self, CREDIT_WINDOW, FrameKind};
-use trc_protocol::{ErrorCode, Replay, ServerMessage, SessionId};
+use trc_protocol::{DetachReason, ErrorCode, Replay, ServerMessage, SessionId};
 
 use super::requests::error;
 use super::{Attachment, ClientId, Core, Route};
@@ -10,7 +10,8 @@ use crate::holder::protocol::{HolderCommand, HolderEvent, SESSION_STREAM};
 
 impl Core {
     /// Attaches a client to a session's output. A protocol 2 holder answers when it knows whether it replays the
-    /// missed output or a snapshot, so the reply comes then; an E1 holder's answer is immediate.
+    /// missed output or a snapshot, so the reply comes then. An E1 holder's answer is immediate and says no replay,
+    /// as to a protocol 1 client: it never sends `synced` (P-27).
     pub(super) fn attach(
         &mut self,
         client: ClientId,
@@ -27,12 +28,7 @@ impl Core {
             self.detach_all(session);
             self.add_attachment(session, id, client, stream, None);
             self.holder_command(session, &legacy_attach());
-            return Some(attached(
-                request_id,
-                session,
-                stream,
-                (proto >= 2).then_some(Replay::Snapshot),
-            ));
+            return Some(attached(request_id, session, stream, None));
         }
         self.add_attachment(session, id, client, stream, Some(request_id));
         self.holder_command(
@@ -232,7 +228,8 @@ impl Core {
         }
     }
 
-    /// An E1 holder serves one client: a new attachment replaces whoever was attached.
+    /// An E1 holder serves one client: a new attachment replaces whoever was attached, and a protocol 2 client
+    /// replaced is told, so it can say its input is no longer sent.
     fn detach_all(&mut self, session: &SessionId) {
         let attachments = self
             .holders
@@ -240,12 +237,22 @@ impl Core {
             .map(|holder| std::mem::take(&mut holder.attachments))
             .unwrap_or_default();
         for target in attachments.into_values() {
-            if let Some(link) = self.clients.get_mut(&target.client) {
-                link.streams.remove(&target.stream);
+            let Some(link) = self.clients.get_mut(&target.client) else {
+                continue;
+            };
+            link.streams.remove(&target.stream);
+            if link.proto >= 2 {
+                let detached = ServerMessage::Detached {
+                    session: session.clone(),
+                    stream: target.stream,
+                    reason: DetachReason::AttachedElsewhere,
+                };
+                self.reply(target.client, &detached);
             }
         }
     }
 
+    /// Ends a client's attachment; an attach still waiting for the holder is answered with an error.
     fn end_attachment(&mut self, session: &SessionId, attachment: u32, client: ClientId) {
         let Some(holder) = self.holders.get_mut(session) else {
             return;
@@ -257,7 +264,7 @@ impl Core {
         {
             return;
         }
-        holder.attachments.remove(&attachment);
+        let pending = holder.attachments.remove(&attachment).and_then(|target| target.request);
         let command = if holder.proto < 2 {
             HolderCommand::Detach { attachment: None }
         } else {
@@ -266,6 +273,16 @@ impl Core {
             }
         };
         self.holder_command(session, &command);
+        if let Some(request_id) = pending {
+            self.reply(
+                client,
+                &error(
+                    Some(request_id),
+                    ErrorCode::BadRequest,
+                    "a later attach replaced this one",
+                ),
+            );
+        }
     }
 }
 

@@ -10,9 +10,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use trc_protocol::frame::{self, FrameDecoder, FrameKind};
 use trc_protocol::{
-    AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, ExitStatus, Integration, ProfileOrigin, Replay,
-    ResyncKind, ServerMessage, ServiceInfo, ServiceManager, SessionChange, SessionId, SessionInfo, SessionState,
-    ShellKind, ShellProfile, TerminalSize,
+    AttachMode, ClientMessage, CreateSessionSpec, DetachReason, ErrorCode, ExitStatus, Integration, ProfileOrigin,
+    Replay, ResyncKind, ServerMessage, ServiceInfo, ServiceManager, SessionChange, SessionId, SessionInfo,
+    SessionState, ShellKind, ShellProfile, TerminalSize,
 };
 
 fn fixtures_dir(version: &str) -> PathBuf {
@@ -352,6 +352,14 @@ fn server_messages_v2() -> Vec<(&'static str, ServerMessage)> {
             ServerMessage::PeerInput {
                 session: id(),
                 stream: 1,
+            },
+        ),
+        (
+            "detached",
+            ServerMessage::Detached {
+                session: id(),
+                stream: 1,
+                reason: DetachReason::AttachedElsewhere,
             },
         ),
     ]);

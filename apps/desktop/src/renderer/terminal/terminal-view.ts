@@ -48,6 +48,8 @@ export interface TerminalLabel {
     readonly inputReconnecting: string;
     /** What a keystroke shows before the session has attached (US-1.14.2). */
     readonly inputNotReady: string;
+    /** Typing was not sent because another client has the session (P-27). */
+    readonly inputElsewhere: string;
     /** What the description adds while another client set a shared session's size (US-2.6.2). */
     readonly sizeSetElsewhere: string;
 }
@@ -145,6 +147,9 @@ export class TerminalView {
     readonly #cleanups: (() => void)[] = [];
     #geometry: TerminalGeometry | undefined;
     #ready: Promise<void> = Promise.resolve();
+    /** Counts the streams the session was attached on, so output parsed from an older one returns no credit. */
+    #stream = 0;
+    #displaced = false;
     #disposed = false;
 
     /** Creates a view; call {@link TerminalView.mount} to show it. */
@@ -227,9 +232,12 @@ export class TerminalView {
     write(data: Uint8Array): Promise<void> {
         this.#scheduler.output(data.length);
         const arrived = performance.now();
+        const stream = this.#stream;
         return new Promise((resolve) => {
             this.terminal.write(data, () => {
-                this.#credit.parsed(data.length);
+                if (stream === this.#stream) {
+                    this.#credit.parsed(data.length);
+                }
                 if (__TRC_TEST_SEAM__) {
                     reportWriteTiming(arrived, performance.now(), data.length);
                 }
@@ -271,12 +279,30 @@ export class TerminalView {
     }
 
     /**
-     * Starts over for a re-attach: the screen, pending credit, waiting speech and the search are dropped, as the
-     * daemon sends the session's screen again (US-1.14.3).
+     * The session is attached on a new stream, whose credit starts afresh (D-19): credit not yet returned, and output
+     * the old stream sent that xterm has still to parse, return none.
+     */
+    newStream(): void {
+        this.#stream += 1;
+        this.#credit.reset();
+        this.#displaced = false;
+        this.#inputRefused.hidden = true;
+    }
+
+    /**
+     * Another client opened the session, which serves one client at a time (P-27): typing shows and reports that it
+     * was not sent until the session is attached again.
+     */
+    displace(): void {
+        this.#displaced = true;
+    }
+
+    /**
+     * Starts over for a re-attach: the screen, waiting speech and the search are dropped, as the daemon sends the
+     * session's screen again (US-1.14.3).
      */
     restart(): void {
         this.#announcer?.restart();
-        this.#credit.reset();
         this.endFind();
         this.terminal.reset();
         this.#outputBelow.hidden = true;
@@ -286,12 +312,10 @@ export class TerminalView {
     /**
      * Starts a replay from the daemon (US-2.2.2, D-04): a delta adds the output missed and keeps the buffer, scroll
      * position and review mode; a snapshot or a resync replaces the buffer, once the output written before it is
-     * parsed, and ends a search. Pending credit belongs to the old stream and is dropped, and nothing replayed is
-     * spoken.
+     * parsed, and ends a search. Nothing replayed is spoken.
      */
     beginReplay(mode: ReplayMode): void {
         this.#announcer?.hold();
-        this.#credit.reset();
         if (mode === 'replace') {
             this.endFind();
             this.#outputBelow.hidden = true;
@@ -701,6 +725,10 @@ export class TerminalView {
     }
 
     #send(text: string): void {
+        if (this.#displaced) {
+            this.refuseInput('elsewhere');
+            return;
+        }
         if (this.#connection !== 'connected') {
             this.refuseInput(this.#connection);
             return;
@@ -890,6 +918,8 @@ function refusalText(label: TerminalLabel, reason: InputRefusal): string {
     switch (reason) {
         case 'opening':
             return label.inputNotReady;
+        case 'elsewhere':
+            return label.inputElsewhere;
         case 'disconnected':
             return label.inputRefused;
         case 'reconnecting':

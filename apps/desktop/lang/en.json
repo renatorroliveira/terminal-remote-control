@@ -43,6 +43,10 @@
     "defaultMessage": "Reconnected to {host}.",
     "description": "Announced and listed when a lost host reconnects by itself (US-2.2.2)."
   },
+  "announce.inputElsewhere": {
+    "defaultMessage": "Opened on another client — input not sent. Open the session again to take it back.",
+    "description": "Announced assertively when another computer opened the session, which serves one client at a time, or the user types into it then."
+  },
   "announce.inputNotReady": {
     "defaultMessage": "Session still opening — input not sent.",
     "description": "Announced assertively when the user types before a session has attached."
@@ -1686,6 +1690,10 @@
   "terminal.hint": {
     "defaultMessage": "Option F1: accessibility help.",
     "description": "Hint read after the terminal name."
+  },
+  "terminal.inputElsewhere": {
+    "defaultMessage": "Opened on another client — input not sent",
+    "description": "Shown when the user types into a session another computer opened, which serves one client at a time; nothing was sent."
   },
   "terminal.inputNotReady": {
     "defaultMessage": "Session still opening — input not sent",

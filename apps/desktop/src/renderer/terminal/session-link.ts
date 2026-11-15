@@ -25,6 +25,17 @@ export interface LinkEvents {
     readonly resync?: (kind: ResyncKind) => void;
     /** Another client typed into the session (US-2.6.4). */
     readonly peerInput?: () => void;
+    /** Another client opened a session that serves one client at a time, which ended this attachment (P-27). */
+    readonly detached?: () => void;
+}
+
+/** How a link attaches again after a reconnect. */
+export interface ReattachOptions {
+    /**
+     * Sends the terminal's size too, as the open terminal does; the others take theirs back on focus or input, so a
+     * reconnect never overrides a size another client set meanwhile (P-31).
+     */
+    readonly sendSize: boolean;
 }
 
 interface Attachment {
@@ -64,6 +75,7 @@ export class SessionLink {
     #gap = false;
     #quiet: ReturnType<typeof setTimeout> | undefined;
     #filled: (() => void)[] = [];
+    #displaced = false;
 
     /** Creates a link for a host; `onOutput` receives the attached session's output. */
     constructor(
@@ -81,6 +93,11 @@ export class SessionLink {
     /** Whether a session is attached. */
     get attached(): boolean {
         return this.#attachment !== undefined;
+    }
+
+    /** Whether another client took the session, until this link attaches again (P-27). */
+    get displaced(): boolean {
+        return this.#displaced;
     }
 
     /** Whether the terminal lacks rows a resync skipped, until the next whole buffer arrives (D-45). */
@@ -107,19 +124,19 @@ export class SessionLink {
      * was disposed detaches at once and routes nothing.
      */
     async attach(session: SessionId): Promise<void> {
-        await this.#attach(session, undefined);
+        await this.#attach(session, undefined, true);
     }
 
     /**
      * Attaches again to the last session asked for, over a connection that replaced a lost one, from the offset of the
      * output received when the daemon said where it stood; the old stream's output stops at once (US-1.14.3,
-     * US-2.2.2).
+     * US-2.2.2). It sends the terminal's size only when asked.
      */
-    async reattach(): Promise<void> {
+    async reattach({ sendSize }: ReattachOptions = { sendSize: false }): Promise<void> {
         const from = this.#offset;
         this.#stopAttachment();
         if (this.#session !== undefined) {
-            await this.#attach(this.#session, from);
+            await this.#attach(this.#session, from, sendSize);
         }
     }
 
@@ -170,6 +187,14 @@ export class SessionLink {
         return filled;
     }
 
+    /**
+     * The host's connection is gone, and the attachment with it: no output, input or credit goes to its stream, whose
+     * number a new connection reuses. {@link SessionLink.reattach} attaches again from where output stood.
+     */
+    connectionLost(): void {
+        this.#stopAttachment();
+    }
+
     /** Stops routing output and detaches from the session. */
     dispose(): void {
         this.#disposed = true;
@@ -180,7 +205,7 @@ export class SessionLink {
         }
     }
 
-    async #attach(session: SessionId, fromOffset: number | undefined): Promise<void> {
+    async #attach(session: SessionId, fromOffset: number | undefined, sendSize: boolean): Promise<void> {
         this.#session = session;
         const request = { type: 'attach', session, mode: 'full' } as const;
         const reply = await this.#transport.request(
@@ -196,6 +221,7 @@ export class SessionLink {
         }
         this.#offset = undefined;
         this.#gap = false;
+        this.#displaced = false;
         this.#events.replay?.({
             kind: reply.replay === 'delta' ? 'delta' : 'snapshot',
             endsWithSynced: reply.replay !== undefined,
@@ -204,7 +230,9 @@ export class SessionLink {
         const stopOutput = this.#transport.onOutput(this.#hostId, stream, (data) => this.#output(data));
         const stopMessages = this.#transport.onMessage(this.#hostId, (message) => this.#message(stream, message));
         this.#attachment = { session, stream, stopOutput, stopMessages };
-        this.#sendSize();
+        if (sendSize) {
+            this.#sendSize();
+        }
     }
 
     #output(data: Uint8Array): void {
@@ -232,6 +260,11 @@ export class SessionLink {
                 break;
             case 'peerInput':
                 this.#events.peerInput?.();
+                break;
+            case 'detached':
+                this.#stopAttachment();
+                this.#displaced = true;
+                this.#events.detached?.();
                 break;
         }
     }

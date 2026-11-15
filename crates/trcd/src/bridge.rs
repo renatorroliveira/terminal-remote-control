@@ -9,13 +9,14 @@ use std::time::Duration;
 use tokio::io::{AsyncWriteExt, copy};
 use tokio::net::UnixStream;
 
+use crate::core::account::current_account;
 use crate::install::InstallLayout;
 use crate::peer::is_same_user;
 use crate::private_dir::verify_private_dir;
 use crate::run_dir::RunDir;
-use crate::service::{ServiceMode, read_host_facts, start_unit};
+use crate::service::{ServiceMode, read_host_facts, start_unit, unit_is_running};
 use crate::socket::connect_with_retry;
-use crate::upgrade::{newest_core_binary, running_core, should_replace, stop_core};
+use crate::upgrade::{RunningCore, lock_upgrades, newest_core_binary, running_core, should_replace, stop_core};
 
 /// How long the bridge waits for a core it started.
 const CORE_START_TIMEOUT: Duration = Duration::from_secs(10);
@@ -49,18 +50,26 @@ async fn connect_or_start(layout: &InstallLayout) -> io::Result<UnixStream> {
     trusted(stream)
 }
 
-/// Stops a running core older than this bridge, so the core started next is this version. A core that will not stop
-/// keeps serving: the app then talks to it in a protocol both speak.
+/// Stops a running core older than this bridge, so the core started next is this version. One bridge at a time
+/// decides, under `upgrade.lock`, from a fresh look at the running core, so two bridges never stop the core one of
+/// them just started. A core that will not stop keeps serving: the app then talks to it in a protocol both speak.
 fn replace_older_core(layout: &InstallLayout, run: &RunDir) {
-    let Some(core) = running_core(run) else {
-        return;
-    };
-    if !should_replace(core.version.as_deref(), env!("CARGO_PKG_VERSION")) {
+    if older_core(run).is_none() {
         return;
     }
+    let Ok(_lock) = lock_upgrades(run) else {
+        return;
+    };
+    let Some(core) = older_core(run) else {
+        return;
+    };
     if let Err(error) = stop_core(&core, layout, run) {
         eprintln!("trcd: the older core was not replaced: {error}");
     }
+}
+
+fn older_core(run: &RunDir) -> Option<RunningCore> {
+    running_core(run).filter(|core| should_replace(core.version.as_deref(), env!("CARGO_PKG_VERSION")))
 }
 
 fn trusted(stream: UnixStream) -> io::Result<UnixStream> {
@@ -71,16 +80,16 @@ fn trusted(stream: UnixStream) -> io::Result<UnixStream> {
     }
 }
 
-/// Starts the core as D-44 says: a systemd user unit where that keeps sessions longer, otherwise detached; a unit that
-/// cannot start falls back to detached.
+/// Starts the core as D-44 says: a systemd user unit where that keeps sessions longer, otherwise detached. A unit
+/// that cannot start falls back to detached, unless systemd is restarting the unit's own core, which then serves.
 fn start_core(layout: &InstallLayout) -> io::Result<()> {
     let binary = newest_core_binary(layout);
-    let user = std::env::var("USER").unwrap_or_default();
-    let facts = read_host_facts(&user, rustix::process::geteuid().as_raw());
+    let facts = read_host_facts(&current_account().user, rustix::process::geteuid().as_raw());
     if facts.mode() == ServiceMode::Systemd {
         let umask = current_umask();
         match start_unit(&binary, &layout.root, umask) {
             Ok(()) => return Ok(()),
+            Err(_) if unit_is_running(&layout.root) => return Ok(()),
             Err(error) => eprintln!("trcd: {error}; starting the core detached"),
         }
     }

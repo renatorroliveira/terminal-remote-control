@@ -1,13 +1,13 @@
 import { join } from 'node:path';
 import { z } from 'zod';
-import type { CachedSession, SessionCache } from '../shared/session-cache';
+import { CACHE_LIMITS, type CachedSession, type SessionCache } from '../shared/session-cache';
 import { JsonStore } from './json-store';
 
 interface SessionsFile {
     readonly hosts: SessionCache;
 }
 
-const TEXT = z.string().max(1024);
+const TEXT = z.string().max(CACHE_LIMITS.text);
 
 const SESSION_SCHEMA: z.ZodType<CachedSession> = z.strictObject({
     id: z.string().regex(/^[0-9a-f]{16}$/),
@@ -20,8 +20,9 @@ const SESSION_SCHEMA: z.ZodType<CachedSession> = z.strictObject({
 
 /** What `sessions.json` may hold: for each known host, what its session list showed (P-30, SEC-05.1). */
 export const SESSION_CACHE_SCHEMA: z.ZodType<SessionCache> = z
-    .record(z.string().regex(/^host-[0-9a-f]{16}$/), z.array(SESSION_SCHEMA).max(1000))
-    .refine((hosts) => Object.keys(hosts).length <= 1000, 'too many hosts');
+    .record(z.string().regex(/^host-[0-9a-f]{16}$/), z.array(SESSION_SCHEMA).max(CACHE_LIMITS.sessionsPerHost))
+    .refine((hosts) => Object.keys(hosts).length <= CACHE_LIMITS.hosts, 'too many hosts')
+    .refine((hosts) => sessionCount(hosts) <= CACHE_LIMITS.sessions, 'too many sessions');
 
 const FILE_SCHEMA: z.ZodType<SessionsFile> = z.strictObject({ hosts: SESSION_CACHE_SCHEMA });
 
@@ -50,4 +51,8 @@ export class SessionCacheFile {
         this.#last = next.catch(() => undefined);
         return next;
     }
+}
+
+function sessionCount(hosts: SessionCache): number {
+    return Object.values(hosts).reduce((count, sessions) => count + sessions.length, 0);
 }

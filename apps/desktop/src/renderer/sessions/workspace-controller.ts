@@ -466,23 +466,14 @@ export class WorkspaceController {
     }
 
     /**
-     * Stops every running session on every connected host, each with the grace period Settings sets; resolves with
-     * the hosts that refused or dropped a stop (US-2.1.4).
+     * Stops every session each connected host lists as running now, each with the grace period Settings sets; a
+     * session already gone counts as stopped. Resolves with the hosts that refused or dropped a stop (US-2.1.4).
      */
     async stopAll(): Promise<readonly string[]> {
-        const { hosts, sessions } = this.store.getState();
-        const grace = this.#preferences?.().stopGraceSeconds;
-        const outcomes = hosts.filter(isConnected).map(async (host) => {
-            const stops = (sessions.get(host.id) ?? []).filter(isRunning).map((session) =>
-                this.#client.request(host.id, {
-                    type: 'stop',
-                    session: session.id,
-                    ...(grace === undefined ? {} : { graceMs: grace * 1_000 }),
-                }),
-            );
-            const settled = await Promise.allSettled(stops);
-            return settled.some((outcome) => outcome.status === 'rejected') ? [host.destination] : [];
-        });
+        const outcomes = this.store
+            .getState()
+            .hosts.filter(isConnected)
+            .map(async (host) => ((await this.#stopHost(host.id)) ? [] : [host.destination]));
         return (await Promise.all(outcomes)).flat();
     }
 
@@ -493,6 +484,23 @@ export class WorkspaceController {
             const { profile, cwd } = found.session;
             await this.newSession(found.hostId, { profileId: profile.id, ...(cwd === undefined ? {} : { cwd }) });
         }
+    }
+
+    /** Stops every session `hostId` lists as running; false when the host refused or dropped the list or a stop. */
+    async #stopHost(hostId: string): Promise<boolean> {
+        const reply = await this.#client.request(hostId, { type: 'listSessions' }).catch(() => undefined);
+        if (reply?.type !== 'sessions') {
+            return false;
+        }
+        const grace = this.#preferences?.().stopGraceSeconds;
+        const graceMs = grace === undefined ? {} : { graceMs: grace * 1_000 };
+        const stops = reply.sessions
+            .filter(isRunning)
+            .map((session) =>
+                this.#client.request(hostId, { type: 'stop', session: session.id, ...graceMs }).catch(alreadyGone),
+            );
+        const settled = await Promise.allSettled(stops);
+        return settled.every((outcome) => outcome.status === 'fulfilled');
     }
 
     /** Whether a session may be created on `host`: the user agreed, if it is the first on a host that ends them. */
@@ -713,4 +721,12 @@ function exitedCleanly(session: SessionInfo): boolean {
 
 function hostIdOf(key: SessionKey): string {
     return key.split('/', 1)[0] ?? key;
+}
+
+/** A stop the daemon refused because the session no longer exists, which is what stopping wanted. */
+function alreadyGone(error: unknown): undefined {
+    if (error instanceof HostRequestError && error.code === 'unknownSession') {
+        return undefined;
+    }
+    throw error;
 }

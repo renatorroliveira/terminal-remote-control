@@ -83,6 +83,11 @@ impl SnapshotStream {
         self.complete
     }
 
+    /// Whether the screen, the last block, has been returned.
+    pub fn is_done(&self) -> bool {
+        self.phase == Phase::Done
+    }
+
     fn source(&self, terminal: &GhosttyTerminal) -> ghostty_vt_sys::GhosttyTerminal {
         self.primary.as_ref().map_or_else(|| terminal.raw(), PrimaryCopy::raw)
     }

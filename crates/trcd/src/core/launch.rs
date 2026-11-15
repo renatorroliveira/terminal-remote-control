@@ -36,14 +36,14 @@ pub async fn launch_holder(
         let session = socket.file_stem().map(|stem| stem.to_string_lossy().into_owned());
         let args = launcher.arguments(session.as_deref().unwrap_or("session"), binary, socket);
         let child = spawn(&launcher.program, &args, &launcher.env, umask)?;
-        match connect_or_exit(child, socket).await {
+        match connect_or_exit(child, socket, HOLDER_START_TIMEOUT).await {
             Ok(stream) => return Ok(stream),
             Err(error) => tracing::warn!(%error, "a holder scope did not start; starting the holder directly"),
         }
     }
     let args: Vec<OsString> = vec!["holder".into(), "--socket".into(), socket.into()];
     let child = spawn(binary, &args, &[], umask)?;
-    connect_or_exit(child, socket).await
+    connect_or_exit(child, socket, HOLDER_START_TIMEOUT).await
 }
 
 fn spawn(program: &Path, args: &[OsString], env: &[(String, String)], umask: Mode) -> io::Result<Child> {
@@ -68,13 +68,18 @@ fn spawn(program: &Path, args: &[OsString], env: &[(String, String)], umask: Mod
     command.spawn()
 }
 
-/// Connects to the holder's socket, unless the process exits first, which means it never will.
-async fn connect_or_exit(mut child: Child, socket: &Path) -> io::Result<UnixStream> {
+/// Connects to the holder's socket, unless the process exits first, which means it never will. A holder still
+/// starting after `timeout` is killed, so no late holder races the one started next on the same socket.
+async fn connect_or_exit(mut child: Child, socket: &Path, timeout: Duration) -> io::Result<UnixStream> {
     tokio::select! {
-        connected = connect_with_retry(socket, HOLDER_START_TIMEOUT) => {
-            tokio::spawn(async move {
-                let _ = child.wait().await;
-            });
+        connected = connect_with_retry(socket, timeout) => {
+            if connected.is_err() {
+                let _ = child.kill().await;
+            } else {
+                tokio::spawn(async move {
+                    let _ = child.wait().await;
+                });
+            }
             connected
         }
         status = child.wait() => Err(io::Error::other(format!("the holder exited at once ({})", status?))),
@@ -85,4 +90,23 @@ fn check_install(binary: &Path) -> io::Result<()> {
     InstallLayout::from_binary(binary)
         .and_then(|layout| layout.check_integrity(rustix::process::geteuid().as_raw()))
         .map_err(|error| io::Error::new(io::ErrorKind::PermissionDenied, error.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn kills_a_holder_that_has_not_served_its_socket_in_time() {
+        let dir = crate::test_support::temp_dir("launch");
+        let child = tokio::process::Command::new("sleep").arg("30").spawn().unwrap();
+        let pid = rustix::process::Pid::from_raw(i32::try_from(child.id().unwrap()).unwrap()).unwrap();
+        let socket = dir.join("never.sock");
+        assert!(
+            connect_or_exit(child, &socket, Duration::from_millis(200))
+                .await
+                .is_err()
+        );
+        assert!(rustix::process::test_kill_process(pid).is_err());
+    }
 }

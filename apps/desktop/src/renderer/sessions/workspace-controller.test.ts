@@ -80,13 +80,14 @@ class FakeClient implements WorkspaceClient {
     }
 
     listed: readonly SessionInfo[] = [info('a'), info('b', 1)];
-    /** Request types the daemon answers with an error. */
+    /** Request types the daemon answers with an error, and the error's code. */
     readonly refused = new Set<string>();
+    refusal: ConstructorParameters<typeof HostRequestError>[0] = 'internal';
 
     request(_hostId: string, request: ClientRequest): Promise<ServerMessage> {
         this.requests.push(request);
         if (this.refused.has(request.type)) {
-            return Promise.reject(new HostRequestError('internal', 'refused'));
+            return Promise.reject(new HostRequestError(this.refusal, 'refused'));
         }
         return Promise.resolve({ type: 'sessions', requestId: 1, sessions: [...this.listed] });
     }
@@ -312,6 +313,16 @@ describe('WorkspaceController: stopping every session (US-2.1.4)', () => {
         expect(client.requests.filter((request) => request.type === 'stop')).toEqual([{ type: 'stop', session: 'a' }]);
         client.refused.add('stop');
         expect(await workspace.stopAll()).toEqual(['devbox-1']);
+    });
+
+    it('stops what each host lists now, and counts a session already gone as stopped', async () => {
+        const { client, workspace } = await twoHosts();
+        client.listed = [info('c')];
+        expect(await workspace.stopAll()).toEqual([]);
+        expect(client.requests.filter((request) => request.type === 'stop')).toEqual([{ type: 'stop', session: 'c' }]);
+        client.refused.add('stop');
+        client.refusal = 'unknownSession';
+        expect(await workspace.stopAll()).toEqual([]);
     });
 });
 
