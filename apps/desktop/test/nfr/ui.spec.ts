@@ -44,13 +44,8 @@ interface EchoTimes {
 
 test.afterAll(() => closeLiveHosts());
 
-/** The PRD's 10 ms; the owner accepted up to about 1 ms more for E1 on a sub-millisecond link, so 15 ms guards that. */
-const E1_LOCAL_ALLOWANCE_MS = 15;
-
-/** What the app may add to the round trip: NFR-02's 10 ms, or E1's accepted allowance when the link is local. */
-function allowanceMs(rtt: number): number {
-    return rtt < 5 ? E1_LOCAL_ALLOWANCE_MS : 10;
-}
+/** What the app may add to the round trip, on any link (NFR-02; E1's local allowance ended with S13). */
+const ALLOWANCE_MS = 10;
 
 async function screen(terminal: Locator): Promise<string> {
     return (await rowTexts(terminal)).join('\n');
@@ -279,7 +274,7 @@ test.describe('UI echo latency on live hosts (NFR-02)', () => {
                     unit: 'ms',
                     target: 'next frame',
                 });
-                expect(app95).toBeLessThanOrEqual(rtt + allowanceMs(rtt));
+                expect(app95).toBeLessThanOrEqual(rtt + ALLOWANCE_MS);
             } finally {
                 await app.close();
                 removeInstall(alias, root);

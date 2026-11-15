@@ -2,7 +2,7 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.11                     |
+| Status       | Draft v0.12                     |
 | Owner        | Renato Oliveira                 |
 | Last updated | 2026-11-13                      |
 | Scope        | P0 in seven epics, then GA (E8) |
@@ -624,6 +624,9 @@ applies from the epic in the last column onward.
   10.7 ms at p95, 0.7 ms over the target, from message delivery between
   Electron's renderer and the connection host's utility process. E1 guards it
   at 15 ms; E2 revisits that path. On a 100 ms link the target holds.
+  **Resolved in E2** (S13, D-47): the delay was Chromium deferring the echo
+  until the next frame; the app now adds about 5 ms at p95, and the target is
+  checked at 10 ms on every link.
 - NFR-09: when the app attaches, the holder briefly keeps about twice the
   session's snapshot, so a session at the 100,000-line scrollback maximum
   passes 10 MB for a moment. Steady-state overhead meets the target. E2, which

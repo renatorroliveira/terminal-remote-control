@@ -222,6 +222,9 @@ the host has none, from any of the ways to create one; Cancel creates nothing. A
 - S13: where the 2.6 to 12 ms spread between the renderer and the connection host comes from; then the fix, and the
   UI test's local guard back at the PRD's 10 ms.
 
+As built (ST-35, 2026-11-14): S13 found the spread in Chromium's `DeferRendererTasksAfterInput`, not in message
+delivery; D-47 turns it off, and the UI test checks NFR-02 at 10 ms on both hosts ([S13](../spikes/S13.md)).
+
 **ST-36 Soak and E2 verification** (NFR-11, NFR-06, NFR-07, NFR-09, NFR-12, S6)
 
 - The P-25 soak: each cycle checks that every session's shell keeps its PID and its output. NFR-06, NFR-07 and
@@ -266,6 +269,6 @@ the host has none, from any of the ways to create one; Cancel creates nothing. A
 | ST-32 | Done    | —      |
 | ST-33 | Done    | —      |
 | ST-34 | Done    | —      |
-| ST-35 | Pending | —      |
+| ST-35 | Done    | —      |
 | ST-36 | Pending | —      |
 | ST-37 | Pending | —      |

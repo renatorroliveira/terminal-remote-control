@@ -20,6 +20,7 @@ import { suggestedAddresses } from './host-suggestions';
 import { installRootFor } from './install-root';
 import { type InvokeHandlers, registerHandlers } from './ipc';
 import { KnownHosts } from './known-hosts';
+import { tuneInputLatency } from './latency-switches';
 import { migrateLegacyState } from './legacy-state';
 import { LinkService } from './link-service';
 import { type MenuOptions, menuTemplate, terminalContextMenu } from './menu';
@@ -37,6 +38,7 @@ import { isAppPage } from './trusted-sender';
 
 refuseRemoteDebugging(app.commandLine, { testBuild: __TRC_TEST_SEAM__ });
 disableNetworkSwitches(app.commandLine);
+tuneInputLatency(app.commandLine);
 
 const rendererRoot = join(import.meta.dirname, '../renderer');
 const resources = app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources');
