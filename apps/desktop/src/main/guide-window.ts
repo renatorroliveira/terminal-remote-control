@@ -1,6 +1,7 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, screen } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import type { GuideSection } from '../shared/guide';
+import { backgroundWindowOptions, showInBackground } from './background-window';
 import type { OpenExternal } from './link-service';
 import { documentWebPreferences } from './security';
 import { guideNavigation, guideUrl } from './user-guide';
@@ -11,7 +12,7 @@ export interface GuideWindowOptions {
     readonly icon: string;
     /** Opens web links from the guide in the browser. */
     readonly openExternal: OpenExternal;
-    /** Whether the app runs behind the focused app, as test launches do (D-27); the guide then never takes focus. */
+    /** Whether the app runs in the background, as test launches do (D-27); the guide is then unseen and never focused. */
     readonly background: boolean;
 }
 
@@ -33,7 +34,7 @@ export class GuideWindow {
         const window = this.#window !== undefined && !this.#window.isDestroyed() ? this.#window : this.#create();
         void window.loadURL(guideUrl(section));
         if (this.#options.background) {
-            window.showInactive();
+            showInBackground(window);
             return;
         }
         window.show();
@@ -41,9 +42,9 @@ export class GuideWindow {
     }
 
     #create(): BrowserWindow {
+        const size = { width: 900, height: 800 };
         const window = new BrowserWindow({
-            width: 900,
-            height: 800,
+            ...(this.#options.background ? backgroundWindowOptions(screen.getPrimaryDisplay().workArea, size) : size),
             title: `${APP_IDENTITY.productName} user guide`,
             icon: this.#options.icon,
             show: false,
