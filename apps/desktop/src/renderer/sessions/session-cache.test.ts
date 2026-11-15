@@ -1,7 +1,7 @@
 import type { SessionInfo } from '@trc/protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStore } from 'zustand/vanilla';
-import type { SessionCache } from '../../shared/session-cache';
+import { CACHE_LIMITS, type SessionCache } from '../../shared/session-cache';
 import { cachedSessions, restoredSession, watchSessionCache } from './session-cache';
 import { EMPTY_WORKSPACE, sessionName, sessionsListed, type Workspace } from './workspace-model';
 import { bashSession } from './workspace-test-doubles';
@@ -30,6 +30,18 @@ describe('the session cache (US-2.3.2, P-30)', () => {
             ['b', 1, 'exited'],
         ]);
         expect(cachedSessions(listed(restored))).toEqual(cache);
+    });
+
+    it('keeps no more than sessions.json takes: long titles clipped whole, and at most 1,000 sessions a host', () => {
+        const title = `${'x'.repeat(CACHE_LIMITS.text - 1)}😀 and more`;
+        const many = Array.from({ length: CACHE_LIMITS.sessionsPerHost + 1 }, (_, order) => ({
+            ...bashSession(order.toString(16).padStart(16, '0')),
+            order,
+            title,
+        }));
+        const kept = cachedSessions(listed(many))[HOST] ?? [];
+        expect(kept).toHaveLength(CACHE_LIMITS.sessionsPerHost);
+        expect(kept[0]?.title).toBe('x'.repeat(CACHE_LIMITS.text - 1));
     });
 });
 
@@ -61,5 +73,25 @@ describe('watchSessionCache', () => {
         store.setState(EMPTY_WORKSPACE, true);
         vi.advanceTimersByTime(1_000);
         expect(saves).toHaveLength(1);
+    });
+
+    it('saves the list again after a save failed', async () => {
+        let attempts = 0;
+        const store = createStore<Workspace>(() => EMPTY_WORKSPACE);
+        watchSessionCache(
+            store,
+            {
+                save: () => {
+                    attempts += 1;
+                    return Promise.reject(new Error('disk full'));
+                },
+            },
+            {},
+        );
+        store.setState(listed([bashSession('a')]), true);
+        await vi.advanceTimersByTimeAsync(1_000);
+        store.setState(listed([bashSession('a')]), true);
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(attempts).toBe(2);
     });
 });

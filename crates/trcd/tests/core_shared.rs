@@ -10,8 +10,8 @@ use support::{AppClient, Installed, stop};
 use tokio::net::UnixListener;
 use trc_protocol::frame::{self, FrameKind};
 use trc_protocol::{
-    AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, Integration, ProfileOrigin, Replay, ResyncKind,
-    ServerMessage, SessionId, SessionInfo, SessionState, ShellKind, ShellProfile, TerminalSize,
+    AttachMode, ClientMessage, CreateSessionSpec, DetachReason, ErrorCode, Integration, ProfileOrigin, Replay,
+    ResyncKind, ServerMessage, SessionId, SessionInfo, SessionState, ShellKind, ShellProfile, TerminalSize,
 };
 use trcd::frame_io::{FrameReader, FrameSender};
 use trcd::holder::protocol::{HolderCommand, HolderEvent, HolderSpec, HolderStatus, SESSION_STREAM};
@@ -212,9 +212,10 @@ fn control(event: &HolderEvent) -> Vec<u8> {
     frame::encode(FrameKind::Control, 0, &serde_json::to_vec(event).unwrap()).unwrap()
 }
 
-/// A holder as E1 built it: no protocol in its hello, one attachment on the session stream, which it answers by
-/// echoing input and greeting each attach with its "screen".
-async fn serve_e1_holder(listener: UnixListener, home: String) {
+/// A holder a core adopts: with no protocol in its hello it is one as E1 built it, with one attachment on the session
+/// stream, which it answers by echoing input and greeting each attach with its "screen". With a protocol it never
+/// answers an attach.
+async fn serve_fake_holder(listener: UnixListener, home: String, proto: Option<u32>) {
     loop {
         let Ok((stream, _)) = listener.accept().await else {
             return;
@@ -225,7 +226,7 @@ async fn serve_e1_holder(listener: UnixListener, home: String) {
         sender.send(control(&HolderEvent::Hello {
             spec: Some(Box::new(fake_spec(&home))),
             name: None,
-            proto: None,
+            proto,
         }));
         sender.send(control(&HolderEvent::Status {
             status: HolderStatus {
@@ -256,9 +257,8 @@ async fn serve_e1_holder(listener: UnixListener, home: String) {
     }
 }
 
-#[tokio::test]
-async fn adopts_a_session_whose_holder_an_e1_core_started() {
-    let installed = Installed::new();
+/// Serves a fake holder for session `id` where the core adopts it at start.
+fn plant_holder(installed: &Installed, id: &str, proto: Option<u32>) {
     let holders = installed.root.join("run/holders");
     std::fs::DirBuilder::new()
         .mode(0o700)
@@ -270,13 +270,53 @@ async fn adopts_a_session_whose_holder_an_e1_core_started() {
         std::os::unix::fs::PermissionsExt::from_mode(0o700),
     )
     .unwrap();
-    let listener = UnixListener::bind(holders.join("00000000000000e1.sock")).unwrap();
-    tokio::spawn(serve_e1_holder(listener, installed.home.to_string_lossy().into_owned()));
+    let listener = UnixListener::bind(holders.join(format!("{id}.sock"))).unwrap();
+    tokio::spawn(serve_fake_holder(
+        listener,
+        installed.home.to_string_lossy().into_owned(),
+        proto,
+    ));
+}
+
+#[tokio::test]
+async fn answers_an_attach_that_a_second_attach_replaced_before_the_holder_did() {
+    let installed = Installed::new();
+    plant_holder(&installed, "00000000000000e2", Some(2));
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 2).await;
+    let id = SessionId("00000000000000e2".into());
+    for request_id in [2, 3] {
+        client.send(&ClientMessage::Attach {
+            request_id,
+            session: id.clone(),
+            mode: AttachMode::Full,
+            from_offset: None,
+        });
+    }
+    client
+        .take(|m| {
+            matches!(
+                m,
+                ServerMessage::Error {
+                    request_id: Some(2),
+                    code: ErrorCode::BadRequest,
+                    ..
+                }
+            )
+        })
+        .await;
+    stop(core);
+}
+
+#[tokio::test]
+async fn adopts_a_session_whose_holder_an_e1_core_started() {
+    let installed = Installed::new();
+    plant_holder(&installed, "00000000000000e1", None);
     let core = installed.start_core();
     let mut client = AppClient::greeted_with(&installed.core_socket(), 2).await;
     let id = SessionId("00000000000000e1".into());
     let (stream, replay) = attach(&mut client, 2, &id, None).await;
-    assert_eq!(replay, Some(Replay::Snapshot));
+    assert_eq!(replay, None);
     client.until(|c| c.text(stream).contains("e1-screen")).await;
     client.input(stream, "typed");
     client.until(|c| c.text(stream).contains("typed")).await;
@@ -302,5 +342,20 @@ async fn adopts_a_session_whose_holder_an_e1_core_started() {
             .iter()
             .any(|m| matches!(m, ServerMessage::Synced { .. }))
     );
+    let mut second = AppClient::greeted_with(&installed.core_socket(), 2).await;
+    let (other, _) = attach(&mut second, 2, &id, None).await;
+    second.until(|c| c.text(other).contains("e1-screen")).await;
+    client
+        .take(|m| {
+            matches!(
+                m,
+                ServerMessage::Detached {
+                    stream: s,
+                    reason: DetachReason::AttachedElsewhere,
+                    ..
+                } if *s == stream
+            )
+        })
+        .await;
     stop(core);
 }

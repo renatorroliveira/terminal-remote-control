@@ -4,6 +4,7 @@
 //! at logout, the core runs as a transient user unit that systemd restarts after a crash, and each holder in its own
 //! transient scope, outside the unit's control group. Otherwise the core runs detached, as in E1.
 
+use std::ffi::OsString;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -78,27 +79,8 @@ pub fn unit_name(root: &Path) -> String {
 /// Starts `binary core --systemd` as a transient user unit restarted on failure, with the caller's umask and account
 /// environment. A refused start (75: another core runs; 78: an untrusted install) is not retried.
 pub fn start_unit(binary: &Path, root: &Path, umask: u32) -> io::Result<()> {
-    let mut command = Command::new("systemd-run");
-    command
-        .args(["--user", "--collect", "--quiet"])
-        .arg(format!("--unit={}", unit_name(root)))
-        .args([
-            "--property=Restart=on-failure",
-            "--property=RestartSec=1",
-            "--property=RestartPreventExitStatus=75 78",
-        ])
-        .arg(format!("--property=UMask={umask:04o}"));
-    for name in ["HOME", "USER", "LOGNAME", "SHELL", "PATH"] {
-        if let Some(value) = std::env::var_os(name) {
-            let mut setting = std::ffi::OsString::from(format!("--setenv={name}="));
-            setting.push(value);
-            command.arg(setting);
-        }
-    }
-    let status = command
-        .arg("--")
-        .arg(binary)
-        .args(["core", "--systemd"])
+    let status = Command::new("systemd-run")
+        .args(unit_arguments(binary, root, umask, |name| std::env::var_os(name)))
         .current_dir("/")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -111,6 +93,41 @@ pub fn start_unit(binary: &Path, root: &Path, umask: u32) -> io::Result<()> {
             "systemd-run did not start the core ({status})"
         )))
     }
+}
+
+/// The `systemd-run` arguments for the core's unit. Stopping or restarting the unit ends only the core
+/// (`KillMode=process`), so a holder that had to start without its own scope outlives it too (US-2.5.2).
+pub fn unit_arguments(binary: &Path, root: &Path, umask: u32, env: impl Fn(&str) -> Option<OsString>) -> Vec<OsString> {
+    let mut args: Vec<OsString> = ["--user", "--collect", "--quiet"].map(OsString::from).into();
+    args.push(format!("--unit={}", unit_name(root)).into());
+    for property in [
+        "Restart=on-failure",
+        "RestartSec=1",
+        "RestartPreventExitStatus=75 78",
+        "KillMode=process",
+    ] {
+        args.push(format!("--property={property}").into());
+    }
+    args.push(format!("--property=UMask={umask:04o}").into());
+    for name in ["HOME", "USER", "LOGNAME", "SHELL", "PATH"] {
+        if let Some(value) = env(name) {
+            let mut setting = OsString::from(format!("--setenv={name}="));
+            setting.push(value);
+            args.push(setting);
+        }
+    }
+    args.extend(["--".into(), binary.into(), "core".into(), "--systemd".into()]);
+    args
+}
+
+/// Whether systemd still runs the core's unit for `root`, or is restarting it after a crash: a new core then comes
+/// up in it within a second, and starting another one elsewhere would leave the unit's core no lock to take.
+pub fn unit_is_running(root: &Path) -> bool {
+    probe(
+        "systemctl",
+        &["--user", "show", &unit_name(root), "--property=ActiveState", "--value"],
+    )
+    .is_some_and(|state| unit_running(&state))
 }
 
 /// What a core running as a unit needs to start holders in their own scopes.
@@ -193,6 +210,10 @@ fn parse_string_array(output: &str) -> Vec<String> {
 }
 
 /// Runs a probe and returns its standard output when it succeeds within [`PROBE_TIMEOUT`].
+fn unit_running(active_state: &str) -> bool {
+    matches!(active_state.trim(), "active" | "activating" | "reloading")
+}
+
 fn probe(program: &str, args: &[&str]) -> Option<String> {
     let mut child = Command::new(program)
         .args(args)
@@ -275,6 +296,30 @@ mod tests {
             "{name}"
         );
         assert_ne!(name, unit_name(Path::new("/var/tmp/trc-1000")));
+    }
+
+    #[test]
+    fn runs_the_core_unit_so_a_stop_or_restart_ends_only_the_core_us_2_5_2() {
+        let env = |name: &str| (name == "HOME").then(|| std::ffi::OsString::from("/home/tester"));
+        let args = unit_arguments(Path::new("/r/versions/x/trcd"), Path::new("/r"), 0o022, env);
+        let text: Vec<String> = args.iter().map(|arg| arg.to_string_lossy().into_owned()).collect();
+        assert!(text.contains(&"--property=KillMode=process".to_owned()), "{text:?}");
+        assert!(text.contains(&"--property=UMask=0022".to_owned()), "{text:?}");
+        assert!(text.contains(&"--setenv=HOME=/home/tester".to_owned()), "{text:?}");
+        assert_eq!(
+            text[text.len() - 4..],
+            ["--", "/r/versions/x/trcd", "core", "--systemd"]
+        );
+    }
+
+    #[test]
+    fn knows_a_unit_that_systemd_is_restarting_from_one_that_is_gone() {
+        assert!(unit_running("activating\n"));
+        assert!(unit_running("active"));
+        assert!(unit_running("reloading"));
+        assert!(!unit_running("inactive\n"));
+        assert!(!unit_running("failed"));
+        assert!(!unit_running(""));
     }
 
     #[test]

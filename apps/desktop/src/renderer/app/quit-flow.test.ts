@@ -63,6 +63,16 @@ describe('QuitFlow: Quit and Stop All Sessions (US-2.1.4)', () => {
         expect(calls).toEqual(['stop all', 'quit']);
     });
 
+    it('stays open when the user cancels while the sessions stop', async () => {
+        const { calls, quit } = flow(running);
+        quit.requestStopAll();
+        const stopping = quit.confirmStopAll();
+        quit.cancel();
+        await stopping;
+        expect(calls).toEqual(['stop all']);
+        expect(quit.state.getState()).toEqual({ dialog: undefined, stopping: false });
+    });
+
     it('quits at once when nothing runs on a connected host', async () => {
         const { calls, quit } = flow({ sessions: 0, hosts: 0, unreachable: [] });
         quit.requestStopAll();

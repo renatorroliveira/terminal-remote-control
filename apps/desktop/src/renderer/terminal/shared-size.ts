@@ -19,6 +19,8 @@ export class SharedSize {
     #session: TerminalSize | undefined;
     #foreign = false;
     #requested: Requested[] = [];
+    /** The size taken back, until the daemon reports it or 10 s pass; the other client's size until then is stale. */
+    #claimed: Requested | undefined;
 
     /** A policy that tells the time with `now`. */
     constructor(now: () => number = Date.now) {
@@ -45,6 +47,9 @@ export class SharedSize {
     /** The daemon reports the session's size. */
     session(size: TerminalSize): void {
         this.#session = size;
+        if (this.#awaitingClaim(size)) {
+            return;
+        }
         const mine = this.#requested.some((request) => this.#recent(request) && same(request.size, size));
         this.#foreign = !mine && this.#fitted !== undefined && !same(size, this.#fitted);
     }
@@ -55,7 +60,17 @@ export class SharedSize {
             return undefined;
         }
         this.#foreign = false;
+        this.#claimed = { size: this.#fitted, at: this.#now() };
         return this.#request(this.#fitted);
+    }
+
+    #awaitingClaim(size: TerminalSize): boolean {
+        const claimed = this.#claimed;
+        if (claimed === undefined || !this.#recent(claimed) || same(claimed.size, size)) {
+            this.#claimed = undefined;
+            return false;
+        }
+        return true;
     }
 
     #request(size: TerminalSize): TerminalSize {

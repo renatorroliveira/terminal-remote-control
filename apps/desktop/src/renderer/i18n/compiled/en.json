@@ -143,6 +143,12 @@
       "value": "."
     }
   ],
+  "announce.inputElsewhere": [
+    {
+      "type": 0,
+      "value": "Opened on another client — input not sent. Open the session again to take it back."
+    }
+  ],
   "announce.inputNotReady": [
     {
       "type": 0,
@@ -3629,6 +3635,12 @@
     {
       "type": 0,
       "value": "Option F1: accessibility help."
+    }
+  ],
+  "terminal.inputElsewhere": [
+    {
+      "type": 0,
+      "value": "Opened on another client — input not sent"
     }
   ],
   "terminal.inputNotReady": [

@@ -183,6 +183,7 @@ function setup(extra: Partial<TerminalRegistryOptions> = {}) {
             inputRefused: 'Disconnected — input not sent',
             inputReconnecting: 'Reconnecting — input not sent',
             inputNotReady: 'Session still opening — input not sent',
+            inputElsewhere: 'Opened on another client — input not sent',
             sizeSetElsewhere: 'Size set by another client.',
         }),
         speech,
@@ -456,6 +457,7 @@ describe('TerminalRegistry: protocol 2 (US-2.2.2, D-04)', () => {
         transport.refuseInputs('h1');
         expect(notices).toEqual(['h1/a input-refused', 'h1/a input-refused']);
         expect(transport.inputs).toEqual([]);
+        expect(transport.attached(1)).toBe(false);
     });
 
     it('keeps the buffer when the daemon replays only what was missed, and rebuilds it for a snapshot', async () => {
@@ -546,6 +548,36 @@ describe('TerminalRegistry: shared sessions (US-2.6, P-31)', () => {
         typeInto(area, 'x');
         expect(requestsOf(transport, 'resize')).toBe(resizes + 1);
         expect(surface?.dataset['columns']).not.toBe('40');
+    });
+
+    it('sends only the open terminal’s size when it attaches again after a reconnect (P-31)', async () => {
+        const { transport, registry } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        registry.show('h1/b', 'h1', info('b'));
+        await expect.poll(() => transport.attached(2)).toBe(true);
+        await expect.poll(() => requestsOf(transport, 'resize')).toBeGreaterThan(1);
+        const before = transport.requests.length;
+        registry.setHostConnection('h1', 'reconnecting');
+        await registry.reattachHost('h1');
+        const resized = transport.requests.slice(before).filter((request) => request.type === 'resize');
+        expect(resized.map((request) => request.session)).toEqual(['b']);
+    });
+
+    it('says when another client took a session, and takes it back when it is opened again (P-27)', async () => {
+        const { area, transport, registry, notices } = setup();
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(1)).toBe(true);
+        transport.push({ type: 'detached', session: 'a', stream: 1, reason: 'attachedElsewhere' });
+        expect(transport.attached(1)).toBe(false);
+        expect(notices).toEqual(['h1/a input-refused']);
+        typeInto(area, 'ls');
+        expect(area.querySelector('[data-input-refused]')?.textContent).toBe(
+            'Opened on another client — input not sent',
+        );
+        registry.show('h1/a', 'h1', info('a'));
+        await expect.poll(() => transport.attached(2)).toBe(true);
+        typeInto(area, 'ls');
+        expect(transport.inputs).toEqual(['2:ls']);
     });
 
     it('reports input from another client in a session', async () => {

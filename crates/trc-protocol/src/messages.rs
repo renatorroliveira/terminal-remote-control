@@ -78,6 +78,18 @@ pub enum ResyncKind {
     Unspecified,
 }
 
+/// Why the daemon ended a client's attachment without being asked (protocol 2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum DetachReason {
+    /// Another client opened a session whose holder serves one client at a time (an E1 holder, P-27).
+    AttachedElsewhere,
+    /// A reason this version does not know.
+    #[serde(other)]
+    Unspecified,
+}
+
 /// What runs the host's daemon (US-2.4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -369,6 +381,16 @@ pub enum ServerMessage {
         session: SessionId,
         /// The session's stream.
         stream: u32,
+    },
+    /// The daemon ended the client's attachment to the session: no more output comes on `stream`, and input sent
+    /// on it is dropped until the client attaches again (protocol 2).
+    Detached {
+        /// The session.
+        session: SessionId,
+        /// The stream that ended.
+        stream: u32,
+        /// Why it ended.
+        reason: DetachReason,
     },
     /// Answers a request that returns nothing else.
     Done {

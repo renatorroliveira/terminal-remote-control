@@ -16,6 +16,7 @@ export {
 export type { AttachMode } from './generated/AttachMode';
 export type { ClientMessage } from './generated/ClientMessage';
 export type { CreateSessionSpec } from './generated/CreateSessionSpec';
+export type { DetachReason } from './generated/DetachReason';
 export type { ErrorCode } from './generated/ErrorCode';
 export type { ExitStatus } from './generated/ExitStatus';
 export type { Integration } from './generated/Integration';

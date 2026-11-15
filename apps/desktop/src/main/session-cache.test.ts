@@ -46,4 +46,24 @@ describe('SessionCacheFile (P-30, SEC-05.1)', () => {
             false,
         );
     });
+
+    it('takes at most 10,000 sessions in all', () => {
+        expect(SESSION_CACHE_SCHEMA.safeParse(fullHosts(10)).success).toBe(true);
+        expect(SESSION_CACHE_SCHEMA.safeParse(fullHosts(11)).success).toBe(false);
+    });
 });
+
+/** `count` hosts with 1,000 sessions each. */
+function fullHosts(count: number): Record<string, readonly unknown[]> {
+    const sessions = Array.from({ length: 1_000 }, () => ({
+        id: '0123456789abcdef',
+        shell: 'bash',
+        order: 0,
+        state: 'running',
+    }));
+    const hosts: Record<string, readonly unknown[]> = {};
+    for (let index = 0; index < count; index += 1) {
+        hosts[`host-${index.toString(16).padStart(16, '0')}`] = sessions;
+    }
+    return hosts;
+}

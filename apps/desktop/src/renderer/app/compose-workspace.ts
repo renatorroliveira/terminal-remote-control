@@ -99,6 +99,7 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
             inputRefused: intl.formatMessage(terminalMessages.inputRefused),
             inputReconnecting: intl.formatMessage(terminalMessages.inputReconnecting),
             inputNotReady: intl.formatMessage(terminalMessages.inputNotReady),
+            inputElsewhere: intl.formatMessage(terminalMessages.inputElsewhere),
             sizeSetElsewhere: intl.formatMessage(terminalMessages.sizeSetElsewhere),
             review: intl.formatMessage(terminalReviewMessage, {
                 session: sessionName(session),

@@ -65,13 +65,19 @@ export class QuitFlow {
         this.state.setState({ dialog: { kind: 'stop-all', running } });
     }
 
-    /** Stops every running session on every connected host, then quits; a host that refused keeps the app open. */
+    /**
+     * Stops every running session on every connected host, then quits; a host that refused keeps the app open, and so
+     * does closing the dialog while the sessions stop.
+     */
     async confirmStopAll(): Promise<void> {
         this.state.setState({ stopping: true });
         const failed = await this.#options.workspace.stopAll();
+        const cancelled = this.state.getState().dialog?.kind !== 'stop-all';
         this.state.setState({ stopping: false });
         if (failed.length === 0) {
-            this.quit();
+            if (!cancelled) {
+                this.quit();
+            }
             return;
         }
         this.state.setState({ dialog: undefined });

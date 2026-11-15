@@ -16,4 +16,4 @@ export type TerminalNotice =
     | { readonly kind: 'input-refused'; readonly reason: InputRefusal };
 
 /** Why typing was not sent: the host is disconnected or reconnecting, or the session is still opening. */
-export type InputRefusal = 'disconnected' | 'reconnecting' | 'opening';
+export type InputRefusal = 'disconnected' | 'reconnecting' | 'opening' | 'elsewhere';

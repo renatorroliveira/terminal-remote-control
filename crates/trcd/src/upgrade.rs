@@ -4,6 +4,7 @@
 
 use std::fs::File;
 use std::io::{self, Read};
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -73,8 +74,22 @@ pub fn should_replace(running: Option<&str>, own: &str) -> bool {
     }
 }
 
+/// Holds `run/upgrade.lock`, so one bridge at a time decides to replace the core and stops it (US-2.5.3); waits while
+/// another bridge holds it. The lock is released when the file is dropped.
+pub fn lock_upgrades(run: &RunDir) -> io::Result<File> {
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .mode(0o600)
+        .open(run.dir.join("upgrade.lock"))?;
+    rustix::fs::flock(&file, FlockOperation::LockExclusive)?;
+    Ok(file)
+}
+
 /// Stops the running core so a newer one can take over. Refuses a process whose executable lies outside this
-/// install's `versions/`, so a stale PID never gets another program killed. Holders keep running.
+/// install's `versions/`, so a stale PID never gets another program killed, and stops nothing once another process
+/// holds the core's lock: a newer core already took over. Holders keep running.
 pub fn stop_core(core: &RunningCore, layout: &InstallLayout, run: &RunDir) -> io::Result<()> {
     if let Some(executable) = &core.executable
         && !executable.starts_with(&layout.versions)
@@ -83,6 +98,9 @@ pub fn stop_core(core: &RunningCore, layout: &InstallLayout, run: &RunDir) -> io
             "the core's executable {} is not in this install",
             executable.display()
         )));
+    }
+    if !holds_lock(run, core.pid) {
+        return Ok(());
     }
     let _ = Command::new("systemctl")
         .args(["--user", "stop", &unit_name(&layout.root)])
@@ -94,16 +112,16 @@ pub fn stop_core(core: &RunningCore, layout: &InstallLayout, run: &RunDir) -> io
         return Ok(());
     }
     let pid = Pid::from_raw(core.pid).ok_or_else(|| io::Error::other("the core's PID is not valid"))?;
-    let _ = rustix::process::kill_process(pid, Signal::TERM);
-    if wait_unlocked(run, STOP_TIMEOUT) {
-        return Ok(());
+    for signal in [Signal::TERM, Signal::KILL] {
+        if !holds_lock(run, core.pid) {
+            return Ok(());
+        }
+        let _ = rustix::process::kill_process(pid, signal);
+        if wait_unlocked(run, STOP_TIMEOUT) {
+            return Ok(());
+        }
     }
-    let _ = rustix::process::kill_process(pid, Signal::KILL);
-    if wait_unlocked(run, STOP_TIMEOUT) {
-        Ok(())
-    } else {
-        Err(io::Error::other("the core did not stop"))
-    }
+    Err(io::Error::other("the core did not stop"))
 }
 
 /// The binary a new core should run: this one, unless a newer version is installed beside it whose checksum still
@@ -123,15 +141,21 @@ pub fn newest_core_binary(layout: &InstallLayout) -> PathBuf {
     newest.map_or_else(|| layout.binary.clone(), |(binary, _)| binary)
 }
 
-/// Whether another installed binary may be run, even just for `--version`: it passes the integrity check every
-/// subcommand runs (SEC-04.4), and its SHA-256 still matches its folder's name, `versions/<sha256>/`, as when the app
-/// verified it (SEC-04.3). The bootstrap holds installed versions to the same rules.
+/// Whether another installed binary may be run, even just for `--version`: it passes the integrity check that every
+/// other subcommand runs on itself (SEC-04.4), and its SHA-256 still matches its folder's name, `versions/<sha256>/`,
+/// as when the app verified it (SEC-04.3). `--version` answers before that check, so this is its only guard. The
+/// bootstrap holds installed versions to the same rules.
 fn trustworthy(binary: &Path) -> bool {
     let intact = InstallLayout::from_binary(binary)
         .and_then(|layout| layout.check_integrity(rustix::process::geteuid().as_raw()))
         .is_ok();
     let named = binary.parent().and_then(Path::file_name).and_then(|name| name.to_str());
     intact && named.is_some_and(|name| sha256_file(binary).is_ok_and(|sha| sha == name))
+}
+
+/// Whether the core that holds the lock is still process `pid`.
+fn holds_lock(run: &RunDir, pid: i32) -> bool {
+    running_core(run).is_some_and(|core| core.pid == pid)
 }
 
 /// Waits until no core holds the lock.
@@ -210,5 +234,133 @@ mod tests {
     #[test]
     fn writes_the_pid_version_and_checksum() {
         assert_eq!(lock_contents(42, "0.3.0", "ab"), "42\n0.3.0\nab\n");
+    }
+
+    use std::io::Write;
+    use std::os::unix::fs::PermissionsExt;
+
+    use crate::test_support::temp_dir;
+
+    /// An install root around this build's binary, an empty file at `versions/own/trcd`.
+    fn install(label: &str) -> InstallLayout {
+        let version_dir = temp_dir(label).join("versions").join("own");
+        std::fs::create_dir_all(&version_dir).unwrap();
+        let binary = version_dir.join("trcd");
+        std::fs::write(&binary, "").unwrap();
+        InstallLayout::from_binary(&binary).unwrap()
+    }
+
+    /// Installs a binary that reports `version` in `versions/<folder>/`, or in a folder named by its SHA-256.
+    fn install_version(layout: &InstallLayout, version: &str, folder: Option<&str>) -> PathBuf {
+        let staging = layout.versions.join("staging");
+        std::fs::create_dir_all(&staging).unwrap();
+        let binary = staging.join("trcd");
+        std::fs::write(&binary, format!("#!/bin/sh\necho trcd {version} x\n")).unwrap();
+        std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let name = folder.map_or_else(|| sha256_file(&binary).unwrap(), str::to_owned);
+        let dir = layout.versions.join(name);
+        std::fs::rename(&staging, &dir).unwrap();
+        dir.join("trcd")
+    }
+
+    fn alive(child: &std::process::Child) -> bool {
+        let pid = Pid::from_raw(i32::try_from(child.id()).unwrap()).unwrap();
+        rustix::process::test_kill_process(pid).is_ok()
+    }
+
+    fn sleeper() -> std::process::Child {
+        Command::new("sleep").arg("30").spawn().unwrap()
+    }
+
+    /// Holds `core.lock` in `run` as a core would, naming `pid`.
+    fn hold_lock(run: &RunDir, contents: &str) -> File {
+        std::fs::create_dir_all(&run.dir).unwrap();
+        let mut file = File::create(run.core_lock()).unwrap();
+        rustix::fs::flock(&file, FlockOperation::NonBlockingLockExclusive).unwrap();
+        file.write_all(contents.as_bytes()).unwrap();
+        file
+    }
+
+    #[test]
+    fn runs_a_newer_installed_core_that_is_intact_and_named_by_its_checksum_sec_04_3() {
+        let layout = install("newest");
+        let newer = install_version(&layout, "99.0.0", None);
+        assert_eq!(newest_core_binary(&layout), newer);
+    }
+
+    #[test]
+    fn never_runs_a_binary_whose_folder_does_not_name_its_checksum() {
+        for folder in ["not-its-checksum", ".staging.12345"] {
+            let layout = install("misnamed");
+            install_version(&layout, "99.0.0", Some(folder));
+            assert_eq!(newest_core_binary(&layout), layout.binary, "{folder}");
+        }
+    }
+
+    #[test]
+    fn never_runs_a_binary_others_could_have_changed_sec_04_4() {
+        let layout = install("writable");
+        let newer = install_version(&layout, "99.0.0", None);
+        std::fs::set_permissions(&newer, std::fs::Permissions::from_mode(0o720)).unwrap();
+        assert_eq!(newest_core_binary(&layout), layout.binary);
+    }
+
+    #[test]
+    fn refuses_to_stop_a_process_outside_this_install() {
+        let layout = install("foreign");
+        let run = RunDir {
+            dir: layout.root.join("run"),
+        };
+        let mut process = sleeper();
+        let core = RunningCore {
+            pid: i32::try_from(process.id()).unwrap(),
+            version: Some("0.1.0".into()),
+            executable: Some("/bin/sleep".into()),
+        };
+        assert!(stop_core(&core, &layout, &run).is_err());
+        assert!(alive(&process));
+        process.kill().unwrap();
+        process.wait().unwrap();
+    }
+
+    #[test]
+    fn leaves_a_stale_pid_alone_once_another_core_holds_the_lock() {
+        let layout = install("stale");
+        let run = RunDir {
+            dir: layout.root.join("run"),
+        };
+        let _lock = hold_lock(&run, &lock_contents(std::process::id(), "9.0.0", "x"));
+        let mut stale = sleeper();
+        let core = RunningCore {
+            pid: i32::try_from(stale.id()).unwrap(),
+            version: Some("0.1.0".into()),
+            executable: None,
+        };
+        assert!(stop_core(&core, &layout, &run).is_ok());
+        assert!(alive(&stale));
+        stale.kill().unwrap();
+        stale.wait().unwrap();
+    }
+
+    #[test]
+    fn reads_no_core_from_a_lock_it_cannot_parse() {
+        let run = RunDir {
+            dir: temp_dir("garbage").join("run"),
+        };
+        let _lock = hold_lock(&run, "garbage");
+        assert_eq!(running_core(&run), None);
+    }
+
+    #[test]
+    fn lets_one_bridge_at_a_time_replace_the_core() {
+        let run = RunDir {
+            dir: temp_dir("upgrade-lock").join("run"),
+        };
+        std::fs::create_dir_all(&run.dir).unwrap();
+        let held = lock_upgrades(&run).unwrap();
+        let other = File::open(run.dir.join("upgrade.lock")).unwrap();
+        assert!(rustix::fs::flock(&other, FlockOperation::NonBlockingLockExclusive).is_err());
+        drop(held);
+        assert!(rustix::fs::flock(&other, FlockOperation::NonBlockingLockExclusive).is_ok());
     }
 }

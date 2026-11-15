@@ -134,6 +134,9 @@ export class TerminalRegistry implements TerminalHost {
         }
         this.#open = key;
         entry.view.focus();
+        if (entry.link.displaced) {
+            void this.#takeBack(key);
+        }
     }
 
     /** Focuses the open terminal; false when no session is open. */
@@ -298,6 +301,9 @@ export class TerminalRegistry implements TerminalHost {
         }
         for (const entry of this.#entriesOf(hostId)) {
             entry.view.setConnection(connection);
+            if (connection !== 'connected') {
+                entry.link.connectionLost();
+            }
         }
     }
 
@@ -370,13 +376,28 @@ export class TerminalRegistry implements TerminalHost {
         }
     }
 
+    async #takeBack(key: SessionKey): Promise<void> {
+        const failure = await this.#reattach(key);
+        if (failure !== undefined) {
+            this.#options.onAttachFailed?.(failure.key, failure.error);
+        }
+    }
+
+    #displaced(key: SessionKey): void {
+        const view = this.#entries.get(key)?.view;
+        view?.displace();
+        if (this.#open === key) {
+            view?.refuseInput('elsewhere');
+        }
+    }
+
     async #reattach(key: SessionKey): Promise<AttachFailure | undefined> {
         const entry = this.#entries.get(key);
         if (entry === undefined) {
             return undefined;
         }
         try {
-            await entry.link.reattach();
+            await entry.link.reattach({ sendSize: this.#open === key });
             entry.view.setConnection('connected');
             return undefined;
         } catch (error) {
@@ -485,10 +506,10 @@ export class TerminalRegistry implements TerminalHost {
                 void view?.write(data);
                 this.#activity(link);
             },
-            replayEvents(
-                () => view,
-                () => withKey(this.#keyOf(link), (key) => this.#options.onPeerInput?.(key)),
-            ),
+            replayEvents(() => view, {
+                peerInput: () => withKey(this.#keyOf(link), (key) => this.#options.onPeerInput?.(key)),
+                detached: () => withKey(this.#keyOf(link), (key) => this.#displaced(key)),
+            }),
         );
         const speech = this.#speechFor(() => link);
         view = new TerminalView({
@@ -536,13 +557,17 @@ export class TerminalRegistry implements TerminalHost {
     }
 }
 
-/** What a terminal does as its session link replays, resyncs and catches up, and when another client types. */
-function replayEvents(view: () => TerminalView | undefined, peerInput: () => void): LinkEvents {
+/** What the registry does when another client types into a session, or takes it. */
+type PeerEvents = Required<Pick<LinkEvents, 'peerInput' | 'detached'>>;
+
+/** What a terminal does as its session link replays, resyncs and catches up, and when another client acts. */
+function replayEvents(view: () => TerminalView | undefined, { peerInput, detached }: PeerEvents): LinkEvents {
     let attached = false;
     return {
         replay: (replay) => {
             const shown = view();
             if (shown !== undefined) {
+                shown.newStream();
                 startReplay(shown, replay, !attached);
             }
             attached = true;
@@ -550,6 +575,7 @@ function replayEvents(view: () => TerminalView | undefined, peerInput: () => voi
         synced: () => view()?.endReplay(),
         resync: () => view()?.beginReplay('replace'),
         peerInput,
+        detached,
     };
 }
 

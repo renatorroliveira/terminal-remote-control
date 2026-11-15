@@ -35,6 +35,22 @@ describe('SharedSize (US-2.6.2, P-31)', () => {
         expect(size.foreign).toBe(false);
     });
 
+    it('keeps the size it took back while the daemon still reports the other client’s, for up to 10 s', () => {
+        const { clock, size } = clocked();
+        size.fitted(ours);
+        size.session(theirs);
+        expect(size.claim()).toEqual(ours);
+        size.session(theirs);
+        expect([size.foreign, size.shown]).toEqual([false, ours]);
+        size.session(ours);
+        size.session(theirs);
+        expect(size.foreign).toBe(true);
+        expect(size.claim()).toEqual(ours);
+        clock.now = 10_000;
+        size.session(theirs);
+        expect(size.foreign).toBe(true);
+    });
+
     it('forgets the sizes it asked for after a while, so an old one coming back is another client’s', () => {
         const { clock, size } = clocked();
         size.fitted(ours);

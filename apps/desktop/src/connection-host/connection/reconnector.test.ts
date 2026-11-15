@@ -121,6 +121,47 @@ describe('Reconnector (US-2.2, P-29)', () => {
     });
 });
 
+describe('Reconnector: network changes and install failures (P-29, P-34)', () => {
+    it('spaces the tries network changes and wakes start at least 5 s apart', () => {
+        const { clock, reconnector, attempts } = fixture();
+        reconnector.onState(lost);
+        clock.advance(0);
+        reconnector.onState(unreachable);
+        reconnector.retrySoon();
+        expect(attempts()).toBe(2);
+        reconnector.onState(unreachable);
+        clock.advance(0);
+        expect(attempts()).toBe(3);
+        reconnector.onState(unreachable);
+        reconnector.retrySoon();
+        clock.advance(4_000);
+        expect(attempts()).toBe(3);
+        clock.advance(1_000);
+        expect(attempts()).toBe(4);
+    });
+
+    it('retries an install failure that may pass at most 3 times in a row, until the user tries again (P-29)', () => {
+        const { clock, reconnector, attempts } = fixture();
+        const busy: ConnectionState = {
+            status: 'failed',
+            failure: { kind: 'install', code: 'lock-busy', details: '' },
+        };
+        reconnector.onState(lost);
+        clock.advance(0);
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+            expect(reconnector.retries(busy)).toBe(true);
+            reconnector.onState(busy);
+            clock.advance(5_000);
+        }
+        expect(attempts()).toBe(4);
+        expect(reconnector.retries(busy)).toBe(false);
+        reconnector.onState(busy);
+        expect(reconnector.waiting).toBe(false);
+        reconnector.enable();
+        expect(reconnector.retries(busy)).toBe(true);
+    });
+});
+
 describe('Reconnector: when it retries (US-2.2.3, US-2.3.3)', () => {
     it('stops for good when disabled: a disconnect or Stop retrying (US-2.2.3)', () => {
         const { clock, reconnector, attempts } = fixture();

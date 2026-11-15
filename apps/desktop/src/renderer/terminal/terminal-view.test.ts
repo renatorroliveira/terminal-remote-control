@@ -54,6 +54,7 @@ function mount(overrides: Partial<TerminalViewOptions> = {}): Harness {
         inputRefused: 'Disconnected — input not sent',
         inputReconnecting: 'Reconnecting — input not sent',
         inputNotReady: 'Session still opening — input not sent',
+        inputElsewhere: 'Opened on another client — input not sent',
         sizeSetElsewhere: 'Size set by another client.',
     });
     views.push(view);
@@ -437,6 +438,24 @@ describe('TerminalView: output (US-1.11, SEC-06, D-19)', () => {
         const { view, credits } = mount();
         await written(view, 'x'.repeat(70 * 1024));
         expect(credits.reduce((sum, bytes) => sum + bytes, 0)).toBe(70 * 1024);
+    });
+
+    it('keeps credit it has not returned yet through a resync, which stays on the same stream', async () => {
+        const { view, credits } = mount();
+        await written(view, 'x'.repeat(40 * 1024));
+        view.beginReplay('replace');
+        await written(view, 'y'.repeat(40 * 1024));
+        expect(credits.reduce((sum, bytes) => sum + bytes, 0)).toBe(80 * 1024);
+    });
+
+    it('returns no credit on a new stream for output the old stream sent', async () => {
+        const { view, credits } = mount();
+        await written(view, 'x'.repeat(40 * 1024));
+        const late = view.write(new TextEncoder().encode('y'.repeat(40 * 1024)));
+        view.newStream();
+        await late;
+        await written(view, 'z'.repeat(70 * 1024));
+        expect(credits).toEqual([70 * 1024]);
     });
 
     it('swallows terminal queries, which the daemon answers', async () => {
@@ -872,6 +891,25 @@ describe('TerminalView: reconnecting and replays (US-2.2.2, D-04, D-45)', () => 
         expect(view.terminal.hasSelection()).toBe(false);
         await written(view, 'new screen\r\n$ ');
         expect(bufferText(view.terminal).lines.slice(0, 2)).toEqual(['new screen', '$']);
+    });
+});
+
+describe('TerminalView: another client took the session (P-27)', () => {
+    it('says typing is not sent while another client has the session, until it attaches again (P-27)', async () => {
+        const notices: unknown[] = [];
+        const { view, host, inputs } = mount({ onNotice: (notice) => notices.push(notice) });
+        await written(view, '$ ');
+        view.displace();
+        view.surface.focus();
+        beforeInput(view.surface, 'insertText', 'ls');
+        expect(inputs).toEqual([]);
+        const refused = host.querySelector<HTMLElement>('[data-input-refused]');
+        expect(refused?.textContent).toBe('Opened on another client — input not sent');
+        expect(notices).toEqual([{ kind: 'input-refused', reason: 'elsewhere' }]);
+        view.newStream();
+        expect(refused?.hidden).toBe(true);
+        beforeInput(view.surface, 'insertText', 'ls');
+        expect(inputs).toEqual(['ls']);
     });
 });
 

@@ -10,8 +10,14 @@ const PATIENT_DELAY_MS = 30_000;
 /** Each delay moves by up to a fifth either way, so hosts lost together do not retry in step. */
 const JITTER = 0.2;
 
-/** Install problems the user must fix: the location cannot run or cannot be trusted (US-1.4.3, SEC-04.4). */
-const USER_INSTALL_CODES: ReadonlySet<string> = new Set(['noexec', 'root-unsafe', 'root-unusable']);
+/**
+ * Install problems that may pass by themselves: another client installing at the same moment, or an upload the
+ * network cut or garbled. Every other install problem waits for the user (P-29).
+ */
+const TRANSIENT_INSTALL_CODES: ReadonlySet<string> = new Set(['lock-busy', 'short-upload', 'checksum-mismatch']);
+
+/** How many install failures in a row are retried, each uploading the daemon again, before the user must Retry. */
+export const MAX_INSTALL_RETRIES = 3;
 
 /**
  * How long to wait before reconnect attempt `attempt` (1 for the first), `sinceLossMs` after the connection was lost.
@@ -24,8 +30,8 @@ export function retryDelayMs(attempt: number, sinceLossMs: number, random: () =>
 
 /**
  * Whether a failed attempt is retried on its own: network and host trouble may pass, but a failure only the user can
- * fix — the agent, a certificate, a host key, an unsupported or incompatible host, an install location — waits for
- * Retry (US-2.2.4).
+ * fix — the agent, a certificate, a host key, an unsupported or incompatible host, an install that cannot work —
+ * waits for Retry (US-2.2.4).
  */
 export function isRetryable(failure: ConnectionFailure): boolean {
     switch (failure.kind) {
@@ -37,7 +43,7 @@ export function isRetryable(failure: ConnectionFailure): boolean {
         case 'other':
             return true;
         case 'install':
-            return !USER_INSTALL_CODES.has(failure.code);
+            return TRANSIENT_INSTALL_CODES.has(failure.code);
         default:
             return false;
     }

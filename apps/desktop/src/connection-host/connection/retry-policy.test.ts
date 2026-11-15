@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ConnectionFailure } from '../../shared/connection';
+import type { BootstrapErrorCode } from '../bootstrap/lines';
 import { isRetryable, retryDelayMs } from './retry-policy';
 
 const middle = (): number => 0.5;
@@ -33,7 +34,9 @@ describe('isRetryable (US-2.2.4)', () => {
             failure({ kind: 'jump-failed', jump: 'j', cause: 'timeout' }),
             failure({ kind: 'no-answer' }),
             failure({ kind: 'other' }),
-            failure({ kind: 'install', code: 'upload' }),
+            failure({ kind: 'install', code: 'lock-busy' }),
+            failure({ kind: 'install', code: 'short-upload' }),
+            failure({ kind: 'install', code: 'checksum-mismatch' }),
         ]) {
             expect(isRetryable(kind), JSON.stringify(kind)).toBe(true);
         }
@@ -49,9 +52,20 @@ describe('isRetryable (US-2.2.4)', () => {
             failure({ kind: 'ssh-too-old', version: '7.9' }),
             failure({ kind: 'unsupported', missing: 'os', os: 'x', arch: 'y' }),
             failure({ kind: 'incompatible', minProto: 9, maxProto: 9 }),
-            failure({ kind: 'install', code: 'noexec' }),
-            failure({ kind: 'install', code: 'root-unsafe' }),
-            failure({ kind: 'install', code: 'root-unusable' }),
+            ...(
+                [
+                    'unsupported-os',
+                    'unsupported-arch',
+                    'missing-tool',
+                    'root-unusable',
+                    'root-unsafe',
+                    'noexec',
+                    'self-test',
+                    'not-installed',
+                    'protocol',
+                    'unknown',
+                ] satisfies readonly BootstrapErrorCode[]
+            ).map((code) => failure({ kind: 'install', code })),
         ]) {
             expect(isRetryable(kind), JSON.stringify(kind)).toBe(false);
         }

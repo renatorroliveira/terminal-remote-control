@@ -1,5 +1,5 @@
 import type { ConnectionFailure, ConnectionState } from '../../shared/connection';
-import { isRetryable, retryDelayMs } from './retry-policy';
+import { isRetryable, MAX_INSTALL_RETRIES, retryDelayMs } from './retry-policy';
 
 /** The clock and randomness a reconnector uses, replaceable in tests. */
 export interface ReconnectClock {
@@ -16,6 +16,9 @@ export const SYSTEM_CLOCK: ReconnectClock = {
     setTimeout: (callback, ms) => setTimeout(callback, ms),
     clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
+
+/** Network changes and wakes start a try at most this often, so a flapping interface cannot drive ssh. */
+const RETRY_SOON_SPACING_MS = 5_000;
 
 /** How a host was connected, which decides whether a failed first connection is retried. */
 export interface EnableOptions {
@@ -40,6 +43,10 @@ export class Reconnector {
     #attempt = 0;
     #lostAt: number | undefined;
     #timer: unknown;
+    /** Install failures retried in a row since the host connected or the user connected it. */
+    #installRetries = 0;
+    /** When the last try a network change or wake started was due. */
+    #soonAt: number | undefined;
 
     /** A reconnector that attempts with `connect` and reports `reconnecting` with `report`. */
     constructor(connect: () => void, report: (state: ConnectionState) => void, clock: ReconnectClock = SYSTEM_CLOCK) {
@@ -57,6 +64,7 @@ export class Reconnector {
     enable(options: EnableOptions = {}): void {
         this.#enabled = true;
         this.#armed ||= options.restore === true;
+        this.#installRetries = 0;
     }
 
     /** Stops reconnecting: the user disconnected or chose Stop retrying. */
@@ -70,7 +78,10 @@ export class Reconnector {
 
     /** Whether `state` is a failure this reconnector retries, which it reports as `reconnecting` instead. */
     retries(state: ConnectionState): boolean {
-        return this.#enabled && this.#armed && state.status === 'failed' && isRetryable(state.failure);
+        if (!this.#enabled || !this.#armed || state.status !== 'failed' || !isRetryable(state.failure)) {
+            return false;
+        }
+        return state.failure.kind !== 'install' || this.#installRetries < MAX_INSTALL_RETRIES;
     }
 
     /** Follows the connection's state: a loss or a retryable failure schedules the next attempt. */
@@ -80,6 +91,7 @@ export class Reconnector {
                 this.#armed = true;
                 this.#attempt = 0;
                 this.#lostAt = undefined;
+                this.#installRetries = 0;
                 return;
             case 'disconnected':
                 this.#armed = true;
@@ -87,6 +99,7 @@ export class Reconnector {
                 return;
             case 'failed':
                 if (this.retries(state)) {
+                    this.#installRetries += state.failure.kind === 'install' ? 1 : 0;
                     this.#schedule(state.failure);
                 } else {
                     this.#cancel();
@@ -101,15 +114,37 @@ export class Reconnector {
         }
     }
 
-    /** Tries now and starts the backoff again, after a network change, a wake, or the user's Retry. */
+    /** Tries now and starts the backoff again: the user chose Retry. */
     retryNow(): void {
         if (!this.#enabled || this.#timer === undefined) {
             return;
         }
+        this.#restart(0);
+    }
+
+    /**
+     * Tries soon and starts the backoff again, after a network change or a wake: now, unless such a try started less
+     * than 5 s ago, and then 5 s after it (NFR-07).
+     */
+    retrySoon(): void {
+        if (!this.#enabled || this.#timer === undefined) {
+            return;
+        }
+        const now = this.#clock.now();
+        const wait = this.#soonAt === undefined ? 0 : Math.max(0, this.#soonAt + RETRY_SOON_SPACING_MS - now);
+        this.#soonAt = now + wait;
+        this.#restart(wait);
+    }
+
+    #restart(wait: number): void {
         this.#cancel();
         this.#attempt = 0;
         this.#lostAt = this.#clock.now();
-        this.#fire();
+        if (wait === 0) {
+            this.#fire();
+        } else {
+            this.#timer = this.#clock.setTimeout(() => this.#fire(), wait);
+        }
     }
 
     #schedule(failure: ConnectionFailure | undefined): void {

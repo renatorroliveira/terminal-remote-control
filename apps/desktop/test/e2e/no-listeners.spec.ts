@@ -1,13 +1,15 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { expect, test } from '@playwright/test';
+import { dirname, join } from 'node:path';
+import { type ElectronApplication, expect, type Page, test } from '@playwright/test';
 import {
     launchWithTestHosts,
     openTerminal,
+    recordSpeech,
     removeInstall,
     rowTexts,
     scratchInstallRoot,
+    spokenTexts,
     testHostsMissing,
 } from './support/test-host';
 
@@ -65,12 +67,33 @@ function isTestBuild(): boolean {
     return readFileSync(join(import.meta.dirname, '../../out/main/index.js'), 'utf8').includes('TRC_TEST_');
 }
 
-test.describe('no listening sockets after connect and create (SEC-01.3)', () => {
+/** Checks that no app process or ssh child listens or holds a UDP socket, beside the test build's debugging ports. */
+async function expectNoListeners(app: ElectronApplication): Promise<void> {
+    const main = app.process().pid ?? 0;
+    const tree = processTree(main);
+    const listening = sockets(tree, ['-iTCP', '-sTCP:LISTEN']);
+    const udp = sockets(tree, ['-iUDP']);
+    expect(tree.length).toBeGreaterThan(4);
+    expect(isTestBuild()).toBe(true);
+    expect(listening.length).toBeGreaterThan(0);
+    expect(udp).toEqual([]);
+    expect(listening.filter((socket) => socket.pid !== main)).toEqual([]);
+    expect(listening.every((socket) => socket.name.startsWith('127.0.0.1:'))).toBe(true);
+    const debugging = await Promise.all(listening.map((socket) => isDebuggingEndpoint(socket.name)));
+    expect(debugging.every(Boolean)).toBe(true);
+}
+
+/** Whether the app has announced that it reconnected. */
+async function saidReconnected(window: Page): Promise<boolean> {
+    return (await spokenTexts(window)).some((text) => text.includes('Reconnected'));
+}
+
+test.describe('no listening sockets after connect, create and reconnect (SEC-01.3)', () => {
     test.skip(missing !== undefined, missing);
 
-    test('opens none in any app process or ssh child once a session runs on a host, beside the test build’s debugging ports', async () => {
+    test('opens none in any app process or ssh child once a session runs on a host, nor after a reconnect', async () => {
         const root = scratchInstallRoot();
-        const { app, window } = await launchWithTestHosts(root);
+        const { app, window, home } = await launchWithTestHosts(root);
         try {
             const terminal = await openTerminal(window, 'trc-ubuntu');
             await terminal.focus();
@@ -80,18 +103,11 @@ test.describe('no listening sockets after connect and create (SEC-01.3)', () => 
             await window.keyboard.type('echo trc-listeners');
             await window.keyboard.press('Enter');
             await expect.poll(() => rowTexts(terminal)).toContain('trc-listeners');
-            const main = app.process().pid ?? 0;
-            const tree = processTree(main);
-            const listening = sockets(tree, ['-iTCP', '-sTCP:LISTEN']);
-            const udp = sockets(tree, ['-iUDP']);
-            expect(tree.length).toBeGreaterThan(4);
-            expect(isTestBuild()).toBe(true);
-            expect(listening.length).toBeGreaterThan(0);
-            expect(udp).toEqual([]);
-            expect(listening.filter((socket) => socket.pid !== main)).toEqual([]);
-            expect(listening.every((socket) => socket.name.startsWith('127.0.0.1:'))).toBe(true);
-            const debugging = await Promise.all(listening.map((socket) => isDebuggingEndpoint(socket.name)));
-            expect(debugging.every(Boolean)).toBe(true);
+            await expectNoListeners(app);
+            await recordSpeech(window);
+            execFileSync('pkill', ['-f', `${dirname(home)}/known_hosts`]);
+            await expect.poll(() => saidReconnected(window), { timeout: 60_000 }).toBe(true);
+            await expectNoListeners(app);
         } finally {
             await app.close();
             removeInstall('trc-ubuntu', root);

@@ -93,7 +93,12 @@ impl Installed {
 }
 
 impl Drop for Installed {
+    /// Ends every process the install's binary still runs, as holders outlive their core by design, then removes it.
     fn drop(&mut self) {
+        if let Some(name) = self.base.file_name() {
+            let pattern = format!("{}/r/versions/test/trcd", name.to_string_lossy());
+            let _ = Command::new("pkill").args(["-KILL", "-f", &pattern]).status();
+        }
         let _ = std::fs::remove_dir_all(&self.base);
     }
 }

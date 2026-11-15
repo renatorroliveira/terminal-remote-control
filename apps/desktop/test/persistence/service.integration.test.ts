@@ -80,6 +80,22 @@ describe.skipIf(missing !== undefined)('the daemon on hosts with systemd (US-2.4
         },
     );
 
+    it.each(VARIANTS.filter((variant) => variant.manager === 'systemd'))(
+        'stays a systemd unit when the app reconnects while systemd restarts the killed core on $alias',
+        async ({ alias }) => {
+            const host = await connectLive(alias);
+            await host.session();
+            const pids = await shellPids(host);
+            const killed = corePid(host);
+            ssh(alias, `kill -9 ${killed}`);
+            await waitFor(() => host.states.at(-1)?.status === 'disconnected', 10_000);
+            await reconnect(host);
+            const state = host.states.at(-1);
+            expect(state?.status === 'connected' ? state.daemon.service?.manager : undefined).toBe('systemd');
+            expect(await shellPids(host)).toEqual(pids);
+        },
+    );
+
     it.each(VARIANTS)(
         'keeps sessions after every connection closed on $alias, unless logout ends them (US-2.4.3, US-2.4.4)',
         async ({ alias, sessionsEndAtLogout }) => {

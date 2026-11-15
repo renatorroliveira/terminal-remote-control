@@ -5,7 +5,7 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::time::{Duration, Instant};
 
-use trc_protocol::frame::MAX_OUTPUT_CHUNK;
+use trc_protocol::frame::{CREDIT_WINDOW, MAX_OUTPUT_CHUNK};
 use trc_protocol::{Replay, ResyncKind};
 use trc_vt::{GhosttyTerminal, SnapshotScope, SnapshotStream};
 
@@ -124,12 +124,16 @@ impl Attachments {
         self.list.is_empty()
     }
 
-    /// Adds credit a client granted; a client that fell behind and has caught up is resynced.
+    /// Adds credit a client granted, up to the window a client may hold, whatever it grants; a client that fell
+    /// behind and has caught up is resynced.
     pub fn grant(&mut self, id: u32, bytes: u32, session: &Session<'_>) {
         let Some(attachment) = self.list.get_mut(&id) else {
             return;
         };
-        attachment.credit = attachment.credit.saturating_add(bytes as usize);
+        attachment.credit = attachment
+            .credit
+            .saturating_add(bytes as usize)
+            .min(attachment.credit.max(CREDIT_WINDOW as usize));
         if matches!(attachment.state, State::Behind) && attachment.credit >= RESYNC_CREDIT {
             attachment.resync(id, session);
         }
@@ -203,11 +207,29 @@ impl Attachment {
         self.queued = 0;
     }
 
+    /// Starts a snapshot; one the emulator cannot start is retried as the screen alone, or skipped (logged).
     fn stream(&mut self, scope: SnapshotScope, session: &Session<'_>) {
-        let stream = session
+        let stream = match session
             .terminal
-            .and_then(|terminal| SnapshotStream::new(terminal, scope, session.max_rows).ok());
+            .map(|terminal| SnapshotStream::new(terminal, scope, session.max_rows))
+        {
+            Some(Ok(stream)) => Some(stream),
+            Some(Err(error)) => {
+                tracing::warn!(%error, "a snapshot could not start");
+                return self.fall_back(scope, session);
+            }
+            None => None,
+        };
         self.state = State::Streaming { stream, scope };
+    }
+
+    /// A snapshot failed: the whole buffer gives way to the screen alone; the screen gives way to live output.
+    fn fall_back(&mut self, scope: SnapshotScope, session: &Session<'_>) {
+        if scope == SnapshotScope::Full {
+            self.stream(SnapshotScope::Screen, session);
+        } else {
+            self.state = State::Live;
+        }
     }
 
     fn live(&mut self, output: &[u8]) {
@@ -271,32 +293,55 @@ impl Attachment {
         true
     }
 
-    /// Queues the next snapshot block, or ends the snapshot. Returns whether anything was queued.
+    /// Queues the next snapshot block, and ends the snapshot with the screen block, so output that arrives after it is
+    /// queued as live output from the offset `synced` names. Returns whether anything was queued.
     fn next_block(&mut self, id: u32, session: &Session<'_>) -> bool {
         let State::Streaming { stream, scope } = &mut self.state else {
             return false;
         };
         let scope = *scope;
         let block = match (stream.as_mut(), session.terminal) {
-            (Some(stream), Some(terminal)) => stream.next_block(terminal, ROWS_PER_BLOCK).ok().flatten(),
-            _ => None,
+            (Some(stream), Some(terminal)) => stream.next_block(terminal, ROWS_PER_BLOCK),
+            _ => Ok(None),
         };
-        if let Some(block) = block {
-            self.output(block);
-            return true;
-        }
+        let done = stream.as_ref().is_none_or(SnapshotStream::is_done);
         let complete = stream.as_ref().is_none_or(SnapshotStream::complete);
+        match block {
+            Ok(Some(block)) => {
+                self.output(block);
+                if done {
+                    self.finish(id, scope, complete, session);
+                }
+            }
+            Ok(None) => self.finish(id, scope, complete, session),
+            Err(error) => {
+                tracing::warn!(%error, "a snapshot block could not be formatted");
+                self.clear();
+                self.fall_back(scope, session);
+                if matches!(self.state, State::Live) {
+                    self.synced(id, session);
+                }
+            }
+        }
+        true
+    }
+
+    /// Ends a snapshot: a whole-buffer one that output outran resyncs to the screen; otherwise the attachment is live.
+    fn finish(&mut self, id: u32, scope: SnapshotScope, complete: bool, session: &Session<'_>) {
         if scope == SnapshotScope::Full && !complete && !self.legacy {
             self.clear();
             self.resync(id, session);
         } else {
-            self.state = State::Live;
-            self.event(HolderEvent::Synced {
-                attachment: id,
-                offset: session.log.end(),
-            });
+            self.synced(id, session);
         }
-        true
+    }
+
+    fn synced(&mut self, id: u32, session: &Session<'_>) {
+        self.state = State::Live;
+        self.event(HolderEvent::Synced {
+            attachment: id,
+            offset: session.log.end(),
+        });
     }
 }
 
@@ -444,6 +489,28 @@ mod tests {
     }
 
     #[test]
+    fn queues_output_that_arrives_after_the_screen_block_before_it_says_synced() {
+        let mut fixture = Fixture::new();
+        fixture.output(b"prompt$ ");
+        fixture.attach(1, 4, None, false);
+        let first = fixture.drain();
+        fixture.output(b"later");
+        fixture.grant(1, u32::MAX);
+        let rest = fixture.drain();
+        let mut replay = terminal();
+        replay.feed(&[output_of(&first, 1), output_of(&rest, 1)].concat());
+        assert_eq!(replay.plain_text().unwrap(), fixture.terminal.plain_text().unwrap());
+        let synced = [events(&first), events(&rest)]
+            .concat()
+            .into_iter()
+            .find_map(|event| match event {
+                HolderEvent::Synced { offset, .. } => Some(*offset),
+                _ => None,
+            });
+        assert_eq!(synced, Some(8));
+    }
+
+    #[test]
     fn falls_back_to_a_snapshot_when_the_offset_is_gone() {
         let mut fixture = Fixture::new();
         fixture.output(b"x");
@@ -455,6 +522,15 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn holds_no_more_credit_than_the_window_whatever_a_client_grants() {
+        let mut fixture = Fixture::new();
+        fixture.attach(1, 0, Some(0), false);
+        fixture.grant(1, u32::MAX);
+        fixture.grant(1, u32::MAX);
+        assert_eq!(fixture.attachments.list[&1].credit, CREDIT_WINDOW as usize);
     }
 
     #[test]
