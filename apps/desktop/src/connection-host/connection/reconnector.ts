@@ -109,13 +109,16 @@ export class Reconnector {
         }
     }
 
-    /** Tries now and starts the backoff again, after a network change, a wake, or the user's Retry (P-29, P-34). */
+    /**
+     * Tries now and starts the backoff again, after a network change, a wake, or the user's Retry (P-29, P-34): this
+     * try is the sequence's first, so the next waits 1 s.
+     */
     retryNow(): void {
         if (!this.#enabled || this.#timer === undefined) {
             return;
         }
         this.#cancel();
-        this.#attempt = 0;
+        this.#attempt = 1;
         this.#lostAt = this.#clock.now();
         this.#fire();
     }

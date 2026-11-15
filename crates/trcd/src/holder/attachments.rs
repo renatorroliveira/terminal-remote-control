@@ -223,15 +223,11 @@ impl Attachment {
         self.state = State::Streaming { stream, scope };
     }
 
-    /// A snapshot failed, and what was queued of it is dropped. A whole-buffer one gives way to the screen alone, as a
-    /// resync that says rows are missing (a reset, for a legacy client); the screen gives way to live output from where
-    /// the log stands, so the client is never left waiting for `synced`.
+    /// A snapshot failed, and what was queued of it is dropped. The client is always told to start over, with a resync
+    /// that says rows are missing (a reset, for a legacy client): a whole-buffer snapshot gives way to the screen alone,
+    /// and the screen to live output from where the log stands, so the client is never left waiting for `synced`.
     fn recover(&mut self, id: u32, scope: SnapshotScope, session: &Session<'_>) {
         self.clear();
-        if scope == SnapshotScope::Screen {
-            self.synced(id, session);
-            return;
-        }
         if self.legacy {
             self.output(RESET.to_vec());
         } else {
@@ -240,7 +236,11 @@ impl Attachment {
                 kind: ResyncKind::Screen,
             });
         }
-        self.stream(id, SnapshotScope::Screen, session);
+        if scope == SnapshotScope::Screen {
+            self.synced(id, session);
+        } else {
+            self.stream(id, SnapshotScope::Screen, session);
+        }
     }
 
     fn live(&mut self, output: &[u8]) {
@@ -582,18 +582,47 @@ mod tests {
     }
 
     #[test]
-    fn a_screen_that_fails_goes_live_and_says_where_output_stands() {
+    fn a_screen_that_fails_resyncs_to_nothing_and_goes_live_where_output_stands() {
         let mut fixture = Fixture::new();
         fixture.output(b"prompt$ ");
         fixture.attach(1, u32::MAX, None, false);
         let sent = recovered(&mut fixture, SnapshotScope::Screen);
         assert!(output_of(&sent, 1).is_empty());
         assert!(matches!(
-            events(&sent).last(),
-            Some(HolderEvent::Synced { offset: 8, .. })
+            events(&sent)[..],
+            [
+                HolderEvent::Attached { .. },
+                HolderEvent::Resync {
+                    kind: ResyncKind::Screen,
+                    ..
+                },
+                HolderEvent::Synced { offset: 8, .. }
+            ]
         ));
         fixture.output(b"ls");
         assert_eq!(output_of(&fixture.drain(), 1), b"ls");
+    }
+
+    #[test]
+    fn a_resync_whose_screen_fails_still_says_it_resynced_once() {
+        let mut fixture = Fixture::new();
+        fixture.output(b"prompt$ ");
+        fixture.attach(1, u32::MAX, Some(0), false);
+        fixture.drain();
+        let session = Session {
+            terminal: Some(&fixture.terminal),
+            log: &fixture.log,
+            max_rows: 10_000,
+        };
+        if let Some(attachment) = fixture.attachments.list.get_mut(&1) {
+            attachment.resync(1, &session);
+            attachment.recover(1, SnapshotScope::Screen, &session);
+        }
+        let resyncs = events(&fixture.drain())
+            .iter()
+            .filter(|event| matches!(event, HolderEvent::Resync { .. }))
+            .count();
+        assert_eq!(resyncs, 1);
     }
 
     #[test]

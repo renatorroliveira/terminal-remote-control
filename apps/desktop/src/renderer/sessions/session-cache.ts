@@ -67,10 +67,12 @@ export function watchSessionCache(
     let last: string | undefined = JSON.stringify(saved);
     let timer: ReturnType<typeof setTimeout> | undefined;
     let retries = 0;
+    let stopped = false;
     const failed = (): void => {
         last = undefined;
-        if (retries < RETRIES) {
+        if (!stopped && retries < RETRIES) {
             retries += 1;
+            clearTimeout(timer);
             timer = setTimeout(save, RETRY_DELAY_MS);
         }
     };
@@ -91,6 +93,7 @@ export function watchSessionCache(
         }
     });
     return () => {
+        stopped = true;
         stop();
         clearTimeout(timer);
     };
