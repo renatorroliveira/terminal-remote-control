@@ -76,6 +76,8 @@ export class SessionLink {
     #quiet: ReturnType<typeof setTimeout> | undefined;
     #filled: (() => void)[] = [];
     #displaced = false;
+    /** Counts the attaches asked for, so the answer to one a later attach replaced is dropped. */
+    #generation = 0;
 
     /** Creates a link for a host; `onOutput` receives the attached session's output. */
     constructor(
@@ -207,11 +209,10 @@ export class SessionLink {
 
     async #attach(session: SessionId, fromOffset: number | undefined, sendSize: boolean): Promise<void> {
         this.#session = session;
-        const request = { type: 'attach', session, mode: 'full' } as const;
-        const reply = await this.#transport.request(
-            this.#hostId,
-            fromOffset === undefined ? request : { ...request, fromOffset },
-        );
+        const reply = await this.#requestAttach(session, fromOffset);
+        if (reply === undefined) {
+            return;
+        }
         if (reply.type !== 'attached') {
             throw new Error(`unexpected reply ${reply.type}`);
         }
@@ -232,6 +233,25 @@ export class SessionLink {
         this.#attachment = { session, stream, stopOutput, stopMessages };
         if (sendSize) {
             this.#sendSize();
+        }
+    }
+
+    /** Asks to attach; undefined when a later attach replaced this one before it was answered, whatever the answer. */
+    async #requestAttach(session: SessionId, fromOffset: number | undefined): Promise<ServerMessage | undefined> {
+        this.#generation += 1;
+        const generation = this.#generation;
+        const request = { type: 'attach', session, mode: 'full' } as const;
+        try {
+            const reply = await this.#transport.request(
+                this.#hostId,
+                fromOffset === undefined ? request : { ...request, fromOffset },
+            );
+            return generation === this.#generation ? reply : undefined;
+        } catch (error) {
+            if (generation === this.#generation) {
+                throw error;
+            }
+            return undefined;
         }
     }
 

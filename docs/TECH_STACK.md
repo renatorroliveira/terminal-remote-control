@@ -672,10 +672,11 @@ outside the install root.
 
 **Staying out of the kill scope.**
 
-- **Linux unit.** The core keeps the default `KillMode=control-group`. When
-  the core runs as a unit, each holder starts through
+- **Linux unit.** When the core runs as a unit, each holder starts through
   `systemd-run --user --scope --collect` before its shell, which takes it out
-  of the unit's control group. tmux does the same.
+  of the unit's control group. tmux does the same. The unit runs with
+  `KillMode=process`, so a holder that had to start directly, because its
+  scope could not start, still outlives a stop or restart of the core (P-34).
 - **macOS (E5).**
     - Holders call `setsid()`, and the LaunchAgent sets `AbandonProcessGroup`.
     - Registration uses Electron's
@@ -690,9 +691,12 @@ outside the install root.
 
 1. Upload the new binary, verify it and rename it into `versions/<sha256>/`.
 2. The new version's bridge reads `core.lock`. If the core holding the lock is
-   older, it stops that core (its unit, or `SIGTERM` once its executable is
-   found in this install's `versions/`), waits for the lock, and starts its
-   own core. It never replaces a newer core.
+   older, it takes `run/upgrade.lock`, so one bridge at a time decides, reads
+   `core.lock` again, and stops that core (its unit, or `SIGTERM` once its
+   executable is found in this install's `versions/`, and only while that
+   process still holds the lock). It waits for the lock and starts its own
+   core. It never replaces a newer core, and a bridge that finds the unit
+   restarting waits for that core instead of starting one.
 3. The new core adopts every holder; it speaks holder protocol versions N and
    N−1.
 
@@ -815,6 +819,9 @@ needs Rust. Every request carries a `requestId`.
       behind (D-04); it also ends with `Synced`.
     - `PeerInput` tells the other clients of a session that someone typed,
       at most once a second (US-2.6.4).
+    - `Detached { reason }` tells a client the daemon ended its attachment:
+      `attachedElsewhere` when another client opened a session whose E1
+      holder serves one client at a time (P-27, P-34).
 6. **Semantic events.** The daemon parses OSC 133, OSC 7, OSC 0/2 and BEL into
    `CommandFinished`, `Cwd`, `Title`, `Bell` and `Activity`.
     - Background sessions attach in `events` mode, so no output flows for them.

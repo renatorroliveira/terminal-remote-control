@@ -103,7 +103,7 @@ impl Attachments {
                     attachment: id,
                     replay: Replay::Snapshot,
                 });
-                attachment.stream(SnapshotScope::Full, session);
+                attachment.stream(id, SnapshotScope::Full, session);
             }
         }
         self.list.insert(id, attachment);
@@ -152,7 +152,7 @@ impl Attachments {
             attachment: id,
             kind: ResyncKind::Full,
         });
-        attachment.stream(SnapshotScope::Full, session);
+        attachment.stream(id, SnapshotScope::Full, session);
     }
 
     /// Queues live output for every attachment that is up to date; one whose queue overflows falls behind.
@@ -207,8 +207,8 @@ impl Attachment {
         self.queued = 0;
     }
 
-    /// Starts a snapshot; one the emulator cannot start is retried as the screen alone, or skipped (logged).
-    fn stream(&mut self, scope: SnapshotScope, session: &Session<'_>) {
+    /// Starts a snapshot; one the emulator cannot start is recovered from (logged).
+    fn stream(&mut self, id: u32, scope: SnapshotScope, session: &Session<'_>) {
         let stream = match session
             .terminal
             .map(|terminal| SnapshotStream::new(terminal, scope, session.max_rows))
@@ -216,20 +216,31 @@ impl Attachment {
             Some(Ok(stream)) => Some(stream),
             Some(Err(error)) => {
                 tracing::warn!(%error, "a snapshot could not start");
-                return self.fall_back(scope, session);
+                return self.recover(id, scope, session);
             }
             None => None,
         };
         self.state = State::Streaming { stream, scope };
     }
 
-    /// A snapshot failed: the whole buffer gives way to the screen alone; the screen gives way to live output.
-    fn fall_back(&mut self, scope: SnapshotScope, session: &Session<'_>) {
-        if scope == SnapshotScope::Full {
-            self.stream(SnapshotScope::Screen, session);
-        } else {
-            self.state = State::Live;
+    /// A snapshot failed, and what was queued of it is dropped. A whole-buffer one gives way to the screen alone, as a
+    /// resync that says rows are missing (a reset, for a legacy client); the screen gives way to live output from where
+    /// the log stands, so the client is never left waiting for `synced`.
+    fn recover(&mut self, id: u32, scope: SnapshotScope, session: &Session<'_>) {
+        self.clear();
+        if scope == SnapshotScope::Screen {
+            self.synced(id, session);
+            return;
         }
+        if self.legacy {
+            self.output(RESET.to_vec());
+        } else {
+            self.event(HolderEvent::Resync {
+                attachment: id,
+                kind: ResyncKind::Screen,
+            });
+        }
+        self.stream(id, SnapshotScope::Screen, session);
     }
 
     fn live(&mut self, output: &[u8]) {
@@ -244,14 +255,14 @@ impl Attachment {
     fn resync(&mut self, id: u32, session: &Session<'_>) {
         if self.legacy {
             self.output(RESET.to_vec());
-            self.stream(SnapshotScope::Full, session);
+            self.stream(id, SnapshotScope::Full, session);
             return;
         }
         self.event(HolderEvent::Resync {
             attachment: id,
             kind: ResyncKind::Screen,
         });
-        self.stream(SnapshotScope::Screen, session);
+        self.stream(id, SnapshotScope::Screen, session);
     }
 
     fn drain(&mut self, id: u32, session: &Session<'_>, out: &mut Vec<Outgoing>) {
@@ -316,11 +327,7 @@ impl Attachment {
             Ok(None) => self.finish(id, scope, complete, session),
             Err(error) => {
                 tracing::warn!(%error, "a snapshot block could not be formatted");
-                self.clear();
-                self.fall_back(scope, session);
-                if matches!(self.state, State::Live) {
-                    self.synced(id, session);
-                }
+                self.recover(id, scope, session);
             }
         }
         true
@@ -522,6 +529,71 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    /// Runs `recover` on attachment 1 after its snapshot of `scope` failed, and drains what it then sends.
+    fn recovered(fixture: &mut Fixture, scope: SnapshotScope) -> Vec<Outgoing> {
+        let session = Session {
+            terminal: Some(&fixture.terminal),
+            log: &fixture.log,
+            max_rows: 10_000,
+        };
+        if let Some(attachment) = fixture.attachments.list.get_mut(&1) {
+            attachment.recover(1, scope, &session);
+        }
+        fixture.drain()
+    }
+
+    #[test]
+    fn a_whole_buffer_snapshot_that_fails_resyncs_to_the_screen_saying_rows_are_missing() {
+        let mut fixture = Fixture::new();
+        fixture.output(&"old\r\n".repeat(20).into_bytes());
+        fixture.output(b"prompt$ ");
+        fixture.attach(1, u32::MAX, None, false);
+        let sent = recovered(&mut fixture, SnapshotScope::Full);
+        assert!(matches!(
+            events(&sent)[..],
+            [
+                HolderEvent::Attached { .. },
+                HolderEvent::Resync {
+                    kind: ResyncKind::Screen,
+                    ..
+                },
+                HolderEvent::Synced { .. }
+            ]
+        ));
+        let mut replay = terminal();
+        replay.feed(&output_of(&sent, 1));
+        assert_eq!(replay.cursor(), fixture.terminal.cursor());
+    }
+
+    #[test]
+    fn a_legacy_client_whose_snapshot_fails_gets_a_reset_and_the_screen() {
+        let mut fixture = Fixture::new();
+        fixture.output(b"prompt$ ");
+        fixture.attach(1, u32::MAX, None, true);
+        let sent = recovered(&mut fixture, SnapshotScope::Full);
+        assert!(output_of(&sent, 1).starts_with(RESET));
+        assert!(
+            !events(&sent)
+                .iter()
+                .any(|event| matches!(event, HolderEvent::Resync { .. }))
+        );
+    }
+
+    #[test]
+    fn a_screen_that_fails_goes_live_and_says_where_output_stands() {
+        let mut fixture = Fixture::new();
+        fixture.output(b"prompt$ ");
+        fixture.attach(1, u32::MAX, None, false);
+        let sent = recovered(&mut fixture, SnapshotScope::Screen);
+        assert!(output_of(&sent, 1).is_empty());
+        assert!(matches!(
+            events(&sent).last(),
+            Some(HolderEvent::Synced { offset: 8, .. })
+        ));
+        fixture.output(b"ls");
+        assert_eq!(output_of(&fixture.drain(), 1), b"ls");
     }
 
     #[test]

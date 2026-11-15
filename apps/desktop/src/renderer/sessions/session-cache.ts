@@ -11,6 +11,9 @@ export interface SessionCacheStore {
 
 /** How long the session list must stay the same before it is saved, so a burst of updates is one write. */
 const SAVE_DELAY_MS = 500;
+/** A save that failed is tried again this much later, at most this many times, until the list changes. */
+const RETRY_DELAY_MS = 5_000;
+const RETRIES = 2;
 
 /**
  * What the session list shows of each host's sessions, as the cache keeps it (P-30): within what `sessions.json`
@@ -53,8 +56,8 @@ export function restoredSession(cached: CachedSession): SessionInfo {
 }
 
 /**
- * Saves what the session list shows whenever it changes and then holds still for half a second; `saved` is what the
- * cache already holds. Returns a function that stops watching.
+ * Saves what the session list shows whenever it changes and then holds still for half a second, trying a failed save
+ * twice more 5 s apart; `saved` is what the cache already holds. Returns a function that stops watching.
  */
 export function watchSessionCache(
     store: StoreApi<Workspace>,
@@ -63,20 +66,27 @@ export function watchSessionCache(
 ): () => void {
     let last: string | undefined = JSON.stringify(saved);
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let retries = 0;
+    const failed = (): void => {
+        last = undefined;
+        if (retries < RETRIES) {
+            retries += 1;
+            timer = setTimeout(save, RETRY_DELAY_MS);
+        }
+    };
     const save = (): void => {
         timer = undefined;
         const next = cachedSessions(store.getState());
         const text = JSON.stringify(next);
         if (text !== last) {
             last = text;
-            cache.save(next).catch(() => {
-                last = undefined;
-            });
+            cache.save(next).catch(failed);
         }
     };
     const stop = store.subscribe((state, previous) => {
         if (state.sessions !== previous.sessions) {
             clearTimeout(timer);
+            retries = 0;
             timer = setTimeout(save, SAVE_DELAY_MS);
         }
     });

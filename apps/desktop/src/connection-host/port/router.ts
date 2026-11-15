@@ -59,7 +59,7 @@ export class ConnectionRouter {
     /** After a wake or a network change: reconnects every waiting host now and checks every connected one (US-2.2.2). */
     retryAll(): void {
         for (const [hostId, connection] of this.#connections) {
-            this.#reconnectors.get(hostId)?.retrySoon();
+            this.#reconnectors.get(hostId)?.retryNow();
             if (connection.state.status === 'connected') {
                 connection.checkAlive();
             }

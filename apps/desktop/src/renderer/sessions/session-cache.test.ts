@@ -93,5 +93,7 @@ describe('watchSessionCache', () => {
         store.setState(listed([bashSession('a')]), true);
         await vi.advanceTimersByTimeAsync(1_000);
         expect(attempts).toBe(2);
+        await vi.advanceTimersByTimeAsync(60_000);
+        expect(attempts).toBe(4);
     });
 });
