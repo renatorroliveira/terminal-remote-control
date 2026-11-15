@@ -6,7 +6,7 @@ import { type ElectronApplication, _electron as electron } from '@playwright/tes
 /** The app's directory, which Electron loads. */
 export const APP_DIRECTORY = resolve(import.meta.dirname, '../../..');
 
-/** The environment every test launch gets: the test build opens behind the focused app. */
+/** The environment every test launch gets: the test build opens unseen and never takes focus (D-27). */
 export function testEnvironment(extra: Readonly<Record<string, string>> = {}): Record<string, string> {
     return { ...(process.env as Record<string, string>), TRC_TEST_BACKGROUND: '1', ...extra };
 }

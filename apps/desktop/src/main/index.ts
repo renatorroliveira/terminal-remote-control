@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { app, BrowserWindow, clipboard, ipcMain, Menu, protocol, session, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, Menu, protocol, screen, session, shell } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL, QUIT_REQUESTED_CHANNEL } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
@@ -11,6 +11,7 @@ import { relayAccessibility } from './accessibility-relay';
 import { AppConfigFile, settingsOf } from './app-config';
 import { appIconPath } from './app-icon';
 import { contentTypeFor, resolveAppRequest } from './app-protocol';
+import { backgroundWindowOptions, showInBackground } from './background-window';
 import { writeHostClipboard } from './clipboard-writes';
 import { startConnectionHost } from './connection-host';
 import { refuseRemoteDebugging } from './debugging-guard';
@@ -320,7 +321,7 @@ function focusMainWindow(): void {
         mainWindow.restore();
     }
     if (background) {
-        mainWindow.showInactive();
+        showInBackground(mainWindow);
         return;
     }
     mainWindow.focus();
@@ -341,16 +342,16 @@ async function serveAppRequest(request: Request): Promise<Response> {
 }
 
 function createWindow(display: DisplayRelay, screenReader: ScreenReaderSetting): BrowserWindow {
+    const size = { width: 1200, height: 800 };
     const window = new BrowserWindow({
-        width: 1200,
-        height: 800,
+        ...(background ? backgroundWindowOptions(screen.getPrimaryDisplay().workArea, size) : size),
         title: APP_IDENTITY.productName,
         icon: appIconPath(resources),
         show: !background,
         webPreferences: secureWebPreferences(join(import.meta.dirname, '../preload/index.cjs')),
     });
     if (background) {
-        window.once('ready-to-show', () => window.showInactive());
+        window.once('ready-to-show', () => showInBackground(window));
     }
     refuseNavigation(window.webContents);
     startConnectionHost(window, resources, testSeam);

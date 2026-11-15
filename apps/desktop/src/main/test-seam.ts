@@ -1,6 +1,6 @@
 /** The P-14 test seam's values: what a test build reads from its `TRC_TEST_*` variables. */
 export interface TestSeam {
-    /** Open behind the focused app, so test runs never take the developer's focus. */
+    /** Open unseen in the background: transparent, click-through, never focused, so test runs never disturb (D-27). */
     readonly background: boolean;
     /** An SSH config read ahead of the user's. */
     readonly sshConfig?: string;
