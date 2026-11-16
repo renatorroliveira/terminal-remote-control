@@ -43,7 +43,7 @@ pub struct CreateSessionSpec {
 pub enum AttachMode {
     /// The screen snapshot, then live output.
     Full,
-    /// Session events only (E4).
+    /// Session events only (E5).
     Events,
     /// A mode this version does not know.
     #[serde(other)]

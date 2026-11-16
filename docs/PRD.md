@@ -2,7 +2,7 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.14                     |
+| Status       | Draft v0.15                     |
 | Owner        | Renato Oliveira                 |
 | Last updated | 2026-11-16                      |
 | Scope        | P0 in seven epics, then GA (E8) |
@@ -174,7 +174,7 @@ for P0.
 | ----- | -------------------------------------------------------------- | ------------------ |
 | 1     | macOS desktop app                                              | E1                 |
 | 2     | Linux remote daemon                                            | E1                 |
-| 3     | macOS daemon: local sessions on the Mac and macOS remote hosts | E5                 |
+| 3     | macOS daemon: local sessions on the Mac and macOS remote hosts | E4                 |
 | 4     | Windows desktop app and local Windows daemon                   | E6                 |
 | 5     | Linux desktop app and local Linux daemon                       | E7                 |
 
@@ -239,7 +239,7 @@ hears what a command did without leaving the prompt.
 6. The screen reader's stop-speech command works as it does in native apps; the
    app does not re-queue interrupted speech.
 7. Output in background sessions is not announced. Background events are
-   covered by US-4.3.
+   covered by US-5.3.
 
 #### A11Y-03 — Review mode: read and navigate the whole buffer
 
@@ -603,12 +603,12 @@ applies from the epic in the last column onward.
 
 | ID     | Area                   | Requirement                                                                                                                                 | Initial target                                        | Applies from |
 | ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------ |
-| NFR-01 | Input latency (local)  | Latency the app and daemon add between a keystroke and its echo, excluding the shell.                                                       | p95 ≤ 10 ms                                           | E5           |
+| NFR-01 | Input latency (local)  | Latency the app and daemon add between a keystroke and its echo, excluding the shell.                                                       | p95 ≤ 10 ms                                           | E4           |
 | NFR-02 | Input latency (remote) | Same, for remote sessions.                                                                                                                  | p99 ≤ SSH round-trip time + one 60 Hz frame (16.7 ms) | E1           |
 | NFR-03 | Throughput             | Under sustained output (for example `yes`, or `cat` of a 1 GB file), the UI stays interactive and Ctrl+C reaches the process quickly.       | Interrupt delivered p95 ≤ 100 ms                      | E1           |
 | NFR-04 | AT responsiveness      | With a screen reader on, speech of new output starts promptly, and flood control keeps the screen reader responsive under sustained output. | Speech starts ≤ 500 ms after output, when idle        | E1           |
 | NFR-05 | Scale                  | Sessions per host and hosts per app without breaching the latency targets; state changes reach attached clients quickly.                    | ≥ 100 sessions/host; ≥ 25 hosts; state p95 ≤ 250 ms   | E1           |
-| NFR-06 | Startup                | Window interactive after launch; remote reconnects started; local sessions listed.                                                          | ≤ 2 s; ≤ 1 s after window; ≤ 1 s after window         | E1; E2; E5   |
+| NFR-06 | Startup                | Window interactive after launch; remote reconnects started; local sessions listed.                                                          | ≤ 2 s; ≤ 1 s after window; ≤ 1 s after window         | E1; E2; E4   |
 | NFR-07 | Reconnect              | Dead-connection detection; reconnection once the network is back.                                                                           | Detect ≤ 30 s; reconnect ≤ 5 s on a healthy network   | E1; E2       |
 | NFR-08 | Durability             | Lag between live output and on-disk scrollback, which bounds loss on power failure.                                                         | ≤ 5 s                                                 | E3           |
 | NFR-09 | Daemon footprint       | Idle daemon memory and CPU; overhead per session beyond scrollback.                                                                         | ≤ 30 MB RSS, ≤ 0.5% CPU idle; ≤ 10 MB/session         | E1           |
@@ -673,8 +673,8 @@ The implementation breakdown of each epic lives in a separate plan per epic,
 | [E1](#91-e1--accessible-remote-terminal-macos-app-to-linux-hosts)  | Run and manage terminal sessions on Linux hosts from an accessible macOS app                        | macOS                 | Linux                       | 14           |
 | [E2](#92-e2--remote-sessions-that-outlive-the-app-and-the-network) | Quit, sleep or roam and come back to the same running sessions, from more than one Mac              | macOS                 | Linux                       | 6            |
 | [E3](#93-e3--sessions-that-survive-a-host-reboot)                  | Get sessions back, with their history, after a host restarts, and manage each host's daemon         | macOS                 | Linux                       | 3            |
-| [E4](#94-e4--command-aware-terminal)                               | Jump between commands, hear exit status and background events, reach any session fast               | macOS                 | Linux                       | 4            |
-| [E5](#95-e5--local-sessions-on-the-mac-and-macos-hosts)            | Run persistent local sessions on the Mac, and add macOS hosts                                       | macOS                 | Linux, macOS, this Mac      | 5            |
+| [E4](#94-e4--local-sessions-on-the-mac-and-macos-hosts)            | Run persistent local sessions on the Mac, and add macOS hosts                                       | macOS                 | Linux, macOS, this Mac      | 5            |
+| [E5](#95-e5--command-aware-terminal)                               | Jump between commands, hear exit status and background events, reach any session fast               | macOS                 | Linux, macOS, this Mac      | 4            |
 | [E6](#96-e6--windows-desktop)                                      | Do everything above from Windows, with persistent local Windows sessions                            | macOS, Windows        | Linux, macOS, this computer | 3            |
 | [E7](#97-e7--linux-desktop)                                        | Do everything above from Linux, with persistent local Linux sessions                                | macOS, Windows, Linux | Linux, macOS, this computer | 2            |
 | [E8](#98-e8--general-availability-release)                         | Download signed releases from a website, verify where each one came from, and get automatic updates | macOS, Windows, Linux | Linux, macOS, this computer | 5            |
@@ -687,7 +687,7 @@ number of terminal sessions on it from a fully accessible app.
 
 **Scope.** macOS desktop app; Linux x86_64 and arm64 hosts. Not yet: sessions
 that outlive the app or a disconnect (E2), recovery after a host reboot (E3),
-command navigation (E4), local sessions (E5).
+local sessions (E4), command navigation (E5).
 
 **Acceptance criteria.** US-1.1 to US-1.14 are fully implemented, as amended by
 the E1 notes below, and the epic completion conditions in §9 hold on the macOS
@@ -818,7 +818,7 @@ Acceptance criteria:
    announcement mute).
 2. The sidebar groups sessions by host, in user-defined order. Each host group
    shows its connection state and can collapse. "This computer" joins the top
-   of the list in E5.
+   of the list in E4.
 3. The sidebar resizes by pointer, by keyboard command and by setting, and
    collapses. Its width persists.
 4. The session list is an accessible tree (host, then sessions) with arrow-key
@@ -929,7 +929,7 @@ Acceptance criteria:
    (Cmd+click on macOS, Ctrl+click on Windows and Linux) and from the keyboard
    through a "list links" command and review mode, with the app the OS assigns
    to the link's scheme. **E1 note:** E1 detects URLs; detecting file paths is
-   deferred to E5 (owner, 2026-11-13), when local sessions make them openable.
+   deferred to E4 (owner, 2026-11-13), when local sessions make them openable.
 4. Before a link opens, a confirmation shows its full target, unless the
    target starts with a prefix the user trusts (SEC-06.2). The confirmation can
    trust the link's origin, for example `https://google.com`, so its links
@@ -1072,7 +1072,7 @@ Acceptance criteria:
    re-adopted by the restarted daemon.
 2. The processes that hold PTYs, and the session processes, run outside the
    daemon's service-manager kill scope: outside the systemd unit's control
-   group (here), outside the launchd job's process group (E5), and attached to a
+   group (here), outside the launchd job's process group (E4), and attached to a
    ConPTY owner that outlives the daemon core (E6). A per-OS automated test
    kills the daemon, lets it restart, and asserts that every shell survives.
 3. When the app ships a newer daemon, the app upgrades the installed daemon in
@@ -1092,7 +1092,7 @@ Acceptance criteria:
 1. Any number of desktop app instances, on different computers, attach to the
    same session at the same time. All receive output in real time and all can
    send input. A host's sessions are reachable by the app on that host through
-   local IPC (from E5), and by apps on other computers that reach the host over
+   local IPC (from E4), and by apps on other computers that reach the host over
    SSH (US-1.5). No other path exists.
 2. The PTY size follows the most recently active client (last input or focus).
    Other clients render the session at that size and indicate "Size set by
@@ -1130,7 +1130,7 @@ Acceptance criteria:
    closed — the daemon starts a new process with the same shell, arguments,
    name, size and list position, the environment the session was started with,
    and the last known working directory. The working directory comes from shell
-   integration (OSC 7) when available (US-4.1), otherwise from the OS's process
+   integration (OSC 7) when available (US-5.1), otherwise from the OS's process
    information, otherwise the session's initial directory. Variables the user
    exported inside the shell are not restored.
 4. The previous scrollback is restored above a marker line: "Session restored
@@ -1175,18 +1175,103 @@ Acceptance criteria:
    them and remove the daemon.
 5. Documentation describes manual removal for every platform delivered so far.
 
-### 9.4 E4 — Command-aware terminal
+### 9.4 E4 — Local sessions on the Mac, and macOS hosts
+
+**Outcome.** "This computer" joins the sidebar. Local sessions on the Mac get
+everything remote sessions have: they outlive the app, survive daemon crashes
+and upgrades, and come back after a reboot or logout. Macs can be added as
+remote hosts too.
+
+**Scope.** macOS desktop app with the local macOS daemon; Linux and macOS hosts.
+
+**Acceptance criteria.** US-4.1 to US-4.5 are fully implemented, and the epic
+completion conditions in §9 hold on the macOS cells of the AT matrix. Risks
+retired: R4 (macOS), R5 (macOS), R7.
+
+#### US-4.1 — Local daemon set up on first launch
+
+> As **Jordan**, I want the app to set up its background service the first time
+> I launch it, without asking for an administrator password, so that local
+> sessions persist from day one.
+
+Acceptance criteria:
+
+1. On first launch, and whenever the daemon is missing, the app installs the
+   daemon bundled with the app into a per-user location, registers it as a
+   launchd LaunchAgent, and starts it.
+2. No step asks for an administrator password.
+3. Progress and outcome are shown and announced. A failure names the cause and
+   the next step.
+
+#### US-4.2 — Local sessions work like remote sessions
+
+> As **Jordan** and **Sam**, I want sessions on my Mac to work exactly like
+> remote ones, so that location never changes how I work.
+
+Acceptance criteria:
+
+1. "This computer" appears first in the sidebar.
+2. Every E1–E3 capability works the same for local sessions: create, switch,
+   manage, emulation, copy and paste, find, sharing, and restore with its
+   controls. E5's command awareness then covers them as it covers every host.
+3. A local session's default shell is the user's login shell.
+4. The app reaches the local daemon only through local IPC (SEC-01, SEC-02).
+   Local input latency meets NFR-01.
+
+#### US-4.3 — Local sessions outlive the app and the daemon
+
+> As **Jordan**, I want my local terminals to keep running when I close the app
+> or the daemon fails, so that I can quit without losing work.
+
+Acceptance criteria:
+
+1. Quitting the app, an app crash, a force-kill and an app update end no local
+   session (as in US-2.1).
+2. If the local daemon crashes or is killed, launchd restarts it, and sessions
+   are unaffected (as in US-2.5).
+3. Upgrading the local daemon keeps sessions.
+
+#### US-4.4 — Local sessions come back after a reboot or logout
+
+> As **Jordan**, I want my local sessions back after my Mac restarts, so that a
+> reboot is a minor interruption, not a reset.
+
+Acceptance criteria:
+
+1. The daemon starts automatically at login.
+2. Logging out ends user processes on macOS. Logout is therefore treated like a
+   reboot.
+3. After a reboot or logout, local sessions respawn as in US-3.1, with the
+   US-3.2 controls.
+
+#### US-4.5 — Add macOS hosts
+
+> As **Jordan**, I want to add any Mac I reach with `ssh` as a host, so that my
+> other Macs work like my Linux hosts.
+
+Acceptance criteria:
+
+1. Adding a host, verifying it, reporting failures, installing the daemon and
+   every E1–E3 capability work for macOS hosts on arm64 and x86_64.
+2. On a macOS host, the daemon is a launchd LaunchAgent when the user has a GUI
+   login session. Otherwise, it is a detached daemon started over SSH, and after
+   a reboot without a GUI login its sessions respawn when the app reconnects.
+3. A Mac's local sessions are the same sessions another computer sees when it
+   adds that Mac as a host. Sharing works as in US-2.6.
+
+### 9.5 E5 — Command-aware terminal
 
 **Outcome.** Users jump between commands, hear when a command fails, learn when
 something happens in another session, and reach any session by name with one
 shortcut.
 
-**Scope.** macOS desktop app; Linux hosts. PowerShell integration arrives in E6.
+**Scope.** macOS desktop app; Linux and macOS hosts, and local sessions on the
+Mac. PowerShell integration arrives in E6.
 
-**Acceptance criteria.** US-4.1 to US-4.4 are fully implemented, and the epic
+**Acceptance criteria.** US-5.1 to US-5.4 are fully implemented, and the epic
 completion conditions in §9 hold on the macOS cells of the AT matrix.
 
-#### US-4.1 — Shell integration without editing dotfiles
+#### US-5.1 — Shell integration without editing dotfiles
 
 > As **Sam**, I want the terminal to know where each command starts and ends in
 > my usual shells, without me changing my configuration, so that command
@@ -1201,7 +1286,7 @@ Acceptance criteria:
    shells that emit them on their own.
 3. The user can turn injection off per host.
 
-#### US-4.2 — Navigate by command
+#### US-5.2 — Navigate by command
 
 > As **Sam**, I want to jump between commands and hear each one's output and
 > exit status, so that I can find what failed without reading the whole log.
@@ -1217,7 +1302,7 @@ Acceptance criteria:
 3. Without shell integration, command navigation is unavailable. Invoking it
    announces why. All other features still work.
 
-#### US-4.3 — Events in background sessions
+#### US-5.3 — Events in background sessions
 
 > As **Sam**, I want to hear when something important happens in a session I am
 > not looking at, so that I do not have to poll every session.
@@ -1233,7 +1318,7 @@ Acceptance criteria:
    part of the item's accessible description until the session is viewed.
 3. Announcements are merged per session as A11Y-12 requires.
 
-#### US-4.4 — Reach any session with one shortcut
+#### US-5.4 — Reach any session with one shortcut
 
 > As **Jordan** and **Sam**, I want to jump to any session by typing part of its
 > name, so that dozens of sessions on many hosts stay manageable.
@@ -1243,90 +1328,6 @@ Acceptance criteria:
 1. A quick switcher (shortcut) opens a filterable list of all sessions on all
    hosts, matching name, host and title, and announces the result count.
 2. Choosing a result opens the session as in US-1.8.
-
-### 9.5 E5 — Local sessions on the Mac, and macOS hosts
-
-**Outcome.** "This computer" joins the sidebar. Local sessions on the Mac get
-everything remote sessions have: they outlive the app, survive daemon crashes
-and upgrades, and come back after a reboot or logout. Macs can be added as
-remote hosts too.
-
-**Scope.** macOS desktop app with the local macOS daemon; Linux and macOS hosts.
-
-**Acceptance criteria.** US-5.1 to US-5.5 are fully implemented, and the epic
-completion conditions in §9 hold on the macOS cells of the AT matrix. Risks
-retired: R4 (macOS), R5 (macOS), R7.
-
-#### US-5.1 — Local daemon set up on first launch
-
-> As **Jordan**, I want the app to set up its background service the first time
-> I launch it, without asking for an administrator password, so that local
-> sessions persist from day one.
-
-Acceptance criteria:
-
-1. On first launch, and whenever the daemon is missing, the app installs the
-   daemon bundled with the app into a per-user location, registers it as a
-   launchd LaunchAgent, and starts it.
-2. No step asks for an administrator password.
-3. Progress and outcome are shown and announced. A failure names the cause and
-   the next step.
-
-#### US-5.2 — Local sessions work like remote sessions
-
-> As **Jordan** and **Sam**, I want sessions on my Mac to work exactly like
-> remote ones, so that location never changes how I work.
-
-Acceptance criteria:
-
-1. "This computer" appears first in the sidebar.
-2. Every E1–E4 capability works the same for local sessions: create, switch,
-   manage, emulation, copy and paste, find, shell integration, command
-   navigation, background events and the quick switcher.
-3. A local session's default shell is the user's login shell.
-4. The app reaches the local daemon only through local IPC (SEC-01, SEC-02).
-   Local input latency meets NFR-01.
-
-#### US-5.3 — Local sessions outlive the app and the daemon
-
-> As **Jordan**, I want my local terminals to keep running when I close the app
-> or the daemon fails, so that I can quit without losing work.
-
-Acceptance criteria:
-
-1. Quitting the app, an app crash, a force-kill and an app update end no local
-   session (as in US-2.1).
-2. If the local daemon crashes or is killed, launchd restarts it, and sessions
-   are unaffected (as in US-2.5).
-3. Upgrading the local daemon keeps sessions.
-
-#### US-5.4 — Local sessions come back after a reboot or logout
-
-> As **Jordan**, I want my local sessions back after my Mac restarts, so that a
-> reboot is a minor interruption, not a reset.
-
-Acceptance criteria:
-
-1. The daemon starts automatically at login.
-2. Logging out ends user processes on macOS. Logout is therefore treated like a
-   reboot.
-3. After a reboot or logout, local sessions respawn as in US-3.1, with the
-   US-3.2 controls.
-
-#### US-5.5 — Add macOS hosts
-
-> As **Jordan**, I want to add any Mac I reach with `ssh` as a host, so that my
-> other Macs work like my Linux hosts.
-
-Acceptance criteria:
-
-1. Adding a host, verifying it, reporting failures, installing the daemon and
-   every E1–E4 capability work for macOS hosts on arm64 and x86_64.
-2. On a macOS host, the daemon is a launchd LaunchAgent when the user has a GUI
-   login session. Otherwise, it is a detached daemon started over SSH, and after
-   a reboot without a GUI login its sessions respawn when the app reconnects.
-3. A Mac's local sessions are the same sessions another computer sees when it
-   adds that Mac as a host. Sharing works as in US-2.6.
 
 ### 9.6 E6 — Windows desktop
 
@@ -1348,8 +1349,8 @@ matrix. Risks retired: R4 (Windows), R5 (Windows), R8.
 
 Acceptance criteria:
 
-1. Every E1–E4 capability, and US-5.5, works from the Windows app against Linux
-   and macOS hosts.
+1. Every E1–E3 and E5 capability, and US-4.5, works from the Windows app
+   against Linux and macOS hosts.
 2. The app uses the OpenSSH client and agent that ship with Windows, as
    described in US-1.1.
 3. Copy and paste follow Windows conventions (A11Y-04, US-1.12).
@@ -1366,10 +1367,10 @@ Acceptance criteria:
    outside the app's process tree and job object (SEC-07).
 2. Local sessions run in ConPTY with PowerShell 7, Windows PowerShell 5.1, cmd
    and WSL distributions. "This computer" appears first in the sidebar.
-3. Local sessions behave as in US-5.2 to US-5.4: every E1–E4 capability; they
-   outlive the app; they survive daemon crashes and upgrades because each
-   ConPTY owner outlives the daemon core (US-2.5); and they respawn after a
-   reboot or logout.
+3. Local sessions behave as in US-4.2 to US-4.4: every E1–E3 and E5
+   capability; they outlive the app; they survive daemon crashes and upgrades
+   because each ConPTY owner outlives the daemon core (US-2.5); and they
+   respawn after a reboot or logout.
 4. Stop sends a close request, then terminates after the grace period.
 5. The daemon is reached through a named pipe (SEC-01, SEC-02).
 6. Verified programs add PowerShell with PSReadLine.
@@ -1381,9 +1382,9 @@ Acceptance criteria:
 
 Acceptance criteria:
 
-1. Shell integration (US-4.1) is injected for PowerShell, both locally and on
+1. Shell integration (US-5.1) is injected for PowerShell, both locally and on
    remote hosts where PowerShell is installed.
-2. Command navigation (US-4.2) and background events (US-4.3) work in
+2. Command navigation (US-5.2) and background events (US-5.3) work in
    PowerShell sessions.
 
 ### 9.7 E7 — Linux desktop
@@ -1405,7 +1406,7 @@ R3.
 
 Acceptance criteria:
 
-1. Every E1–E4 capability, and US-5.5, works from the Linux app.
+1. Every E1–E3 and E5 capability, and US-4.5, works from the Linux app.
 2. Selecting text sets the PRIMARY selection, and middle-click pastes
    (A11Y-04).
 3. Default shortcuts avoid the keys GNOME reserves (Alt+F1, Alt+F2). Review
@@ -1423,9 +1424,9 @@ Acceptance criteria:
    systemd user unit. Without a systemd user instance, the daemon runs as a
    detached process and the app states the reduced guarantee: no automatic
    start at login or boot.
-2. Local sessions behave as in US-5.2 to US-5.4: every E1–E4 capability; they
-   outlive the app; they survive daemon crashes and upgrades; and they respawn
-   after a reboot.
+2. Local sessions behave as in US-4.2 to US-4.4: every E1–E3 and E5
+   capability; they outlive the app; they survive daemon crashes and upgrades;
+   and they respawn after a reboot.
 3. Logging out ends local sessions unless lingering is enabled. Logout is then
    treated like a reboot.
 
@@ -1561,7 +1562,7 @@ navigable, selectable — but not for the semantics of a program's own layout.
 | 2.4.2       | Page Titled                               | A     | Window title names the session and host.                                                                                                                                                                                   | A11Y-01                           |
 | 2.4.3       | Focus Order                               | A     | Focus order follows the visual layout; focus returns to the opener.                                                                                                                                                        | A11Y-05                           |
 | 2.4.4       | Link Purpose (In Context)                 | A     | UI links are descriptive; terminal links expose their target.                                                                                                                                                              | A11Y-11, US-1.12                  |
-| 2.4.5       | Multiple Ways                             | AA    | Intent met in-app: sidebar, next/previous shortcuts, quick switcher.                                                                                                                                                       | US-1.6, US-1.8, US-4.4            |
+| 2.4.5       | Multiple Ways                             | AA    | Intent met in-app: sidebar, next/previous shortcuts, quick switcher.                                                                                                                                                       | US-1.6, US-1.8, US-5.4            |
 | 2.4.6       | Headings and Labels                       | AA    | Descriptive labels and dialog headings.                                                                                                                                                                                    | A11Y-11                           |
 | 2.4.7       | Focus Visible                             | AA    | Visible focus indicator everywhere.                                                                                                                                                                                        | A11Y-06                           |
 | 2.4.11      | Focus Not Obscured (Minimum)              | AA    | Overlays never fully hide the focused element.                                                                                                                                                                             | A11Y-06                           |
@@ -1649,10 +1650,10 @@ WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
 | R1  | **OS-visible selection (A11Y-04).** Terminal libraries such as xterm.js draw their own selection over a canvas or GPU surface. The OS sees no selected text. Which selection attributes Chromium exposes for read-only text (on macOS, text markers rather than `AXSelectedTextRange`) is unconfirmed.                                                                                                                                                           | Spike at the start of E1: mirror the terminal selection into a real selection on accessible text that Chromium exposes to each platform API. Record the attribute mapping per OS, and verify Speak Selection and each screen reader's selection command on every matrix cell as each platform arrives.                                                                         | E1 (macOS); re-verified in E6, E7    |
 | R2  | **Accessible text layer performance.** A parallel text layer for AT must track a fast-changing grid and a large scrollback without slowing rendering or flooding the accessibility tree.                                                                                                                                                                                                                                                                         | Spike at the start of E1: virtualize the text layer, batch updates, and measure against NFR-03 and NFR-04 with each screen reader running.                                                                                                                                                                                                                                     | E1; re-verified in E6, E7            |
 | R3  | **Linux AT detection.** Chromium's detection of a running AT on Linux is less reliable than on macOS and Windows.                                                                                                                                                                                                                                                                                                                                                | Manual toggle and command-line flag (A11Y-10); test Orca on Wayland and X11.                                                                                                                                                                                                                                                                                                   | E7                                   |
-| R4  | **Daemon crash or upgrade without session loss (US-2.5).** Replacing the process that holds PTYs ends sessions unless PTY ownership is separated from the upgradable component. Separation alone is not enough: on stop or restart, systemd kills every process in the unit's control group (`KillMode=control-group`), launchd kills the job's process group unless `AbandonProcessGroup` is set, and on Windows a ConPTY's processes end when its owner exits. | Spike at the start of E2: isolate each session's PTY in a long-lived holder process outside the daemon's kill scope on each OS (for example a separate systemd scope or unit, a separate process group with `AbandonProcessGroup`, a ConPTY owner independent of the daemon core). Alternatively, hand PTY file descriptors across the upgrade. Prove it with the US-2.5 test. | E2 (Linux), E5 (macOS), E6 (Windows) |
-| R5  | **Process lifetime on each OS.** Windows job objects can end child processes with the app; Linux logout can end user processes (`KillUserProcesses`); macOS LaunchAgents start only at GUI login.                                                                                                                                                                                                                                                                | Launch the daemon through the OS service manager, never as an app child (SEC-07). State reduced guarantees in the UI (US-2.4, US-7.2).                                                                                                                                                                                                                                         | E2 (Linux), E5 (macOS), E6 (Windows) |
+| R4  | **Daemon crash or upgrade without session loss (US-2.5).** Replacing the process that holds PTYs ends sessions unless PTY ownership is separated from the upgradable component. Separation alone is not enough: on stop or restart, systemd kills every process in the unit's control group (`KillMode=control-group`), launchd kills the job's process group unless `AbandonProcessGroup` is set, and on Windows a ConPTY's processes end when its owner exits. | Spike at the start of E2: isolate each session's PTY in a long-lived holder process outside the daemon's kill scope on each OS (for example a separate systemd scope or unit, a separate process group with `AbandonProcessGroup`, a ConPTY owner independent of the daemon core). Alternatively, hand PTY file descriptors across the upgrade. Prove it with the US-2.5 test. | E2 (Linux), E4 (macOS), E6 (Windows) |
+| R5  | **Process lifetime on each OS.** Windows job objects can end child processes with the app; Linux logout can end user processes (`KillUserProcesses`); macOS LaunchAgents start only at GUI login.                                                                                                                                                                                                                                                                | Launch the daemon through the OS service manager, never as an app child (SEC-07). State reduced guarantees in the UI (US-2.4, US-7.2).                                                                                                                                                                                                                                         | E2 (Linux), E4 (macOS), E6 (Windows) |
 | R6  | **Linux hosts without lingering.** Without lingering, systemd stops the user's service manager and every user unit about 10 seconds (`UserStopDelaySec`) after the last login session ends. That would kill a daemon run as a user unit at SSH disconnect. Enabling lingering may need administrator approval. With `KillUserProcesses=yes`, even a detached daemon dies at logout.                                                                              | Detached daemon outside the user's systemd instance when lingering is unavailable; respawn after reboot on the app's next connection (US-3.1); a clear warning on hosts where sessions cannot persist (US-2.4).                                                                                                                                                                | E2                                   |
-| R7  | **Remote macOS without a GUI login** cannot load a LaunchAgent and does not start one after reboot.                                                                                                                                                                                                                                                                                                                                                              | Detached daemon started over SSH; respawn on the app's next connection (US-5.5).                                                                                                                                                                                                                                                                                               | E5                                   |
+| R7  | **Remote macOS without a GUI login** cannot load a LaunchAgent and does not start one after reboot.                                                                                                                                                                                                                                                                                                                                                              | Detached daemon started over SSH; respawn on the app's next connection (US-4.5).                                                                                                                                                                                                                                                                                               | E4                                   |
 | R8  | **ConPTY output** on Windows can repaint regions, producing noisy or duplicated announcements.                                                                                                                                                                                                                                                                                                                                                                   | Announcement diffing on logical lines (A11Y-02); dedicated Windows test scripts for JAWS, NVDA and Narrator.                                                                                                                                                                                                                                                                   | E6                                   |
 | R9  | **Double speech** from screen-reader typing echo plus shell echo.                                                                                                                                                                                                                                                                                                                                                                                                | Suppress announcements of echoed input (A11Y-01).                                                                                                                                                                                                                                                                                                                              | E1                                   |
 | R10 | **Restrictive remote hosts** (home directory mounted `noexec`, quotas, SELinux policies).                                                                                                                                                                                                                                                                                                                                                                        | Configurable install location per host and specific error messages (US-1.4).                                                                                                                                                                                                                                                                                                   | E1                                   |

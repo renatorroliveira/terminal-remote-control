@@ -49,8 +49,8 @@ Planned for the first full release (P0), delivered in seven epics, then a genera
 | E1   | Accessible macOS app running sessions on Linux hosts                             |
 | E2   | Sessions that outlive the app and the network; shared sessions                   |
 | E3   | Sessions that survive a host reboot; daemon management                           |
-| E4   | Command-aware terminal: jump between commands, background events                 |
-| E5   | Local sessions on the Mac, and macOS hosts                                       |
+| E4   | Local sessions on the Mac, and macOS hosts                                       |
+| E5   | Command-aware terminal: jump between commands, background events                 |
 | E6   | Windows desktop app                                                              |
 | E7   | Linux desktop app                                                                |
 | E8   | GA release 1.0.0: downloads site, provenance, signed packages, automatic updates |

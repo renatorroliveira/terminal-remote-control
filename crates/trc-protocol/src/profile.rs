@@ -49,7 +49,7 @@ pub enum ProfileOrigin {
     Unspecified,
 }
 
-/// Whether the daemon injects its shell-integration scripts (E4).
+/// Whether the daemon injects its shell-integration scripts (E5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]

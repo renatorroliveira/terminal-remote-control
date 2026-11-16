@@ -107,8 +107,8 @@ Electron app (macOS in E1)                                    Host (Linux in E1)
 - **`trcd`.** One binary with three subcommands, `core`, `holder` and `bridge`
   (§5.4).
     - E1 ships only the Linux builds.
-    - The macOS build arrives with local sessions in E5 (§7.4 of the PRD).
-- **Local sessions (E5 onward).** Same path: the connection host spawns
+    - The macOS build arrives with local sessions in E4 (§7.4 of the PRD).
+- **Local sessions (E4 onward).** Same path: the connection host spawns
   `trcd bridge` locally instead of through `ssh`.
 
 ## 4. Desktop app
@@ -371,7 +371,7 @@ either way.
     - Dialog and Modal;
     - Menu, including context menus;
     - Autocomplete with ListBox for the command palette and quick switcher
-      (US-4.4);
+      (US-5.4);
     - Tooltip, form fields, SearchField, Switch, NumberField;
     - I18nProvider.
 - **Built in-house**, because each needs exact semantics:
@@ -501,7 +501,7 @@ either way.
       `extraResources`, with a SHA-256 manifest inside the signed bundle
       (SEC-04).
     - Linux ELF files are sealed as resources by the bundle signature.
-    - The macOS daemon (E5) is listed in `mac.binaries`, so it gets a Developer
+    - The macOS daemon (E4) is listed in `mac.binaries`, so it gets a Developer
       ID signature and the hardened runtime.
 - **SSH helpers.** `askpass` and `known-hosts` are POSIX `sh` scripts in
   `Contents/Resources/bin/` (§7). On Windows (E6) they become `trcd`
@@ -534,7 +534,7 @@ either way.
 - **Linux:** static musl binaries for `x86_64` and `aarch64`, built with
   **cargo-zigbuild 0.24** and Zig 0.17. One binary per architecture runs on
   both glibc and musl hosts (PRD §7.2).
-- **macOS (E5):** a universal2 binary built on a macOS runner.
+- **macOS (E4):** a universal2 binary built on a macOS runner.
 - **Windows (E6):** an MSVC build.
 - Not used: `cross` (unmaintained) and cargo-dist (not needed).
 
@@ -677,7 +677,7 @@ outside the install root.
   of the unit's control group. tmux does the same. The unit runs with
   `KillMode=process`, so a holder that had to start directly, because its
   scope could not start, still outlives a stop or restart of the core (P-34).
-- **macOS (E5).**
+- **macOS (E4).**
     - Holders call `setsid()`, and the LaunchAgent sets `AbandonProcessGroup`.
     - Registration uses Electron's
       `app.setLoginItemSettings({ type: 'agentService' })` (SMAppService).
@@ -825,7 +825,7 @@ needs Rust. Every request carries a `requestId`.
 6. **Semantic events.** The daemon parses OSC 133, OSC 7, OSC 0/2 and BEL into
    `CommandFinished`, `Cwd`, `Title`, `Bell` and `Activity`.
     - Background sessions attach in `events` mode, so no output flows for them.
-    - That keeps 25 hosts × 100 sessions cheap (NFR-05) while US-4.3 still
+    - That keeps 25 hosts × 100 sessions cheap (NFR-05) while US-5.3 still
       works.
 7. **Errors.** `Error { requestId, code, message }`.
 
@@ -1021,7 +1021,7 @@ the script until it has read `HELLO`.
       sshd's StrictModes rule, so a group-writable folder is refused even when
       the user is the group's only member. It reads mode bits only: on file
       systems whose permissions they don't show (CIFS `noperm`, FUSE
-      `allow_other`, NFSv4 ACLs), and on macOS hosts with ACLs (E5), it can
+      `allow_other`, NFSv4 ACLs), and on macOS hosts with ACLs (E4), it can
       accept a folder others can write. A host whose `/` or `/home` belongs to
       a user other than root is refused.
     - Then `<nonce> HELLO os=… arch=… checksum=… installed=…`: `uname -s`;
@@ -1069,7 +1069,7 @@ downgrade, so a newer installed version asks the user to update the app.
 cargo-zigbuild into `apps/desktop/resources/daemon/<linux-x64|linux-arm64>/trcd`
 and writes `manifest.json` with the version and each binary's SHA-256 and size.
 
-## 8. Shell selection (US-1.7, US-4.1, US-6.2, US-6.3)
+## 8. Shell selection (US-1.7, US-5.1, US-6.2, US-6.3)
 
 Users pick a **shell profile** for each session, and the default is the host's
 login shell. The daemon detects and stores profiles **per host**, and every
@@ -1129,7 +1129,7 @@ probe for bash, zsh, fish and pwsh. The login shell starts as a login shell
 - Sessions never inherit the daemon's environment. It carries stale `SSH_*`
   values from whichever connection started it.
 
-**Shell integration (US-4.1).** Our own short scripts emit OSC 133 A/B/C/D and
+**Shell integration (US-5.1).** Our own short scripts emit OSC 133 A/B/C/D and
 OSC 7. They are embedded in the daemon, written to its 0700 directory and
 injected without editing dotfiles.
 
@@ -1389,7 +1389,7 @@ Notes:
 | `macos-15` / `macos-26` (arm64)    | E1   | App build, signing, notarization, end-to-end tests             |
 | `macos-15-intel`                   | E1   | x64 smoke test                                                 |
 | `ubuntu-24.04`, `ubuntu-24.04-arm` | E1   | Daemon musl builds and tests, sshd integration, renderer tests |
-| `macos-15` / `macos-26` (arm64)    | E5   | Daemon universal2 build and tests                              |
+| `macos-15` / `macos-26` (arm64)    | E4   | Daemon universal2 build and tests                              |
 | `windows-2025`, `windows-11-arm`   | E6   | Windows app, ConPTY holder, Authenticode                       |
 
 Caches: the pnpm store, Electron and electron-builder downloads, Playwright's
@@ -1402,8 +1402,8 @@ Chromium, and Cargo.
 | E1   | §4.1–§4.4; macOS packaging, ad-hoc signed, and manual downloads (§4.5, D-17); the protocol (§6) with backpressure flow control instead of skip-to-latest (D-19); SSH and bootstrap (§7); POSIX shell profiles (§8); `trcd core`, `bridge` and `holder` on Linux musl, the core started detached by the bridge, without kill-scope isolation (D-20); all tooling (§9) |
 | E2   | Holders outside the kill scope and the Linux service-mode rule (§5.4, D-44); upgrades in place (D-46); protocol 2 with reconnect from an offset and skip-to-latest flow control (D-04) with `Resync` and rebuild (D-45); automatic reconnect and restore at launch; soak tests (NFR-11)                                                                              |
 | E3   | Persistence and restore (§5.5); daemon management                                                                                                                                                                                                                                                                                                                    |
-| E4   | Shell-integration scripts and semantic events (§6, §8)                                                                                                                                                                                                                                                                                                               |
-| E5   | macOS `trcd` (universal2, LaunchAgent through SMAppService); local bridge; detached core on remote Macs                                                                                                                                                                                                                                                              |
+| E4   | macOS `trcd` (universal2, LaunchAgent through SMAppService); local bridge; detached core on remote Macs                                                                                                                                                                                                                                                              |
+| E5   | Shell-integration scripts and semantic events (§6, §8)                                                                                                                                                                                                                                                                                                               |
 | E6   | Windows: ConPTY holders, named pipes, Windows profile detection, Windows helpers in `trcd`, installer                                                                                                                                                                                                                                                                |
 | E7   | Linux desktop: AppImage, local systemd daemon, AT-detection fallback (R3)                                                                                                                                                                                                                                                                                            |
 | E8   | 1.0.0: Developer ID signing and notarization, Authenticode and Linux package signing (US-8.3); build provenance (US-8.2); signed checksums (US-8.4); the downloads site (US-8.1); Electron's built-in updater on macOS and the Windows and Linux updaters (US-8.5, D-43)                                                                                             |
@@ -1425,7 +1425,7 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | S12 | E2   | Streaming a snapshot in blocks of rows through the formatter selection and tracked grid references while output arrives                                                             | NFR-09                       |
 | S13 | E2   | The renderer to connection-host message path on a sub-millisecond link ([results](spikes/S13.md), D-47)                                                                             | NFR-02                       |
 | S7  | E3   | Consistency of the persistence logs after a power cut                                                                                                                               | NFR-08                       |
-| S8  | E5   | `setsid` + `AbandonProcessGroup`; SMAppService registration; detached core on remote Macs                                                                                           | R4, R5, R7 (macOS)           |
+| S8  | E4   | `setsid` + `AbandonProcessGroup`; SMAppService registration; detached core on remote Macs                                                                                           | R4, R5, R7 (macOS)           |
 | S9  | E6   | ConPTY holder outside the app's job object; libghostty-vt on MSVC; re-verify the ATS with JAWS, NVDA and Narrator                                                                   | R1, R2, R4, R5, R8 (Windows) |
 | S10 | E7   | Chromium AT detection and Orca on Wayland and X11; re-verify the ATS                                                                                                                | R1, R2, R3 (Linux)           |
 
