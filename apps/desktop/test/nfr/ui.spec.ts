@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { launchApp } from '../e2e/support/launch';
 import {
@@ -8,7 +9,7 @@ import {
     scratchInstallRoot,
     testHostsMissing,
 } from '../e2e/support/test-host';
-import { closeLiveHosts, connectLive, type LiveHost, ssh, sshRoundTrip } from './live-host';
+import { closeLiveHosts, connectLive, type LiveHost, roundTrips, ssh } from './live-host';
 import { percentile, record } from './stats';
 
 const missing = testHostsMissing();
@@ -44,8 +45,11 @@ interface EchoTimes {
 
 test.afterAll(() => closeLiveHosts());
 
-/** What the app may add to the round trip, on any link (NFR-02; E1's local allowance ended with S13). */
+/** What the app may add to the link's own p95 round trip, on any link (NFR-02; E1's local allowance ended with S13). */
 const ALLOWANCE_MS = 10;
+
+/** Pings sampled over another connection to the host just before the app types, for the link's own p95. */
+const LINK_SAMPLES = 40;
 
 async function screen(terminal: Locator): Promise<string> {
     return (await rowTexts(terminal)).join('\n');
@@ -256,10 +260,19 @@ test.describe('UI echo latency on live hosts (NFR-02)', () => {
             try {
                 const terminal = await openTerminal(window, alias);
                 await ready(window, terminal);
-                const rtt = await sshRoundTrip(await connectLive(alias));
-                const { parsed, surface } = await typeAndTimeEcho(window, terminal, 75, Math.ceil(rtt) + 40);
+                const linkTimes = await roundTrips(await connectLive(alias), LINK_SAMPLES, 40);
+                const gap = Math.ceil(percentile(linkTimes, 50)) + 40;
+                const { parsed, surface } = await typeAndTimeEcho(window, terminal, 75, gap);
+                const link95 = percentile(linkTimes, 95);
                 const app95 = percentile(parsed, 95);
-                const budget = `≤ ${(rtt + 10).toFixed(1)} ms`;
+                const budget = `≤ ${(link95 + ALLOWANCE_MS).toFixed(1)} ms`;
+                record({
+                    id: 'NFR-02',
+                    what: `${alias}: SSH round trip before the app types, ping to pong over the channel, p95`,
+                    value: link95,
+                    unit: 'ms',
+                    target: '—',
+                });
                 record({
                     id: 'NFR-02',
                     what: `${alias}: keystroke to its echo parsed in the app, p95`,
@@ -274,7 +287,7 @@ test.describe('UI echo latency on live hosts (NFR-02)', () => {
                     unit: 'ms',
                     target: 'next frame',
                 });
-                expect(app95).toBeLessThanOrEqual(rtt + ALLOWANCE_MS);
+                expect(app95).toBeLessThanOrEqual(link95 + ALLOWANCE_MS);
             } finally {
                 await app.close();
                 removeInstall(alias, root);
@@ -347,6 +360,80 @@ test.describe('Speech of new output on a live host (NFR-04)', () => {
                 target: '≤ 500 ms',
             });
             expect(p95).toBeLessThanOrEqual(500);
+        } finally {
+            await app.close();
+            removeInstall('trc-ubuntu', root);
+        }
+    });
+});
+
+/** Launches 5 times with a restored host, timing each from an interactive window to the host reconnecting. */
+async function restoredReconnectDelays(root: string): Promise<number[]> {
+    const first = await launchWithTestHosts(root);
+    await openTerminal(first.window, 'trc-ubuntu');
+    await first.app.close();
+    const delays: number[] = [];
+    for (let round = 0; round < 5; round += 1) {
+        const { app, window } = await launchWithTestHosts(root, { scratch: first.scratch });
+        try {
+            await window.getByRole('combobox', { name: 'New host' }).focus();
+            const interactive = performance.now();
+            const started = window.getByRole('button', { name: /^(Cancel connecting to|Disconnect) trc-ubuntu$/ });
+            await started.waitFor({ timeout: 10_000 });
+            delays.push(Math.max(0, performance.now() - interactive));
+        } finally {
+            await app.close();
+        }
+    }
+    return delays;
+}
+
+test.describe('restoring and reconnecting on live hosts (NFR-06, NFR-07)', () => {
+    test.skip(missing !== undefined, missing);
+    test.setTimeout(240_000);
+
+    test('starts reconnecting a restored host within 1 s of an interactive window (NFR-06)', async () => {
+        const root = scratchInstallRoot();
+        try {
+            const worst = Math.max(...(await restoredReconnectDelays(root)));
+            record({
+                id: 'NFR-06',
+                what: 'interactive window to a restored host reconnecting, worst of 5',
+                value: worst,
+                unit: 'ms',
+                target: '≤ 1,000 ms',
+            });
+            expect(worst).toBeLessThanOrEqual(1_000);
+        } finally {
+            removeInstall('trc-ubuntu', root);
+        }
+    });
+
+    test('reconnects a lost host by itself within 5 s on a healthy network (NFR-07)', async () => {
+        const root = scratchInstallRoot();
+        const { app, window, scratch } = await launchWithTestHosts(root);
+        try {
+            const terminal = await openTerminal(window, 'trc-ubuntu');
+            await ready(window, terminal);
+            const times: number[] = [];
+            for (let round = 0; round < 5; round += 1) {
+                const lost = performance.now();
+                execFileSync('pkill', ['-f', `${scratch}/known_hosts`]);
+                await window
+                    .getByRole('textbox', { name: /, trc-ubuntu, (disconnected|reconnecting)$/ })
+                    .waitFor({ timeout: 10_000 });
+                await window.getByRole('textbox', { name: /, trc-ubuntu$/ }).waitFor({ timeout: 30_000 });
+                times.push(performance.now() - lost);
+            }
+            const worst = Math.max(...times);
+            record({
+                id: 'NFR-07',
+                what: 'trc-ubuntu: ssh killed to the terminal attached again, worst of 5',
+                value: worst,
+                unit: 'ms',
+                target: '≤ 5,000 ms',
+            });
+            expect(worst).toBeLessThanOrEqual(5_000);
         } finally {
             await app.close();
             removeInstall('trc-ubuntu', root);

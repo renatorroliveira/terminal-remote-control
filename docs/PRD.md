@@ -2,9 +2,9 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.12                     |
+| Status       | Draft v0.13                     |
 | Owner        | Renato Oliveira                 |
-| Last updated | 2026-11-13                      |
+| Last updated | 2026-11-15                      |
 | Scope        | P0 in seven epics, then GA (E8) |
 | Name         | Terminal Remote Control (TRC)   |
 
@@ -626,11 +626,15 @@ applies from the epic in the last column onward.
   at 15 ms; E2 revisits that path. On a 100 ms link the target holds.
   **Resolved in E2** (S13, D-47): the delay was Chromium deferring the echo
   until the next frame; the app now adds about 5 ms at p95, and the target is
-  checked at 10 ms on every link.
+  checked at 10 ms on every link, over that link's own p95 round trip (owner,
+  2026-11-15), so a test link's jitter is not counted as the app's.
 - NFR-09: when the app attaches, the holder briefly keeps about twice the
   session's snapshot, so a session at the 100,000-line scrollback maximum
   passes 10 MB for a moment. Steady-state overhead meets the target. E2, which
   reworks attach and resync, streams the snapshot.
+  **Resolved in E2** (S12, ST-25): snapshots are formatted 500 rows at a time
+  within the client's credit, the largest block about 31 KB, so attaching no
+  longer holds a second copy of the session.
 
 ## 9. Epics
 

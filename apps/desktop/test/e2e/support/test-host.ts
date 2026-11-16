@@ -38,6 +38,11 @@ export interface LaunchOptions {
     readonly scratch?: string;
     /** Keeps the first-quit notice (US-2.1.5); other launches start as if it was shown, so quitting never waits. */
     readonly firstQuit?: boolean;
+    /**
+     * Opens the app as a user would, opaque and able to take focus, for the AX tests, which read what macOS reports
+     * for the key window (D-27); other launches open unseen.
+     */
+    readonly foreground?: boolean;
 }
 
 /**
@@ -61,6 +66,7 @@ export async function launchWithTestHosts(installRoot?: string, options: LaunchO
         TRC_TEST_OPENED_LINKS: openedLinks,
         TRC_HOME: home,
         ...(installRoot === undefined ? {} : { TRC_TEST_INSTALL_ROOT: installRoot }),
+        ...(options.foreground === true ? { TRC_TEST_BACKGROUND: '0' } : {}),
     });
     return { app, window: await app.firstWindow(), scratch, home, openedLinks };
 }

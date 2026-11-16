@@ -241,10 +241,13 @@ function agentAnswers(socket: string): boolean {
     return false;
 }
 
-/** Best-effort removal of a test install; hosts that are unreachable on purpose have nothing to remove. */
+/**
+ * Best-effort removal of a test install and of the holders that outlive its core; hosts that are unreachable on purpose
+ * have nothing to remove. `[/]` keeps pkill off the shell running it.
+ */
 function removeInstall(alias: string, root: string): void {
     const known = `UserKnownHostsFile=${join(run, 'known_hosts.smoke')}`;
-    const command = `kill $(head -n 1 ${root}/run/core.lock 2>/dev/null) 2>/dev/null; rm -rf ${root}`;
+    const command = `kill $(head -n 1 ${root}/run/core.lock 2>/dev/null) 2>/dev/null; pkill -f "[/]${root}/versions"; rm -rf ${root}`;
     try {
         execFileSync('ssh', ['-F', join(run, 'ssh_config'), '-o', known, '-o', 'ConnectTimeout=3', alias, command], {
             stdio: 'ignore',

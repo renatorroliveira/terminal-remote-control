@@ -5,7 +5,7 @@
 | Status | v1: owner decisions taken on 2026-11-13; the session executes it under P-20               |
 | Owner  | Renato Oliveira                                                                           |
 | Scope  | PRD §9.2 (US-2.1 to US-2.6) plus every global requirement for what E2 delivers            |
-| Inputs | [PRD.md](../PRD.md) v0.11, [TECH_STACK.md](../TECH_STACK.md) v1.4, the E1 plan and v0.2.0 |
+| Inputs | [PRD.md](../PRD.md) v0.13, [TECH_STACK.md](../TECH_STACK.md) v1.6, the E1 plan and v0.2.0 |
 
 ## 1. Context
 
@@ -39,6 +39,7 @@ commit, continue) and its autonomy rule (P-20) apply unchanged.
 | P-32 | A systemd test host joins `tools/test-hosts`: Ubuntu with systemd as PID 1 and logind, ports on `127.0.0.1` only, in three variants (lingering on; off with `KillUserProcesses=no`; off with `KillUserProcesses=yes`). Like the other test hosts it runs locally, not in GitHub Actions.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | P-33 | Review at the end of E2: `code-reviewer` (TypeScript, Rust) and `technical-auditor` (security, reliability and release) over every commit after v0.2.0, in rounds until no critical or high finding remains. A fix that would change the PRD, behavior, a design or an owner decision waits for the owner. Then the release workflow cuts `v0.3.0` (`bump: minor`, P-21).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | P-34 | **Owner, 2026-11-14, review round 1.** (a) After a reconnect only the open terminal sends its size; the others take theirs back on focus or input, as P-31 says (F6). (b) When another client opens a session whose E1 holder serves one client at a time, the core tells the client it replaced with `detached { reason: attachedElsewhere }` (protocol 2); its terminal says "Opened on another client — input not sent", and opening the session again takes it back (M4). (c) Install failures retry only when they may pass, at most 3 times in a row (M2). (d) A holder whose systemd scope cannot start still starts directly, and the core's unit runs with `KillMode=process`, so stopping or restarting the core never ends it (M3). (e) **Owner, 2026-11-15, review round 2.** A network change or a wake retries a waiting host at once, every time, as US-2.2.2 says; the 5 s spacing round 1 added is dropped (audit R2 F2). |
+| P-35 | **Owner, 2026-11-15, ST-36.** NFR-02's UI test compares the app's p95 echo with the link's own p95 round trip, sampled over another connection just before the typing, instead of its median: the 100 ms test link jitters by about 5 ms, which the median baseline counted as the app's. The connection-host and scale tests keep the median, a stricter check they meet.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 ## 3. Design
 
@@ -238,6 +239,10 @@ delivery; D-47 turns it off, and the UI test checks NFR-02 at 10 ms on both host
   delta that shows the marker exactly once. NFR-06, NFR-07 and NFR-09 measured again. Results in
   `docs/verification/E2-nfr.md`.
 
+As built (ST-36, 2026-11-15): every scenario lost 0 sessions, 1,000 cycles each, plus 50 logouts and 50 real app
+quits and crashes; connecting again took 0.5 to 0.9 s at p95 ([E2-nfr](../verification/E2-nfr.md#soak-nfr-11-s6)).
+NFR-02's UI test now compares with the link's own p95 round trip (P-35).
+
 **ST-37 Release gate, reviews and v0.3.0** (PRD §9 done)
 
 - The full suites; `docs/verification/E2-manual-at.md` and `E2-security.md`; the P-33 reviews; final pass over
@@ -278,5 +283,39 @@ delivery; D-47 turns it off, and the UI test checks NFR-02 at 10 ms on both host
 | ST-33 | Done    | —      |
 | ST-34 | Done    | —      |
 | ST-35 | Done    | —      |
-| ST-36 | Pending | —      |
+| ST-36 | Done    | —      |
 | ST-37 | Pending | —      |
+
+## 8. Reviews (P-33)
+
+Four rounds of `code-reviewer` and `technical-auditor` over every commit after v0.2.0. Every finding was fixed
+test-first, or is listed below with why it stays. Findings that changed a behavior or an owner decision went to the
+owner first; their answers are P-34.
+
+| Round | Code review (C/H/M/L) | Audit (C/H/M/L) | Fixes                                                   |
+| ----- | --------------------- | --------------- | ------------------------------------------------------- |
+| 1     | 0 / 2 / 4 / 5         | 0 / 2 / 6 / 5   | `cdeeb8b`; owner decisions P-34(a)–(d)                  |
+| 2     | 0 / 0 / 3 / 8         | 0 / 1 / 3 / 4   | `2690d02`; owner decision P-34(e)                       |
+| 3     | 0 / 0 / 5 / 8         | 0 / 0 / 7 / 5   | `4946236`, and the soak harness in ST-36                |
+| 4     | 0 / 0 / 2 / 9         | 0 / 1 / 3 / 3   | the ST-36 commit; the high was a seam name in a comment |
+
+The highs:
+
+- A snapshot's output between its screen block and `synced` was dropped (round 1).
+- The renderer's credit leaked on resync and stale write callbacks granted to new streams (round 1).
+- An E1 holder said `snapshot` but never sent `synced`, so speech stayed held in adopted sessions (round 1).
+- The SEC-04.4 evidence cited tests that did not exist; they were written (round 1).
+- The flap soak never dropped the connection; it now stalls ssh and resumes every session from its offset (round 2).
+- A release bundle would have carried a test seam name in a comment, failing `verify:artifact`; a guard test now
+  scans the app's source (round 4).
+
+What stays, and why:
+
+- `// SAFETY:` comments on `unsafe` blocks in `trc-vt` stay: they document each block's invariants, as Rust
+  requires of `unsafe`, and are the one kind of comment beside doc comments.
+- `stop_unit`'s 3 s bound and `recover`'s two call sites have no unit tests: they need a systemd user manager or an
+  emulator that fails, which the systemd test hosts and the direct `recover` tests cover instead.
+- A reconnect reattaches a session whose E1 holder another client opened while this one was away, as P-27 keeps E1's
+  one-client behavior for those sessions until they close.
+- On a host without lingering, the detached daemon keeps the user's login session `closing` after logout, so systemd
+  keeps the user's manager running, as with tmux; the logout soak checks the logout itself and a detached core.

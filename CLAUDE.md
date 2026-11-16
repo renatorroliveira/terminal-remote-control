@@ -32,14 +32,22 @@ tooling (`tools/*`).
   Ubuntu, Alpine and Rocky containers (Linux-only and other-user checks).
 - NFR measurements: `pnpm test:nfr` (needs the test hosts and the daemons;
   launches the app in the background); `node tools/nfr-report/nfr-report.ts`
-  prints the run's table for `docs/verification/E1-nfr.md`.
+  prints the run's table for `docs/verification/E2-nfr.md`.
+- Soak (NFR-11, P-25): `pnpm test:soak` (needs the test hosts, the daemons and
+  `tools/test-hosts/fetch-old-daemon.sh`); `TRC_SOAK_CYCLES` (1,000),
+  `TRC_SOAK_APP_CYCLES` (50) and `TRC_SOAK_LOGOUT_CYCLES` (50) set the cycles,
+  and `TRC_SOAK_HOST` the host of the app quit, crash and flap scenarios. It runs for
+  hours; each scenario file can run alone with
+  `vitest run --project soak <file>`, and its sessions are reached through
+  `docker exec` as well as ssh (`DOCKER_CONTEXT`, `colima-trc` by default).
 - End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax` (needs the
   macOS Accessibility permission). Both build a test build
   (`pnpm --filter @trc/desktop build:test`, `TRC_TEST_BUILD=1`), which compiles
   in the P-14 seam (`TRC_TEST_*`); every test launch gets a scratch `TRC_HOME`; their live-terminal tests skip
   unless the test hosts are up and the daemons are built. Test launches open
-  behind the focused app (`TRC_TEST_BACKGROUND=1`, D-27), but `pnpm test:ax`
-  must take focus, so warn the owner before running it.
+  unseen (`TRC_TEST_BACKGROUND=1`, D-27): transparent, click-through, in the
+  bottom-right corner, never focused. `pnpm test:ax` must take focus, so warn
+  the owner before running it.
 - App state lives in the TRC home, `~/.trc` (`config.json`, `hosts.json`, `sessions.json`), or
   `TRC_HOME` when set; hosts install the daemon under `~/.trc` unless the
   user moves a host's install location (US-1.4.3).

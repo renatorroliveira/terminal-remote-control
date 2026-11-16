@@ -68,11 +68,12 @@ function exists(alias: string, path: string): boolean {
     return remote(alias, `test -e "${path}" && echo yes || echo no`).trim().split('\n').at(-1) === 'yes';
 }
 
+/** A new install root under `base`, removed after the test with its core and the holders that outlive it. */
 function freshRoot(alias: string, base = '$HOME'): string {
-    const root = `${base}/.trct-${randomBytes(4).toString('hex')}`;
-    cleanups.push(() =>
-        remote(alias, `kill $(head -n 1 "${root}/run/core.lock" 2>/dev/null) 2>/dev/null; rm -rf "${root}"`),
-    );
+    const name = `.trct-${randomBytes(4).toString('hex')}`;
+    const root = `${base}/${name}`;
+    const stop = `kill $(head -n 1 "${root}/run/core.lock" 2>/dev/null) 2>/dev/null; pkill -f "[/]${name}/versions"`;
+    cleanups.push(() => remote(alias, `${stop}; rm -rf "${root}"`));
     return root;
 }
 
