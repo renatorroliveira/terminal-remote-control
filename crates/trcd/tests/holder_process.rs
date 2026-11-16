@@ -11,12 +11,12 @@ use std::time::Duration;
 
 use support::{Installed, wait_child, wait_for};
 
-use tokio::net::UnixStream;
 use tokio::net::unix::OwnedReadHalf;
 use trc_protocol::frame::{self, FrameKind};
 use trc_protocol::{Integration, ProfileOrigin, ShellKind, ShellProfile, TerminalSize};
 use trcd::frame_io::{FrameReader, FrameSender};
 use trcd::holder::protocol::{HolderCommand, HolderEvent, HolderSpec};
+use trcd::socket::connect_with_retry;
 
 const WAIT: Duration = support::WAIT;
 
@@ -131,8 +131,9 @@ fn spawn_holder(installed: &Installed, socket: &Path) -> Child {
         .unwrap()
 }
 
+/// Connects as the core does, retrying while the holder has bound its socket but not yet listens on it.
 async fn connect(socket: &Path) -> (FrameSender, FrameReader<OwnedReadHalf>) {
-    let (read, write) = UnixStream::connect(socket).await.unwrap().into_split();
+    let (read, write) = connect_with_retry(socket, WAIT).await.unwrap().into_split();
     let (sender, _writer) = FrameSender::spawn(write);
     (sender, FrameReader::new(read))
 }
