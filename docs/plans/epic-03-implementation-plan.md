@@ -169,6 +169,11 @@ dialog and the status bar share one switch component. `pnpm test:ax` runs once a
 - §3.3's alternate-screen rule, the primary copy deleted, the app's gap handling; the NFR-09 test asserts that a
   full attach during a full-screen program adds under 10 MiB at 100,000 lines.
 
+As built (ST-43, 2026-11-16): the attach says nothing of the missing history, so the app needed no change: a client
+that joined during the program, or asked for `refresh` then, gets an unsolicited `resync { kind: full }` the moment
+the program leaves the alternate screen, which the app already handles as a rebuild; a protocol 1 client gets a
+reset and the whole snapshot. The NFR-09 test also measures the holder while that history streams.
+
 **ST-44 Core: session store and restore** (US-3.1, US-3.2.1, US-2.5)
 
 - `meta.json` for every session, adopted E1 and E2 holders included; §3.2's restore and keep; the marker; boot ID

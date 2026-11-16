@@ -80,16 +80,27 @@ async function printLines(
     return sizes;
 }
 
+/** A second client attached from the start to a full session, with the holder's size before it attached. */
+interface Attached {
+    readonly growth: number;
+    readonly before: number;
+    readonly host: LiveHost;
+    readonly holder: number;
+    readonly session: LiveSession;
+    readonly second: LiveHost;
+    readonly stream: number;
+}
+
 /**
  * How much a full holder grows at its peak while a second client attaches it from the start, and its size before, in
- * MiB: the snapshot streams within the client's credit (S12), and while a full-screen program runs it streams from a
- * copy of the session's primary screen and scrollback (P-37).
+ * MiB: the snapshot streams within the client's credit (S12), and while a full-screen program runs it holds only that
+ * program's screen (D-49).
  */
 async function attachGrowth(
     scrollbackLines: number | undefined,
     lines: number,
     fullScreen: boolean,
-): Promise<{ readonly growth: number; readonly before: number }> {
+): Promise<Attached> {
     const host = await connectLive('trc-ubuntu');
     const { session, holder } = await readySession(host, scrollbackLines);
     await printSeq(session, lines);
@@ -102,7 +113,28 @@ async function attachGrowth(
     const second = await connectLive('trc-ubuntu', { root: host.root });
     const attached = await second.attach(session.id);
     await waitFor(() => second.offsetOf(attached.stream) !== undefined, 120_000);
-    return { growth: peakMiB(host, holder) - before, before };
+    return { growth: peakMiB(host, holder) - before, before, host, holder, session, second, stream: attached.stream };
+}
+
+/**
+ * Ends the full-screen program and returns once the second client got the whole scrollback (a full resync) and its
+ * `synced`, with the holder's peak growth meanwhile, in MiB.
+ */
+async function historyAfterProgram(attached: Attached): Promise<number> {
+    const { host, holder, session, second, stream } = attached;
+    const before = resetPeak(host, holder);
+    const resynced = second.message(
+        (message) => message.type === 'resync' && message.stream === stream && message.kind === 'full',
+        120_000,
+    );
+    const synced = second.message((message) => message.type === 'synced' && message.stream === stream, 120_000);
+    const interrupted = session.next('TRC-CAT-ENDED');
+    session.type('\u0003');
+    await new Promise((done) => setTimeout(done, 500));
+    session.type(`echo TRC-CAT-""ENDED; printf '\\033[?1049l'\r`);
+    await interrupted;
+    await Promise.all([resynced, synced]);
+    return peakMiB(host, holder) - before;
 }
 
 describe.skipIf(missing !== undefined)('daemon footprint (NFR-09)', () => {
@@ -181,11 +213,20 @@ describe.skipIf(missing !== undefined)('a second client attaching a full session
         ['the 100,000-line maximum, a full-screen program running', 100_000, 150_000],
         ['the default 10,000 lines, a full-screen program running', undefined, 20_000],
     ] as const)(
-        'measures the copy a snapshot streams from with %s, an E2 exception to NFR-09 bounded by one copy',
+        'streams only the program’s screen with %s, then the history once the program ends, within 10 MB (D-49)',
         async (label, scrollbackLines, lines) => {
-            const { growth, before } = await attachGrowth(scrollbackLines, lines, true);
-            recordGrowth(label, growth);
-            expect(growth).toBeLessThanOrEqual(before);
+            const attached = await attachGrowth(scrollbackLines, lines, true);
+            recordGrowth(label, attached.growth);
+            const afterwards = await historyAfterProgram(attached);
+            record({
+                id: 'NFR-09',
+                what: `holder with ${label}: peak growth while the history follows the program's end`,
+                value: afterwards,
+                unit: 'MiB',
+                target: '≤ 10 MB',
+            });
+            expect(attached.growth).toBeLessThanOrEqual(10);
+            expect(afterwards).toBeLessThanOrEqual(10);
         },
         600_000,
     );

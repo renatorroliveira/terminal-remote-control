@@ -404,6 +404,7 @@ impl Holder {
             self.output = None;
             return;
         };
+        let was_alternate = self.on_alternate_screen();
         let events = self
             .terminal
             .as_mut()
@@ -414,8 +415,25 @@ impl Holder {
         }
         self.log.push(&chunk);
         self.attachments.push(&chunk);
+        if was_alternate && !self.on_alternate_screen() {
+            self.left_alternate_screen();
+        }
         self.status.last_output_at = Some(now_millis());
         self.status_dirty = true;
+    }
+
+    fn on_alternate_screen(&self) -> bool {
+        self.terminal.as_ref().is_some_and(TerminalState::alternate_screen)
+    }
+
+    /// Gives the history to every client that joined while the full-screen program ran (D-49).
+    fn left_alternate_screen(&mut self) {
+        let session = Session {
+            terminal: self.terminal.as_ref(),
+            log: &self.log,
+            max_rows: self.max_snapshot_rows(),
+        };
+        self.attachments.left_alternate_screen(&session);
     }
 
     fn on_terminal_event(&mut self, event: TerminalEvent) {
