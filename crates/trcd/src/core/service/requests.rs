@@ -143,6 +143,12 @@ impl Core {
             | ClientMessage::Refresh { request_id, .. } => {
                 error(Some(request_id), ErrorCode::Internal, "routed elsewhere")
             }
+            ClientMessage::SetSessionOptions { request_id, .. }
+            | ClientMessage::ClearScrollback { request_id, .. }
+            | ClientMessage::RestartDaemon { request_id }
+            | ClientMessage::RemoveDaemon { request_id, .. } => {
+                error(Some(request_id), ErrorCode::Unsupported, "not supported by this daemon")
+            }
         }
     }
 

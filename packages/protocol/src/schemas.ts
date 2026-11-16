@@ -4,17 +4,21 @@ import type { ClientMessage } from './generated/ClientMessage';
 import type { CreateSessionSpec } from './generated/CreateSessionSpec';
 import type { DaemonDetails } from './generated/DaemonDetails';
 import type { DetachReason } from './generated/DetachReason';
+import type { EndCause } from './generated/EndCause';
 import type { ErrorCode } from './generated/ErrorCode';
 import type { ExitStatus } from './generated/ExitStatus';
 import type { Integration } from './generated/Integration';
+import type { PersistenceFailure } from './generated/PersistenceFailure';
 import type { ProfileOrigin } from './generated/ProfileOrigin';
 import type { Replay } from './generated/Replay';
+import type { RestoreInfo } from './generated/RestoreInfo';
 import type { ResyncKind } from './generated/ResyncKind';
 import type { ServerMessage } from './generated/ServerMessage';
 import type { ServiceInfo } from './generated/ServiceInfo';
 import type { ServiceManager } from './generated/ServiceManager';
 import type { SessionChange } from './generated/SessionChange';
 import type { SessionInfo } from './generated/SessionInfo';
+import type { SessionOptions } from './generated/SessionOptions';
 import type { SessionState } from './generated/SessionState';
 import type { ShellKind } from './generated/ShellKind';
 import type { ShellProfile } from './generated/ShellProfile';
@@ -74,10 +78,24 @@ export const ShellProfileSchema: z.ZodType<ShellProfile> = z.object({
     integration,
 });
 
+const endCause: z.ZodType<EndCause> = z.enum(['hostRestart', 'processesEnded', 'unspecified']).catch('unspecified');
+const persistenceFailure: z.ZodType<PersistenceFailure> = z
+    .enum(['diskFull', 'quota', 'readOnly', 'other', 'unspecified'])
+    .catch('unspecified');
+
 const exitStatus: z.ZodType<ExitStatus> = z.object({
     code: i32.exactOptional(),
     signal: z.string().exactOptional(),
+    ended: endCause.exactOptional(),
 });
+
+/** Validates what survives a session's processes ending (US-3.2). */
+export const SessionOptionsSchema: z.ZodType<SessionOptions> = z.object({
+    restore: z.boolean(),
+    saveScrollback: z.boolean(),
+});
+
+const restoreInfo: z.ZodType<RestoreInfo> = z.object({ at: timestamp, afterHostRestart: z.boolean() });
 
 /** Validates a session description from a daemon. */
 export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
@@ -94,6 +112,9 @@ export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
     lastOutputAt: timestamp.exactOptional(),
     exit: exitStatus.exactOptional(),
     failure: z.string().exactOptional(),
+    options: SessionOptionsSchema.exactOptional(),
+    restored: restoreInfo.exactOptional(),
+    persistenceFailure: persistenceFailure.exactOptional(),
 });
 
 const sessionChange: z.ZodType<SessionChange> = z.discriminatedUnion('kind', [
@@ -145,6 +166,7 @@ const createSessionSpec: z.ZodType<CreateSessionSpec> = z.strictObject({
     env: z.record(z.string(), z.string().nullable()),
     size: strictSize,
     scrollbackLines: u32.exactOptional(),
+    options: z.strictObject({ restore: z.boolean(), saveScrollback: z.boolean() }).exactOptional(),
 });
 
 /**
@@ -178,4 +200,13 @@ export const ClientMessageSchema: z.ZodType<ClientMessage> = z.discriminatedUnio
     z.strictObject({ type: z.literal('refresh'), requestId: u32, session: sessionId }),
     z.strictObject({ type: z.literal('detach'), requestId: u32, session: sessionId }),
     z.strictObject({ type: z.literal('resize'), requestId: u32, session: sessionId, size: strictSize }),
+    z.strictObject({
+        type: z.literal('setSessionOptions'),
+        requestId: u32,
+        session: sessionId,
+        options: z.strictObject({ restore: z.boolean(), saveScrollback: z.boolean() }),
+    }),
+    z.strictObject({ type: z.literal('clearScrollback'), requestId: u32, session: sessionId }),
+    z.strictObject({ type: z.literal('restartDaemon'), requestId: u32 }),
+    z.strictObject({ type: z.literal('removeDaemon'), requestId: u32, graceMs: u32.exactOptional() }),
 ]);

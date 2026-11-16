@@ -112,6 +112,7 @@ fn starts_a_detached_core_that_outlives_the_bridge() {
             env: Default::default(),
             size: TerminalSize { cols: 80, rows: 24 },
             scrollback_lines: None,
+            options: None,
         },
     });
     first.receive(|m| matches!(m, ServerMessage::Created { .. }));
@@ -149,6 +150,7 @@ fn two_bridges_starting_at_once_share_one_core() {
             env: Default::default(),
             size: TerminalSize { cols: 80, rows: 24 },
             scrollback_lines: None,
+            options: None,
         },
     });
     for bridge in &mut bridges[1..] {

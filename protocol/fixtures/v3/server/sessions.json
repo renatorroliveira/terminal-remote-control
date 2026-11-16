@@ -1,0 +1,103 @@
+{
+  "type": "sessions",
+  "requestId": 2,
+  "sessions": [
+    {
+      "id": "s-1",
+      "customName": "build",
+      "title": "make -j8",
+      "order": 0,
+      "state": "running",
+      "profile": {
+        "id": "login",
+        "name": "bash",
+        "origin": "login",
+        "kind": "bash",
+        "path": "/bin/bash",
+        "args": [],
+        "login": true,
+        "env": {},
+        "integration": "auto"
+      },
+      "cwd": "/home/tester/src",
+      "size": {
+        "cols": 120,
+        "rows": 30
+      },
+      "pid": 4242,
+      "startedAt": 1794400000000,
+      "lastOutputAt": 1794400005000,
+      "options": {
+        "restore": true,
+        "saveScrollback": true
+      },
+      "restored": {
+        "at": 1794400010000,
+        "afterHostRestart": true
+      }
+    },
+    {
+      "id": "s-2",
+      "customName": "build",
+      "title": "make -j8",
+      "order": 0,
+      "state": "running",
+      "profile": {
+        "id": "login",
+        "name": "bash",
+        "origin": "login",
+        "kind": "bash",
+        "path": "/bin/bash",
+        "args": [],
+        "login": true,
+        "env": {},
+        "integration": "auto"
+      },
+      "cwd": "/home/tester/src",
+      "size": {
+        "cols": 120,
+        "rows": 30
+      },
+      "pid": 4242,
+      "startedAt": 1794400000000,
+      "lastOutputAt": 1794400005000,
+      "options": {
+        "restore": true,
+        "saveScrollback": true
+      },
+      "persistenceFailure": "diskFull"
+    },
+    {
+      "id": "s-3",
+      "customName": "build",
+      "title": "make -j8",
+      "order": 0,
+      "state": "exited",
+      "profile": {
+        "id": "login",
+        "name": "bash",
+        "origin": "login",
+        "kind": "bash",
+        "path": "/bin/bash",
+        "args": [],
+        "login": true,
+        "env": {},
+        "integration": "auto"
+      },
+      "cwd": "/home/tester/src",
+      "size": {
+        "cols": 120,
+        "rows": 30
+      },
+      "startedAt": 1794400000000,
+      "lastOutputAt": 1794400005000,
+      "exit": {
+        "ended": "hostRestart"
+      },
+      "options": {
+        "restore": false,
+        "saveScrollback": true
+      }
+    }
+  ]
+}

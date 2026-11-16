@@ -802,12 +802,21 @@ needs Rust. Every request carries a `requestId`.
 1. **Handshake.** `Hello { minProto, maxProto, appVersion, caps }`, answered by
    `Welcome { proto, daemonVersion, binarySha256, caps, service }` or
    `Incompatible { minProto, maxProto }`. From protocol 2, `service` says what
-   runs the daemon and whether sessions end at logout (US-2.4).
+   runs the daemon and whether sessions end at logout (US-2.4); from 0.4.0,
+   `details` names the account's home folder, the install root, the log folder
+   and when the core started (US-3.3.1, P-48).
 2. **Liveness.** `Ping` and `Pong`.
 3. **Catalog.** `ListSessions` and `ListProfiles`. The daemon pushes
    `SessionEvent` (created, updated, closed, state) to every client (US-2.6).
 4. **Lifecycle.** `Create`, `Rename`, `Reorder`, `Stop`, `Restart`, `Close`.
    Requests that return nothing else are answered by `Done`.
+    - From protocol 3 (E3): `options { restore, saveScrollback }` on `Create`
+      and on every session, `SetSessionOptions`, `ClearScrollback`,
+      `restored { at, afterHostRestart }`, `persistenceFailure`, and an `ended`
+      cause on the exit status of a session its processes ended without
+      (US-3.1, US-3.2).
+    - `RestartDaemon` and `RemoveDaemon` manage the host's daemon (US-3.3).
+    - The daemon still speaks protocols 1 and 2 (P-49).
 5. **Attach.**
     - `Attach { session, mode: full | events }`, answered by
       `Attached { stream, credit }`. The screen snapshot follows as ordinary

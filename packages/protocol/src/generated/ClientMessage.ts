@@ -2,6 +2,7 @@
 import type { AttachMode } from "./AttachMode";
 import type { CreateSessionSpec } from "./CreateSessionSpec";
 import type { SessionId } from "./SessionId";
+import type { SessionOptions } from "./SessionOptions";
 import type { TerminalSize } from "./TerminalSize";
 
 /**
@@ -128,7 +129,39 @@ requestId: number,
 /**
  * The session.
  */
-session: SessionId, } | { "type": "resize", 
+session: SessionId, } | { "type": "setSessionOptions", 
+/**
+ * Correlates the reply.
+ */
+requestId: number, 
+/**
+ * The session.
+ */
+session: SessionId, 
+/**
+ * The new options.
+ */
+options: SessionOptions, } | { "type": "clearScrollback", 
+/**
+ * Correlates the reply.
+ */
+requestId: number, 
+/**
+ * The session.
+ */
+session: SessionId, } | { "type": "restartDaemon", 
+/**
+ * Correlates the reply.
+ */
+requestId: number, } | { "type": "removeDaemon", 
+/**
+ * Correlates the reply.
+ */
+requestId: number, 
+/**
+ * Milliseconds between the stop signals; the daemon default when absent.
+ */
+graceMs?: number, } | { "type": "resize", 
 /**
  * Correlates the reply.
  */

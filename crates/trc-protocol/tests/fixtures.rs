@@ -1,4 +1,4 @@
-//! The shared protocol fixtures (`protocol/fixtures/v1` and `v2`) match what this crate encodes and decodes, so the
+//! The shared protocol fixtures (`protocol/fixtures/v1` to `v3`) match what this crate encodes and decodes, so the
 //! current and the previous protocol stay readable (NFR-12).
 //!
 //! Run with `TRC_BLESS_FIXTURES=1` to rewrite the fixtures after an intended change.
@@ -10,9 +10,10 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use trc_protocol::frame::{self, FrameDecoder, FrameKind};
 use trc_protocol::{
-    AttachMode, ClientMessage, CreateSessionSpec, DaemonDetails, DetachReason, ErrorCode, ExitStatus, Integration,
-    ProfileOrigin, Replay, ResyncKind, ServerMessage, ServiceInfo, ServiceManager, SessionChange, SessionId,
-    SessionInfo, SessionState, ShellKind, ShellProfile, TerminalSize,
+    AttachMode, ClientMessage, CreateSessionSpec, DaemonDetails, DetachReason, EndCause, ErrorCode, ExitStatus,
+    Integration, PersistenceFailure, ProfileOrigin, Replay, RestoreInfo, ResyncKind, ServerMessage, ServiceInfo,
+    ServiceManager, SessionChange, SessionId, SessionInfo, SessionOptions, SessionState, ShellKind, ShellProfile,
+    TerminalSize,
 };
 
 fn fixtures_dir(version: &str) -> PathBuf {
@@ -53,6 +54,9 @@ fn session(id: &str, state: SessionState) -> SessionInfo {
         last_output_at: Some(1_794_400_005_000),
         exit: None,
         failure: None,
+        options: None,
+        restored: None,
+        persistence_failure: None,
     }
 }
 
@@ -82,6 +86,7 @@ fn client_messages() -> Vec<(&'static str, ClientMessage)> {
                     env: BTreeMap::from([("EDITOR".into(), Some("vim".into())), ("PAGER".into(), None)]),
                     size: TerminalSize { cols: 80, rows: 24 },
                     scrollback_lines: Some(10_000),
+                    options: None,
                 },
             },
         ),
@@ -164,6 +169,7 @@ fn server_messages() -> Vec<(&'static str, ServerMessage)> {
     exited.exit = Some(ExitStatus {
         code: Some(1),
         signal: None,
+        ended: None,
     });
     vec![
         (
@@ -373,6 +379,115 @@ fn server_messages_v2() -> Vec<(&'static str, ServerMessage)> {
     messages
 }
 
+fn client_messages_v3() -> Vec<(&'static str, ClientMessage)> {
+    let id = || SessionId("s-1".into());
+    let mut messages: Vec<(&'static str, ClientMessage)> = client_messages_v2()
+        .into_iter()
+        .map(|(name, message)| match message {
+            ClientMessage::Hello { app_version, caps, .. } => (
+                name,
+                ClientMessage::Hello {
+                    min_proto: 1,
+                    max_proto: 3,
+                    app_version,
+                    caps,
+                },
+            ),
+            ClientMessage::Create { request_id, mut spec } => {
+                spec.options = Some(SessionOptions {
+                    restore: true,
+                    save_scrollback: false,
+                });
+                (name, ClientMessage::Create { request_id, spec })
+            }
+            other => (name, other),
+        })
+        .collect();
+    messages.extend([
+        (
+            "set-session-options",
+            ClientMessage::SetSessionOptions {
+                request_id: 16,
+                session: id(),
+                options: SessionOptions {
+                    restore: false,
+                    save_scrollback: true,
+                },
+            },
+        ),
+        (
+            "clear-scrollback",
+            ClientMessage::ClearScrollback {
+                request_id: 17,
+                session: id(),
+            },
+        ),
+        ("restart-daemon", ClientMessage::RestartDaemon { request_id: 18 }),
+        (
+            "remove-daemon",
+            ClientMessage::RemoveDaemon {
+                request_id: 19,
+                grace_ms: Some(5000),
+            },
+        ),
+    ]);
+    messages
+}
+
+fn server_messages_v3() -> Vec<(&'static str, ServerMessage)> {
+    let mut restored = session("s-1", SessionState::Running);
+    restored.options = Some(SessionOptions::default());
+    restored.restored = Some(RestoreInfo {
+        at: 1_794_400_010_000,
+        after_host_restart: true,
+    });
+    let mut failing = session("s-2", SessionState::Running);
+    failing.options = Some(SessionOptions::default());
+    failing.persistence_failure = Some(PersistenceFailure::DiskFull);
+    let mut ended = session("s-3", SessionState::Exited);
+    ended.pid = None;
+    ended.options = Some(SessionOptions {
+        restore: false,
+        save_scrollback: true,
+    });
+    ended.exit = Some(ExitStatus {
+        code: None,
+        signal: None,
+        ended: Some(EndCause::HostRestart),
+    });
+    server_messages_v2()
+        .into_iter()
+        .map(|(name, message)| match message {
+            ServerMessage::Welcome {
+                daemon_version,
+                binary_sha256,
+                caps,
+                service,
+                details,
+                ..
+            } => (
+                name,
+                ServerMessage::Welcome {
+                    proto: 3,
+                    daemon_version,
+                    binary_sha256,
+                    caps,
+                    service,
+                    details,
+                },
+            ),
+            ServerMessage::Sessions { request_id, .. } => (
+                name,
+                ServerMessage::Sessions {
+                    request_id,
+                    sessions: vec![restored.clone(), failing.clone(), ended.clone()],
+                },
+            ),
+            other => (name, other),
+        })
+        .collect()
+}
+
 fn check_message<T: Serialize + DeserializeOwned + PartialEq + std::fmt::Debug>(
     version: &str,
     dir: &str,
@@ -403,6 +518,9 @@ fn client_message_fixtures_match() {
     for (name, message) in client_messages_v2() {
         check_message("v2", "client", name, &message);
     }
+    for (name, message) in client_messages_v3() {
+        check_message("v3", "client", name, &message);
+    }
 }
 
 #[test]
@@ -412,6 +530,9 @@ fn server_message_fixtures_match() {
     }
     for (name, message) in server_messages_v2() {
         check_message("v2", "server", name, &message);
+    }
+    for (name, message) in server_messages_v3() {
+        check_message("v3", "server", name, &message);
     }
 }
 

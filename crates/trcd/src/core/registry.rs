@@ -32,6 +32,9 @@ impl SessionRecord {
             last_output_at: None,
             exit: None,
             failure: None,
+            options: None,
+            restored: None,
+            persistence_failure: None,
         };
         Self {
             info,
@@ -170,6 +173,9 @@ mod tests {
                 last_output_at: None,
                 exit: None,
                 failure: None,
+                options: None,
+                restored: None,
+                persistence_failure: None,
             },
             spec: HolderSpec {
                 profile,
@@ -244,6 +250,7 @@ mod tests {
             exit: Some(ExitStatus {
                 code: Some(3),
                 signal: None,
+                ended: None,
             }),
             failure: None,
             title: Some("vim".into()),

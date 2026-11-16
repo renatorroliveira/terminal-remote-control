@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { PROTOCOL_VERSION } from '@trc/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
 import { closeLiveHosts, connectLive, type LiveHost, ssh, testHostsMissing, waitFor } from '../nfr/live-host';
 import { OLD_DAEMONS } from '../soak/old-daemons';
@@ -46,7 +47,7 @@ describe.skipIf(missing !== undefined)('upgrading the daemon in place (US-2.5.3)
             old.connection.close();
             const upgraded = await connectLive(alias, { root });
             expect(daemonOf(upgraded)?.version).not.toBe(OLD_VERSION);
-            expect(daemonOf(upgraded)?.proto).toBe(2);
+            expect(daemonOf(upgraded)?.proto).toBe(PROTOCOL_VERSION);
             expect(await shellPids(upgraded)).toEqual(pids);
             const attach = { type: 'attach', requestId: 8, session: session.id, mode: 'full' } as const;
             const { message } = await upgraded.request(attach, 'attached', (reply) => reply.requestId === 8);

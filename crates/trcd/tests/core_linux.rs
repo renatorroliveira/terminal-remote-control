@@ -64,6 +64,7 @@ async fn running_sessions(client: &mut AppClient, count: u32) {
                 env: Default::default(),
                 size: TerminalSize { cols: 120, rows: 40 },
                 scrollback_lines: None,
+                options: None,
             },
         });
     }

@@ -159,6 +159,10 @@ dialog and the status bar share one switch component. `pnpm test:ax` runs once a
   options on `create`, `setSessionOptions`, `clearScrollback`, `restartDaemon`, `removeDaemon`, and the `welcome`
   fields. Fixtures `v3`; ts-rs and zod. Holder protocol 3 (§3.3).
 
+As built (ST-41, 2026-11-16): the app protocol is 3, and the daemon still speaks 1 and 2, as P-49 has it; the
+version test now holds only that N−1 stays spoken. The new requests answer `unsupported` until the stories that
+implement them land, and holder protocol 3 comes with ST-42 and ST-44, which use it.
+
 **ST-42 Holder persistence** (US-3.1.2, US-3.2, NFR-08, SEC-05)
 
 - §3.1 in the holder: the writer thread, `history.log`, `screen.vt`, compaction, recovery, the options, Clear
