@@ -9,6 +9,7 @@ import {
     scratchInstallRoot,
     testHostsMissing,
 } from '../e2e/support/test-host';
+import { ECHO_ALLOWANCE_MS, ECHO_PERCENTILE, ECHO_SAMPLES } from './echo-target';
 import { closeLiveHosts, connectLive, type LiveHost, roundTrips, ssh } from './live-host';
 import { percentile, record } from './stats';
 
@@ -45,11 +46,8 @@ interface EchoTimes {
 
 test.afterAll(() => closeLiveHosts());
 
-/** What the app may add to the link's own p95 round trip, on any link (NFR-02; E1's local allowance ended with S13). */
-const ALLOWANCE_MS = 10;
-
-/** Pings sampled over another connection to the host just before the app types, for the link's own p95. */
-const LINK_SAMPLES = 40;
+/** Pings sampled over another connection to the host just before the app types, for the link's round trip. */
+const LINK_SAMPLES = 100;
 
 async function screen(terminal: Locator): Promise<string> {
     return (await rowTexts(terminal)).join('\n');
@@ -140,6 +138,11 @@ async function typeAndTimeEcho(window: Page, terminal: Locator, letters: number,
     const surface = await terminal.evaluate(() => [...((globalThis as ProbeWindow).__trcEcho?.surface ?? [])]);
     await window.keyboard.press('Control+U');
     return { parsed, surface };
+}
+
+/** The link's round trip NFR-02's frame is added to: its own p95, so its jitter is not counted as the app's (P-35). */
+function linkBaseline(linkTimes: readonly number[]): number {
+    return percentile(linkTimes, 95);
 }
 
 /** The host clock minus this machine's, from a timestamp echo over a live session, to within half its round trip. */
@@ -254,7 +257,7 @@ test.describe('UI echo latency on live hosts (NFR-02)', () => {
     test.setTimeout(240_000);
 
     for (const alias of ['trc-ubuntu', 'trc-latency'] as const) {
-        test(`readies the echo of typing on ${alias} within the SSH round trip plus 10 ms, p95 (NFR-02)`, async () => {
+        test(`readies the echo of typing on ${alias} within the SSH round trip plus a frame, p99 (NFR-02)`, async () => {
             const root = scratchInstallRoot();
             const { app, window } = await launchWithTestHosts(root);
             try {
@@ -262,32 +265,33 @@ test.describe('UI echo latency on live hosts (NFR-02)', () => {
                 await ready(window, terminal);
                 const linkTimes = await roundTrips(await connectLive(alias), LINK_SAMPLES, 40);
                 const gap = Math.ceil(percentile(linkTimes, 50)) + 40;
-                const { parsed, surface } = await typeAndTimeEcho(window, terminal, 75, gap);
-                const link95 = percentile(linkTimes, 95);
-                const app95 = percentile(parsed, 95);
-                const budget = `≤ ${(link95 + ALLOWANCE_MS).toFixed(1)} ms`;
+                const { parsed, surface } = await typeAndTimeEcho(window, terminal, ECHO_SAMPLES, gap);
+                const link = linkBaseline(linkTimes);
+                const app99 = percentile(parsed, ECHO_PERCENTILE);
+                for (const p of [50, 95, 99]) {
+                    record({
+                        id: 'NFR-02',
+                        what: `${alias}: SSH round trip before the app types, ping to pong over the channel, p${p}`,
+                        value: percentile(linkTimes, p),
+                        unit: 'ms',
+                        target: '—',
+                    });
+                }
                 record({
                     id: 'NFR-02',
-                    what: `${alias}: SSH round trip before the app types, ping to pong over the channel, p95`,
-                    value: link95,
+                    what: `${alias}: keystroke to its echo parsed in the app, p${ECHO_PERCENTILE}`,
+                    value: app99,
                     unit: 'ms',
-                    target: '—',
+                    target: `≤ ${(link + ECHO_ALLOWANCE_MS).toFixed(1)} ms`,
                 });
                 record({
                     id: 'NFR-02',
-                    what: `${alias}: keystroke to its echo parsed in the app, p95`,
-                    value: app95,
-                    unit: 'ms',
-                    target: budget,
-                });
-                record({
-                    id: 'NFR-02',
-                    what: `${alias}: keystroke to its echo on the text surface (next frame), p95`,
-                    value: percentile(surface, 95),
+                    what: `${alias}: keystroke to its echo on the text surface (next frame), p${ECHO_PERCENTILE}`,
+                    value: percentile(surface, ECHO_PERCENTILE),
                     unit: 'ms',
                     target: 'next frame',
                 });
-                expect(app95).toBeLessThanOrEqual(link95 + ALLOWANCE_MS);
+                expect(app99).toBeLessThanOrEqual(link + ECHO_ALLOWANCE_MS);
             } finally {
                 await app.close();
                 removeInstall(alias, root);
@@ -368,7 +372,7 @@ test.describe('Speech of new output on a live host (NFR-04)', () => {
 });
 
 /** Launches 5 times with a restored host, timing each from an interactive window to the host reconnecting. */
-async function restoredReconnectDelays(root: string): Promise<number[]> {
+async function restoredReconnectDelays(root: string): Promise<readonly number[]> {
     const first = await launchWithTestHosts(root);
     await openTerminal(first.window, 'trc-ubuntu');
     await first.app.close();

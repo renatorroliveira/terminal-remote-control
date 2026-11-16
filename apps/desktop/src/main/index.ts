@@ -33,7 +33,8 @@ import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, GUIDE_CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
 import { SessionCacheFile } from './session-cache';
 import { sshConfigFilesFor, sshConfigHosts } from './ssh-config-hosts';
-import { NO_TEST_SEAM, readTestSeam } from './test-seam';
+import { NO_TEST_SEAM } from './test-seam';
+import { readTestSeam } from './test-seam-reader';
 import { trcHome } from './trc-home';
 import { isAppPage } from './trusted-sender';
 

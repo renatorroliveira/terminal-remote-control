@@ -232,7 +232,7 @@ export async function sshRoundTrip(host: LiveHost, samples = 20): Promise<number
 }
 
 /** `samples` times from a ping to its pong over the host's SSH channel, each ping sent `gapMs` after the last pong. */
-export async function roundTrips(host: LiveHost, samples: number, gapMs = 0): Promise<number[]> {
+export async function roundTrips(host: LiveHost, samples: number, gapMs = 0): Promise<readonly number[]> {
     const times: number[] = [];
     for (let requestId = 900_000; requestId < 900_000 + samples; requestId += 1) {
         const sent = performance.now();

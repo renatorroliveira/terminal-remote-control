@@ -17,7 +17,7 @@ adds:
 - programs never block on a slow client, and several Macs share a session;
 - the daemon survives logout where the host allows it, says so where it cannot, restarts after a crash, and
   upgrades in place without ending a session;
-- the soak tests behind NFR-11, and the two E1 exceptions (NFR-02, NFR-09) closed.
+- the soak tests behind NFR-11, E1's exception to NFR-02 closed, and its exception to NFR-09 narrowed (P-37).
 
 E2 must retire R4, R5 and R6 on Linux. E1's working agreement (E1 plan §3: read, red, green, refactor, gate, docs,
 commit, continue) and its autonomy rule (P-20) apply unchanged.
@@ -40,6 +40,8 @@ commit, continue) and its autonomy rule (P-20) apply unchanged.
 | P-33 | Review at the end of E2: `code-reviewer` (TypeScript, Rust) and `technical-auditor` (security, reliability and release) over every commit after v0.2.0, in rounds until no critical or high finding remains. A fix that would change the PRD, behavior, a design or an owner decision waits for the owner. Then the release workflow cuts `v0.3.0` (`bump: minor`, P-21).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | P-34 | **Owner, 2026-11-14, review round 1.** (a) After a reconnect only the open terminal sends its size; the others take theirs back on focus or input, as P-31 says (F6). (b) When another client opens a session whose E1 holder serves one client at a time, the core tells the client it replaced with `detached { reason: attachedElsewhere }` (protocol 2); its terminal says "Opened on another client — input not sent", and opening the session again takes it back (M4). (c) Install failures retry only when they may pass, at most 3 times in a row (M2). (d) A holder whose systemd scope cannot start still starts directly, and the core's unit runs with `KillMode=process`, so stopping or restarting the core never ends it (M3). (e) **Owner, 2026-11-15, review round 2.** A network change or a wake retries a waiting host at once, every time, as US-2.2.2 says; the 5 s spacing round 1 added is dropped (audit R2 F2). |
 | P-35 | **Owner, 2026-11-15, ST-36.** NFR-02's UI test compares the app's p95 echo with the link's own p95 round trip, sampled over another connection just before the typing, instead of its median: the 100 ms test link jitters by about 5 ms, which the median baseline counted as the app's. The connection-host and scale tests keep the median, a stricter check they meet.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| P-36 | **Owner, 2026-11-16, review round 5.** NFR-02's target becomes p99 within one 60 Hz frame (16.7 ms) of the SSH round trip, in place of p95 within 10 ms: an echo one frame late goes unnoticed, and a p99 also bounds the slow keystrokes. Every NFR-02 and NFR-05 echo check takes at least 200 samples; P-35's baseline stays.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| P-37 | **Owner, 2026-11-16, review round 5.** While a full-screen program runs, a full snapshot streams from a copy of the primary screen and its scrollback (S12), about 96 MiB at the 100,000-line maximum: an E2 exception to NFR-09 in the PRD, which E3 resolves by streaming that history from its on-disk scrollback. On the primary screen attaching adds about 1.4 MiB, and the NFR test asserts it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 ## 3. Design
 
@@ -288,9 +290,9 @@ NFR-02's UI test now compares with the link's own p95 round trip (P-35).
 
 ## 8. Reviews (P-33)
 
-Four rounds of `code-reviewer` and `technical-auditor` over every commit after v0.2.0. Every finding was fixed
+Five rounds of `code-reviewer` and `technical-auditor` over every commit after v0.2.0. Every finding was fixed
 test-first, or is listed below with why it stays. Findings that changed a behavior or an owner decision went to the
-owner first; their answers are P-34.
+owner first; their answers are P-34, P-36 and P-37.
 
 | Round | Code review (C/H/M/L) | Audit (C/H/M/L) | Fixes                                                   |
 | ----- | --------------------- | --------------- | ------------------------------------------------------- |
@@ -298,6 +300,7 @@ owner first; their answers are P-34.
 | 2     | 0 / 0 / 3 / 8         | 0 / 1 / 3 / 4   | `2690d02`; owner decision P-34(e)                       |
 | 3     | 0 / 0 / 5 / 8         | 0 / 0 / 7 / 5   | `4946236`, and the soak harness in ST-36                |
 | 4     | 0 / 0 / 2 / 9         | 0 / 1 / 3 / 3   | the ST-36 commit; the high was a seam name in a comment |
+| 5     | 0 / 0 / 2 / 7         | 0 / 1 / 2 / 5   | the round-5 commit; owner decisions P-36 and P-37       |
 
 The highs:
 
@@ -307,7 +310,9 @@ The highs:
 - The SEC-04.4 evidence cited tests that did not exist; they were written (round 1).
 - The flap soak never dropped the connection; it now stalls ssh and resumes every session from its offset (round 2).
 - A release bundle would have carried a test seam name in a comment, failing `verify:artifact`; a guard test now
-  scans the app's source (round 4).
+  scans the app's source (round 4), and its page, styles and messages too (round 5).
+- NFR-09 was called met while a snapshot during a full-screen program streams from a copy of the session; it is now
+  measured, and the copy is an E2 exception that E3 resolves (round 5, P-37).
 
 What stays, and why:
 
@@ -318,4 +323,8 @@ What stays, and why:
 - A reconnect reattaches a session whose E1 holder another client opened while this one was away, as P-27 keeps E1's
   one-client behavior for those sessions until they close.
 - On a host without lingering, the detached daemon keeps the user's login session `closing` after logout, so systemd
-  keeps the user's manager running, as with tmux; the logout soak checks the logout itself and a detached core.
+  keeps the user's manager running, as with tmux; the logout soak checks the logout itself and, every cycle, that the
+  same core still runs detached.
+- After two refreshes that came back without the whole buffer, a terminal stops asking for it by itself until it
+  attaches again or a whole buffer arrives; review mode and find still ask (D-45), so a holder that cannot format
+  its history never makes the app ask in a loop.

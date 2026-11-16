@@ -600,6 +600,8 @@ describe('TerminalRegistry: a session another client took (P-27, P-34)', () => {
         await registry.reattachHost('h1');
         expect(requestsOf(transport, 'attach')).toBe(1);
         expect(area.querySelector('[role="textbox"]')?.getAttribute('aria-label')).toBe('bash, h1');
+        const refused = area.querySelector<HTMLElement>('[data-input-refused]');
+        expect([refused?.hidden, refused?.textContent]).toEqual([false, 'Opened on another client — input not sent']);
     });
 });
 

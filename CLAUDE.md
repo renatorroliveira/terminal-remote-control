@@ -35,9 +35,10 @@ tooling (`tools/*`).
   prints the run's table for `docs/verification/E2-nfr.md`.
 - Soak (NFR-11, P-25): `pnpm test:soak` (needs the test hosts, the daemons and
   `tools/test-hosts/fetch-old-daemon.sh`); `TRC_SOAK_CYCLES` (1,000),
-  `TRC_SOAK_APP_CYCLES` (50) and `TRC_SOAK_LOGOUT_CYCLES` (50) set the cycles,
-  and `TRC_SOAK_HOST` the host of the app quit, crash and flap scenarios. It runs for
-  hours; each scenario file can run alone with
+  `TRC_SOAK_APP_CYCLES` (50) and `TRC_SOAK_LOGOUT_CYCLES` (1,000) set the
+  cycles, and `TRC_SOAK_HOST` the host of the ssh-level app quit and crash and of
+  the flap scenarios. It runs for hours (the logout scenario alone takes about
+  3.6); each scenario file can run alone with
   `vitest run --project soak <file>`, and its sessions are reached through
   `docker exec` as well as ssh (`DOCKER_CONTEXT`, `colima-trc` by default).
 - End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax` (needs the
