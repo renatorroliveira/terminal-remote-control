@@ -1,5 +1,6 @@
 import type { ServerMessage } from '@trc/protocol';
 import { afterAll, describe, expect, it } from 'vitest';
+import { ECHO_ALLOWANCE_MS, ECHO_PERCENTILE, ECHO_SAMPLES } from './echo-target';
 import {
     closeLiveHosts,
     connectLive,
@@ -76,8 +77,8 @@ describe.skipIf(missing !== undefined)('scale: sessions per host (NFR-05)', () =
         for (const [index, { id }] of created.entries()) {
             renames.push(await rename(host, id, `nfr-${index}`));
         }
-        const budget = (await sshRoundTrip(host)) + 10;
-        const echo = percentile(await echoTimes(await host.session(), 40), 95);
+        const budget = (await sshRoundTrip(host)) + ECHO_ALLOWANCE_MS;
+        const echo = percentile(await echoTimes(await host.session(), ECHO_SAMPLES), ECHO_PERCENTILE);
         const renameP95 = percentile(renames, 95);
         const createP95 = percentile(
             created.map(({ ms }) => ms),
@@ -91,7 +92,7 @@ describe.skipIf(missing !== undefined)('scale: sessions per host (NFR-05)', () =
             `≤ ${STATE_TARGET_MS} ms`,
         );
         measured(
-            `trc-ubuntu: keystroke to echo with ${SESSIONS + 1} sessions, p95`,
+            `trc-ubuntu: keystroke to echo with ${SESSIONS + 1} sessions, p${ECHO_PERCENTILE}`,
             echo,
             'ms',
             `≤ ${budget.toFixed(1)} ms`,
@@ -116,19 +117,19 @@ describe.skipIf(missing !== undefined)('scale: hosts per app (NFR-05)', () => {
             roundTrips.push(await sshRoundTrip(host, 5));
             echoes.push(...(await echoTimes(await host.session(), 20)));
         }
-        const budget = percentile(roundTrips, 50) + 10;
-        const echoP95 = percentile(echoes, 95);
+        const budget = percentile(roundTrips, 50) + ECHO_ALLOWANCE_MS;
+        const echo = percentile(echoes, ECHO_PERCENTILE);
         const renameP95 = percentile(renames, 95);
         measured(`${HOSTS} hosts: connect and install all at once`, connectSeconds, 's', '—');
         measured(`${HOSTS} hosts: rename to session event, p95`, renameP95, 'ms', `≤ ${STATE_TARGET_MS} ms`);
         measured(
-            `${HOSTS} hosts: keystroke to echo, every keystroke on every host, p95`,
-            echoP95,
+            `${HOSTS} hosts: keystroke to echo, every keystroke on every host, p${ECHO_PERCENTILE}`,
+            echo,
             'ms',
             `≤ ${budget.toFixed(1)} ms`,
         );
         expect(hosts.every((host) => host.states.at(-1)?.status === 'connected')).toBe(true);
         expect(renameP95).toBeLessThanOrEqual(STATE_TARGET_MS);
-        expect(echoP95).toBeLessThanOrEqual(budget);
+        expect(echo).toBeLessThanOrEqual(budget);
     }, 600_000);
 });

@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { CREDIT_WINDOW } from '@trc/protocol';
 import { afterAll, describe, expect, it } from 'vitest';
+import { ECHO_ALLOWANCE_MS, ECHO_PERCENTILE, ECHO_SAMPLES } from './echo-target';
 import {
     closeLiveHosts,
     connectLive,
@@ -13,7 +14,6 @@ import {
 import { percentile, record } from './stats';
 
 const missing = testHostsMissing();
-const ECHO_SAMPLES = 60;
 const INTERRUPT_SAMPLES = 15;
 const FLOOD = [
     'import os, signal, sys',
@@ -52,13 +52,13 @@ async function echoTimes(session: LiveSession, samples: number): Promise<readonl
 
 describe.skipIf(missing !== undefined)('input latency over the connection (NFR-02)', () => {
     it.each(['trc-ubuntu', 'trc-latency'])(
-        'echoes typing on %s within the SSH round trip plus 10 ms, p95',
+        'echoes typing on %s within the SSH round trip plus a frame, p99',
         async (alias) => {
             const host = await connectLive(alias);
             const session = await host.session();
             await prompt(session);
             const rtt = await sshRoundTrip(host);
-            const p95 = percentile(await echoTimes(session, ECHO_SAMPLES), 95);
+            const p99 = percentile(await echoTimes(session, ECHO_SAMPLES), ECHO_PERCENTILE);
             record({
                 id: 'NFR-02',
                 what: `${alias}: SSH round trip, ping to pong over the channel (median)`,
@@ -68,12 +68,12 @@ describe.skipIf(missing !== undefined)('input latency over the connection (NFR-0
             });
             record({
                 id: 'NFR-02',
-                what: `${alias}: keystroke to echo at the connection host, p95`,
-                value: p95,
+                what: `${alias}: keystroke to echo at the connection host, p${ECHO_PERCENTILE}`,
+                value: p99,
                 unit: 'ms',
-                target: `≤ ${(rtt + 10).toFixed(1)} ms`,
+                target: `≤ ${(rtt + ECHO_ALLOWANCE_MS).toFixed(1)} ms`,
             });
-            expect(p95).toBeLessThanOrEqual(rtt + 10);
+            expect(p99).toBeLessThanOrEqual(rtt + ECHO_ALLOWANCE_MS);
         },
         180_000,
     );

@@ -45,7 +45,7 @@ export class SoakRun {
     readonly alias: string;
     readonly root = `.trc-soak-${randomBytes(4).toString('hex')}`;
     /** How long each cycle's connection took to come back, in ms. */
-    readonly reconnects: number[] = [];
+    readonly #reconnects: number[] = [];
     #watched: readonly Watched[] = [];
     #host: LiveHost | undefined;
     /** Each watched session as attached over the current connection. */
@@ -71,7 +71,7 @@ export class SoakRun {
     /** Connects with `options.daemons` or the app's own and creates `sessions` sessions to watch. */
     async start(sessions: number, options: LiveOptions = {}): Promise<void> {
         const host = await this.connect(options);
-        this.reconnects.splice(0);
+        this.#reconnects.splice(0);
         for (let index = 0; index < sessions; index += 1) {
             const session = await host.session();
             this.#open.set(session.id, session);
@@ -92,7 +92,7 @@ export class SoakRun {
             throw new Error(`${this.alias} did not connect: ${JSON.stringify(host.states.at(-1))}`);
         }
         if (options.timed !== false) {
-            this.reconnects.push(performance.now() - started);
+            this.#reconnects.push(performance.now() - started);
         }
         this.#host = host;
         return host;
@@ -158,11 +158,11 @@ export class SoakRun {
      */
     report(scenario: string, cycles: number): void {
         const what = `${scenario} on ${this.alias}`;
-        const p95 = percentile(this.reconnects, 95);
+        const p95 = percentile(this.#reconnects, 95);
         record({ id: 'NFR-11', what: `${what}: sessions lost in ${cycles} cycles`, value: 0, unit: '', target: '0' });
         record({
             id: 'NFR-07',
-            what: `${what}: connect again (ssh and daemon check), p95 of ${this.reconnects.length}`,
+            what: `${what}: connect again (ssh and daemon check), p95 of ${this.#reconnects.length}`,
             value: p95,
             unit: 'ms',
             target: '≤ 5,000 ms',
@@ -259,7 +259,7 @@ export function endSsh(host: LiveHost): void {
     try {
         signalSsh(host, 'KILL');
     } catch (error) {
-        if ((error as { readonly status?: number }).status !== 1) {
+        if (exitStatus(error) !== 1) {
             throw error;
         }
     }
@@ -281,4 +281,12 @@ function onceAfterResume(session: LiveSession, cycle: number, index: number): vo
     if (session.replay === 'delta' && seen !== 1) {
         throw new Error(`cycle ${cycle}: session ${session.id} showed the output written while away ${seen} times`);
     }
+}
+
+/** The exit status a failed `execFileSync` carries, if `error` is one. */
+function exitStatus(error: unknown): number | undefined {
+    if (typeof error !== 'object' || error === null || !('status' in error)) {
+        return undefined;
+    }
+    return typeof error.status === 'number' ? error.status : undefined;
 }

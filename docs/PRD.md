@@ -4,7 +4,7 @@
 | ------------ | ------------------------------- |
 | Status       | Draft v0.13                     |
 | Owner        | Renato Oliveira                 |
-| Last updated | 2026-11-15                      |
+| Last updated | 2026-11-16                      |
 | Scope        | P0 in seven epics, then GA (E8) |
 | Name         | Terminal Remote Control (TRC)   |
 
@@ -601,40 +601,51 @@ Logs the user shares for support MUST contain nothing sensitive.
 All targets are initial and are validated during design. Each requirement
 applies from the epic in the last column onward.
 
-| ID     | Area                   | Requirement                                                                                                                                 | Initial target                                      | Applies from |
-| ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------ |
-| NFR-01 | Input latency (local)  | Latency the app and daemon add between a keystroke and its echo, excluding the shell.                                                       | p95 ≤ 10 ms                                         | E5           |
-| NFR-02 | Input latency (remote) | Same, for remote sessions.                                                                                                                  | p95 ≤ SSH round-trip time + 10 ms                   | E1           |
-| NFR-03 | Throughput             | Under sustained output (for example `yes`, or `cat` of a 1 GB file), the UI stays interactive and Ctrl+C reaches the process quickly.       | Interrupt delivered p95 ≤ 100 ms                    | E1           |
-| NFR-04 | AT responsiveness      | With a screen reader on, speech of new output starts promptly, and flood control keeps the screen reader responsive under sustained output. | Speech starts ≤ 500 ms after output, when idle      | E1           |
-| NFR-05 | Scale                  | Sessions per host and hosts per app without breaching the latency targets; state changes reach attached clients quickly.                    | ≥ 100 sessions/host; ≥ 25 hosts; state p95 ≤ 250 ms | E1           |
-| NFR-06 | Startup                | Window interactive after launch; remote reconnects started; local sessions listed.                                                          | ≤ 2 s; ≤ 1 s after window; ≤ 1 s after window       | E1; E2; E5   |
-| NFR-07 | Reconnect              | Dead-connection detection; reconnection once the network is back.                                                                           | Detect ≤ 30 s; reconnect ≤ 5 s on a healthy network | E1; E2       |
-| NFR-08 | Durability             | Lag between live output and on-disk scrollback, which bounds loss on power failure.                                                         | ≤ 5 s                                               | E3           |
-| NFR-09 | Daemon footprint       | Idle daemon memory and CPU; overhead per session beyond scrollback.                                                                         | ≤ 30 MB RSS, ≤ 0.5% CPU idle; ≤ 10 MB/session       | E1           |
-| NFR-10 | Scrollback             | Configurable per session with bounded memory.                                                                                               | Default 10,000 lines; configurable to ≥ 100,000     | E1           |
-| NFR-11 | Reliability            | Session loss across automated soak cycles of app quit and crash, daemon kill and upgrade, and network flaps.                                | 0 sessions lost in 1,000 cycles per scenario        | E2           |
-| NFR-12 | Compatibility          | App-to-daemon protocol compatibility.                                                                                                       | Current and previous protocol version               | E2           |
-| NFR-13 | Localization           | UI strings externalized; UI language exposed programmatically.                                                                              | P0 ships English                                    | E1           |
+| ID     | Area                   | Requirement                                                                                                                                 | Initial target                                        | Applies from |
+| ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------ |
+| NFR-01 | Input latency (local)  | Latency the app and daemon add between a keystroke and its echo, excluding the shell.                                                       | p95 ≤ 10 ms                                           | E5           |
+| NFR-02 | Input latency (remote) | Same, for remote sessions.                                                                                                                  | p99 ≤ SSH round-trip time + one 60 Hz frame (16.7 ms) | E1           |
+| NFR-03 | Throughput             | Under sustained output (for example `yes`, or `cat` of a 1 GB file), the UI stays interactive and Ctrl+C reaches the process quickly.       | Interrupt delivered p95 ≤ 100 ms                      | E1           |
+| NFR-04 | AT responsiveness      | With a screen reader on, speech of new output starts promptly, and flood control keeps the screen reader responsive under sustained output. | Speech starts ≤ 500 ms after output, when idle        | E1           |
+| NFR-05 | Scale                  | Sessions per host and hosts per app without breaching the latency targets; state changes reach attached clients quickly.                    | ≥ 100 sessions/host; ≥ 25 hosts; state p95 ≤ 250 ms   | E1           |
+| NFR-06 | Startup                | Window interactive after launch; remote reconnects started; local sessions listed.                                                          | ≤ 2 s; ≤ 1 s after window; ≤ 1 s after window         | E1; E2; E5   |
+| NFR-07 | Reconnect              | Dead-connection detection; reconnection once the network is back.                                                                           | Detect ≤ 30 s; reconnect ≤ 5 s on a healthy network   | E1; E2       |
+| NFR-08 | Durability             | Lag between live output and on-disk scrollback, which bounds loss on power failure.                                                         | ≤ 5 s                                                 | E3           |
+| NFR-09 | Daemon footprint       | Idle daemon memory and CPU; overhead per session beyond scrollback.                                                                         | ≤ 30 MB RSS, ≤ 0.5% CPU idle; ≤ 10 MB/session         | E1           |
+| NFR-10 | Scrollback             | Configurable per session with bounded memory.                                                                                               | Default 10,000 lines; configurable to ≥ 100,000       | E1           |
+| NFR-11 | Reliability            | Session loss across automated soak cycles of app quit and crash, daemon kill and upgrade, and network flaps.                                | 0 sessions lost in 1,000 cycles per scenario          | E2           |
+| NFR-12 | Compatibility          | App-to-daemon protocol compatibility.                                                                                                       | Current and previous protocol version                 | E2           |
+| NFR-13 | Localization           | UI strings externalized; UI language exposed programmatically.                                                                              | P0 ships English                                      | E1           |
 
-**E1 exceptions** (accepted by the owner on 2026-11-13; see
-`docs/verification/E1-nfr.md`):
+**Exceptions** (E1's accepted by the owner on 2026-11-13, see
+`docs/verification/E1-nfr.md`; E2's on 2026-11-16, see
+`docs/verification/E2-nfr.md`):
 
 - NFR-02: on a link with a sub-millisecond round trip, the app adds about
   10.7 ms at p95, 0.7 ms over the target, from message delivery between
   Electron's renderer and the connection host's utility process. E1 guards it
   at 15 ms; E2 revisits that path. On a 100 ms link the target holds.
   **Resolved in E2** (S13, D-47): the delay was Chromium deferring the echo
-  until the next frame; the app now adds about 5 ms at p95, and the target is
-  checked at 10 ms on every link, over that link's own p95 round trip (owner,
-  2026-11-15), so a test link's jitter is not counted as the app's.
+  until the next frame; the app now adds about 5 ms at p95.
+  **Changed in E2** (owner, 2026-11-16): the target is now p99 within one
+  60 Hz frame (16.7 ms) of the round trip, as an echo one frame late goes
+  unnoticed and a p99 also bounds the slow keystrokes a p95 leaves out. The
+  UI test measures it over the link's own p95 round trip, so a test link's
+  jitter is not counted as the app's (P-35); the other tests use its median.
 - NFR-09: when the app attaches, the holder briefly keeps about twice the
   session's snapshot, so a session at the 100,000-line scrollback maximum
   passes 10 MB for a moment. Steady-state overhead meets the target. E2, which
   reworks attach and resync, streams the snapshot.
-  **Resolved in E2** (S12, ST-25): snapshots are formatted 500 rows at a time
-  within the client's credit, the largest block about 31 KB, so attaching no
-  longer holds a second copy of the session.
+  **Partly resolved in E2** (S12, ST-25): snapshots are formatted 500 rows at
+  a time within the client's credit, so attaching a session on its primary
+  screen adds about 1.4 MiB at the 100,000-line maximum.
+  **E2 exception** (accepted by the owner on 2026-11-16): while a full-screen
+  program runs, a full snapshot streams from a copy of the primary screen and
+  its scrollback, as libghostty-vt formats only the active screen. The copy
+  lives only while that snapshot streams, when another client attaches from
+  the start or review mode or find fills a gap: about 96 MiB at the maximum
+  and 10 MiB at the default 10,000 lines. E3, which keeps scrollback on disk
+  (NFR-08), streams that history without the copy.
 
 ## 9. Epics
 
@@ -1101,7 +1112,8 @@ signature.
 **Scope.** macOS desktop app; Linux hosts.
 
 **Acceptance criteria.** US-3.1 to US-3.3 are fully implemented, and the epic
-completion conditions in §9 hold on the macOS cells of the AT matrix.
+completion conditions in §9 hold on the macOS cells of the AT matrix. NFR-09's
+E2 exception (§8.3) is resolved.
 
 #### US-3.1 — Sessions come back after a host reboot
 

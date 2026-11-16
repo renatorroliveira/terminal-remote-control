@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { NO_TEST_SEAM, readTestSeam } from './test-seam';
+import { NO_TEST_SEAM } from './test-seam';
+import { readTestSeam } from './test-seam-reader';
 
 describe('readTestSeam (P-14, test builds only)', () => {
     it('reads every TRC_TEST_ variable into typed values', () => {

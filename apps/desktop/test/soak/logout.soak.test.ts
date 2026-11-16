@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { testHostsMissing } from '../nfr/live-host';
+import { type LiveHost, testHostsMissing } from '../nfr/live-host';
 import { corePid, onHost, SoakRun, soakCycles } from './soak';
 
 /**
  * Logging out with lingering off and `KillUserProcesses=no` (S6, US-2.4.3): every connection closes, so logind reports
  * every login of the user closing, and the next connection comes only past `UserStopDelaySec` (10 s); the daemon, which
- * runs detached in the login session's scope, must keep every session. It holds that scope, so the user stays
- * `closing` and systemd keeps their manager running, as with tmux (S11). 50 cycles.
+ * runs detached in the login session's scope, must keep running and keep every session. It holds that scope, so the
+ * user stays `closing` and systemd keeps their manager running, as with tmux (S11). 1,000 cycles, as S6 asks.
  */
-const CYCLES = soakCycles('TRC_SOAK_LOGOUT_CYCLES', 50);
+const CYCLES = soakCycles('TRC_SOAK_LOGOUT_CYCLES', 1_000);
 /** The host without lingering and with `KillUserProcesses=no` (P-32). */
 const HOST = 'trc-systemd';
 const runs: SoakRun[] = [];
@@ -24,11 +24,12 @@ describe.skipIf(testHostsMissing() !== undefined)('soak: logout without lingerin
         runs.push(run);
         await run.start(3);
         expect(detachedCore(run)).toBe(true);
+        const core = corePid(run);
         await run.soak(CYCLES, async (_, cycle) => {
             run.host.connection.close();
             await loggedOut();
             run.away(cycle);
-            return run.connect();
+            return connectAfterLogout(run, core);
         });
         run.report('logout without lingering (KillUserProcesses=no)', CYCLES);
     });
@@ -53,6 +54,14 @@ async function loggedOut(): Promise<void> {
         await new Promise((done) => setTimeout(done, 500));
     }
     await new Promise((done) => setTimeout(done, PAST_STOP_DELAY_MS));
+}
+
+/** Connects again after a logout, and checks that the core from before it still runs, detached in a session scope. */
+async function connectAfterLogout(run: SoakRun, core: string): Promise<LiveHost> {
+    const host = await run.connect();
+    expect(corePid(run), 'the core that ran before the logout').toBe(core);
+    expect(detachedCore(run), 'the core runs detached in a login session scope').toBe(true);
+    return host;
 }
 
 /** The test user's logind state on the host. */

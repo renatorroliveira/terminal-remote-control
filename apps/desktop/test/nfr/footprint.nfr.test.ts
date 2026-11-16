@@ -1,5 +1,13 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { closeLiveHosts, connectLive, type LiveHost, ssh, testHostsMissing } from './live-host';
+import {
+    closeLiveHosts,
+    connectLive,
+    type LiveHost,
+    type LiveSession,
+    ssh,
+    testHostsMissing,
+    waitFor,
+} from './live-host';
 import { record } from './stats';
 
 const missing = testHostsMissing();
@@ -29,23 +37,68 @@ function cpuPercent(host: LiveHost, pid: number, seconds: number): number {
     return ((after - before) / ticks / seconds) * 100;
 }
 
+/** Forgets a process's peak resident memory, so the next peak is measured from now, and returns its memory in MiB. */
+function resetPeak(host: LiveHost, pid: number): number {
+    const status = ssh(host.alias, `echo 5 > /proc/${pid}/clear_refs && grep VmRSS /proc/${pid}/status`);
+    return Number(/(\d+) kB/.exec(status)?.[1]) / 1024;
+}
+
+/** A process's peak resident memory since its last reset, in MiB. */
+function peakMiB(host: LiveHost, pid: number): number {
+    return Number(/(\d+) kB/.exec(ssh(host.alias, `grep VmHWM /proc/${pid}/status`))?.[1]) / 1024;
+}
+
+/** A new session with a known prompt, and its holder's pid. */
+async function readySession(
+    host: LiveHost,
+    scrollbackLines: number | undefined,
+): Promise<{ readonly session: LiveSession; readonly holder: number }> {
+    const session = await host.session(scrollbackLines === undefined ? {} : { scrollbackLines });
+    session.type('PS1="trc-ready$ "\r');
+    await session.next('trc-ready$ ');
+    return { session, holder: pids(host, 'holder').at(-1) ?? 0 };
+}
+
+/** Prints `lines` numbered lines in the session and waits until they are all out. */
+async function printSeq(session: LiveSession, lines: number): Promise<void> {
+    const done = session.next('TRC-SEQ-DONE', 120_000);
+    session.type(`seq 1 ${lines}; echo TRC-SEQ-""DONE\r`);
+    await done;
+}
+
 async function printLines(
     host: LiveHost,
     scrollbackLines: number | undefined,
     lines: number,
 ): Promise<readonly number[]> {
-    const session = await host.session(scrollbackLines === undefined ? {} : { scrollbackLines });
-    session.type('PS1="trc-ready$ "\r');
-    await session.next('trc-ready$ ');
-    const holder = pids(host, 'holder').at(-1) ?? 0;
+    const { session, holder } = await readySession(host, scrollbackLines);
     const sizes: number[] = [];
     for (let round = 0; round < 3; round += 1) {
-        const done = session.next('TRC-SEQ-DONE', 120_000);
-        session.type(`seq 1 ${lines}; echo TRC-SEQ-""DONE\r`);
-        await done;
+        await printSeq(session, lines);
         sizes.push(rssMiB(host, holder));
     }
     return sizes;
+}
+
+/**
+ * How much a full holder grows at its peak while a second client attaches it from the start, in MiB: the snapshot
+ * streams within the client's credit (S12), and while a full-screen program runs it streams from a copy of the
+ * session's primary screen and scrollback.
+ */
+async function attachGrowth(scrollbackLines: number | undefined, lines: number, fullScreen: boolean): Promise<number> {
+    const host = await connectLive('trc-ubuntu');
+    const { session, holder } = await readySession(host, scrollbackLines);
+    await printSeq(session, lines);
+    if (fullScreen) {
+        const entered = session.next('TRC-ALT-ON');
+        session.type(`printf '\\033[?1049h'; echo TRC-ALT-""ON; cat\r`);
+        await entered;
+    }
+    const before = resetPeak(host, holder);
+    const second = await connectLive('trc-ubuntu', { root: host.root });
+    const attached = await second.attach(session.id);
+    await waitFor(() => second.offsetOf(attached.stream) !== undefined, 120_000);
+    return peakMiB(host, holder) - before;
 }
 
 describe.skipIf(missing !== undefined)('daemon footprint (NFR-09)', () => {
@@ -112,3 +165,33 @@ describe.skipIf(missing !== undefined)('scrollback memory (NFR-10)', () => {
         600_000,
     );
 });
+
+describe.skipIf(missing !== undefined)('a second client attaching a full session (NFR-09, S12)', () => {
+    it('streams the snapshot of a full holder at the 100,000-line maximum within 10 MB of growth', async () => {
+        const growth = await attachGrowth(100_000, 150_000, false);
+        recordGrowth('the 100,000-line maximum', growth);
+        expect(growth).toBeLessThanOrEqual(10);
+    }, 600_000);
+
+    it.each([
+        ['the 100,000-line maximum, a full-screen program running', 100_000, 150_000],
+        ['the default 10,000 lines, a full-screen program running', undefined, 20_000],
+    ] as const)(
+        'measures the copy a snapshot streams from with %s, an E2 exception to NFR-09',
+        async (label, scrollbackLines, lines) => {
+            recordGrowth(label, await attachGrowth(scrollbackLines, lines, true));
+        },
+        600_000,
+    );
+});
+
+/** Records how much a holder grew while a second client attached it from the start. */
+function recordGrowth(label: string, growth: number): void {
+    record({
+        id: 'NFR-09',
+        what: `holder with ${label}: peak growth while a second client attaches from the start`,
+        value: growth,
+        unit: 'MiB',
+        target: '≤ 10 MB',
+    });
+}

@@ -21,13 +21,17 @@ test('starts the connection host as a utility process (US-1.5)', async () => {
     await app.close();
 });
 
+/** The share of the display's frames an unseen window must still draw, allowing for a few dropped under load. */
+const MOST_FRAMES = 0.8;
+
 test('opens unseen and click-through in the background, and still draws every frame (D-27)', async () => {
     const app = await launchApp();
     const window = await app.firstWindow();
     await window.waitForLoadState();
     expect(await app.evaluate(backgroundState)).toEqual({ opacity: 0, focused: false, visible: true });
     expect(await window.evaluate(() => document.visibilityState)).toBe('visible');
-    expect(await window.evaluate(framesIn500Ms)).toBeGreaterThan(10);
+    const refreshRate = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().displayFrequency);
+    expect(await window.evaluate(framesIn500Ms)).toBeGreaterThanOrEqual(refreshRate * 0.5 * MOST_FRAMES);
     await app.close();
 });
 
