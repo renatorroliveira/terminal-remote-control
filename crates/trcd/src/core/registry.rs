@@ -1,5 +1,7 @@
 //! The host's sessions in the user's order, with what each holder last reported (US-1.9, US-1.10).
 
+use std::collections::BTreeMap;
+
 use trc_protocol::{SessionId, SessionInfo, SessionState};
 
 use crate::holder::protocol::{HolderSpec, HolderStatus};
@@ -113,6 +115,27 @@ impl Registry {
     pub fn apply_status(&mut self, id: &SessionId, status: &HolderStatus) -> Option<SessionInfo> {
         let record = self.get_mut(id)?;
         record.apply_status(status).then(|| record.info.clone())
+    }
+
+    /// Replaces a session's record where it stands in the order, and returns its info.
+    pub fn replace(&mut self, mut record: SessionRecord) -> Option<SessionInfo> {
+        let index = self.position(&record.info.id)?;
+        record.info.order = position_number(index);
+        let info = record.info.clone();
+        self.sessions[index] = record;
+        Some(info)
+    }
+
+    /// Puts every session at the position `saved` gives it; those it names none for go after, as they stand.
+    pub fn arrange(&mut self, saved: &BTreeMap<SessionId, u32>) {
+        self.sessions
+            .sort_by_key(|record| saved.get(&record.info.id).copied().unwrap_or(u32::MAX));
+        self.renumber();
+    }
+
+    /// Every session's identifier, in order.
+    pub fn ids(&self) -> Vec<SessionId> {
+        self.sessions.iter().map(|record| record.info.id.clone()).collect()
     }
 
     /// Removes a session.

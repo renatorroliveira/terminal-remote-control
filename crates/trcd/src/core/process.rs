@@ -13,6 +13,7 @@ use trc_protocol::{DaemonDetails, ServiceInfo, ServiceManager};
 
 use super::account::current_account;
 use super::service::{Core, CoreContext};
+use super::store::{SessionStore, boot_id};
 use crate::digest::sha256_file;
 use crate::install::InstallLayout;
 use crate::private_dir::ensure_private_dir;
@@ -75,7 +76,8 @@ pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
         },
         scope,
         details,
-        sessions_dir,
+        store: SessionStore::new(sessions_dir, uid),
+        boot_id: boot_id(),
     };
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),

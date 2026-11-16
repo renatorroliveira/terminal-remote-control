@@ -181,6 +181,7 @@ async fn started_with_credit(program: &str, credit: u32) -> Client {
     };
     client.command(&HolderCommand::Start {
         spec: Box::new(spec(program)),
+        restore: None,
     });
     client.command(&HolderCommand::Attach {
         credit,
@@ -386,6 +387,7 @@ async fn sends_a_title_change_within_the_status_tick_while_a_detached_session_fl
     };
     client.command(&HolderCommand::Start {
         spec: Box::new(spec("/bin/sh")),
+        restore: None,
     });
     client
         .until(|c| c.statuses.last().is_some_and(|s| s.last_output_at.is_some()))

@@ -298,6 +298,32 @@ impl AppClient {
     }
 }
 
+/// Kills with SIGKILL every process whose command line contains `pattern`, with `pkill` or, where it is missing (the
+/// test containers), by reading `/proc`.
+pub fn kill_matching(pattern: &str) {
+    let ran = std::process::Command::new("pkill")
+        .args(["-KILL", "-f", pattern])
+        .status();
+    if ran.is_ok() {
+        return;
+    }
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return;
+    };
+    for entry in entries.filter_map(Result::ok) {
+        let Some(pid) = entry.file_name().to_str().and_then(|name| name.parse::<i32>().ok()) else {
+            continue;
+        };
+        let command = std::fs::read(entry.path().join("cmdline")).unwrap_or_default();
+        let command = String::from_utf8_lossy(&command).replace('\0', " ");
+        if command.contains(pattern)
+            && let Some(pid) = rustix::process::Pid::from_raw(pid)
+        {
+            let _ = rustix::process::kill_process(pid, rustix::process::Signal::KILL);
+        }
+    }
+}
+
 /// The parent process of `pid`, from `ps` or, where `ps` is missing, `/proc`.
 pub fn parent_of(pid: i32) -> i32 {
     let output = std::process::Command::new("ps")

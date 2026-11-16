@@ -58,19 +58,7 @@ impl Core {
         }
         self.drop_attachments(session);
         let _ = std::fs::remove_file(self.context.run.holder_socket(session));
-        let Some(record) = self.registry.get_mut(session) else {
-            return;
-        };
-        if matches!(record.info.state, SessionState::Starting | SessionState::Running) {
-            record.info.state = SessionState::Exited;
-            record.info.failure = Some("the session's holder process ended".into());
-        }
-        record.info.pid = None;
-        let info = record.info.clone();
-        tracing::warn!(session = %session.0, "holder ended");
-        self.broadcast(&ServerMessage::SessionEvent {
-            change: SessionChange::Updated { session: info },
-        });
+        self.recover_in_place(session);
     }
 
     fn on_holder_event(&mut self, session: &SessionId, payload: &[u8]) {
@@ -80,6 +68,7 @@ impl Core {
         match event {
             HolderEvent::Status { status } => {
                 if let Some(info) = self.registry.apply_status(session, &status) {
+                    self.persist(session);
                     self.broadcast(&ServerMessage::SessionEvent {
                         change: SessionChange::Updated { session: info },
                     });

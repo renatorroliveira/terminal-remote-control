@@ -207,7 +207,10 @@ async fn started() -> Core {
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
     };
-    core.command(&HolderCommand::Start { spec: Box::new(spec()) });
+    core.command(&HolderCommand::Start {
+        spec: Box::new(spec()),
+        restore: None,
+    });
     core.until(|c| c.running).await;
     core
 }

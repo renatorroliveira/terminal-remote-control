@@ -193,6 +193,14 @@ reset and the whole snapshot. The NFR-09 test also measures the holder while tha
   primary and alternate screens, a killed holder, restore off, scrollback off, and a 0.3.0 session restored without
   scrollback.
 
+As built (ST-44, 2026-11-16): the core writes a session's `meta.json` whenever what it keeps changes (not its
+process ID or output time), so order, names and options also survive a core restart. A holder that dies while the
+core runs is brought back in place at once, the same way; one that dies again within 30 s of a restore stays
+ended, so a shell that cannot start never loops. Restores start all at once rather than 4 at a time: a shell's start
+is short, and holders queued behind others could not be attached meanwhile; ST-49 measures 100 at once. In the
+containers a `docker restart` keeps the VM's boot ID, so those restores say the processes ended; the boot-ID rule
+that says "after restart" is unit-tested.
+
 **ST-45 Restored sessions in the app** (US-3.1.6, A11Y-12)
 
 - The badge until opened, the per-host announcement, the marker in review mode; e2e across a test-host restart.

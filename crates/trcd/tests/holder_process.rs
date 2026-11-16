@@ -47,6 +47,7 @@ async fn the_shell_inherits_the_holders_umask() {
         &sender,
         &HolderCommand::Start {
             spec: Box::new(umask_spec()),
+            restore: None,
         },
     );
     command(
