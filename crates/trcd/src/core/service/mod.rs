@@ -5,10 +5,11 @@
 
 mod attach;
 mod holder_events;
+mod recovery;
 mod requests;
 mod size;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io;
 use std::path::PathBuf;
 
@@ -22,10 +23,11 @@ use trc_protocol::{DaemonDetails, ServerMessage, ServiceInfo, SessionChange, Ses
 use super::adopt::{Adopted, adopt_holders, adopt_late};
 use super::launch::launch_holder;
 use super::registry::Registry;
+use super::store::{SessionMeta, SessionStore};
 use crate::accept_backoff::AcceptBackoff;
 use crate::frame_io::{FrameReader, FrameSender};
 use crate::holder::environment::Account;
-use crate::holder::protocol::{HOLDER_PROTOCOL, HolderCommand, HolderSpec};
+use crate::holder::protocol::{HOLDER_PROTOCOL, HolderCommand, HolderRestore, HolderSpec};
 use crate::peer::is_same_user;
 use crate::run_dir::RunDir;
 use crate::service::ScopeLauncher;
@@ -51,8 +53,10 @@ pub struct CoreContext {
     pub scope: Option<ScopeLauncher>,
     /// Where the daemon keeps its files and since when it runs, reported in `welcome` (US-3.3.1).
     pub details: DaemonDetails,
-    /// The folder of every session's data folder, `<root>/sessions` (TECH_STACK §5.5).
-    pub sessions_dir: PathBuf,
+    /// Every session's data folder and record, under `<root>/sessions` (TECH_STACK §5.5).
+    pub store: SessionStore,
+    /// The host's boot ID, which tells a host restart from processes that only ended (P-40).
+    pub boot_id: Option<String>,
 }
 
 /// The core's state and event loop.
@@ -65,6 +69,8 @@ pub struct Core {
     events: mpsc::Receiver<CoreEvent>,
     next_client: ClientId,
     accepting: AcceptBackoff,
+    /// What each session's `meta.json` last received, so unchanged records are not written again.
+    written: BTreeMap<SessionId, SessionMeta>,
 }
 
 type ClientId = u64;
@@ -141,6 +147,7 @@ impl Core {
             events,
             next_client: 1,
             accepting: AcceptBackoff::default(),
+            written: BTreeMap::new(),
         }
     }
 
@@ -152,9 +159,11 @@ impl Core {
             waiting = adoption.silent.len(),
             "adopted running sessions"
         );
+        let mut live: BTreeSet<SessionId> = adoption.silent.iter().map(|(_, id)| id.clone()).collect();
         for found in adoption.adopted {
-            self.register_adopted(found);
+            live.insert(self.register_adopted(found).id);
         }
+        self.recover_saved(&live);
         for (path, id) in adoption.silent {
             let events = self.events_tx.clone();
             tokio::spawn(async move {
@@ -215,6 +224,7 @@ impl Core {
             CoreEvent::HolderClosed(session) => self.on_holder_closed(&session),
             CoreEvent::HolderAdopted(found) => {
                 let session = self.register_adopted(*found);
+                self.persist(&session.id);
                 self.broadcast(&ServerMessage::SessionEvent {
                     change: SessionChange::Created { session },
                 });
@@ -260,11 +270,14 @@ impl Core {
         });
     }
 
-    /// Starts a holder for `session`; `start` and the other queued commands reach it once it is connected.
-    fn launch(&mut self, session: SessionId, spec: HolderSpec, name: Option<String>) {
+    /// Starts a holder for `session`, bringing it back from its saved scrollback when `restore` says how;
+    /// `start` and the other queued commands reach it once it is connected.
+    fn launch(&mut self, session: SessionId, spec: HolderSpec, name: Option<String>, restore: Option<HolderRestore>) {
         let mut link = HolderLink::new(None, HOLDER_PROTOCOL);
-        link.pending
-            .extend(control_frame(&HolderCommand::Start { spec: Box::new(spec) }));
+        link.pending.extend(control_frame(&HolderCommand::Start {
+            spec: Box::new(spec),
+            restore: restore.map(Box::new),
+        }));
         if name.is_some() {
             link.pending.extend(control_frame(&HolderCommand::Name { name }));
         }

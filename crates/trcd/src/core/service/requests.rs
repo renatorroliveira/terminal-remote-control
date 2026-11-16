@@ -11,7 +11,6 @@ use super::{ClientId, Core};
 use crate::core::profiles::detect_profiles;
 use crate::core::registry::SessionRecord;
 use crate::holder::protocol::{HolderCommand, HolderSpec};
-use crate::private_dir::ensure_private_dir;
 use crate::session_id::new_session_id;
 
 /// The holder protocol that saves sessions to disk.
@@ -226,7 +225,8 @@ impl Core {
             .registry
             .insert(SessionRecord::new(id.clone(), holder_spec.clone(), spec.name.clone()));
         tracing::info!(session = %id.0, "session created");
-        self.launch(id, holder_spec, spec.name);
+        self.launch(id.clone(), holder_spec, spec.name, None);
+        self.persist(&id);
         self.broadcast(&ServerMessage::SessionEvent {
             change: SessionChange::Created { session: info.clone() },
         });
@@ -241,6 +241,7 @@ impl Core {
             return unknown(request_id);
         };
         self.holder_command(session, &HolderCommand::Name { name });
+        self.persist(session);
         self.broadcast(&ServerMessage::SessionEvent {
             change: SessionChange::Updated { session: info },
         });
@@ -254,6 +255,7 @@ impl Core {
         else {
             return unknown(request_id);
         };
+        self.persist_all();
         self.broadcast(&ServerMessage::SessionEvent {
             change: SessionChange::Reordered { order },
         });
@@ -274,7 +276,7 @@ impl Core {
         };
         if !self.holders.contains_key(session) {
             let (spec, name) = (record.spec.clone(), record.info.custom_name.clone());
-            self.launch(session.clone(), spec, name);
+            self.launch(session.clone(), spec, name, None);
             return ServerMessage::Done { request_id };
         }
         self.command_session(request_id, session, &HolderCommand::Restart)
@@ -311,6 +313,7 @@ impl Core {
         record.spec.options = options;
         record.info.options = Some(options);
         let info = record.info.clone();
+        self.persist(session);
         self.broadcast(&ServerMessage::SessionEvent {
             change: SessionChange::Updated { session: info },
         });
@@ -332,10 +335,8 @@ impl Core {
 
     /// The folder a new session saves its scrollback in, created private (SEC-05.1); none when it cannot be.
     fn session_data_dir(&self, session: &SessionId) -> Option<String> {
-        let dir = self.context.sessions_dir.join(&session.0);
-        let uid = rustix::process::geteuid().as_raw();
-        match ensure_private_dir(&dir, uid) {
-            Ok(()) => Some(dir.to_string_lossy().into_owned()),
+        match self.context.store.prepare(session) {
+            Ok(dir) => Some(dir.to_string_lossy().into_owned()),
             Err(error) => {
                 tracing::warn!(session = %session.0, %error, "the session's data folder could not be created");
                 None
@@ -348,7 +349,8 @@ impl Core {
         self.drop_attachments(session);
         if self.registry.remove(session).is_some() {
             let _ = std::fs::remove_file(self.context.run.holder_socket(session));
-            let _ = std::fs::remove_dir_all(self.context.sessions_dir.join(&session.0));
+            self.written.remove(session);
+            self.context.store.remove(session);
             tracing::info!(session = %session.0, "session closed");
             self.broadcast(&ServerMessage::SessionEvent {
                 change: SessionChange::Closed {

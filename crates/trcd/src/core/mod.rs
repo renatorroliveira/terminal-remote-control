@@ -7,4 +7,6 @@ pub mod launch;
 pub mod process;
 pub mod profiles;
 pub mod registry;
+pub mod restore;
 pub mod service;
+pub mod store;

@@ -22,7 +22,9 @@ use super::environment::{Account, session_environment};
 use super::osc7::path_from_file_url;
 use super::output_log::OutputLog;
 use super::persistence::{Persistence, SAVE_INTERVAL};
-use super::protocol::{HOLDER_PROTOCOL, HolderCommand, HolderEvent, HolderSpec, HolderStatus, SESSION_STREAM};
+use super::protocol::{
+    HOLDER_PROTOCOL, HolderCommand, HolderEvent, HolderRestore, HolderSpec, HolderStatus, SESSION_STREAM,
+};
 use super::pty::{Pty, SpawnSpec};
 use super::stop_plan::{DEFAULT_GRACE, StopSignal, stop_plan};
 use crate::accept_backoff::AcceptBackoff;
@@ -225,7 +227,7 @@ impl Holder {
             return;
         };
         match command {
-            HolderCommand::Start { spec } => self.start(*spec),
+            HolderCommand::Start { spec, restore } => self.start(*spec, restore.map(|restore| *restore)),
             HolderCommand::Attach {
                 credit,
                 attachment,
@@ -264,7 +266,9 @@ impl Holder {
         }
     }
 
-    fn start(&mut self, spec: HolderSpec) {
+    /// Starts the session; a restore first brings back its saved scrollback, then starts the shell or reports the
+    /// session as it ended (US-3.1).
+    fn start(&mut self, spec: HolderSpec, restore: Option<HolderRestore>) {
         if self.spec.is_some() {
             return;
         }
@@ -284,8 +288,19 @@ impl Holder {
             Err(error) => return self.fail(format!("terminal emulator: {error}")),
         }
         self.spec = Some(spec);
-        self.start_saving(0);
-        self.spawn();
+        let Some(restore) = restore else {
+            self.start_saving(0);
+            return self.spawn();
+        };
+        let kept = self.replay_saved(&restore.lines);
+        self.start_saving(kept);
+        if restore.start_shell {
+            return self.spawn();
+        }
+        self.status.state = restore.state;
+        self.status.exit = restore.exit;
+        self.status.failure = restore.failure;
+        self.send_status();
     }
 
     fn spawn(&mut self) {

@@ -42,6 +42,25 @@ pub struct HolderSpec {
     pub data_dir: Option<String>,
 }
 
+/// How a holder brings back a session whose processes ended (US-3.1): its saved scrollback, lines below it, and then
+/// the same shell again, or the session as it ended.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HolderRestore {
+    /// Lines written below the saved scrollback: the marker, and a note when the shell's folder is gone.
+    pub lines: Vec<String>,
+    /// Whether the shell starts again; otherwise the session reports the state below and runs nothing (P-41).
+    pub start_shell: bool,
+    /// The state of a session that stays ended.
+    pub state: SessionState,
+    /// How it ended.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exit: Option<ExitStatus>,
+    /// Why it failed to start, for one that never did.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure: Option<String>,
+}
+
 /// A request from the core.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
@@ -50,6 +69,9 @@ pub enum HolderCommand {
     Start {
         /// What to start.
         spec: Box<HolderSpec>,
+        /// How to bring back a session whose processes ended, from its saved scrollback (holder protocol 3).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        restore: Option<Box<HolderRestore>>,
     },
     /// Starts an attachment: what the client lacks, then live output, within the given credit.
     Attach {
