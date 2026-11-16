@@ -51,8 +51,13 @@ async fn running(client: &mut AppClient, options: Option<SessionOptions>) -> (Se
     else {
         unreachable!()
     };
-    client.until(|c| c.text(stream).contains("$ ")).await;
+    client.until(|c| prompted(&c.text(stream))).await;
     (session, stream)
+}
+
+/// Whether a shell prompt arrived: `$ ` from the test's `PS1`, or `# ` when a root login shell's profile sets it.
+fn prompted(text: &str) -> bool {
+    text.contains("$ ") || text.contains("# ")
 }
 
 fn data_dir(installed: &Installed, session: &SessionInfo) -> PathBuf {
