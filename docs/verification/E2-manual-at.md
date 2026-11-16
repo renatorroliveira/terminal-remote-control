@@ -5,6 +5,8 @@ passes (`E1-manual-at.md`) still apply to everything else. Each pass lists what 
 it **Pass** or **Fail** with a note. A failure is a high-severity accessibility defect unless it is cosmetic, and
 blocks the release (§11.6).
 
+**Result (2026-11-16):** the owner ran every pass on the published v0.3.0 build; all passed.
+
 ## Setup
 
 1. Install the release candidate from the dry run's dmg and open it once.
@@ -14,15 +16,15 @@ blocks the release (§11.6).
 
 | #   | Pass                                        | Assistive technology | Result | Notes |
 | --- | ------------------------------------------- | -------------------- | ------ | ----- |
-| 1   | Quit, and the first-quit notice             | VoiceOver            |        |       |
-| 2   | Restore at launch                           | VoiceOver            |        |       |
-| 3   | Connection loss and reconnecting            | VoiceOver            |        |       |
-| 4   | Quit and Stop All Sessions                  | VoiceOver            |        |       |
-| 5   | A session shared with another computer      | VoiceOver            |        |       |
-| 6   | A host whose sessions end at logout, if any | VoiceOver            |        |       |
-| 7   | Zoom follows focus in the new dialogs       | Zoom                 |        |       |
-| 8   | Keyboard only through every new dialog      | Full Keyboard Access |        |       |
-| 9   | Sessions started before the upgrade         | VoiceOver            |        |       |
+| 1   | Quit, and the first-quit notice             | VoiceOver            | Pass   | 0.3.0 |
+| 2   | Restore at launch                           | VoiceOver            | Pass   | 0.3.0 |
+| 3   | Connection loss and reconnecting            | VoiceOver            | Pass   | 0.3.0 |
+| 4   | Quit and Stop All Sessions                  | VoiceOver            | Pass   | 0.3.0 |
+| 5   | A session shared with another computer      | VoiceOver            | Pass   | 0.3.0 |
+| 6   | A host whose sessions end at logout, if any | VoiceOver            | Pass   | 0.3.0 |
+| 7   | Zoom follows focus in the new dialogs       | Zoom                 | Pass   | 0.3.0 |
+| 8   | Keyboard only through every new dialog      | Full Keyboard Access | Pass   | 0.3.0 |
+| 9   | Sessions started before the upgrade         | VoiceOver            | Pass   | 0.3.0 |
 
 ## 1. Quit, and the first-quit notice (US-2.1.1, US-2.1.5)
 
