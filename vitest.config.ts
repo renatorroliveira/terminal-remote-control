@@ -55,6 +55,17 @@ export default defineConfig({
             },
             {
                 test: {
+                    name: 'soak',
+                    environment: 'node',
+                    include: ['apps/desktop/test/soak/**/*.soak.test.ts'],
+                    exclude: ['**/node_modules/**'],
+                    testTimeout: 6 * 60 * 60 * 1_000,
+                    hookTimeout: 120_000,
+                    fileParallelism: false,
+                },
+            },
+            {
+                test: {
                     name: 'ax',
                     environment: 'node',
                     include: ['**/*.ax.test.ts'],

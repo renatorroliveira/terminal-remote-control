@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { closeLiveHosts, connectLive, type LiveHost, ssh, testHostsMissing, waitFor } from '../nfr/live-host';
+import { OLD_DAEMONS } from '../soak/old-daemons';
 
 /**
  * Upgrading a host's daemon in place (US-2.5.3, D-46): a 0.2.0 daemon with running sessions is replaced by this
@@ -12,7 +12,7 @@ import { closeLiveHosts, connectLive, type LiveHost, ssh, testHostsMissing, wait
  */
 
 const OLD_VERSION = '0.2.0';
-const oldDaemons = join(process.env.TRC_CACHE_DIR ?? join(homedir(), '.cache/trc'), 'daemon', OLD_VERSION);
+const oldDaemons = OLD_DAEMONS;
 const missing =
     testHostsMissing() ??
     (existsSync(join(oldDaemons, 'manifest.json')) ? undefined : 'run tools/test-hosts/fetch-old-daemon.sh');

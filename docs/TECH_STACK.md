@@ -1,11 +1,11 @@
 # Terminal Remote Control — Tech Stack
 
-| Field        | Value                                                                              |
-| ------------ | ---------------------------------------------------------------------------------- |
-| Status       | Decisions accepted (v1.5). S1–S5, S11–S13 done (§11); S6 runs in E2, S7–S10 later. |
-| Owner        | Renato Oliveira                                                                    |
-| Last updated | 2026-11-13                                                                         |
-| Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.                   |
+| Field        | Value                                                               |
+| ------------ | ------------------------------------------------------------------- |
+| Status       | Decisions accepted (v1.6). S1–S6, S11–S13 done (§11); S7–S10 later. |
+| Owner        | Renato Oliveira                                                     |
+| Last updated | 2026-11-15                                                          |
+| Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.    |
 
 This document records the technology choices for P0 and why each one was made.
 Versions were checked against the npm registry and crates.io on 2026-11-11.
@@ -1411,7 +1411,7 @@ Chromium, and Cargo.
 ## 11. Spikes
 
 Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spikes/S4.md), [S5](spikes/S5.md),
-[S11](spikes/S11.md), [S12](spikes/S12.md).
+[S6](verification/E2-nfr.md#soak-nfr-11-s6), [S11](spikes/S11.md), [S12](spikes/S12.md).
 
 | ID  | Epic | Spike                                                                                                                                                                               | Retires                      |
 | --- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |

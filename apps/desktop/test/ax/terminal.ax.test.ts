@@ -76,7 +76,7 @@ describe.skipIf(skip !== undefined)('the terminal in the macOS accessibility tre
     const root = scratchInstallRoot();
 
     beforeAll(async () => {
-        launched = await launchWithTestHosts(root);
+        launched = await launchWithTestHosts(root, { foreground: true });
         await launched.app.evaluate(({ app }) => app.setAccessibilitySupportEnabled(true));
         const terminal = await openTerminal(launched.window, 'trc-ubuntu');
         await terminal.focus();
@@ -100,7 +100,11 @@ describe.skipIf(skip !== undefined)('the terminal in the macOS accessibility tre
         expect(report.error).toBeUndefined();
         expect(report.AXRole).toBe('AXTextArea');
         expect(report.AXFocused).toBe(true);
-        expect([report.AXTitle, report.AXDescription]).toContain('shell, trc-ubuntu');
+        const names = [report.AXTitle, report.AXDescription];
+        expect(
+            names.some((name) => name?.endsWith(', trc-ubuntu') === true),
+            JSON.stringify(names),
+        ).toBe(true);
         expect(report.AXValuePrefix?.split('\n')[0]).toBe('hi');
     });
 

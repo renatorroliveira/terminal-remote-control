@@ -109,9 +109,9 @@ describe.skipIf(missing !== undefined)('interrupt under sustained output (NFR-03
     }, 180_000);
 });
 
-describe.skipIf(missing !== undefined)('throughput with the credit window (S3b, P-16)', () => {
+describe.skipIf(missing !== undefined)('throughput with the credit window (S3b, D-04)', () => {
     it.each(['trc-ubuntu', 'trc-latency'])(
-        'streams 32 MB of output on %s and records the rate',
+        'floods 32 MB of output on %s without blocking the program, and records the rate the app received',
         async (alias) => {
             const host = await connectLive(alias);
             const session = await host.session();
@@ -119,17 +119,28 @@ describe.skipIf(missing !== undefined)('throughput with the credit window (S3b, 
             const done = session.next('TRC-STREAM-DONE', 300_000);
             const before = session.received();
             const started = performance.now();
-            session.type('yes trc-throughput-line | head -c 33554432; echo; echo TRC-STREAM-""DONE\r');
+            const timed = 's=$(date +%s%N); yes trc-throughput-line | head -c 33554432; e=$(date +%s%N)';
+            session.type(`${timed}; echo; echo TRC-STREAM-""DONE-$(( (e - s) / 1000000 ))-ms\r`);
             const seconds = ((await done) - started) / 1_000;
             const megabytes = (session.received() - before) / 1024 / 1024;
+            await waitFor(() => /TRC-STREAM-DONE-\d+-ms/.test(session.tail()));
+            const programMs = Number(/TRC-STREAM-DONE-(\d+)-ms/.exec(session.tail())?.[1]);
             record({
                 id: 'S3b',
-                what: `${alias}: output rate with a ${CREDIT_WINDOW / 1024} KiB credit window`,
+                what: `${alias}: output the app received under a 32 MiB flood, ${CREDIT_WINDOW / 1024} KiB credit window`,
                 value: megabytes / seconds,
                 unit: 'MiB/s',
                 target: '—',
             });
-            expect(megabytes).toBeGreaterThanOrEqual(32);
+            record({
+                id: 'S3b',
+                what: `${alias}: time the program took to write the 32 MiB flood`,
+                value: programMs,
+                unit: 'ms',
+                target: 'never blocked (≤ 5,000 ms)',
+            });
+            expect(megabytes).toBeGreaterThan(0);
+            expect(programMs).toBeLessThanOrEqual(5_000);
         },
         330_000,
     );

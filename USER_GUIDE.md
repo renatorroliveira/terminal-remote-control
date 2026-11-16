@@ -134,12 +134,13 @@ touch.
 
 When a working connection drops, TRC says "Connection to <host> lost", lists it in the notifications, and
 reconnects by itself: at once, then after 1, 2 and 4 seconds, then every 5 seconds for 5 minutes, then every 30
-seconds. When your Mac wakes or its network changes, a host waiting to reconnect tries at once, and a connected host is checked within 5 seconds. Your sessions keep running on the host
-the whole time. While TRC reconnects, the host's sessions show Reconnecting and their terminals take no input: a
-key press is not sent and not kept for later, and TRC shows and says "Reconnecting — input not sent". Once the
-host is back, TRC says "Reconnected to <host>" and each open terminal picks up where it left off, with the output
-it missed added below what it already showed. When a host has more missed output than it keeps, the terminal
-shows the session's whole buffer again instead.
+seconds. When your Mac wakes or its network changes, a host waiting to reconnect tries at once, and a connected
+host is checked within 5 seconds. Your sessions keep running on the host the whole time. While TRC reconnects, the
+host's sessions show Reconnecting and their terminals take no input: a key press is not sent and not kept for
+later, and TRC shows and says "Reconnecting — input not sent". Once the host is back, TRC says "Reconnected to
+<host>" and each open terminal picks up where it left off, with the output it missed added below what it already
+showed. When a host has more missed output than it keeps, the terminal shows the session's whole buffer again
+instead.
 
 To stop TRC trying, choose Stop reconnecting to <host> in the host's context menu or the command palette; the
 host's sessions then show Disconnected until you connect it. When reconnecting needs you, for example because

@@ -4,7 +4,7 @@ import { copyFileSync, existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import type { ClientMessage, CreateSessionSpec, ServerMessage } from '@trc/protocol';
+import type { ClientMessage, CreateSessionSpec, Replay, ServerMessage } from '@trc/protocol';
 import { parseDaemonManifest } from '../../src/connection-host/bootstrap/manifest';
 import { type ConnectionRuntime, HostConnection } from '../../src/connection-host/connection/host-connection';
 import { createAppLogger } from '../../src/connection-host/logging/app-log';
@@ -40,6 +40,8 @@ export interface LiveSession {
     received(): number;
     /** The last 64 KiB received. */
     tail(): string;
+    /** What the attach replays, when the daemon says (protocol 2). */
+    readonly replay?: Replay;
 }
 
 /** Why the test hosts cannot be used, or `undefined` when they can. */
@@ -56,6 +58,8 @@ export class LiveHost {
     readonly root: string;
     readonly connection: HostConnection;
     readonly states: ConnectionState[] = [];
+    /** The known-hosts file this host's ssh uses, which names its ssh process uniquely (`pkill -f`). */
+    readonly knownHosts: string;
     readonly #watchers = new Set<(message: ServerMessage, at: number) => void>();
     readonly #streams = new Map<number, StreamBuffer>();
 
@@ -66,8 +70,10 @@ export class LiveHost {
     constructor(alias: string, root: string, options: LiveOptions = {}) {
         this.alias = alias;
         this.root = root;
+        const connectionRuntime = runtime(options.env, options.daemons);
+        this.knownHosts = connectionRuntime.seam?.knownHosts ?? '';
         this.connection = new HostConnection(
-            runtime(options.env, options.daemons),
+            connectionRuntime,
             alias,
             { destination: alias, installRoot: `~/${root}` },
             {
@@ -127,6 +133,34 @@ export class LiveHost {
         const { stream } = attached.message;
         const buffer = this.#bufferOf(stream);
         await waitFor(() => buffer.bytes > 0);
+        return this.#liveSession(id, stream);
+    }
+
+    /**
+     * Attaches to a session that already runs, from `fromOffset` when given (a reconnect, US-2.2.2), and returns once
+     * the daemon answered.
+     */
+    async attach(id: string, fromOffset?: number): Promise<LiveSession> {
+        const request = { type: 'attach', requestId: nextRequest++, session: id, mode: 'full' } as const;
+        const attach = fromOffset === undefined ? request : { ...request, fromOffset };
+        const attached = await this.request(attach, 'attached', (reply) => reply.requestId === attach.requestId);
+        const session = this.#liveSession(id, attached.message.stream);
+        const { replay } = attached.message;
+        return replay === undefined ? session : { ...session, replay };
+    }
+
+    /** The offset of the next output byte on a stream, once the daemon said where its output stood (protocol 2). */
+    offsetOf(stream: number): number | undefined {
+        return this.#bufferOf(stream).offset;
+    }
+
+    /** The last 64 KiB received on a stream. */
+    tailOf(stream: number): string {
+        return this.#bufferOf(stream).tail;
+    }
+
+    #liveSession(id: string, stream: number): LiveSession {
+        const buffer = this.#bufferOf(stream);
         return {
             id,
             stream,
@@ -137,20 +171,18 @@ export class LiveHost {
         };
     }
 
-    /** The last 64 KiB received on a stream. */
-    tailOf(stream: number): string {
-        return this.#bufferOf(stream).tail;
-    }
-
     #onMessage(message: ServerMessage): void {
         const at = performance.now();
+        if (message.type === 'synced') {
+            this.#bufferOf(message.stream).synced(message.offset);
+        }
         for (const watcher of [...this.#watchers]) {
             watcher(message, at);
         }
     }
 
     #onOutput(stream: number, data: Uint8Array): void {
-        this.#bufferOf(stream).push(Buffer.from(data).toString('utf8'), performance.now());
+        this.#bufferOf(stream).push(Buffer.from(data).toString('utf8'), performance.now(), data.length);
         this.connection.credit(stream, data.length);
     }
 
@@ -196,6 +228,11 @@ export function closeLiveHosts(): void {
 
 /** The median time from a ping to its pong over the host's SSH channel: the SSH round trip NFR-02 is measured against. */
 export async function sshRoundTrip(host: LiveHost, samples = 20): Promise<number> {
+    return percentile(await roundTrips(host, samples), 50);
+}
+
+/** `samples` times from a ping to its pong over the host's SSH channel, each ping sent `gapMs` after the last pong. */
+export async function roundTrips(host: LiveHost, samples: number, gapMs = 0): Promise<number[]> {
     const times: number[] = [];
     for (let requestId = 900_000; requestId < 900_000 + samples; requestId += 1) {
         const sent = performance.now();
@@ -205,8 +242,9 @@ export async function sshRoundTrip(host: LiveHost, samples = 20): Promise<number
             (reply) => reply.requestId === requestId,
         );
         times.push(at - sent);
+        await new Promise((done) => setTimeout(done, gapMs));
     }
-    return percentile(times, 50);
+    return times;
 }
 
 /** Runs `script` on `alias` over a plain ssh connection and returns its stdout, without the hosts' login banner. */
@@ -244,14 +282,26 @@ function removeInstall(host: LiveHost): void {
 /** A session's received output: a bounded tail, the byte count, and waiters for text that arrives later. */
 class StreamBuffer {
     bytes = 0;
+    #raw = 0;
+    #synced: { readonly offset: number; readonly raw: number } | undefined;
     #tail = '';
+    #waiters: { readonly text: string; readonly from: number; readonly done: (at: number) => void }[] = [];
 
     get tail(): string {
         return this.#tail;
     }
-    #waiters: { readonly text: string; readonly from: number; readonly done: (at: number) => void }[] = [];
 
-    push(text: string, at: number): void {
+    /** The offset of the next byte, counted from the last `synced`. */
+    get offset(): number | undefined {
+        return this.#synced === undefined ? undefined : this.#synced.offset + this.#raw - this.#synced.raw;
+    }
+
+    synced(offset: number): void {
+        this.#synced = { offset, raw: this.#raw };
+    }
+
+    push(text: string, at: number, raw: number): void {
+        this.#raw += raw;
         this.bytes += text.length;
         this.#tail = (this.#tail + text).slice(-TAIL);
         for (const waiter of [...this.#waiters]) {

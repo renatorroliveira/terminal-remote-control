@@ -21,6 +21,37 @@ test('starts the connection host as a utility process (US-1.5)', async () => {
     await app.close();
 });
 
+test('opens unseen and click-through in the background, and still draws every frame (D-27)', async () => {
+    const app = await launchApp();
+    const window = await app.firstWindow();
+    await window.waitForLoadState();
+    expect(await app.evaluate(backgroundState)).toEqual({ opacity: 0, focused: false, visible: true });
+    expect(await window.evaluate(() => document.visibilityState)).toBe('visible');
+    expect(await window.evaluate(framesIn500Ms)).toBeGreaterThan(10);
+    await app.close();
+});
+
+function backgroundState({ BrowserWindow }: typeof import('electron')): Record<string, unknown> {
+    const window = BrowserWindow.getAllWindows()[0];
+    return { opacity: window?.getOpacity(), focused: window?.isFocused(), visible: window?.isVisible() };
+}
+
+function framesIn500Ms(): Promise<number> {
+    return new Promise((done) => {
+        let frames = 0;
+        const started = performance.now();
+        const tick = (): void => {
+            frames += 1;
+            if (performance.now() - started < 500) {
+                requestAnimationFrame(tick);
+            } else {
+                done(frames);
+            }
+        };
+        requestAnimationFrame(tick);
+    });
+}
+
 function processNames({ app }: typeof import('electron')): (string | undefined)[] {
     return app.getAppMetrics().map((metric) => metric.name);
 }
