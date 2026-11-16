@@ -79,9 +79,9 @@ bounds.
 
 Each scenario ran as its own `vitest run` or Playwright run. The eight 1,000-cycle and app-launch scenarios ran at the
 same time on 2026-11-15, each on its own host in the one VM, so their connect-again times were measured under that
-load; they took 40 minutes. The 1,000-cycle logout scenario then ran alone, for 3.6 hours. They ran on the a local
-build of the release candidate's daemon source and on the soak harness as committed, apart from round 5's type-only
-changes to `soak.ts` (a private field and a narrowing guard).
+load; they took 40 minutes. The 1,000-cycle logout scenario then ran alone, for 3.6 hours. They ran on a local build
+of the daemon before round 6's type-only change to how the bridge passes the umask, and on the soak harness as
+committed, apart from round 5's type-only changes to `soak.ts` (a private field and a narrowing guard).
 
 | ID     | Measurement                                                                                                                               | Value  | Target     |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------- |

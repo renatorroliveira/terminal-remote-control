@@ -18,6 +18,7 @@ E1's evidence (`E1-security.md`). The suites are `pnpm check`, `pnpm test:integr
 | IPC      | New channels `sessions:*`, `app:quit` and `app:quit-notice-opened`          | Validated with zod and accepted only from the app's page (`ipc.test.ts`); `sessions:save` refuses any field beyond the list's                                                                                                                                                                                                                                                                                                                                                                           | Met    |
 
 The P-33 reviews check this table; their findings and outcomes are recorded in the plan. Last verified on
-2026-11-16: `pnpm check`, `pnpm test:e2e`, `pnpm test:nfr` and `pnpm verify:artifact` ran on the release candidate;
-`pnpm test:integration`, `pnpm test:daemon` and `pnpm test:soak` ran on the same daemon and connection host, before
-review round 5 moved the main process's seam reader into its own module.
+2026-11-16: `pnpm check` and `pnpm test:integration` (with `pnpm test:daemon`) ran on the release candidate, and CI ran
+its Linux build, clippy and tests; `pnpm test:e2e`, `pnpm test:nfr` and `pnpm verify:artifact` ran on it before round
+6's type-only change to how the bridge passes the umask, and `pnpm test:soak` before that and round 5's move of the main
+process's seam reader.
