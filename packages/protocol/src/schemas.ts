@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { AttachMode } from './generated/AttachMode';
 import type { ClientMessage } from './generated/ClientMessage';
 import type { CreateSessionSpec } from './generated/CreateSessionSpec';
+import type { DaemonDetails } from './generated/DaemonDetails';
 import type { DetachReason } from './generated/DetachReason';
 import type { ErrorCode } from './generated/ErrorCode';
 import type { ExitStatus } from './generated/ExitStatus';
@@ -46,6 +47,12 @@ const resyncKind: z.ZodType<ResyncKind> = z.enum(['screen', 'full', 'unspecified
 const detachReason: z.ZodType<DetachReason> = z.enum(['attachedElsewhere', 'unspecified']).catch('unspecified');
 const serviceManager: z.ZodType<ServiceManager> = z.enum(['systemd', 'detached', 'unspecified']).catch('unspecified');
 const serviceInfo: z.ZodType<ServiceInfo> = z.object({ manager: serviceManager, sessionsEndAtLogout: z.boolean() });
+const daemonDetails: z.ZodType<DaemonDetails> = z.object({
+    home: z.string(),
+    installRoot: z.string(),
+    logDir: z.string(),
+    startedAt: timestamp,
+});
 
 /** Validates an attach mode; unknown modes become `unspecified`. */
 export const AttachModeSchema: z.ZodType<AttachMode> = z.enum(['full', 'events', 'unspecified']).catch('unspecified');
@@ -105,6 +112,7 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnio
         binarySha256: z.string(),
         caps: z.array(z.string()),
         service: serviceInfo.exactOptional(),
+        details: daemonDetails.exactOptional(),
     }),
     z.object({ type: z.literal('incompatible'), minProto: u32, maxProto: u32 }),
     z.object({ type: z.literal('pong'), requestId: u32 }),

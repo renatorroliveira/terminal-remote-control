@@ -1,24 +1,27 @@
+import type { SessionInfo } from '@trc/protocol';
 import axe from 'axe-core';
 import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
+import type { ConnectionState } from '../../shared/connection';
 import { AppProviders } from '../app/AppProviders';
 import { SessionTree } from './SessionTree';
 import { WorkspaceController } from './workspace-controller';
 import { bashSession, FakeKnownHostStore, FakeTerminalHost, FakeWorkspaceClient } from './workspace-test-doubles';
 
 const CONNECTED = { status: 'connected', daemon: { version: '0.2.0', sha256: 'ab', proto: 1 } } as const;
+const TWO_SESSIONS: readonly SessionInfo[] = [
+    { ...bashSession('a'), customName: 'build' },
+    { ...bashSession('b'), customName: 'logs', order: 1, state: 'exited', exit: { code: 1 } },
+];
 
-async function renderTree() {
-    const client = new FakeWorkspaceClient([
-        { ...bashSession('a'), customName: 'build' },
-        { ...bashSession('b'), customName: 'logs', order: 1, state: 'exited', exit: { code: 1 } },
-    ]);
+async function renderTree(sessions = TWO_SESSIONS, connected: ConnectionState = CONNECTED) {
+    const client = new FakeWorkspaceClient(sessions);
     const terminals = new FakeTerminalHost();
     const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore());
     await workspace.addHost('devbox-1');
-    client.push('host-0', CONNECTED);
-    await expect.poll(() => workspace.store.getState().sessions.get('host-0')?.length).toBe(2);
+    client.push('host-0', connected);
+    await expect.poll(() => workspace.store.getState().sessions.get('host-0')?.length).toBe(sessions.length);
     const screen = await render(
         <AppProviders locale="en">
             <SessionTree workspace={workspace} onOpened={() => undefined} />
@@ -110,5 +113,49 @@ describe('SessionTree: states and badges (US-1.14.1, A11Y-08.2, US-1.8.3)', () =
         expect(over.defaultPrevented).toBe(true);
         build.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
         await expect.poll(() => client.requests).toContainEqual({ type: 'reorder', session: 'b', index: 0 });
+    });
+});
+
+describe('SessionTree: state badges and places (P-48)', () => {
+    it('shows each state as a badge at the end of the row, named by its tooltip, with no state text', async () => {
+        const { client, screen } = await renderTree([
+            ...TWO_SESSIONS,
+            { ...bashSession('c'), customName: 'deploy', order: 2, state: 'starting' },
+        ]);
+        const badge = (name: string) => {
+            const row = screen.getByRole('treeitem', { name }).element();
+            const shown = row.querySelector('[data-state-badge]');
+            return [row.textContent, shown?.getAttribute('data-state-badge'), shown?.getAttribute('title')];
+        };
+        await expect.element(screen.getByRole('treeitem', { name: 'deploy, Starting' })).toBeVisible();
+        expect(badge('build, Running')).toEqual(['build', 'running', 'Running']);
+        expect(badge('logs, Exited with code 1')).toEqual(['logs', 'ended', 'Exited with code 1']);
+        expect(badge('deploy, Starting')).toEqual(['deploy', 'busy', 'Starting']);
+        const build = screen.getByRole('treeitem', { name: 'build, Running' }).element();
+        expect(build.lastElementChild?.hasAttribute('data-state-badge')).toBe(true);
+        client.push('host-0', { status: 'disconnected', reason: 'ping-timeout' });
+        await expect.element(screen.getByRole('treeitem', { name: 'build, Disconnected' })).toBeVisible();
+        expect(badge('build, Disconnected')).toEqual(['build', 'disconnected', 'Disconnected']);
+    });
+
+    it('starts each name with where the session is, in its accessible name too, and finds it by either', async () => {
+        const home = { home: '/home/tester', installRoot: '/home/tester/.trc', logDir: '', startedAt: 0 };
+        const { screen } = await renderTree(
+            [
+                { ...bashSession('a'), customName: 'build', cwd: '/home/tester/src/trc' },
+                { ...bashSession('b'), customName: 'logs', order: 1, cwd: '/var/log' },
+            ],
+            { status: 'connected', daemon: { version: '0.4.0', sha256: 'ab', proto: 2, details: home } },
+        );
+        const build = screen.getByRole('treeitem', { name: 'src/trc build, Running' });
+        await expect.element(build).toBeVisible();
+        expect(build.element().textContent).toBe('src/trc build');
+        (screen.getByRole('treeitem', { name: 'devbox-1, Connected' }).element() as HTMLElement).focus();
+        await userEvent.keyboard('l');
+        await expect.element(screen.getByRole('treeitem', { name: '/var/log logs, Running' })).toHaveFocus();
+        await userEvent.keyboard('{Home}');
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        await userEvent.keyboard('s');
+        await expect.element(build).toHaveFocus();
     });
 });

@@ -35,6 +35,32 @@ export function BusyIcon({ className }: IconProps) {
     );
 }
 
+/** A session that ended (exited, stopped or failed to start): a ring with a dash across it (P-48). */
+export function EndedIcon({ className }: IconProps) {
+    return (
+        <svg aria-hidden="true" focusable="false" width={SIZE} height={SIZE} viewBox="0 0 20 20" className={className}>
+            <circle cx="10" cy="10" r={RADIUS} fill="none" stroke="currentColor" strokeWidth={STROKE} />
+            <path d="M6.5 10H13.5" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round" />
+        </svg>
+    );
+}
+
+/** The notification list: a bell. */
+export function NotificationsIcon({ className }: IconProps) {
+    return (
+        <svg aria-hidden="true" focusable="false" width={SIZE} height={SIZE} viewBox="0 0 20 20" className={className}>
+            <path
+                d="M5.5 13.5V9a4.5 4.5 0 0 1 9 0v4.5l1.5 1.5H4ZM8.5 16.5a1.5 1.5 0 0 0 3 0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={STROKE}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+}
+
 /** A plus sign, for buttons that create something. */
 export function PlusIcon({ className }: IconProps) {
     return (

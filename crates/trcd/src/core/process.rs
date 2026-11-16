@@ -9,7 +9,7 @@ use std::process::Stdio;
 use rustix::fs::{FlockOperation, Mode};
 use thiserror::Error;
 use tokio::net::UnixListener;
-use trc_protocol::{ServiceInfo, ServiceManager};
+use trc_protocol::{DaemonDetails, ServiceInfo, ServiceManager};
 
 use super::account::current_account;
 use super::service::{Core, CoreContext};
@@ -52,6 +52,12 @@ pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
     let account = current_account();
     let facts = read_host_facts(&account.user, uid);
     let scope = if systemd { ScopeLauncher::find() } else { None };
+    let details = DaemonDetails {
+        home: account.home.clone(),
+        install_root: layout.root.to_string_lossy().into_owned(),
+        log_dir: layout.logs_dir().to_string_lossy().into_owned(),
+        started_at: crate::time::now_millis(),
+    };
     let context = CoreContext {
         binary: layout.binary.clone(),
         binary_sha256,
@@ -67,6 +73,7 @@ pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
             sessions_end_at_logout: facts.sessions_end_at_logout(),
         },
         scope,
+        details,
     };
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),

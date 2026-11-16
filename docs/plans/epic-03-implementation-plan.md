@@ -140,6 +140,12 @@ which E2 lost.
   and the Notifications icon button. Component tests with axe, the contrast test for the new icon colors, e2e for
   the prefix as the shell changes folder, and `pnpm test:ax` for the switches' role and state.
 
+As built (ST-39, 2026-11-16): `welcome` carries `details` (home, install root, log folder, start time) as an
+optional protocol 2 field, so ST-47 needs no new handshake. The host keeps the last home folder it reported, so the
+prefix stays while it is disconnected; cached sessions show none until their host connects. The state colors reuse
+the success, warning, danger and muted text tokens, which the contrast test already holds to 4.5:1. The Settings
+dialog and the status bar share one switch component. `pnpm test:ax` runs once at ST-50, since it takes focus.
+
 **ST-40 Spike S7: persistence after a crash or power cut** (NFR-08, SEC-05)
 
 - The writer against fault injection: truncation at every offset of a record, a torn last record, a bad CRC, a

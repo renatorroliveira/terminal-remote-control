@@ -4,6 +4,7 @@ import { type ClientRequest, HostRequestError } from '../connection/host-client'
 import { THEMES } from '../ui/themes';
 import type { SessionTransport } from './session-link';
 import { type SessionSpeech, TerminalRegistry, type TerminalRegistryOptions } from './terminal-registry';
+import { DEFAULT_MAX_COLUMNS } from './terminal-view';
 
 const info = (id: string): SessionInfo => ({
     id,
@@ -235,12 +236,13 @@ describe('TerminalRegistry (US-1.8)', () => {
         await expect.poll(() => requestsOf(transport, 'attach')).toBe(2);
     });
 
-    it('creates a session at the terminal area size', async () => {
-        const { transport, registry } = setup();
+    it('creates a session at the terminal area size, at most the widest grid (P-48)', async () => {
+        const { area, transport, registry } = setup();
+        area.style.width = '1800px';
         const created = await registry.create('h1');
         expect(created.id).toBe('new');
         const create = transport.requests.find((request) => request.type === 'create');
-        expect(create?.type === 'create' && create.spec.size.cols).toBe(120);
+        expect(create?.type === 'create' && create.spec.size.cols).toBe(DEFAULT_MAX_COLUMNS);
     });
 
     it('creates sessions with the scrollback set, and drops every terminal’s hint when hints are off', async () => {

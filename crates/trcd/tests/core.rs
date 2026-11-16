@@ -105,6 +105,7 @@ async fn greets_with_the_version_and_the_binary_checksum() {
         proto,
         daemon_version,
         binary_sha256,
+        details,
         ..
     } = welcome
     else {
@@ -113,6 +114,16 @@ async fn greets_with_the_version_and_the_binary_checksum() {
     assert_eq!(proto, 2);
     assert_eq!(daemon_version, env!("CARGO_PKG_VERSION"));
     assert_eq!(binary_sha256, trcd::digest::sha256_file(&installed.binary).unwrap());
+    let details = details.expect("the welcome names the host's details");
+    assert_eq!(details.home, installed.home.to_string_lossy());
+    let root = installed.root.canonicalize().unwrap();
+    assert_eq!(details.install_root, root.to_string_lossy());
+    assert_eq!(details.log_dir, root.join("logs").to_string_lossy());
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap();
+    assert!(details.started_at <= u64::try_from(now.as_millis()).unwrap());
+    assert!(details.started_at + 60_000 > u64::try_from(now.as_millis()).unwrap());
     stop(core);
 }
 

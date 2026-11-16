@@ -1,0 +1,61 @@
+@layer components {
+    .switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 28px;
+        cursor: pointer;
+    }
+
+    .switch[data-focus-visible] {
+        outline: 2px solid var(--trc-color-focus-ring);
+        outline-offset: 2px;
+    }
+
+    .switch[data-disabled] {
+        color: var(--trc-color-text-muted);
+        cursor: default;
+    }
+
+    .track {
+        position: relative;
+        box-sizing: border-box;
+        width: 36px;
+        height: 20px;
+        flex: none;
+        border: 2px solid var(--trc-color-secondary-border);
+        border-radius: 10px;
+        background: var(--trc-color-background);
+    }
+
+    .track::after {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--trc-color-secondary-border);
+        content: '';
+    }
+
+    .switch[data-selected] .track {
+        border-color: var(--trc-color-primary-border);
+        background: var(--trc-color-primary);
+    }
+
+    .switch[data-selected] .track::after {
+        left: 18px;
+        background: var(--trc-color-primary-text);
+    }
+
+    .switch[data-disabled] .track {
+        border-color: var(--trc-color-border);
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .track::after {
+        transition: left 120ms ease;
+    }
+}

@@ -17,7 +17,7 @@ use tokio::net::unix::OwnedReadHalf;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 use trc_protocol::frame::{self, Frame, FrameKind};
-use trc_protocol::{ServerMessage, ServiceInfo, SessionChange, SessionId, SessionInfo};
+use trc_protocol::{DaemonDetails, ServerMessage, ServiceInfo, SessionChange, SessionId, SessionInfo};
 
 use super::adopt::{Adopted, adopt_holders, adopt_late};
 use super::launch::launch_holder;
@@ -49,6 +49,8 @@ pub struct CoreContext {
     pub service: ServiceInfo,
     /// How holders start in their own scopes when the core runs under systemd.
     pub scope: Option<ScopeLauncher>,
+    /// Where the daemon keeps its files and since when it runs, reported in `welcome` (US-3.3.1).
+    pub details: DaemonDetails,
 }
 
 /// The core's state and event loop.

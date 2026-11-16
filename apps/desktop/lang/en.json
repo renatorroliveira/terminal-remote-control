@@ -1649,7 +1649,11 @@
   },
   "status.notifications": {
     "defaultMessage": "Notifications {count}",
-    "description": "Button that opens the notification list, with how many it holds."
+    "description": "Accessible name of the icon button that opens the notification list, with how many it holds."
+  },
+  "status.notificationsTooltip": {
+    "defaultMessage": "Notifications",
+    "description": "Tooltip of the icon button that opens the notification list."
   },
   "status.region": {
     "defaultMessage": "Status bar",
@@ -1746,6 +1750,10 @@
   "tree.newOutput": {
     "defaultMessage": "new output",
     "description": "Badge of a session with output the user has not seen."
+  },
+  "tree.sessionPlacedName": {
+    "defaultMessage": "{place} {name}",
+    "description": "A session row: where the session is, such as ~/src, then its name."
   },
   "tree.sessionRowBadge": {
     "defaultMessage": "{name}, {state}, {badge}",

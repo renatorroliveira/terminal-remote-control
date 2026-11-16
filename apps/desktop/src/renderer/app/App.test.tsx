@@ -217,12 +217,15 @@ describe('App: status bar (US-1.6.1)', () => {
         await screen.getByRole('treeitem', { name: 'bash, Running' }).click();
         await expect.poll(() => bar.element().textContent).toContain('devbox-1: Connected');
         await expect.poll(() => bar.element().textContent).toContain('Daemon 0.1.0');
-        const tab = bar.getByRole('button', { name: 'Tab moves focus' });
-        await expect.element(tab).toHaveAttribute('aria-pressed', 'false');
-        await tab.click();
-        await expect.element(tab).toHaveAttribute('aria-pressed', 'true');
-        await expect.element(bar.getByRole('button', { name: 'Mute output' })).toBeEnabled();
-        await expect.element(bar.getByRole('button', { name: 'Notifications 0' })).toBeVisible();
+        const tab = bar.getByRole('switch', { name: 'Tab moves focus' });
+        await expect.element(tab).not.toBeChecked();
+        await bar.getByText('Tab moves focus').click();
+        await expect.element(tab).toBeChecked();
+        await expect.element(bar.getByRole('switch', { name: 'Mute output' })).toBeEnabled();
+        const notifications = bar.getByRole('button', { name: 'Notifications 0' });
+        await expect.element(notifications).toBeVisible();
+        expect(notifications.element().textContent).toBe('0');
+        expect(notifications.element().querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     });
 });
 
@@ -235,11 +238,11 @@ describe('App: regions and commands (A11Y-05.2, A11Y-11.11)', () => {
         await userEvent.keyboard('{Meta>}{F6}{/Meta}');
         await expect.element(screen.getByRole('main', { name: 'Terminal Remote Control' })).toHaveFocus();
         await userEvent.keyboard('{Meta>}{F6}{/Meta}');
-        await expect.element(screen.getByRole('button', { name: 'Tab moves focus' })).toHaveFocus();
+        await expect.element(screen.getByRole('switch', { name: 'Tab moves focus' })).toHaveFocus();
         await userEvent.keyboard('{Meta>}{F6}{/Meta}');
         await expect.element(field).toHaveFocus();
         await userEvent.keyboard('{Shift>}{Meta>}{F6}{/Meta}{/Shift}');
-        await expect.element(screen.getByRole('button', { name: 'Tab moves focus' })).toHaveFocus();
+        await expect.element(screen.getByRole('switch', { name: 'Tab moves focus' })).toHaveFocus();
     });
 });
 

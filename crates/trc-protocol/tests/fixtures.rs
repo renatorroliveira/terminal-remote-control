@@ -10,9 +10,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use trc_protocol::frame::{self, FrameDecoder, FrameKind};
 use trc_protocol::{
-    AttachMode, ClientMessage, CreateSessionSpec, DetachReason, ErrorCode, ExitStatus, Integration, ProfileOrigin,
-    Replay, ResyncKind, ServerMessage, ServiceInfo, ServiceManager, SessionChange, SessionId, SessionInfo,
-    SessionState, ShellKind, ShellProfile, TerminalSize,
+    AttachMode, ClientMessage, CreateSessionSpec, DaemonDetails, DetachReason, ErrorCode, ExitStatus, Integration,
+    ProfileOrigin, Replay, ResyncKind, ServerMessage, ServiceInfo, ServiceManager, SessionChange, SessionId,
+    SessionInfo, SessionState, ShellKind, ShellProfile, TerminalSize,
 };
 
 fn fixtures_dir(version: &str) -> PathBuf {
@@ -174,6 +174,7 @@ fn server_messages() -> Vec<(&'static str, ServerMessage)> {
                 binary_sha256: "ab".repeat(32),
                 caps: vec![],
                 service: None,
+                details: None,
             },
         ),
         (
@@ -308,6 +309,12 @@ fn server_messages_v2() -> Vec<(&'static str, ServerMessage)> {
                     service: Some(ServiceInfo {
                         manager: ServiceManager::Systemd,
                         sessions_end_at_logout: false,
+                    }),
+                    details: Some(DaemonDetails {
+                        home: "/home/tester".into(),
+                        install_root: "/home/tester/.trc".into(),
+                        log_dir: "/home/tester/.trc/logs".into(),
+                        started_at: 1_794_400_000_000,
                     }),
                 },
             ),

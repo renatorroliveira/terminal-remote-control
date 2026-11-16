@@ -1,5 +1,6 @@
 import { useId } from 'react';
-import { Button, Group, Input, Label, NumberField, Radio, RadioGroup, Switch, Text } from 'react-aria-components';
+import { Button, Group, Input, Label, NumberField, Radio, RadioGroup, Text } from 'react-aria-components';
+import { ToggleSwitch } from '../../ui/switches';
 import styles from './SettingsDialog.module.css';
 
 /** One choice of a {@link ChoiceSetting}. */
@@ -58,15 +59,9 @@ export function SwitchSetting(
     const described = props.description === undefined ? {} : { 'aria-describedby': descriptionId };
     return (
         <div className={styles['setting']}>
-            <Switch
-                isSelected={props.isSelected}
-                onChange={props.onChange}
-                className={styles['switch'] ?? ''}
-                {...described}
-            >
-                <span className={styles['track']} aria-hidden="true" />
+            <ToggleSwitch isSelected={props.isSelected} onChange={props.onChange} {...described}>
                 {props.label}
-            </Switch>
+            </ToggleSwitch>
             {props.description !== undefined && (
                 <p id={descriptionId} className={styles['description']}>
                     {props.description}

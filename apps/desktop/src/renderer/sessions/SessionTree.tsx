@@ -9,8 +9,9 @@ import { PlusIcon } from '../ui/icons';
 import { hostStateText } from './host-state-text';
 import { typeAhead } from './list-keys';
 import { hostSessionsMessages, sessionRowMessage } from './messages';
+import { SessionStateBadge } from './SessionStateBadge';
 import styles from './SessionTree.module.css';
-import { hostRowMessage, sessionRowWithBadgeMessage, treeMessages } from './session-messages';
+import { hostRowMessage, sessionPlacedNameMessage, sessionRowWithBadgeMessage, treeMessages } from './session-messages';
 import { sessionStateText } from './session-state-text';
 import { type TreeRow, treeAction } from './tree-keys';
 import type { WorkspaceController } from './workspace-controller';
@@ -183,10 +184,14 @@ function SessionRow(props: SessionRowProps) {
         ...(item.bell ? [intl.formatMessage(treeMessages.bell)] : []),
     ];
     const badge = badges.length === 0 ? undefined : intl.formatList(badges, { type: 'unit' });
+    const name =
+        item.place === undefined
+            ? item.label
+            : intl.formatMessage(sessionPlacedNameMessage, { place: item.place, name: item.label });
     const label =
         badge === undefined
-            ? intl.formatMessage(sessionRowMessage, { name: item.label, state })
-            : intl.formatMessage(sessionRowWithBadgeMessage, { name: item.label, state, badge });
+            ? intl.formatMessage(sessionRowMessage, { name, state })
+            : intl.formatMessage(sessionRowWithBadgeMessage, { name, state, badge });
     return (
         <div
             ref={(element) => focus.register(item.key, element)}
@@ -212,13 +217,12 @@ function SessionRow(props: SessionRowProps) {
             onDragOver={(event) => acceptsDrop(event, props.hostId) && event.preventDefault()}
             onDrop={(event) => drop(event, workspace, props.hostId, props.position.index)}
         >
-            <span aria-hidden="true" className={styles['icon']}>
-                {item.session.state === 'running' ? '●' : '○'}
-            </span>
             <span className={styles['text']}>
-                <span>{item.label}</span> <span className={styles['state']}>{state}</span>
+                {item.place !== undefined && <span className={styles['place']}>{item.place} </span>}
+                <span>{item.label}</span>
                 {badge !== undefined && <span className={styles['badge']}> {badge}</span>}
             </span>
+            <SessionStateBadge item={item} state={state} />
         </div>
     );
 }
@@ -251,7 +255,9 @@ function useTreeFocus(rows: readonly TreeRow[], open: string | undefined): TreeF
         const text = now - typed.current.at < TYPE_AHEAD_MS ? typed.current.text + event.key : event.key;
         typed.current = { text, at: now };
         const found = typeAhead(
-            rows.map((row) => row.label),
+            rows.map((row) =>
+                row.kind === 'session' && row.place !== undefined ? [row.label, row.place] : [row.label],
+            ),
             text.length > 1 ? index - 1 : index,
             text,
         );
@@ -279,6 +285,7 @@ function treeRows(groups: readonly HostGroup[]): readonly TreeRow[] {
                   key: item.key,
                   hostKey: group.host.id,
                   label: item.label,
+                  ...(item.place === undefined ? {} : { place: item.place }),
               }))
             : []),
     ]);

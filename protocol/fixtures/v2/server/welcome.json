@@ -7,5 +7,11 @@
   "service": {
     "manager": "systemd",
     "sessionsEndAtLogout": false
+  },
+  "details": {
+    "home": "/home/tester",
+    "installRoot": "/home/tester/.trc",
+    "logDir": "/home/tester/.trc/logs",
+    "startedAt": 1794400000000
   }
 }

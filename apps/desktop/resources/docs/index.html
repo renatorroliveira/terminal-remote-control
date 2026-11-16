@@ -104,7 +104,8 @@
 </table>
 <ul>
 <li><strong>Opening.</strong> Moving through the list doesn't switch sessions. Opening one moves focus to its terminal, and TRC says its name, host and state, and whether it has output you haven't seen.</li>
-<li><strong>States.</strong> Each session shows Starting, Running, Exited (with the exit code or signal), Stopped or Failed to start, and &quot;new output&quot; while it has output you haven't seen. VoiceOver reads its position, such as &quot;2 of 3&quot;.</li>
+<li><strong>Where a session is.</strong> Each session's name starts with the last two folders it's working in, such as <code>src/trc</code>, with your home folder shown as <code>~</code>, as in <code>~/src</code>. TRC shows it once the host has connected.</li>
+<li><strong>States.</strong> A shape at the end of each session says its state: filled while it runs, half filled while it starts or its host reconnects, hollow while its host is disconnected, and a circle with a dash once it has exited, stopped or failed to start. Pointing at it shows the state, and VoiceOver reads it with the name: Starting, Running, Exited (with the exit code or signal), Stopped, Failed to start, Disconnected or Reconnecting. &quot;New output&quot; shows while it has output you haven't seen. VoiceOver also reads its position, such as &quot;2 of 3&quot;.</li>
 <li><strong>New session with options.</strong> Choose the host, the shell, the working folder, a name, and environment variables (one <code>NAME=value</code> per line; <code>NAME=</code> removes a variable).</li>
 <li><strong>Session actions.</strong> Rename (an empty name shows the title the program sets), Stop, Restart (same shell, folder and environment; the scrollback stays), Duplicate (same shell and folder), Move up, Move down, and Close, which asks first because it deletes the session and its scrollback. You can also drag a session up or down its host's list. The command palette lists the open session's actions too.</li>
 <li><strong>Ending a session.</strong> Type <code>exit</code>, or end its program. A session that exits cleanly (code 0) leaves the list, unless you turn off &quot;Close sessions that exit cleanly&quot; in <a href="#settings">Settings</a>; one that failed stays, so you can read its last output.</li>
@@ -165,7 +166,7 @@
 <li><strong>Tab focus mode.</strong> The terminal normally sends Tab to the shell. With Tab focus mode on, Tab and Shift-Tab leave the terminal like in any other field. The status bar shows the mode, and TRC says which way Tab goes.</li>
 <li><strong>Send next key.</strong> After Shift-Command-K, the next key goes to the program even if it is an app shortcut.</li>
 <li><strong>Command palette.</strong> Type part of a name, then press Return. The palette lists every command with its shortcut, every host action (connect, disconnect, new session) and every session to open. Escape closes it.</li>
-<li><strong>Status bar.</strong> It shows the open session's host and its connection, the daemon version on that host, the Tab focus mode and mute buttons, and how many notifications are waiting.</li>
+<li><strong>Status bar.</strong> It shows the open session's host and its connection, the daemon version on that host, the &quot;Tab moves focus&quot; and &quot;Mute output&quot; switches, and the Notifications button, a bell with the number of notifications waiting.</li>
 <li><strong>Notifications.</strong> Connection failures and lost connections stay in the list until you dismiss them, including failures while connecting at launch. TRC also says when a host connects, reconnects or loses its connection.</li>
 <li><strong>Menus.</strong> View and Terminal hold the same commands, with their Command shortcuts.</li>
 </ul>

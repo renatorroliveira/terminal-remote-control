@@ -451,7 +451,12 @@ export const statusMessages = {
     notifications: defineMessage<{ count: number }>({
         id: 'status.notifications',
         defaultMessage: 'Notifications {count}',
-        description: 'Button that opens the notification list, with how many it holds.',
+        description: 'Accessible name of the icon button that opens the notification list, with how many it holds.',
+    }),
+    notificationsTooltip: defineMessage({
+        id: 'status.notificationsTooltip',
+        defaultMessage: 'Notifications',
+        description: 'Tooltip of the icon button that opens the notification list.',
     }),
 };
 
