@@ -261,7 +261,7 @@ export class TerminalView {
      */
     setConnection(connection: TerminalConnection): void {
         this.#connection = connection;
-        this.#inputRefused.hidden = true;
+        this.#inputRefused.hidden = !this.#displaced;
         this.#showConnection();
     }
 
@@ -290,11 +290,15 @@ export class TerminalView {
     }
 
     /**
-     * Another client opened the session, which serves one client at a time (P-27): typing shows and reports that it
-     * was not sent until the session is attached again.
+     * Another client opened the session, which serves one client at a time (P-27): the terminal says so, and typing
+     * reports that it was not sent, until the session is attached again.
      */
     displace(): void {
         this.#displaced = true;
+        if (this.#label !== undefined) {
+            this.#inputRefused.textContent = refusalText(this.#label, 'elsewhere');
+        }
+        this.#inputRefused.hidden = false;
     }
 
     /**
@@ -688,7 +692,7 @@ export class TerminalView {
         if (label !== undefined) {
             this.surface.setAttribute('aria-label', connectionName(label, this.#connection));
         }
-        if (this.#connection === 'connected') {
+        if (this.#connection === 'connected' && !this.#displaced) {
             this.#inputRefused.hidden = true;
         }
     }

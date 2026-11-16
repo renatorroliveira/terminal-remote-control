@@ -126,3 +126,37 @@ describe('watchSessionCache: failed saves', () => {
         expect(attempts).toBe(1);
     });
 });
+
+describe('watchSessionCache: a save that fails while the list changes', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('saves a list that changed while a save failed on time, not after the retry delay', async () => {
+        const saves: SessionCache[] = [];
+        let fail = true;
+        const store = createStore<Workspace>(() => EMPTY_WORKSPACE);
+        watchSessionCache(
+            store,
+            {
+                save: (cache) => {
+                    saves.push(cache);
+                    const failing = fail;
+                    fail = false;
+                    return new Promise((done, failed) =>
+                        setTimeout(() => (failing ? failed(new Error('disk full')) : done()), 1_000),
+                    );
+                },
+            },
+            {},
+        );
+        store.setState(listed([bashSession('a')]), true);
+        await vi.advanceTimersByTimeAsync(1_400);
+        store.setState(listed([bashSession('a'), { ...bashSession('b'), order: 1 }]), true);
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(saves.map((cache) => cache[HOST]?.length)).toEqual([1, 2]);
+    });
+});

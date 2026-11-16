@@ -49,6 +49,11 @@ interface Attachment {
 const GAP_QUIET_MS = 1_000;
 /** How long a gap may take to fill before review mode or find opens without it. */
 const FILL_TIMEOUT_MS = 5_000;
+/**
+ * How many times a link refreshes by itself while the buffer comes back incomplete, as when the daemon cannot format
+ * it; after that only review mode and find ask again.
+ */
+const GAP_REFRESHES = 2;
 
 /**
  * Joins one daemon session to a terminal view: output in, and input, credit and size changes out. Input before
@@ -56,7 +61,7 @@ const FILL_TIMEOUT_MS = 5_000;
  *
  * With protocol 2 it also keeps the offset of the next output byte from the daemon's `synced`, so a reattach gets only
  * the output missed (US-2.2.2), and after a resync that skipped rows it asks for the whole buffer again once output
- * pauses (D-45).
+ * pauses (D-45), at most twice by itself until the whole buffer arrives.
  */
 export class SessionLink {
     readonly #transport: SessionTransport;
@@ -74,6 +79,8 @@ export class SessionLink {
     /** Rows were skipped: a screen resync left the scrollback incomplete. */
     #gap = false;
     #quiet: ReturnType<typeof setTimeout> | undefined;
+    /** Refreshes asked for by itself since the whole buffer last arrived. */
+    #gapRefreshes = 0;
     #filled: (() => void)[] = [];
     #displaced = false;
     /** Counts the attaches asked for, so the answer to one a later attach replaced is dropped. */
@@ -222,6 +229,7 @@ export class SessionLink {
         }
         this.#offset = undefined;
         this.#gap = false;
+        this.#gapRefreshes = 0;
         this.#displaced = false;
         this.#events.replay?.({
             kind: reply.replay === 'delta' ? 'delta' : 'snapshot',
@@ -296,6 +304,7 @@ export class SessionLink {
             this.#awaitQuiet();
             return;
         }
+        this.#gapRefreshes = 0;
         for (const filled of this.#filled.splice(0)) {
             filled();
         }
@@ -303,7 +312,13 @@ export class SessionLink {
 
     #awaitQuiet(): void {
         clearTimeout(this.#quiet);
-        this.#quiet = setTimeout(() => this.#refresh(), GAP_QUIET_MS);
+        if (this.#gapRefreshes >= GAP_REFRESHES) {
+            return;
+        }
+        this.#quiet = setTimeout(() => {
+            this.#gapRefreshes += 1;
+            this.#refresh();
+        }, GAP_QUIET_MS);
     }
 
     #refresh(): void {
