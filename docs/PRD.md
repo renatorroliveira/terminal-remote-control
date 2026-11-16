@@ -2,7 +2,7 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.15                     |
+| Status       | Draft v0.16                     |
 | Owner        | Renato Oliveira                 |
 | Last updated | 2026-11-16                      |
 | Scope        | P0 in seven epics, then GA (E8) |
@@ -645,8 +645,9 @@ applies from the epic in the last column onward.
   lives only while that snapshot streams, when another client attaches from
   the start or review mode or find fills a gap: about 95 MiB at the maximum
   and 10 MiB at the default 10,000 lines, for each client attaching that way.
-  E3, which keeps scrollback on disk (NFR-08), streams that history without
-  the copy.
+  E3 drops the copy (owner, 2026-11-16): a client attaching during a
+  full-screen program gets that screen, and the shell's history and screen
+  when the program leaves it, as the app shows only the active screen.
 
 ## 9. Epics
 
@@ -826,6 +827,9 @@ Acceptance criteria:
    badges and position ("3 of 7").
 5. The app is single-instance on a computer: launching it again focuses the
    existing window.
+6. Each session item's name starts with the last two folders of the session's
+   working directory, the home folder shown as `~` and counted as one folder
+   (owner, E3).
 
 #### US-1.7 — Create a session
 
@@ -867,9 +871,12 @@ Acceptance criteria:
    and last-output time.
 2. States: Starting, Running, Exited (with exit code or signal), Stopped,
    Disconnected, Failed to start (with reason). E2 adds Reconnecting; E3 adds
-   Restored.
-3. Each state shows as text plus icon and is part of the item's accessible name
-   or description. Last activity time is available on demand.
+   the Restored badge (US-3.1.6).
+3. Each state shows as an icon at the end of the item and is part of the item's
+   accessible name, and the icon's tooltip names it: a filled circle for
+   Running, half filled for Starting and Reconnecting, a hollow circle for
+   Disconnected, and a gray circle with a dash for Exited, Stopped and Failed
+   to start (owner, E3). Last activity time is available on demand.
 4. State changes reach the app within the NFR-05 target.
 
 #### US-1.10 — Manage sessions
@@ -1104,9 +1111,9 @@ Acceptance criteria:
 
 ### 9.3 E3 — Sessions that survive a host reboot
 
-**Outcome.** When a Linux host reboots, its sessions come back with the same
-shell, working directory and name, and with the previous output above a
-marker. Users see and manage each host's daemon from the app. Automatic app
+**Outcome.** When a Linux host reboots, its sessions come back once the app
+reconnects, with the same shell, working directory and name, and with the
+previous output above a marker. Users see and manage each host's daemon from the app. Automatic app
 updates come with E8 (US-8.5), because macOS updates need a Developer ID
 signature.
 
@@ -1123,26 +1130,33 @@ E2 exception (§8.3) is resolved.
 
 Acceptance criteria:
 
-1. The daemon starts at boot when lingering is enabled. Otherwise it starts when
-   the app reconnects and finds it stopped (US-2.4).
+1. The daemon starts when the app reconnects and finds it stopped (US-2.4). The
+   app registers nothing outside the install location, so nothing starts it at
+   boot (owner, E3).
 2. Scrollback is persisted to disk continuously (NFR-08, SEC-05).
-3. For each session that was running at shutdown — not ones the user stopped or
-   closed — the daemon starts a new process with the same shell, arguments,
-   name, size and list position, the environment the session was started with,
-   and the last known working directory. The working directory comes from shell
-   integration (OSC 7) when available (US-5.1), otherwise from the OS's process
-   information, otherwise the session's initial directory. Variables the user
-   exported inside the shell are not restored.
+3. For each session whose processes ended while it was running — a reboot, a
+   logout that ends user processes, a killed process; not ones the user stopped
+   or closed (owner, E3) — the daemon starts a new process with the same shell,
+   arguments, name, size and list position, the environment the session was
+   started with, and the last known working directory. The working directory
+   comes from shell integration (OSC 7) when available (US-5.1), otherwise from
+   the OS's process information, otherwise the session's initial directory.
+   Variables the user exported inside the shell are not restored.
 4. The previous scrollback is restored above a marker line: "Session restored
-   after restart on <date time>. Previous processes ended." Restored scrollback
-   is read-only history: it cannot be edited or sent to the process, and new
-   output continues below the marker. The marker is plain text, read when the
-   user opens the session and available in review mode.
+   after restart on <date time>. Previous processes ended.", or "Session
+   restored on <date time>. Previous processes ended." when the host did not
+   restart. Restored scrollback is read-only history: it cannot be edited or
+   sent to the process, and new output continues below the marker. The marker is
+   plain text, read when the user opens the session and available in review
+   mode.
 5. Only the shell starts. Commands that were running are never re-executed.
-6. The app shows these sessions as Restored and announces the restore when the
-   host reconnects.
+6. The app shows these sessions as Restored until each is opened on that
+   computer, and announces the restore when the host reconnects.
 7. If the working directory no longer exists, the session starts in the home
    directory and says so.
+8. Sessions that are not restored (exited or stopped, or with restore off) stay
+   in the list as they were, with their saved scrollback, until the user closes
+   or restarts them (owner, E3).
 
 #### US-3.2 — Choose what is restored and stored
 
@@ -1152,8 +1166,9 @@ Acceptance criteria:
 Acceptance criteria:
 
 1. Each session has a "Restore after restart" setting, on by default.
-2. Each session has a "Do not save scrollback to disk" setting. With it on, the
-   session is restored without scrollback.
+2. Each session has a "Save scrollback to disk" setting, on by default. With it
+   off, none of the session's output is written to disk, and the session is
+   restored without scrollback (owner, E3).
 3. "Clear scrollback" also deletes the on-disk copy. Closing a session deletes
    its data.
 
@@ -1167,10 +1182,14 @@ Acceptance criteria:
 1. Each host shows connection status, daemon version, uptime, install path and
    log location. The daemon writes structured, rotated logs to a per-user
    location (SEC-08).
-2. "Upgrade daemon" and "Restart daemon" keep sessions.
+2. "Upgrade daemon" and "Restart daemon" keep sessions. The app still upgrades
+   an older daemon when it connects (US-2.5.3); "Upgrade daemon" does it on
+   demand when the host runs an older daemon than the app's (owner, E3).
 3. "Remove daemon from host" stops all sessions and removes the service
    registration, binaries and data, after a confirmation that lists the sessions
-   that will stop and the data that will be deleted.
+   that will stop and the data that will be deleted. Only what TRC wrote is
+   deleted. The host then stays in the app, not connected, until the user
+   connects it, which installs the daemon again (owner, E3).
 4. "Forget host" asks whether to leave the host's sessions running or to stop
    them and remove the daemon.
 5. Documentation describes manual removal for every platform delivered so far.
