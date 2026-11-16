@@ -91,7 +91,7 @@ epic's plan so every identifier stays unique. E2's plan is
 `docs/plans/epic-02-implementation-plan.md`; keep its status table current.
 
 Platforms arrive in this order (PRD §7.4): macOS desktop app plus Linux remote
-daemon (E1–E4), macOS daemon for local sessions and macOS hosts (E5), Windows
+daemon (E1–E3), macOS daemon for local sessions and macOS hosts (E4), Windows
 desktop (E6), Linux desktop (E7). Don't build ahead for later platforms, and
 don't make choices that block them (for example, never depend on
 `ControlMaster`, which Windows OpenSSH lacks).
