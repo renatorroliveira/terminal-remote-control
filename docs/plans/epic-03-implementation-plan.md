@@ -153,6 +153,14 @@ dialog and the status bar share one switch component. `pnpm test:ax` runs once a
   between output and `fdatasync`; disk use per 10,000 lines; unwrapped lines restored at another width.
 - Findings in `docs/spikes/S7.md`; §3.1 revised if they ask for it.
 
+As built (ST-40 and ST-42, 2026-11-16): S7 became the format's own tests ([S7](../spikes/S7.md)). One file,
+`scrollback.log`, replaces `history.log` and `screen.vt`: each record carries the history rows since the last and,
+when it changed, the screen, so a crash between two writes can never leave the two out of step. Records are checked
+with the first 4 bytes of their SHA-256, already a dependency, instead of CRC-32, and rows keep their soft wraps
+rather than being unwrapped, as a restore feeds them to a terminal of the session's own size. The core creates each
+session's data folder and deletes it when the session closes; Clear scrollback and the options reach the holder
+(holder protocol 3), and holders from before 0.4.0 answer them `unsupported`.
+
 **ST-41 Protocol 3** (NFR-12, US-3.1, US-3.2, US-3.3)
 
 - `PROTOCOL_VERSION` 3, minimum 1: `restoredAt`, the session options, the ended-by-restart exit, `persistence`,

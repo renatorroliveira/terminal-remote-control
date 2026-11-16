@@ -15,10 +15,13 @@ use trc_protocol::frame::{self, Frame, FrameKind};
 use trc_protocol::{ExitStatus, SessionState, TerminalSize};
 use trc_vt::{GhosttyTerminal, Rgb, TerminalConfig, TerminalEvent, TerminalState};
 
+mod saving;
+
 use super::attachments::{Attachments, Outgoing, Session};
 use super::environment::{Account, session_environment};
 use super::osc7::path_from_file_url;
 use super::output_log::OutputLog;
+use super::persistence::{Persistence, SAVE_INTERVAL};
 use super::protocol::{HOLDER_PROTOCOL, HolderCommand, HolderEvent, HolderSpec, HolderStatus, SESSION_STREAM};
 use super::pty::{Pty, SpawnSpec};
 use super::stop_plan::{DEFAULT_GRACE, StopSignal, stop_plan};
@@ -49,12 +52,35 @@ pub struct Holder {
     writer: Option<JoinHandle<()>>,
     log: OutputLog,
     attachments: Attachments,
+    /// The session's saving to disk, while "Save scrollback to disk" is on (US-3.2.2).
+    persistence: Option<Persistence>,
     status: HolderStatus,
     stopping: Option<Stopping>,
     after_exit: AfterExit,
     status_dirty: bool,
     finished: bool,
     accepting: AcceptBackoff,
+}
+
+/// The holder's timers: throttled status reports and saving to disk.
+struct Ticks {
+    status: Interval,
+    save: Interval,
+}
+
+#[derive(Clone, Copy)]
+enum Tick {
+    Status,
+    Save,
+}
+
+impl Ticks {
+    async fn next(&mut self) -> Tick {
+        tokio::select! {
+            _ = self.status.tick() => Tick::Status,
+            _ = self.save.tick() => Tick::Save,
+        }
+    }
 }
 
 struct Stopping {
@@ -91,6 +117,7 @@ impl Holder {
             writer: None,
             log: OutputLog::default(),
             attachments: Attachments::default(),
+            persistence: None,
             status: HolderStatus {
                 state: SessionState::Starting,
                 pid: None,
@@ -101,6 +128,7 @@ impl Holder {
                 title: None,
                 cwd: None,
                 size: TerminalSize { cols: 80, rows: 24 },
+                persistence_failure: None,
             },
             stopping: None,
             after_exit: AfterExit::Report,
@@ -112,10 +140,14 @@ impl Holder {
 
     /// Serves cores connecting on `listener` until the session is shut down.
     pub async fn run(mut self, listener: UnixListener) {
-        let mut status_tick = interval(STATUS_INTERVAL);
-        status_tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        let mut ticks = Ticks {
+            status: interval(STATUS_INTERVAL),
+            save: interval(SAVE_INTERVAL),
+        };
+        ticks.status.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        ticks.save.set_missed_tick_behavior(MissedTickBehavior::Delay);
         while !self.finished {
-            self.step(&listener, &mut status_tick).await;
+            self.step(&listener, &mut ticks).await;
             self.flush_output();
         }
         self.sender = None;
@@ -124,7 +156,7 @@ impl Holder {
         }
     }
 
-    async fn step(&mut self, listener: &UnixListener, status_tick: &mut Interval) {
+    async fn step(&mut self, listener: &UnixListener, ticks: &mut Ticks) {
         tokio::select! {
             biased;
             frame = next_frame(&mut self.reader) => self.on_frame(frame),
@@ -134,8 +166,15 @@ impl Holder {
             () = self.accepting.rested() => self.accepting.resume(),
             status = wait_exit(&mut self.exit) => self.on_exit(status),
             () = stop_deadline(&self.stopping) => self.escalate(),
-            _ = status_tick.tick() => self.flush_status(),
+            tick = ticks.next() => self.on_tick(tick),
             chunk = next_chunk(&mut self.output) => self.on_output(chunk),
+        }
+    }
+
+    fn on_tick(&mut self, tick: Tick) {
+        match tick {
+            Tick::Status => self.flush_status(),
+            Tick::Save => self.save(),
         }
     }
 
@@ -200,6 +239,8 @@ impl Holder {
             HolderCommand::Restart => self.restart(),
             HolderCommand::Shutdown => self.shutdown(),
             HolderCommand::Name { name } => self.name = name,
+            HolderCommand::SetOptions { options } => self.set_options(options),
+            HolderCommand::ClearScrollback => self.clear_scrollback(),
         }
     }
 
@@ -243,6 +284,7 @@ impl Holder {
             Err(error) => return self.fail(format!("terminal emulator: {error}")),
         }
         self.spec = Some(spec);
+        self.start_saving(0);
         self.spawn();
     }
 
@@ -319,6 +361,9 @@ impl Holder {
         }
         if let Some(pty) = &self.pty {
             let _ = pty.resize(size);
+        }
+        if let Some(persistence) = &mut self.persistence {
+            persistence.rewrite();
         }
         self.status.size = size;
         self.send_status();
@@ -415,6 +460,9 @@ impl Holder {
         }
         self.log.push(&chunk);
         self.attachments.push(&chunk);
+        if let Some(persistence) = &mut self.persistence {
+            persistence.output();
+        }
         if was_alternate && !self.on_alternate_screen() {
             self.left_alternate_screen();
         }

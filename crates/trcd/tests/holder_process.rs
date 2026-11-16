@@ -163,6 +163,8 @@ fn umask_spec() -> HolderSpec {
         scrollback_lines: 100,
         home: "/tmp".into(),
         user: "tester".into(),
+        options: Default::default(),
+        data_dir: None,
     }
 }
 

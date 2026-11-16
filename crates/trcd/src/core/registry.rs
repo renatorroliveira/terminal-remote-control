@@ -32,7 +32,7 @@ impl SessionRecord {
             last_output_at: None,
             exit: None,
             failure: None,
-            options: None,
+            options: Some(spec.options),
             restored: None,
             persistence_failure: None,
         };
@@ -54,6 +54,7 @@ impl SessionRecord {
         info.exit.clone_from(&status.exit);
         info.failure.clone_from(&status.failure);
         info.title.clone_from(&status.title);
+        info.persistence_failure = status.persistence_failure;
         if status.cwd.is_some() {
             info.cwd.clone_from(&status.cwd);
         }
@@ -140,7 +141,7 @@ fn position_number(index: usize) -> u32 {
 mod tests {
     use std::collections::BTreeMap;
 
-    use trc_protocol::{ExitStatus, Integration, ProfileOrigin, ShellKind, ShellProfile, TerminalSize};
+    use trc_protocol::{ExitStatus, Integration, ProfileOrigin, SessionOptions, ShellKind, ShellProfile, TerminalSize};
 
     use super::*;
 
@@ -185,6 +186,8 @@ mod tests {
                 scrollback_lines: 10_000,
                 home: "/home/u".into(),
                 user: "u".into(),
+                options: SessionOptions::default(),
+                data_dir: None,
             },
             closing: false,
         }
@@ -256,6 +259,7 @@ mod tests {
             title: Some("vim".into()),
             cwd: Some("/tmp".into()),
             size: TerminalSize { cols: 100, rows: 30 },
+            persistence_failure: None,
         };
         let info = registry.apply_status(&id("b"), &status).unwrap();
         assert_eq!(

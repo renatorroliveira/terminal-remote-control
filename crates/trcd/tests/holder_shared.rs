@@ -175,6 +175,8 @@ fn spec() -> HolderSpec {
         scrollback_lines: 1_000,
         home: "/tmp".into(),
         user: "tester".into(),
+        options: Default::default(),
+        data_dir: None,
     }
 }
 

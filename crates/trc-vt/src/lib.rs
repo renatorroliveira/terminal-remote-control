@@ -2,10 +2,12 @@
 
 mod ghostty;
 mod grid;
+mod history;
 mod sanitize;
 mod stream;
 
 pub use ghostty::GhosttyTerminal;
+pub use history::{HistoryRows, HistoryTail, primary_screen};
 pub use sanitize::strip_controls;
 pub use stream::{SnapshotScope, SnapshotStream};
 use thiserror::Error;

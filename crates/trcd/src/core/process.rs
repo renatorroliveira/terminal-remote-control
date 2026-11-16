@@ -40,7 +40,8 @@ pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
     let uid = rustix::process::geteuid().as_raw();
     let login_umask = rustix::process::umask(Mode::from_raw_mode(0o077));
     let run = RunDir::for_root(&layout.root, uid);
-    for dir in [layout.logs_dir(), run.dir.clone(), run.holders()] {
+    let sessions_dir = layout.root.join("sessions");
+    for dir in [layout.logs_dir(), run.dir.clone(), run.holders(), sessions_dir.clone()] {
         ensure_private_dir(&dir, uid)?;
     }
     let binary_sha256 = sha256_file(&layout.binary)?;
@@ -74,6 +75,7 @@ pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
         },
         scope,
         details,
+        sessions_dir,
     };
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),
