@@ -167,8 +167,13 @@ The Sessions list is a tree: each connected host, then its sessions. It is one s
 
 - **Opening.** Moving through the list doesn't switch sessions. Opening one moves focus to its terminal, and TRC
   says its name, host and state, and whether it has output you haven't seen.
-- **States.** Each session shows Starting, Running, Exited (with the exit code or signal), Stopped or Failed to
-  start, and "new output" while it has output you haven't seen. VoiceOver reads its position, such as "2 of 3".
+- **Where a session is.** Each session's name starts with the last two folders it's working in, such as `src/trc`,
+  with your home folder shown as `~`, as in `~/src`. TRC shows it once the host has connected.
+- **States.** A shape at the end of each session says its state: filled while it runs, half filled while it starts
+  or its host reconnects, hollow while its host is disconnected, and a circle with a dash once it has exited,
+  stopped or failed to start. Pointing at it shows the state, and VoiceOver reads it with the name: Starting,
+  Running, Exited (with the exit code or signal), Stopped, Failed to start, Disconnected or Reconnecting. "New
+  output" shows while it has output you haven't seen. VoiceOver also reads its position, such as "2 of 3".
 - **New session with options.** Choose the host, the shell, the working folder, a name, and environment variables
   (one `NAME=value` per line; `NAME=` removes a variable).
 - **Session actions.** Rename (an empty name shows the title the program sets), Stop, Restart (same shell, folder
@@ -293,8 +298,9 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 - **Send next key.** After Shift-Command-K, the next key goes to the program even if it is an app shortcut.
 - **Command palette.** Type part of a name, then press Return. The palette lists every command with its shortcut,
   every host action (connect, disconnect, new session) and every session to open. Escape closes it.
-- **Status bar.** It shows the open session's host and its connection, the daemon version on that host, the Tab
-  focus mode and mute buttons, and how many notifications are waiting.
+- **Status bar.** It shows the open session's host and its connection, the daemon version on that host, the "Tab
+  moves focus" and "Mute output" switches, and the Notifications button, a bell with the number of notifications
+  waiting.
 - **Notifications.** Connection failures and lost connections stay in the list until you dismiss them, including
   failures while connecting at launch. TRC also says when a host connects, reconnects or loses its connection.
 - **Menus.** View and Terminal hold the same commands, with their Command shortcuts.

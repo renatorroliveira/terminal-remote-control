@@ -1,10 +1,12 @@
-import { Button, ToggleButton } from 'react-aria-components';
+import { Button, Tooltip, TooltipTrigger } from 'react-aria-components';
 import { type IntlShape, useIntl } from 'react-intl';
 import { useStore } from 'zustand';
 import { hostStateText } from '../sessions/host-state-text';
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import type { Workspace } from '../sessions/workspace-model';
 import { BUTTON } from '../ui/buttons';
+import { NotificationsIcon } from '../ui/icons';
+import { ToggleSwitch } from '../ui/switches';
 import { REGION_ATTRIBUTE } from './regions';
 import styles from './StatusBar.module.css';
 import type { Shell } from './shell';
@@ -39,24 +41,31 @@ export function StatusBar({ workspace, shell }: StatusBarProps) {
                 <span className={styles['item']}>{intl.formatMessage(statusMessages.sizeSetElsewhere)}</span>
             )}
             <span className={styles['controls']}>
-                <ToggleButton
-                    className={`${BUTTON} ${styles['toggle'] ?? ''}`}
-                    isSelected={tabFocusMode}
-                    onChange={() => shell.toggleTabFocus()}
-                >
+                <ToggleSwitch isSelected={tabFocusMode} onChange={() => shell.toggleTabFocus()}>
                     {intl.formatMessage(statusMessages.tabMovesFocus)}
-                </ToggleButton>
-                <ToggleButton
-                    className={`${BUTTON} ${styles['toggle'] ?? ''}`}
+                </ToggleSwitch>
+                <ToggleSwitch
                     isSelected={state.open !== undefined && muted.has(state.open)}
                     isDisabled={state.open === undefined}
                     onChange={() => shell.toggleMute()}
                 >
                     {intl.formatMessage(statusMessages.mute)}
-                </ToggleButton>
-                <Button className={BUTTON} onPress={() => shell.setNotificationsOpen(true)}>
-                    {intl.formatMessage(statusMessages.notifications, { count })}
-                </Button>
+                </ToggleSwitch>
+                <TooltipTrigger delay={500}>
+                    <Button
+                        className={`${BUTTON} ${styles['notifications'] ?? ''}`}
+                        aria-label={intl.formatMessage(statusMessages.notifications, { count })}
+                        onPress={() => shell.setNotificationsOpen(true)}
+                    >
+                        <NotificationsIcon />
+                        <span aria-hidden="true" className={styles['count']}>
+                            {intl.formatNumber(count)}
+                        </span>
+                    </Button>
+                    <Tooltip className={styles['tooltip'] ?? ''} placement="top">
+                        {intl.formatMessage(statusMessages.notificationsTooltip)}
+                    </Tooltip>
+                </TooltipTrigger>
             </span>
         </section>
     );

@@ -106,7 +106,7 @@ export const TERMINAL_FONT_FAMILY = '"Intel One Mono", monospace';
 /** The terminal font size, in CSS pixels. */
 export const TERMINAL_FONT_SIZE = 14;
 /** The grid's default maximum width. */
-export const DEFAULT_MAX_COLUMNS = 120;
+export const DEFAULT_MAX_COLUMNS = 140;
 /** The scrollback a terminal keeps unless told otherwise (NFR-10). */
 export const DEFAULT_SCROLLBACK_LINES = 10_000;
 const FOCUS_IN = '\u001b[I';

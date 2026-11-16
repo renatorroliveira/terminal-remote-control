@@ -29,6 +29,13 @@ export const sessionRowWithBadgeMessage = defineMessage<{ name: string; state: s
     description: 'Accessible name of a session with a badge, such as new output.',
 });
 
+/** A session's name after where it is, the last two folders of its working directory (P-48). */
+export const sessionPlacedNameMessage = defineMessage<{ place: string; name: string }>({
+    id: 'tree.sessionPlacedName',
+    defaultMessage: '{place} {name}',
+    description: 'A session row: where the session is, such as ~/src, then its name.',
+});
+
 /** A session's actions in its context menu (US-1.10). */
 export const sessionActionMessages = defineMessages({
     open: { id: 'session.action.open', defaultMessage: 'Open', description: 'Session action.' },

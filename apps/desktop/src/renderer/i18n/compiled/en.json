@@ -3577,6 +3577,12 @@
       "value": "count"
     }
   ],
+  "status.notificationsTooltip": [
+    {
+      "type": 0,
+      "value": "Notifications"
+    }
+  ],
   "status.region": [
     {
       "type": 0,
@@ -3771,6 +3777,20 @@
     {
       "type": 0,
       "value": "new output"
+    }
+  ],
+  "tree.sessionPlacedName": [
+    {
+      "type": 1,
+      "value": "place"
+    },
+    {
+      "type": 0,
+      "value": " "
+    },
+    {
+      "type": 1,
+      "value": "name"
     }
   ],
   "tree.sessionRowBadge": [

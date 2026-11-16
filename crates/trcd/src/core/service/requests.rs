@@ -83,6 +83,7 @@ impl Core {
             binary_sha256: self.context.binary_sha256.clone(),
             caps: Vec::new(),
             service: Some(self.context.service),
+            details: Some(self.context.details.clone()),
         };
         self.reply(client, &welcome);
     }

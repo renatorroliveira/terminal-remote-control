@@ -127,6 +127,12 @@ describe('HostConnection sessions over real ssh', () => {
                 version: manifest.version,
                 proto: 2,
                 service: { manager: 'detached', sessionsEndAtLogout: false },
+                details: {
+                    home: '/home/tester',
+                    installRoot: expect.stringMatching(/^\/home\/tester\/\.trct-[0-9a-f]+$/),
+                    logDir: expect.stringMatching(/^\/home\/tester\/\.trct-[0-9a-f]+\/logs$/),
+                    startedAt: expect.any(Number),
+                },
             },
         });
         const steps = observed.states.flatMap((state) => (state.status === 'connecting' ? [state.step] : []));

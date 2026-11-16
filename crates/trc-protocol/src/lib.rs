@@ -7,8 +7,8 @@ pub mod session;
 pub mod version;
 
 pub use messages::{
-    AttachMode, ClientMessage, CreateSessionSpec, DetachReason, ErrorCode, Replay, ResyncKind, ServerMessage,
-    ServiceInfo, ServiceManager, SessionChange,
+    AttachMode, ClientMessage, CreateSessionSpec, DaemonDetails, DetachReason, ErrorCode, Replay, ResyncKind,
+    ServerMessage, ServiceInfo, ServiceManager, SessionChange,
 };
 pub use profile::{Integration, ProfileOrigin, ShellKind, ShellProfile};
 pub use session::{ExitStatus, SessionId, SessionInfo, SessionState, TerminalSize};

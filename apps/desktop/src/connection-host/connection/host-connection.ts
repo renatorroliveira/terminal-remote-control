@@ -281,6 +281,7 @@ export class HostConnection implements HostConnectionLike {
                     sha256: answer.binarySha256,
                     proto: answer.proto,
                     ...(answer.service === undefined ? {} : { service: answer.service }),
+                    ...(answer.details === undefined ? {} : { details: answer.details }),
                 },
             });
             return this.#startPinger(process);

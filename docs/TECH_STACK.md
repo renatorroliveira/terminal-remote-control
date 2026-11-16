@@ -202,7 +202,7 @@ This is the number one requirement and the main technical risk (R1, R2).
       widths (US-1.11);
     - `@xterm/addon-search` for find (US-1.13, A11Y-03.6);
     - Resizing is our own fitter (`grid-fit.ts`, `terminal-geometry.ts`), not
-      `@xterm/addon-fit`: the grid is at most 120 columns, centered in the
+      `@xterm/addon-fit`: the grid is at most 140 columns (P-48), centered in the
       terminal area, and drops columns when the space or a zoom leaves less
       room (A11Y-07.5). Hidden terminals keep their layout size
       (`visibility: hidden`), so they keep their grid.

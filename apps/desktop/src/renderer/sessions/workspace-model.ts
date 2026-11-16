@@ -3,6 +3,7 @@ import type { ConnectionState } from '../../shared/connection';
 import { formatHostAddress } from '../../shared/host-address';
 import type { KnownHost } from '../../shared/hosts';
 import { stripControlCharacters } from '../../shared/text';
+import { sessionPlace } from './session-place';
 
 /** A known host and its connection state. */
 export interface HostEntry extends KnownHost {
@@ -11,6 +12,8 @@ export interface HostEntry extends KnownHost {
     readonly state: ConnectionState;
     /** Whether it is reconnecting by itself: waiting for its next attempt or making one (US-2.2.2). */
     readonly reconnecting: boolean;
+    /** The home folder its daemon last reported, which session names shorten to `~` (P-48). */
+    readonly home?: string;
 }
 
 /** Identifies a session across hosts. */
@@ -56,6 +59,8 @@ export type ActionFailureCode = ErrorCode | 'disconnected' | 'unknown';
 export interface SessionItem {
     readonly key: SessionKey;
     readonly label: string;
+    /** Where it is: the last two folders of its working directory, shown before its name (P-48). */
+    readonly place: string | undefined;
     readonly session: SessionInfo;
     /** Whether it has output the user has not seen (US-1.8.3). */
     readonly unread: boolean;
@@ -129,7 +134,7 @@ export function hostStateChanged(
     options: StateChangeOptions = { notifyFailure: true },
 ): Workspace {
     const hosts = workspace.hosts.map((host) =>
-        host.id === hostId ? { ...host, state, reconnecting: stillReconnecting(host, state) } : host,
+        host.id === hostId ? { ...host, ...homeOf(state), state, reconnecting: stillReconnecting(host, state) } : host,
     );
     if (state.status === 'failed' && options.notifyFailure && state.failure.kind !== 'host-key-rejected') {
         return { ...workspace, hosts, failureNotice: hostId };
@@ -263,9 +268,15 @@ export function hostGroups(workspace: Workspace): readonly HostGroup[] {
                 disconnected: !isConnected(host),
                 reconnecting: host.reconnecting,
                 label: sessionName(session),
+                place: sessionPlace(session.cwd, host.home),
                 session,
             })),
         }));
+}
+
+function homeOf(state: ConnectionState): { readonly home?: string } {
+    const home = state.status === 'connected' ? state.daemon.details?.home : undefined;
+    return home === undefined ? {} : { home };
 }
 
 function stillReconnecting(host: HostEntry, state: ConnectionState): boolean {

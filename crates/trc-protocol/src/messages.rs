@@ -116,6 +116,22 @@ pub struct ServiceInfo {
     pub sessions_end_at_logout: bool,
 }
 
+/// Where the host's daemon keeps its files and since when it runs: the host's details (US-3.3.1), and the home
+/// folder that session names shorten to `~` (P-48).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct DaemonDetails {
+    /// The account's home folder.
+    pub home: String,
+    /// The install root the daemon runs from.
+    pub install_root: String,
+    /// The folder the daemon writes its logs to.
+    pub log_dir: String,
+    /// When the core started, in milliseconds since the Unix epoch.
+    pub started_at: u64,
+}
+
 /// Why a request failed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -305,6 +321,10 @@ pub enum ServerMessage {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[ts(optional)]
         service: Option<ServiceInfo>,
+        /// Where the daemon keeps its files and since when it runs; absent from daemons before 0.4.0.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        details: Option<DaemonDetails>,
     },
     /// Refuses the handshake: no common protocol version (US-1.4.6).
     Incompatible {

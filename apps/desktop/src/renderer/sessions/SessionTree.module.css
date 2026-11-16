@@ -28,8 +28,8 @@
     }
 
     .session {
-        grid-template-columns: 1.25rem minmax(0, 1fr);
-        margin-inline-start: 1.25rem;
+        grid-template-columns: minmax(0, 1fr) auto;
+        margin-inline-start: 1.75rem;
     }
 
     .host:hover,
@@ -38,8 +38,7 @@
         border-color: var(--trc-color-border);
     }
 
-    .caret,
-    .icon {
+    .caret {
         text-align: center;
     }
 
@@ -58,6 +57,31 @@
     .badge {
         color: var(--trc-color-warning);
         font-size: 0.875rem;
+    }
+
+    .place {
+        color: var(--trc-color-text-muted);
+    }
+
+    .stateBadge {
+        display: inline-grid;
+        place-items: center;
+    }
+
+    .stateBadge[data-state-badge='running'] {
+        color: var(--trc-color-success);
+    }
+
+    .stateBadge[data-state-badge='busy'] {
+        color: var(--trc-color-warning);
+    }
+
+    .stateBadge[data-state-badge='disconnected'] {
+        color: var(--trc-color-danger);
+    }
+
+    .stateBadge[data-state-badge='ended'] {
+        color: var(--trc-color-text-muted);
     }
 
     .add {

@@ -47,7 +47,7 @@ test('moves between the sidebar, terminal and status bar regions with Command+F6
     await window.keyboard.press('Meta+F6');
     await expect(window.getByRole('main', { name: 'Terminal Remote Control' })).toBeFocused();
     await window.keyboard.press('Meta+F6');
-    await expect(window.getByRole('button', { name: 'Tab moves focus' })).toBeFocused();
+    await expect(window.getByRole('switch', { name: 'Tab moves focus' })).toBeFocused();
     await window.keyboard.press('Shift+Meta+F6');
     await expect(window.getByRole('main', { name: 'Terminal Remote Control' })).toBeFocused();
     await app.close();

@@ -487,12 +487,12 @@ describe('TerminalView: layout and size (A11Y-07.5, US-1.11.3)', () => {
         expect((bordered?.right ?? 0) - grid.right).toBeGreaterThanOrEqual(20);
     });
 
-    it('caps the grid at 120 columns, centered in a wide frame, and drops columns in a narrow one (A11Y-07.5)', async () => {
+    it('caps the grid at 140 columns, centered in a wide frame, and drops columns in a narrow one (A11Y-07.5)', async () => {
         const { view, host, sizes } = mount();
         host.style.width = '1800px';
         await view.ready;
         await frames();
-        expect(view.terminal.cols).toBe(120);
+        expect(view.terminal.cols).toBe(140);
         const frameBox = host.getBoundingClientRect();
         const gridBox = view.surface.parentElement?.getBoundingClientRect();
         const leftGap = (gridBox?.left ?? 0) - frameBox.left;

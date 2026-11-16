@@ -1,7 +1,14 @@
 /** One visible row of the session tree: a host, or one of an expanded host's sessions. */
 export type TreeRow =
     | { readonly kind: 'host'; readonly key: string; readonly expanded: boolean; readonly label: string }
-    | { readonly kind: 'session'; readonly key: string; readonly hostKey: string; readonly label: string };
+    | {
+          readonly kind: 'session';
+          readonly key: string;
+          readonly hostKey: string;
+          readonly label: string;
+          /** Where the session is, which type-ahead also matches (P-48). */
+          readonly place?: string;
+      };
 
 /** What a key press on a tree row does. */
 export type TreeAction =

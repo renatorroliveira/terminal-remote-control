@@ -103,6 +103,20 @@ test.describe('a live terminal on a Linux host (M1)', () => {
         await expect(window.locator('.xterm')).toHaveAttribute('aria-hidden', 'true');
         await app.close();
     });
+
+    test('starts the session’s name with the last two folders its shell is in, the home folder as ~ (P-48)', async () => {
+        const { app, window } = await launchWithTestHosts(install.root);
+        const terminal = await openTerminal(window, 'trc-ubuntu');
+        await terminal.focus();
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        const session = window.getByRole('tree', { name: 'Sessions' }).getByRole('treeitem', { level: 2 });
+        await expect(session).toHaveAccessibleName(/^~ /, { timeout: 15_000 });
+        await window.keyboard.type('mkdir -p /tmp/trc-place/deep && cd /tmp/trc-place/deep');
+        await window.keyboard.press('Enter');
+        await expect(session).toHaveAccessibleName(/^trc-place\/deep /, { timeout: 15_000 });
+        await expect(session).toContainText('trc-place/deep');
+        await app.close();
+    });
 });
 
 test.describe('a live terminal on a Linux host: spoken output (A11Y-02, A11Y-10.2)', () => {
@@ -264,7 +278,7 @@ test.describe('a live terminal on a Linux host: leaving the terminal (A11Y-05)',
         await window.keyboard.press('Meta+F6');
         await expect(terminal).toBeFocused();
         await window.keyboard.press('Shift+Meta+M');
-        await expect(window.getByRole('button', { name: 'Tab moves focus' })).toHaveAttribute('aria-pressed', 'true');
+        await expect(window.getByRole('switch', { name: 'Tab moves focus' })).toBeChecked();
         await window.keyboard.press('Tab');
         await expect(terminal).not.toBeFocused();
         await app.close();
@@ -277,13 +291,13 @@ test.describe('a live session on a Linux host: rename and close (US-1.10)', () =
     test('renames a session on the daemon, then closes it after the confirmation', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
         await openTerminal(window, 'trc-ubuntu');
-        const session = window.getByRole('treeitem', { name: /^bash/ }).first();
+        const session = window.getByRole('treeitem', { name: /^~ bash/ }).first();
         await session.focus();
         await window.keyboard.press('Shift+F10');
         await window.getByRole('menuitem', { name: 'Rename…' }).click();
         await window.getByRole('textbox', { name: 'Name' }).fill('renamed-e2e');
         await window.keyboard.press('Enter');
-        const renamed = window.getByRole('treeitem', { name: /^renamed-e2e, / });
+        const renamed = window.getByRole('treeitem', { name: /^~ renamed-e2e, / });
         await expect(renamed).toBeVisible({ timeout: 15_000 });
         await renamed.focus();
         await window.keyboard.press('Shift+F10');

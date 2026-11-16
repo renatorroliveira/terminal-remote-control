@@ -18,13 +18,26 @@
     .controls {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5rem;
+        align-items: center;
+        gap: 0.5rem 1rem;
         margin-inline-start: auto;
     }
 
-    .toggle[data-selected] {
-        border-color: var(--trc-color-primary-border);
-        background: var(--trc-color-primary);
-        color: var(--trc-color-primary-text);
+    .notifications {
+        gap: 0.25rem;
+        padding-inline: 0.5rem;
+    }
+
+    .count {
+        min-width: 1ch;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .tooltip {
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--trc-color-border);
+        border-radius: 4px;
+        background: var(--trc-color-surface);
+        color: var(--trc-color-text);
     }
 }

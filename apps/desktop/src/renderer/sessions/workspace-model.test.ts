@@ -75,6 +75,32 @@ describe('the workspace model (US-1.6, US-1.9)', () => {
     });
 });
 
+describe('the workspace model: where each session is (P-48)', () => {
+    it('places each session by its working directory, with the home folder the host reported as ~', () => {
+        let workspace = hostAdded(EMPTY_WORKSPACE, known('h1', 'devbox-1'));
+        const details = { home: '/home/jordan', installRoot: '/home/jordan/.trc', logDir: '', startedAt: 0 };
+        workspace = hostStateChanged(workspace, 'h1', {
+            status: 'connected',
+            daemon: { version: '0.4.0', sha256: 'ab', proto: 2, details },
+        });
+        workspace = sessionsListed(workspace, 'h1', [
+            session('a', { cwd: '/home/jordan/src/trc' }),
+            session('b', { cwd: '/home/jordan/src' }),
+            session('c'),
+        ]);
+        const places = () => hostGroups(workspace)[0]?.sessions.map((item) => item.place);
+        expect(places()).toEqual(['src/trc', '~/src', undefined]);
+        workspace = hostStateChanged(workspace, 'h1', { status: 'disconnected', reason: 'ping-timeout' });
+        expect(places()).toEqual(['src/trc', '~/src', undefined]);
+    });
+
+    it('shows the whole short path when the daemon does not name the home folder', () => {
+        let workspace = hostStateChanged(hostAdded(EMPTY_WORKSPACE, known('h1', 'devbox-1')), 'h1', connected);
+        workspace = sessionsListed(workspace, 'h1', [session('a', { cwd: '/home/jordan' })]);
+        expect(hostGroups(workspace)[0]?.sessions[0]?.place).toBe('/home/jordan');
+    });
+});
+
 describe('the workspace model: notices and closed sessions (US-1.3, US-1.10)', () => {
     it('no longer shows a session the daemon closed as open', () => {
         const open = { ...workspaceWithTwoHosts(), open: sessionKey('h1', 'a') };
