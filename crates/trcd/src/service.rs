@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+use rustix::fs::Mode;
 use sha2::{Digest, Sha256};
 
 /// How long one probe of the host's systemd or logind may take.
@@ -78,7 +79,7 @@ pub fn unit_name(root: &Path) -> String {
 
 /// Starts `binary core --systemd` as a transient user unit restarted on failure, with the caller's umask and account
 /// environment. A refused start (75: another core runs; 78: an untrusted install) is not retried.
-pub fn start_unit(binary: &Path, root: &Path, umask: u32) -> io::Result<()> {
+pub fn start_unit(binary: &Path, root: &Path, umask: Mode) -> io::Result<()> {
     let status = Command::new("systemd-run")
         .args(unit_arguments(binary, root, umask, |name| std::env::var_os(name)))
         .current_dir("/")
@@ -97,7 +98,12 @@ pub fn start_unit(binary: &Path, root: &Path, umask: u32) -> io::Result<()> {
 
 /// The `systemd-run` arguments for the core's unit. Stopping or restarting the unit ends only the core
 /// (`KillMode=process`), so a holder that had to start without its own scope outlives it too (US-2.5.2).
-pub fn unit_arguments(binary: &Path, root: &Path, umask: u32, env: impl Fn(&str) -> Option<OsString>) -> Vec<OsString> {
+pub fn unit_arguments(
+    binary: &Path,
+    root: &Path,
+    umask: Mode,
+    env: impl Fn(&str) -> Option<OsString>,
+) -> Vec<OsString> {
     let mut args: Vec<OsString> = ["--user", "--collect", "--quiet"].map(OsString::from).into();
     args.push(format!("--unit={}", unit_name(root)).into());
     for property in [
@@ -108,7 +114,7 @@ pub fn unit_arguments(binary: &Path, root: &Path, umask: u32, env: impl Fn(&str)
     ] {
         args.push(format!("--property={property}").into());
     }
-    args.push(format!("--property=UMask={umask:04o}").into());
+    args.push(format!("--property=UMask={:04o}", umask.bits()).into());
     for name in ["HOME", "USER", "LOGNAME", "SHELL", "PATH"] {
         if let Some(value) = env(name) {
             let mut setting = OsString::from(format!("--setenv={name}="));
@@ -308,7 +314,12 @@ mod tests {
     #[test]
     fn runs_the_core_unit_so_a_stop_or_restart_ends_only_the_core_us_2_5_2() {
         let env = |name: &str| (name == "HOME").then(|| std::ffi::OsString::from("/home/tester"));
-        let args = unit_arguments(Path::new("/r/versions/x/trcd"), Path::new("/r"), 0o022, env);
+        let args = unit_arguments(
+            Path::new("/r/versions/x/trcd"),
+            Path::new("/r"),
+            Mode::from_raw_mode(0o022),
+            env,
+        );
         let text: Vec<String> = args.iter().map(|arg| arg.to_string_lossy().into_owned()).collect();
         assert!(text.contains(&"--property=KillMode=process".to_owned()), "{text:?}");
         assert!(text.contains(&"--property=UMask=0022".to_owned()), "{text:?}");

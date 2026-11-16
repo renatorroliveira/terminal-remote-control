@@ -96,10 +96,10 @@ fn start_core(layout: &InstallLayout) -> io::Result<()> {
     start_detached(&binary)
 }
 
-fn current_umask() -> u32 {
+fn current_umask() -> rustix::fs::Mode {
     let mask = rustix::process::umask(rustix::fs::Mode::from_raw_mode(0o077));
     rustix::process::umask(mask);
-    u32::from(mask.bits())
+    mask
 }
 
 fn start_detached(binary: &std::path::Path) -> io::Result<()> {
