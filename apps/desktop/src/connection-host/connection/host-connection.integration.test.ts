@@ -125,7 +125,7 @@ describe('HostConnection sessions over real ssh', () => {
             status: 'connected',
             daemon: {
                 version: manifest.version,
-                proto: 2,
+                proto: 3,
                 service: { manager: 'detached', sessionsEndAtLogout: false },
                 details: {
                     home: '/home/tester',

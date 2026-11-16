@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { MIN_PROTOCOL_VERSION, negotiate, PROTOCOL_VERSION } from '../src/version';
 
 describe('protocol version', () => {
-    it('speaks versions N and N-1, like trc-protocol', () => {
-        expect([MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]).toEqual([1, 2]);
+    it('speaks versions N and N-1 at least, like trc-protocol', () => {
+        expect([MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]).toEqual([1, 3]);
     });
 
     it('negotiates the highest common version', () => {

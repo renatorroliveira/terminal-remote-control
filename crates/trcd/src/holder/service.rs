@@ -546,6 +546,7 @@ async fn wait_exit(exit: &mut Option<oneshot::Receiver<ExitStatus>>) -> ExitStat
         Some(exit) => exit.await.unwrap_or(ExitStatus {
             code: None,
             signal: None,
+            ended: None,
         }),
         None => std::future::pending().await,
     }

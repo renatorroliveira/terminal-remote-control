@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::profile::ShellProfile;
-use crate::session::{SessionId, SessionInfo, TerminalSize};
+use crate::session::{SessionId, SessionInfo, SessionOptions, TerminalSize};
 
 /// What the app asks for when it creates a session (US-1.7).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -34,6 +34,10 @@ pub struct CreateSessionSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub scrollback_lines: Option<u32>,
+    /// What survives the session's processes ending (US-3.2, protocol 3); both on when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub options: Option<SessionOptions>,
 }
 
 /// How much of a session an attached client receives.
@@ -290,6 +294,39 @@ pub enum ClientMessage {
         request_id: u32,
         /// The session.
         session: SessionId,
+    },
+    /// Changes what survives a session's processes ending (US-3.2, protocol 3). Answered by `done`; turning
+    /// `saveScrollback` off deletes what is on disk at once.
+    SetSessionOptions {
+        /// Correlates the reply.
+        request_id: u32,
+        /// The session.
+        session: SessionId,
+        /// The new options.
+        options: SessionOptions,
+    },
+    /// Clears a session's scrollback, for every client and on disk (US-3.2.3, protocol 3). Answered by `done`.
+    ClearScrollback {
+        /// Correlates the reply.
+        request_id: u32,
+        /// The session.
+        session: SessionId,
+    },
+    /// Restarts the daemon's core; every session keeps running (US-3.3.2, protocol 3). Answered by `done`, then the
+    /// connection ends and the app reconnects.
+    RestartDaemon {
+        /// Correlates the reply.
+        request_id: u32,
+    },
+    /// Stops every session and deletes their data, then stops the daemon (US-3.3.3, protocol 3). Answered by `done`
+    /// once every session has ended; the app then removes the binaries.
+    RemoveDaemon {
+        /// Correlates the reply.
+        request_id: u32,
+        /// Milliseconds between the stop signals; the daemon default when absent.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        grace_ms: Option<u32>,
     },
     /// Resizes a session's PTY (US-1.11.3).
     Resize {

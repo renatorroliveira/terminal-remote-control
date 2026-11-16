@@ -138,6 +138,7 @@ impl Pty {
                 ExitStatus {
                     code: None,
                     signal: None,
+                    ended: None,
                 },
                 exit_status,
             );
@@ -285,10 +286,12 @@ fn exit_status(status: std::process::ExitStatus) -> ExitStatus {
         Some(signal) => ExitStatus {
             code: None,
             signal: Some(signal_name(signal)),
+            ended: None,
         },
         None => ExitStatus {
             code: status.code(),
             signal: None,
+            ended: None,
         },
     }
 }
@@ -492,7 +495,8 @@ mod tests {
             status,
             ExitStatus {
                 code: Some(3),
-                signal: None
+                signal: None,
+                ended: None,
             }
         );
     }

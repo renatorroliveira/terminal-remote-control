@@ -1,0 +1,6 @@
+{
+  "type": "stop",
+  "requestId": 8,
+  "session": "s-1",
+  "graceMs": 3000
+}

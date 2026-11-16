@@ -22,6 +22,7 @@ fn create_spec(name: Option<&str>) -> CreateSessionSpec {
         env: BTreeMap::from([("PS1".into(), Some("$ ".into()))]),
         size: SIZE,
         scrollback_lines: None,
+        options: None,
     }
 }
 
@@ -96,7 +97,7 @@ async fn greets_with_the_version_and_the_binary_checksum() {
     let mut client = AppClient::connect(&installed.core_socket()).await;
     client.send(&ClientMessage::Hello {
         min_proto: 1,
-        max_proto: 3,
+        max_proto: 4,
         app_version: "0".into(),
         caps: vec![],
     });
@@ -111,7 +112,7 @@ async fn greets_with_the_version_and_the_binary_checksum() {
     else {
         unreachable!()
     };
-    assert_eq!(proto, 2);
+    assert_eq!(proto, 3);
     assert_eq!(daemon_version, env!("CARGO_PKG_VERSION"));
     assert_eq!(binary_sha256, trcd::digest::sha256_file(&installed.binary).unwrap());
     let details = details.expect("the welcome names the host's details");
@@ -133,8 +134,8 @@ async fn refuses_an_app_without_a_common_protocol_version() {
     let core = installed.start_core();
     let mut client = AppClient::connect(&installed.core_socket()).await;
     client.send(&ClientMessage::Hello {
-        min_proto: 3,
-        max_proto: 4,
+        min_proto: 4,
+        max_proto: 5,
         app_version: "9".into(),
         caps: vec![],
     });
@@ -143,7 +144,7 @@ async fn refuses_an_app_without_a_common_protocol_version() {
         refusal,
         ServerMessage::Incompatible {
             min_proto: 1,
-            max_proto: 2
+            max_proto: 3
         }
     );
     client.until_closed().await;

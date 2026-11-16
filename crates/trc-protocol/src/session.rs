@@ -53,6 +53,74 @@ pub struct ExitStatus {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub signal: Option<String>,
+    /// Why the processes ended with no exit status of their own, for a session not restored (P-41, protocol 3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub ended: Option<EndCause>,
+}
+
+/// What ended a session's processes from outside the session (P-41).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum EndCause {
+    /// The host restarted.
+    HostRestart,
+    /// They ended while the host kept running: a logout that ends user processes, or a killed holder.
+    ProcessesEnded,
+    /// A cause this version does not know.
+    #[serde(other)]
+    Unspecified,
+}
+
+/// What survives a session's processes ending without the user stopping them (US-3.2, protocol 3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SessionOptions {
+    /// Whether the session comes back in a new shell (US-3.2.1).
+    pub restore: bool,
+    /// Whether its scrollback and screen are saved to disk (US-3.2.2, SEC-05).
+    pub save_scrollback: bool,
+}
+
+impl Default for SessionOptions {
+    /// Both on, as US-3.2 has them by default.
+    fn default() -> Self {
+        Self {
+            restore: true,
+            save_scrollback: true,
+        }
+    }
+}
+
+/// When and why a session came back in a new shell (US-3.1.6, protocol 3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct RestoreInfo {
+    /// When the session was restored, in milliseconds since the Unix epoch.
+    pub at: u64,
+    /// Whether the host had restarted, rather than only the session's processes ending.
+    pub after_host_restart: bool,
+}
+
+/// Why the daemon cannot save a session's scrollback (US-3.1.2, protocol 3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum PersistenceFailure {
+    /// The disk is full.
+    DiskFull,
+    /// The user's disk quota is used up.
+    Quota,
+    /// The file system is read-only.
+    ReadOnly,
+    /// Another error, which the daemon's log names.
+    Other,
+    /// A failure this version does not know.
+    #[serde(other)]
+    Unspecified,
 }
 
 /// Everything the app shows about a session.
@@ -102,4 +170,16 @@ pub struct SessionInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub failure: Option<String>,
+    /// What survives the session's processes ending; absent from daemons before protocol 3.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub options: Option<SessionOptions>,
+    /// When the session last came back in a new shell (US-3.1.6).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub restored: Option<RestoreInfo>,
+    /// Why its scrollback is not being saved, while it is not (US-3.1.2).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub persistence_failure: Option<PersistenceFailure>,
 }

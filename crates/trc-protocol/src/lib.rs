@@ -11,5 +11,8 @@ pub use messages::{
     ServerMessage, ServiceInfo, ServiceManager, SessionChange,
 };
 pub use profile::{Integration, ProfileOrigin, ShellKind, ShellProfile};
-pub use session::{ExitStatus, SessionId, SessionInfo, SessionState, TerminalSize};
+pub use session::{
+    EndCause, ExitStatus, PersistenceFailure, RestoreInfo, SessionId, SessionInfo, SessionOptions, SessionState,
+    TerminalSize,
+};
 pub use version::{MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, negotiate};

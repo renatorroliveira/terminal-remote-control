@@ -28,6 +28,7 @@ async fn create(client: &mut AppClient) -> SessionInfo {
             env: BTreeMap::from([("PS1".into(), Some("$ ".into()))]),
             size: SIZE,
             scrollback_lines: None,
+            options: None,
         },
     });
     let ServerMessage::Created { session, .. } = client

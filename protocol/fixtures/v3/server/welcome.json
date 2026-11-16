@@ -1,0 +1,17 @@
+{
+  "type": "welcome",
+  "proto": 3,
+  "daemonVersion": "0.1.0",
+  "binarySha256": "abababababababababababababababababababababababababababababababab",
+  "caps": [],
+  "service": {
+    "manager": "systemd",
+    "sessionsEndAtLogout": false
+  },
+  "details": {
+    "home": "/home/tester",
+    "installRoot": "/home/tester/.trc",
+    "logDir": "/home/tester/.trc/logs",
+    "startedAt": 1794400000000
+  }
+}

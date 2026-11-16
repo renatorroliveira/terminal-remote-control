@@ -1,0 +1,32 @@
+{
+  "type": "sessionEvent",
+  "change": {
+    "kind": "updated",
+    "session": {
+      "id": "s-1",
+      "customName": "build",
+      "title": "make -j8",
+      "order": 0,
+      "state": "running",
+      "profile": {
+        "id": "login",
+        "name": "bash",
+        "origin": "login",
+        "kind": "bash",
+        "path": "/bin/bash",
+        "args": [],
+        "login": true,
+        "env": {},
+        "integration": "auto"
+      },
+      "cwd": "/home/tester/src",
+      "size": {
+        "cols": 120,
+        "rows": 30
+      },
+      "pid": 4242,
+      "startedAt": 1794400000000,
+      "lastOutputAt": 1794400005000
+    }
+  }
+}
