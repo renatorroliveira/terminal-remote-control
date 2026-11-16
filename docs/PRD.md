@@ -603,7 +603,7 @@ applies from the epic in the last column onward.
 
 | ID     | Area                   | Requirement                                                                                                                                 | Initial target                                        | Applies from |
 | ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------ |
-| NFR-01 | Input latency (local)  | Latency the app and daemon add between a keystroke and its echo, excluding the shell.                                                       | p95 ≤ 10 ms                                           | E4           |
+| NFR-01 | Input latency (local)  | Latency the app and daemon add between a keystroke and its echo, excluding the shell.                                                       | p99 ≤ one 60 Hz frame (16.7 ms)                       | E4           |
 | NFR-02 | Input latency (remote) | Same, for remote sessions.                                                                                                                  | p99 ≤ SSH round-trip time + one 60 Hz frame (16.7 ms) | E1           |
 | NFR-03 | Throughput             | Under sustained output (for example `yes`, or `cat` of a 1 GB file), the UI stays interactive and Ctrl+C reaches the process quickly.       | Interrupt delivered p95 ≤ 100 ms                      | E1           |
 | NFR-04 | AT responsiveness      | With a screen reader on, speech of new output starts promptly, and flood control keeps the screen reader responsive under sustained output. | Speech starts ≤ 500 ms after output, when idle        | E1           |
@@ -621,6 +621,8 @@ applies from the epic in the last column onward.
 `docs/verification/E1-nfr.md`; E2's on 2026-11-16, see
 `docs/verification/E2-nfr.md`):
 
+- NFR-01: **changed** (owner, 2026-11-16) from p95 ≤ 10 ms to p99 within one
+  60 Hz frame, for the reasons NFR-02's target changed in E2.
 - NFR-02: on a link with a sub-millisecond round trip, the app adds about
   10.7 ms at p95, 0.7 ms over the target, from message delivery between
   Electron's renderer and the connection host's utility process. E1 guards it
