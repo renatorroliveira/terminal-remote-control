@@ -12,7 +12,7 @@ export interface BackgroundWindowOptions extends Rectangle {
 }
 
 /**
- * How a test build opens a window while `TRC_TEST_BACKGROUND` is set (P-14, D-27): fully transparent, in the bottom-right
+ * How a test build opens a window while the test seam asks for the background (P-14, D-27): fully transparent, in the bottom-right
  * corner of `workArea`, so a test run never shows a window over what the developer works on. A window larger than the
  * work area keeps to its top-left corner.
  */

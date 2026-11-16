@@ -370,3 +370,20 @@ describe('SessionLink: attaches in flight together', () => {
         expect([...transport.listeners.keys()]).toEqual([6]);
     });
 });
+
+describe('SessionLink: a buffer that keeps coming back incomplete (D-45)', () => {
+    useFakeTimers();
+
+    it('stops refreshing by itself after 2 refreshes that came back as a screen alone', async () => {
+        const transport = new FakeTransport();
+        const link = new SessionLink(transport, 'h1', () => undefined);
+        await link.attach(session.id);
+        for (let round = 0; round < 4; round += 1) {
+            transport.push({ type: 'resync', session: session.id, stream: 7, kind: 'screen' });
+            transport.push(synced(10 + round));
+            vi.advanceTimersByTime(1_100);
+        }
+        expect(transport.requests.filter((request) => request.type === 'refresh')).toHaveLength(2);
+        expect(link.hasGap).toBe(true);
+    });
+});

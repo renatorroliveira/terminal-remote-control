@@ -911,6 +911,19 @@ describe('TerminalView: another client took the session (P-27)', () => {
         beforeInput(view.surface, 'insertText', 'ls');
         expect(inputs).toEqual(['ls']);
     });
+
+    it('keeps saying another client has the session across a reconnect', async () => {
+        const { view, host, inputs } = mount();
+        await written(view, '$ ');
+        view.displace();
+        view.setConnection('reconnecting');
+        view.setConnection('connected');
+        const refused = host.querySelector<HTMLElement>('[data-input-refused]');
+        expect([refused?.hidden, refused?.textContent]).toEqual([false, 'Opened on another client — input not sent']);
+        view.surface.focus();
+        beforeInput(view.surface, 'insertText', 'ls');
+        expect(inputs).toEqual([]);
+    });
 });
 
 describe('TerminalView: a shared session’s size (US-2.6.2, P-31)', () => {

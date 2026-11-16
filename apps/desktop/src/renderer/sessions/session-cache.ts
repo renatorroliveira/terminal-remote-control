@@ -70,9 +70,8 @@ export function watchSessionCache(
     let stopped = false;
     const failed = (): void => {
         last = undefined;
-        if (!stopped && retries < RETRIES) {
+        if (!stopped && timer === undefined && retries < RETRIES) {
             retries += 1;
-            clearTimeout(timer);
             timer = setTimeout(save, RETRY_DELAY_MS);
         }
     };
