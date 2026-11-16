@@ -3,7 +3,7 @@
 use trc_protocol::frame::{Frame, FrameKind};
 use trc_protocol::{
     AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ServerMessage,
-    SessionChange, SessionId, TerminalSize, negotiate,
+    SessionChange, SessionId, SessionOptions, TerminalSize, negotiate,
 };
 
 use super::size::size_problem;
@@ -11,7 +11,11 @@ use super::{ClientId, Core};
 use crate::core::profiles::detect_profiles;
 use crate::core::registry::SessionRecord;
 use crate::holder::protocol::{HolderCommand, HolderSpec};
+use crate::private_dir::ensure_private_dir;
 use crate::session_id::new_session_id;
+
+/// The holder protocol that saves sessions to disk.
+const SAVING_HOLDER_PROTOCOL: u32 = 3;
 
 /// The scrollback a session gets when the app does not choose one (NFR-10).
 const DEFAULT_SCROLLBACK_LINES: u32 = 10_000;
@@ -143,10 +147,15 @@ impl Core {
             | ClientMessage::Refresh { request_id, .. } => {
                 error(Some(request_id), ErrorCode::Internal, "routed elsewhere")
             }
-            ClientMessage::SetSessionOptions { request_id, .. }
-            | ClientMessage::ClearScrollback { request_id, .. }
-            | ClientMessage::RestartDaemon { request_id }
-            | ClientMessage::RemoveDaemon { request_id, .. } => {
+            ClientMessage::SetSessionOptions {
+                request_id,
+                session,
+                options,
+            } => self.set_options(request_id, &session, options),
+            ClientMessage::ClearScrollback { request_id, session } => {
+                self.saving_command(request_id, &session, &HolderCommand::ClearScrollback)
+            }
+            ClientMessage::RestartDaemon { request_id } | ClientMessage::RemoveDaemon { request_id, .. } => {
                 error(Some(request_id), ErrorCode::Unsupported, "not supported by this daemon")
             }
         }
@@ -210,6 +219,8 @@ impl Core {
                 .min(MAX_SCROLLBACK_LINES),
             home: self.context.account.home.clone(),
             user: self.context.account.user.clone(),
+            options: spec.options.unwrap_or_default(),
+            data_dir: self.session_data_dir(&id),
         };
         let info = self
             .registry
@@ -287,11 +298,57 @@ impl Core {
         self.command_session(request_id, session, &HolderCommand::Resize { size })
     }
 
-    /// Removes a closed session and tells every app.
+    /// Takes a session's new options and tells every app; its holder deletes what is on disk when saving stops.
+    fn set_options(&mut self, request_id: u32, session: &SessionId, options: SessionOptions) -> ServerMessage {
+        let reply = self.saving_command(request_id, session, &HolderCommand::SetOptions { options });
+        let Some(record) = self
+            .registry
+            .get_mut(session)
+            .filter(|_| matches!(reply, ServerMessage::Done { .. }))
+        else {
+            return reply;
+        };
+        record.spec.options = options;
+        record.info.options = Some(options);
+        let info = record.info.clone();
+        self.broadcast(&ServerMessage::SessionEvent {
+            change: SessionChange::Updated { session: info },
+        });
+        reply
+    }
+
+    /// Sends a command only holders from protocol 3 on understand; an older holder saves nothing to disk.
+    fn saving_command(&mut self, request_id: u32, session: &SessionId, command: &HolderCommand) -> ServerMessage {
+        match self.holders.get(session).map(|holder| holder.proto) {
+            None => unknown(request_id),
+            Some(proto) if proto < SAVING_HOLDER_PROTOCOL => error(
+                Some(request_id),
+                ErrorCode::Unsupported,
+                "this session was started by an older daemon",
+            ),
+            Some(_) => self.command_session(request_id, session, command),
+        }
+    }
+
+    /// The folder a new session saves its scrollback in, created private (SEC-05.1); none when it cannot be.
+    fn session_data_dir(&self, session: &SessionId) -> Option<String> {
+        let dir = self.context.sessions_dir.join(&session.0);
+        let uid = rustix::process::geteuid().as_raw();
+        match ensure_private_dir(&dir, uid) {
+            Ok(()) => Some(dir.to_string_lossy().into_owned()),
+            Err(error) => {
+                tracing::warn!(session = %session.0, %error, "the session's data folder could not be created");
+                None
+            }
+        }
+    }
+
+    /// Removes a closed session, with its saved data (US-3.2.3), and tells every app.
     pub(super) fn forget(&mut self, session: &SessionId) {
         self.drop_attachments(session);
         if self.registry.remove(session).is_some() {
             let _ = std::fs::remove_file(self.context.run.holder_socket(session));
+            let _ = std::fs::remove_dir_all(self.context.sessions_dir.join(&session.0));
             tracing::info!(session = %session.0, "session closed");
             self.broadcast(&ServerMessage::SessionEvent {
                 change: SessionChange::Closed {

@@ -5,12 +5,14 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use trc_protocol::{ExitStatus, Replay, ResyncKind, SessionState, ShellProfile, TerminalSize};
+use trc_protocol::{
+    ExitStatus, PersistenceFailure, Replay, ResyncKind, SessionOptions, SessionState, ShellProfile, TerminalSize,
+};
 
 /// The stream of holder protocol 1's one attachment, and of an attachment a protocol 1 core makes.
 pub const SESSION_STREAM: u32 = 1;
-/// The holder protocol this build speaks; it also serves protocol 1 cores.
-pub const HOLDER_PROTOCOL: u32 = 2;
+/// The holder protocol this build speaks; it also serves protocol 1 and 2 cores. Protocol 3 adds saving to disk.
+pub const HOLDER_PROTOCOL: u32 = 3;
 
 /// What a holder needs to start its session.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,6 +34,12 @@ pub struct HolderSpec {
     pub home: String,
     /// The account's user name.
     pub user: String,
+    /// What survives the session's processes ending (US-3.2, holder protocol 3).
+    #[serde(default)]
+    pub options: SessionOptions,
+    /// The session's data folder, where it saves its scrollback (TECH_STACK §5.5); none from older cores.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_dir: Option<String>,
 }
 
 /// A request from the core.
@@ -89,6 +97,13 @@ pub enum HolderCommand {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         name: Option<String>,
     },
+    /// Changes what survives the processes ending; turning saving off deletes what is on disk (holder protocol 3).
+    SetOptions {
+        /// The new options.
+        options: SessionOptions,
+    },
+    /// Clears the scrollback for every client and on disk (US-3.2.3, holder protocol 3).
+    ClearScrollback,
 }
 
 /// What the holder reports about its session.
@@ -120,6 +135,9 @@ pub struct HolderStatus {
     pub cwd: Option<String>,
     /// The PTY size.
     pub size: TerminalSize,
+    /// Why the scrollback is not being saved, while it is not (holder protocol 3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub persistence_failure: Option<PersistenceFailure>,
 }
 
 /// A message from the holder.

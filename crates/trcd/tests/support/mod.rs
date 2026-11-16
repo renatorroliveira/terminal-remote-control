@@ -249,6 +249,20 @@ impl AppClient {
         }
     }
 
+    /// Reads frames for `duration`, so output keeps arriving while a test waits.
+    pub async fn pause(&mut self, duration: std::time::Duration) {
+        let until = tokio::time::Instant::now() + duration;
+        while let Ok(next) = tokio::time::timeout_at(until, self.reader.next()).await {
+            match next {
+                Ok(Some(frame)) => self.absorb(frame),
+                _ => {
+                    self.closed = true;
+                    return;
+                }
+            }
+        }
+    }
+
     /// Reads frames until the core closes the connection.
     pub async fn until_closed(&mut self) {
         while !self.closed {

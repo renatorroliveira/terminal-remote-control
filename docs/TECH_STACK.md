@@ -2,7 +2,7 @@
 
 | Field        | Value                                                               |
 | ------------ | ------------------------------------------------------------------- |
-| Status       | Decisions accepted (v1.7). S1–S6, S11–S13 done (§11); S7–S10 later. |
+| Status       | Decisions accepted (v1.7). S1–S7, S11–S13 done (§11); S8–S10 later. |
 | Owner        | Renato Oliveira                                                     |
 | Last updated | 2026-11-16                                                          |
 | Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.    |
@@ -709,30 +709,33 @@ descriptors alive, but shells inside the unit's control group still die.
 
 ### 5.5 Persistence (E3; SEC-05, NFR-08)
 
-One directory per session (mode 0700, files 0600):
+One directory per session, `<root>/sessions/<id>/` (mode 0700, files 0600):
 
 - **`meta.json`**, written by the core, holds the shell profile snapshot,
   args, environment, working directory, size, name, order, the US-3.2
   options, the state and the boot ID. Each write goes to a temporary file, is
   fsynced, then renamed into place.
-- **`history.log`**, written by the holder, holds append-only
-  `[len][crc32][VT-formatted lines]` records for lines that have left the
-  screen, unwrapped so a restore at another width reflows them.
-    - `fdatasync` runs every 2 s while there are new records, so on-disk lag
-      stays well inside NFR-08's 5 s.
-    - Recovery truncates the log at the first bad CRC.
-    - Compaction runs when the log grows past twice the scrollback limit.
-- **`screen.vt`**, written by the holder, holds the primary screen. It is
-  rewritten (temp file, fsync, rename) at most every 2 s while that screen
-  changes.
-- A writer thread does the file work, so the PTY is never read late for the
-  disk (D-04); a failed write is retried and reported, and the session keeps
-  running.
+- **`scrollback.log`**, written by the holder, holds append-only records
+  `[u32 length][first 4 bytes of the payload's SHA-256][payload]` ([S7](spikes/S7.md)).
+  Each payload holds the history rows that left the primary screen since the
+  record before and, when it changed, the primary screen, so the records up
+  to any point are consistent.
+    - Records are appended and `fdatasync`ed every 2 s while there is new
+      output, so on-disk lag stays inside NFR-08's 5 s.
+    - Reading keeps the records before the first one that is cut short or
+      fails its check.
+    - A whole new file replaces it (written beside it, synced, renamed) when a
+      session starts or is restored, when what was appended outgrows a rewrite
+      and the scrollback limit, after a resize, after Clear scrollback, and
+      after a failed write.
+- A writer thread does the file work, holding at most 4 MiB, so the PTY is
+  never read late for the disk (D-04); a failed write is retried and
+  reported, and the session keeps running.
 
 Rules:
 
-- Sessions with "Save scrollback to disk" off (US-3.2) write neither
-  `history.log` nor `screen.vt`, and turning it off deletes both.
+- Sessions with "Save scrollback to disk" off (US-3.2) write no
+  `scrollback.log`, and turning it off deletes it.
 - Closing a session deletes its directory.
 - Restore (D-48) feeds the history and screen into a new holder's emulator,
   adds the marker line, then starts the shell. Commands are never re-run.
@@ -1426,7 +1429,7 @@ Chromium, and Cargo.
 ## 11. Spikes
 
 Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spikes/S4.md), [S5](spikes/S5.md),
-[S6](verification/E2-nfr.md#soak-nfr-11-s6), [S11](spikes/S11.md), [S12](spikes/S12.md).
+[S6](verification/E2-nfr.md#soak-nfr-11-s6), [S7](spikes/S7.md), [S11](spikes/S11.md), [S12](spikes/S12.md).
 
 | ID  | Epic | Spike                                                                                                                                                                               | Retires                      |
 | --- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |

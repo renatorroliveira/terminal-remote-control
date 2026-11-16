@@ -51,6 +51,8 @@ pub struct CoreContext {
     pub scope: Option<ScopeLauncher>,
     /// Where the daemon keeps its files and since when it runs, reported in `welcome` (US-3.3.1).
     pub details: DaemonDetails,
+    /// The folder of every session's data folder, `<root>/sessions` (TECH_STACK §5.5).
+    pub sessions_dir: PathBuf,
 }
 
 /// The core's state and event loop.
