@@ -10,11 +10,12 @@
 
 An accessible desktop terminal manager whose sessions outlive the app, the network and the client computer.
 
-> **Status: alpha.** Version 0.2 delivers Epic 1: a macOS app that adds Linux hosts over SSH, installs its daemon on
-> them, and runs and manages terminal sessions there, with VoiceOver, Zoom, Voice Control and keyboard support. 0.x
-> releases are experimental, ad-hoc-signed builds; 1.0.0 is the first official release. The
-> [E1 implementation plan](docs/plans/epic-01-implementation-plan.md) records how E1 was built, and the
-> [E2 implementation plan](docs/plans/epic-02-implementation-plan.md) tracks E2, in progress for v0.3.0.
+> **Status: alpha.** Version 0.3 delivers Epics 1 and 2: a macOS app that adds Linux hosts over SSH, installs its
+> daemon on them, and runs and manages terminal sessions there, with VoiceOver, Zoom, Voice Control and keyboard
+> support. Sessions outlive the app, its crashes, network loss and daemon upgrades: the app reconnects by itself,
+> restores every host at launch, and several Macs can share a session. 0.x releases are experimental, ad-hoc-signed
+> builds; 1.0.0 is the first official release. The [E1](docs/plans/epic-01-implementation-plan.md) and
+> [E2 implementation plans](docs/plans/epic-02-implementation-plan.md) record how each epic was built.
 
 ## Why
 

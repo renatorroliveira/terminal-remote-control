@@ -120,7 +120,7 @@ export async function openTerminal(window: Page, destination: string): Promise<L
 }
 
 /** The text of every row the terminal's text surface exposes. */
-export function rowTexts(terminal: Locator): Promise<string[]> {
+export function rowTexts(terminal: Locator): Promise<readonly string[]> {
     return terminal.locator('[data-row]').allTextContents();
 }
 
@@ -153,6 +153,6 @@ export function recordSpeech(window: Page): Promise<void> {
 }
 
 /** What the page spoke since {@link recordSpeech}. */
-export function spokenTexts(window: Page): Promise<string[]> {
+export function spokenTexts(window: Page): Promise<readonly string[]> {
     return window.evaluate(() => [...((globalThis as SpeechWindow).__trcSpoken ?? [])]);
 }

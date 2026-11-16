@@ -2,7 +2,7 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.13                     |
+| Status       | Draft v0.14                     |
 | Owner        | Renato Oliveira                 |
 | Last updated | 2026-11-16                      |
 | Scope        | P0 in seven epics, then GA (E8) |
@@ -636,16 +636,17 @@ applies from the epic in the last column onward.
   session's snapshot, so a session at the 100,000-line scrollback maximum
   passes 10 MB for a moment. Steady-state overhead meets the target. E2, which
   reworks attach and resync, streams the snapshot.
-  **Partly resolved in E2** (S12, ST-25): snapshots are formatted 500 rows at
+  **Partly resolved in E2** (S12, ST-25): snapshots are formatted 256 rows at
   a time within the client's credit, so attaching a session on its primary
-  screen adds about 1.4 MiB at the 100,000-line maximum.
+  screen adds under 2 MiB at the 100,000-line maximum.
   **E2 exception** (accepted by the owner on 2026-11-16): while a full-screen
   program runs, a full snapshot streams from a copy of the primary screen and
   its scrollback, as libghostty-vt formats only the active screen. The copy
   lives only while that snapshot streams, when another client attaches from
-  the start or review mode or find fills a gap: about 96 MiB at the maximum
-  and 10 MiB at the default 10,000 lines. E3, which keeps scrollback on disk
-  (NFR-08), streams that history without the copy.
+  the start or review mode or find fills a gap: about 95 MiB at the maximum
+  and 10 MiB at the default 10,000 lines, for each client attaching that way.
+  E3, which keeps scrollback on disk (NFR-08), streams that history without
+  the copy.
 
 ## 9. Epics
 

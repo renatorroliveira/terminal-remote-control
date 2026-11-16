@@ -81,11 +81,15 @@ async function printLines(
 }
 
 /**
- * How much a full holder grows at its peak while a second client attaches it from the start, in MiB: the snapshot
- * streams within the client's credit (S12), and while a full-screen program runs it streams from a copy of the
- * session's primary screen and scrollback.
+ * How much a full holder grows at its peak while a second client attaches it from the start, and its size before, in
+ * MiB: the snapshot streams within the client's credit (S12), and while a full-screen program runs it streams from a
+ * copy of the session's primary screen and scrollback (P-37).
  */
-async function attachGrowth(scrollbackLines: number | undefined, lines: number, fullScreen: boolean): Promise<number> {
+async function attachGrowth(
+    scrollbackLines: number | undefined,
+    lines: number,
+    fullScreen: boolean,
+): Promise<{ readonly growth: number; readonly before: number }> {
     const host = await connectLive('trc-ubuntu');
     const { session, holder } = await readySession(host, scrollbackLines);
     await printSeq(session, lines);
@@ -98,7 +102,7 @@ async function attachGrowth(scrollbackLines: number | undefined, lines: number, 
     const second = await connectLive('trc-ubuntu', { root: host.root });
     const attached = await second.attach(session.id);
     await waitFor(() => second.offsetOf(attached.stream) !== undefined, 120_000);
-    return peakMiB(host, holder) - before;
+    return { growth: peakMiB(host, holder) - before, before };
 }
 
 describe.skipIf(missing !== undefined)('daemon footprint (NFR-09)', () => {
@@ -168,7 +172,7 @@ describe.skipIf(missing !== undefined)('scrollback memory (NFR-10)', () => {
 
 describe.skipIf(missing !== undefined)('a second client attaching a full session (NFR-09, S12)', () => {
     it('streams the snapshot of a full holder at the 100,000-line maximum within 10 MB of growth', async () => {
-        const growth = await attachGrowth(100_000, 150_000, false);
+        const { growth } = await attachGrowth(100_000, 150_000, false);
         recordGrowth('the 100,000-line maximum', growth);
         expect(growth).toBeLessThanOrEqual(10);
     }, 600_000);
@@ -177,9 +181,11 @@ describe.skipIf(missing !== undefined)('a second client attaching a full session
         ['the 100,000-line maximum, a full-screen program running', 100_000, 150_000],
         ['the default 10,000 lines, a full-screen program running', undefined, 20_000],
     ] as const)(
-        'measures the copy a snapshot streams from with %s, an E2 exception to NFR-09',
+        'measures the copy a snapshot streams from with %s, an E2 exception to NFR-09 bounded by one copy',
         async (label, scrollbackLines, lines) => {
-            recordGrowth(label, await attachGrowth(scrollbackLines, lines, true));
+            const { growth, before } = await attachGrowth(scrollbackLines, lines, true);
+            recordGrowth(label, growth);
+            expect(growth).toBeLessThanOrEqual(before);
         },
         600_000,
     );

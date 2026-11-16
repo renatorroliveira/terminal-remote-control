@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-E1 shipped as v0.2.0 (M1 was v0.1.0); 0.x releases are alpha builds, and 1.0.0
-is the first official release (D-43). E2 is in progress for v0.3.0: see
-`docs/plans/epic-02-implementation-plan.md` for its story status (E1's is
+E1 shipped as v0.2.0 (M1 was v0.1.0) and E2 as v0.3.0; 0.x releases are alpha
+builds, and 1.0.0 is the first official release (D-43). E3 is next.
+`docs/plans/epic-02-implementation-plan.md` records E2's stories (E1's is
 `docs/plans/epic-01-implementation-plan.md`). Usage is in
 `USER_GUIDE.md`. The monorepo holds the Electron app (`apps/desktop`), the
 protocol package (`packages/protocol`), the Rust crates (`crates/*`) and
@@ -38,7 +38,7 @@ tooling (`tools/*`).
   `TRC_SOAK_APP_CYCLES` (50) and `TRC_SOAK_LOGOUT_CYCLES` (1,000) set the
   cycles, and `TRC_SOAK_HOST` the host of the ssh-level app quit and crash and of
   the flap scenarios. It runs for hours (the logout scenario alone takes about
-  3.6); each scenario file can run alone with
+  3.6 hours); each scenario file can run alone with
   `vitest run --project soak <file>`, and its sessions are reached through
   `docker exec` as well as ssh (`DOCKER_CONTEXT`, `colima-trc` by default).
 - End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax` (needs the

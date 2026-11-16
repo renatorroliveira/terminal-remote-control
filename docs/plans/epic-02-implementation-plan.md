@@ -2,7 +2,7 @@
 
 | Field  | Value                                                                                     |
 | ------ | ----------------------------------------------------------------------------------------- |
-| Status | v1: owner decisions taken on 2026-11-13; the session executes it under P-20               |
+| Status | Done: E2 shipped as v0.3.0 on 2026-11-16, after six review rounds (§8)                    |
 | Owner  | Renato Oliveira                                                                           |
 | Scope  | PRD §9.2 (US-2.1 to US-2.6) plus every global requirement for what E2 delivers            |
 | Inputs | [PRD.md](../PRD.md) v0.13, [TECH_STACK.md](../TECH_STACK.md) v1.6, the E1 plan and v0.2.0 |
@@ -41,7 +41,7 @@ commit, continue) and its autonomy rule (P-20) apply unchanged.
 | P-34 | **Owner, 2026-11-14, review round 1.** (a) After a reconnect only the open terminal sends its size; the others take theirs back on focus or input, as P-31 says (F6). (b) When another client opens a session whose E1 holder serves one client at a time, the core tells the client it replaced with `detached { reason: attachedElsewhere }` (protocol 2); its terminal says "Opened on another client — input not sent", and opening the session again takes it back (M4). (c) Install failures retry only when they may pass, at most 3 times in a row (M2). (d) A holder whose systemd scope cannot start still starts directly, and the core's unit runs with `KillMode=process`, so stopping or restarting the core never ends it (M3). (e) **Owner, 2026-11-15, review round 2.** A network change or a wake retries a waiting host at once, every time, as US-2.2.2 says; the 5 s spacing round 1 added is dropped (audit R2 F2). |
 | P-35 | **Owner, 2026-11-15, ST-36.** NFR-02's UI test compares the app's p95 echo with the link's own p95 round trip, sampled over another connection just before the typing, instead of its median: the 100 ms test link jitters by about 5 ms, which the median baseline counted as the app's. The connection-host and scale tests keep the median, a stricter check they meet.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | P-36 | **Owner, 2026-11-16, review round 5.** NFR-02's target becomes p99 within one 60 Hz frame (16.7 ms) of the SSH round trip, in place of p95 within 10 ms: an echo one frame late goes unnoticed, and a p99 also bounds the slow keystrokes. Every NFR-02 and NFR-05 echo check takes at least 200 samples; P-35's baseline stays.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| P-37 | **Owner, 2026-11-16, review round 5.** While a full-screen program runs, a full snapshot streams from a copy of the primary screen and its scrollback (S12), about 96 MiB at the 100,000-line maximum: an E2 exception to NFR-09 in the PRD, which E3 resolves by streaming that history from its on-disk scrollback. On the primary screen attaching adds about 1.4 MiB, and the NFR test asserts it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| P-37 | **Owner, 2026-11-16, review round 5.** While a full-screen program runs, a full snapshot streams from a copy of the primary screen and its scrollback (S12), about 95 MiB at the 100,000-line maximum: an E2 exception to NFR-09 in the PRD, which E3 resolves by streaming that history from its on-disk scrollback. On the primary screen attaching adds under 2 MiB; the NFR test asserts that it stays within 10 MiB, and that the copy stays within one copy of the holder.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ## 3. Design
 
@@ -231,7 +231,8 @@ the host has none, from any of the ways to create one; Cancel creates nothing. A
   UI test's local guard back at the PRD's 10 ms.
 
 As built (ST-35, 2026-11-14): S13 found the spread in Chromium's `DeferRendererTasksAfterInput`, not in message
-delivery; D-47 turns it off, and the UI test checks NFR-02 at 10 ms on both hosts ([S13](../spikes/S13.md)).
+delivery; D-47 turns it off, and the UI test checks NFR-02 at 10 ms on both hosts ([S13](../spikes/S13.md)). P-36
+later made the target p99 within one 60 Hz frame of the round trip.
 
 **ST-36 Soak and E2 verification** (NFR-11, NFR-06, NFR-07, NFR-09, NFR-12, S6)
 
@@ -249,6 +250,10 @@ NFR-02's UI test now compares with the link's own p95 round trip (P-35).
 
 - The full suites; `docs/verification/E2-manual-at.md` and `E2-security.md`; the P-33 reviews; final pass over
   CLAUDE.md, README, USER_GUIDE, TECH_STACK and PRD; release `v0.3.0`.
+
+As built (ST-37, 2026-11-16): six review rounds, the last with no critical or high finding; the dry run's dmg is the
+release candidate for the owner's manual AT passes (`docs/verification/E2-manual-at.md`), and the release workflow
+cuts `v0.3.0` once they pass.
 
 ## 5. Traceability
 
@@ -269,28 +274,29 @@ NFR-02's UI test now compares with the link's own p95 round trip (P-35).
 
 ## 7. Status
 
-| Story | Status  | Commit |
-| ----- | ------- | ------ |
-| ST-22 | Done    | —      |
-| ST-23 | Done    | —      |
-| ST-24 | Done    | —      |
-| ST-25 | Done    | —      |
-| ST-26 | Done    | —      |
-| ST-27 | Done    | —      |
-| ST-28 | Done    | —      |
-| ST-29 | Done    | —      |
-| ST-30 | Done    | —      |
-| ST-31 | Done    | —      |
-| ST-32 | Done    | —      |
-| ST-33 | Done    | —      |
-| ST-34 | Done    | —      |
-| ST-35 | Done    | —      |
-| ST-36 | Done    | —      |
-| ST-37 | Pending | —      |
+| Story | Status | Commit |
+| ----- | ------ | ------ |
+| ST-22 | Done   | —      |
+| ST-23 | Done   | —      |
+| ST-24 | Done   | —      |
+| ST-25 | Done   | —      |
+| ST-26 | Done   | —      |
+| ST-27 | Done   | —      |
+| ST-28 | Done   | —      |
+| ST-29 | Done   | —      |
+| ST-30 | Done   | —      |
+| ST-31 | Done   | —      |
+| ST-32 | Done   | —      |
+| ST-33 | Done   | —      |
+| ST-34 | Done   | —      |
+| ST-35 | Done   | —      |
+| ST-36 | Done   | —      |
+| ST-37 | Done   | —      |
 
 ## 8. Reviews (P-33)
 
-Five rounds of `code-reviewer` and `technical-auditor` over every commit after v0.2.0. Every finding was fixed
+Six rounds of `code-reviewer` and `technical-auditor` over every commit after v0.2.0; the sixth found no critical or
+high finding, which closed the gate. Every finding was fixed
 test-first, or is listed below with why it stays. Findings that changed a behavior or an owner decision went to the
 owner first; their answers are P-34, P-36 and P-37.
 
@@ -300,7 +306,8 @@ owner first; their answers are P-34, P-36 and P-37.
 | 2     | 0 / 0 / 3 / 8         | 0 / 1 / 3 / 4   | `2690d02`; owner decision P-34(e)                       |
 | 3     | 0 / 0 / 5 / 8         | 0 / 0 / 7 / 5   | `4946236`, and the soak harness in ST-36                |
 | 4     | 0 / 0 / 2 / 9         | 0 / 1 / 3 / 3   | the ST-36 commit; the high was a seam name in a comment |
-| 5     | 0 / 0 / 2 / 7         | 0 / 1 / 2 / 5   | the round-5 commit; owner decisions P-36 and P-37       |
+| 5     | 0 / 0 / 2 / 7         | 0 / 1 / 2 / 5   | `bda8b63`; owner decisions P-36 and P-37                |
+| 6     | 0 / 0 / 1 / 5         | 0 / 0 / 5 / 6   | the ST-37 commit                                        |
 
 The highs:
 
