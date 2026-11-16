@@ -73,7 +73,7 @@ function probeEcho(terminal: Locator): Promise<void> {
         document.addEventListener(
             'keydown',
             (event) => {
-                if (/^[a-z]$/.test(event.key)) {
+                if (/^[a-z]$/.test(event.key) && !event.ctrlKey && !event.metaKey && !event.altKey) {
                     const at = performance.now();
                     probe.keys.push(at);
                     probe.pending.push({ key: event.key, index: probe.index, at });
@@ -112,7 +112,7 @@ async function newLine(window: Page, terminal: Locator): Promise<void> {
 }
 
 /** Pairs each keydown with the first write that arrived after it, and returns keydown to parsed. */
-function parsedTimes(terminal: Locator): Promise<number[]> {
+function parsedTimes(terminal: Locator): Promise<readonly number[]> {
     return terminal.evaluate(() => {
         const page = globalThis as ProbeWindow;
         const writes = page.__trcWriteTimings ?? [];
@@ -198,7 +198,7 @@ function spokenAt(window: Page, word: string): Promise<number | undefined> {
 }
 
 /** The gaps between animation frames over `ms`, which show whether the window keeps drawing and taking input. */
-function frameGaps(window: Page, ms: number): Promise<number[]> {
+function frameGaps(window: Page, ms: number): Promise<readonly number[]> {
     return window.evaluate(
         (duration) =>
             new Promise<number[]>((done) => {
@@ -221,7 +221,11 @@ function frameGaps(window: Page, ms: number): Promise<number[]> {
 }
 
 /** One flood round: how long Ctrl+C took to reach the program, by the host's clock, and the frame gaps meanwhile. */
-async function interruptRound(window: Page, round: number, offset: number): Promise<{ delay: number; gaps: number[] }> {
+async function interruptRound(
+    window: Page,
+    round: number,
+    offset: number,
+): Promise<{ readonly delay: number; readonly gaps: readonly number[] }> {
     const marker = `/tmp/trc-int-${round}`;
     ssh('trc-ubuntu', `rm -f ${marker}`);
     await window.keyboard.type(`python3 /tmp/trc-ui-flood.py ${marker}`);
@@ -237,7 +241,7 @@ async function interruptRound(window: Page, round: number, offset: number): Prom
 }
 
 /** Runs `rounds` idle commands and returns, for each, the time from Return to the announcement of its output. */
-async function speechDelays(window: Page, rounds: number): Promise<number[]> {
+async function speechDelays(window: Page, rounds: number): Promise<readonly number[]> {
     const delays: number[] = [];
     for (let round = 0; round < rounds; round += 1) {
         await window.keyboard.type(`echo trc-said-""${round}`);
@@ -266,6 +270,7 @@ test.describe('UI echo latency on live hosts (NFR-02)', () => {
                 const linkTimes = await roundTrips(await connectLive(alias), LINK_SAMPLES, 40);
                 const gap = Math.ceil(percentile(linkTimes, 50)) + 40;
                 const { parsed, surface } = await typeAndTimeEcho(window, terminal, ECHO_SAMPLES, gap);
+                expect(parsed, 'one echo per typed letter').toHaveLength(ECHO_SAMPLES);
                 const link = linkBaseline(linkTimes);
                 const app99 = percentile(parsed, ECHO_PERCENTILE);
                 for (const p of [50, 95, 99]) {

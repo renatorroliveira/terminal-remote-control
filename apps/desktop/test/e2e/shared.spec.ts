@@ -13,7 +13,7 @@ import {
 
 const missing = testHostsMissing();
 
-async function spokenWith(window: Page, part: string): Promise<string[]> {
+async function spokenWith(window: Page, part: string): Promise<readonly string[]> {
     return (await spokenTexts(window)).filter((text) => text.includes(part));
 }
 
