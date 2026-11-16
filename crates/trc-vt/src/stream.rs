@@ -1,9 +1,11 @@
 //! Snapshots formatted a block of rows at a time (S12, NFR-09): the history first, from rows tracked as output
-//! moves them, then the screen with the modes, cursor and styles that recreate it.
+//! moves them, then the screen with the modes, cursor and styles that recreate it. While a full-screen program runs on
+//! the alternate screen, the history waits: libghostty-vt formats only the active screen, and nothing shows the
+//! primary screen until the program leaves (D-49).
 
 use crate::VtError;
 use crate::ghostty::{GhosttyTerminal, SNAPSHOT_EXTRAS};
-use crate::grid::{ACTIVE, PrimaryCopy, SCREEN, TrackedRow, format_rows, history_rows, screen_size, wraps};
+use crate::grid::{ACTIVE, SCREEN, TrackedRow, format_rows, history_rows, screen_size, wraps};
 
 /// What a snapshot recreates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,8 +20,8 @@ pub enum SnapshotScope {
 /// is the screen. Output may reach the terminal between blocks: rows it adds to the history are streamed too, rows
 /// pruning removes are skipped, and the screen comes from the terminal as it is when the history is done.
 pub struct SnapshotStream {
-    /// The primary screen, copied while a full-screen program runs on the alternate one.
-    primary: Option<PrimaryCopy>,
+    /// Whether a whole-buffer snapshot started while a full-screen program ran, so it left out the history.
+    deferred: bool,
     next: Option<TrackedRow>,
     sent: usize,
     /// Whether the last history row sent soft-wraps into the screen, so the cursor still sits on it.
@@ -38,21 +40,18 @@ enum Phase {
 
 impl SnapshotStream {
     /// Starts a snapshot of `terminal`. `max_rows` bounds the history rows the stream sends before it gives up on
-    /// catching up with output that keeps arriving.
+    /// catching up with output that keeps arriving. A whole-buffer snapshot that starts while a full-screen program
+    /// runs sends that program's screen only, and says so with [`Self::history_deferred`].
     pub fn new(terminal: &GhosttyTerminal, scope: SnapshotScope, max_rows: usize) -> Result<Self, VtError> {
-        let primary = if scope == SnapshotScope::Full && is_alternate(terminal) {
-            Some(PrimaryCopy::of(terminal.raw())?)
-        } else {
-            None
-        };
-        let source = primary.as_ref().map_or_else(|| terminal.raw(), PrimaryCopy::raw);
-        let next = if scope == SnapshotScope::Full && history_rows(source) > 0 {
+        let deferred = scope == SnapshotScope::Full && is_alternate(terminal);
+        let source = terminal.raw();
+        let next = if scope == SnapshotScope::Full && !deferred && history_rows(source) > 0 {
             Some(TrackedRow::new(source, 0)?)
         } else {
             None
         };
         Ok(Self {
-            primary,
+            deferred,
             phase: if next.is_some() { Phase::History } else { Phase::Screen },
             next,
             sent: 0,
@@ -88,13 +87,15 @@ impl SnapshotStream {
         self.phase == Phase::Done
     }
 
-    fn source(&self, terminal: &GhosttyTerminal) -> ghostty_vt_sys::GhosttyTerminal {
-        self.primary.as_ref().map_or_else(|| terminal.raw(), PrimaryCopy::raw)
+    /// Whether this whole-buffer snapshot left out the history because a full-screen program ran when it started;
+    /// the client gets it once the program leaves the alternate screen (D-49).
+    pub fn history_deferred(&self) -> bool {
+        self.deferred
     }
 
     /// The next rows of history, or `None` once the history is done, which moves the stream on to the screen.
     fn history_block(&mut self, terminal: &GhosttyTerminal, rows: u32) -> Result<Option<Vec<u8>>, VtError> {
-        let source = self.source(terminal);
+        let source = terminal.raw();
         let history = history_rows(source);
         let first = self.next.as_ref().map_or(Some(0), TrackedRow::y).unwrap_or(0);
         if first >= history || self.sent >= self.max_rows {
@@ -126,9 +127,6 @@ impl SnapshotStream {
             block.resize(feeds, b'\n');
         }
         block.extend_from_slice(b"\x1b[H");
-        if let Some(primary) = &self.primary {
-            block.extend(format_rows(primary.raw(), ACTIVE, 0, last, 0)?);
-        }
         block.extend(format_rows(live, ACTIVE, 0, last, SNAPSHOT_EXTRAS)?);
         Ok(block)
     }
@@ -264,20 +262,30 @@ mod tests {
     }
 
     #[test]
-    fn keeps_the_primary_screen_while_a_full_screen_program_runs() {
+    fn defers_the_history_while_a_full_screen_program_runs() {
         let mut live = terminal(10_000);
         live.feed(&varied_lines(0, 500));
         live.feed(b"$ vim\r\n\x1b[?1049h\x1b[H\x1b[2Jediting\x1b[3;4H");
         let mut stream = SnapshotStream::new(&live, SnapshotScope::Full, 100_000).unwrap();
         let streamed = drain(&mut stream, &live, 100);
-        let mut replay = replayed(&streamed, 10_000);
+        assert!(stream.history_deferred());
+        assert!(stream.complete());
+        let replay = replayed(&streamed, 10_000);
         assert!(replay.alternate_screen());
+        assert_eq!(replay.scrollback_rows(), 0);
         assert_eq!(replay.cursor(), live.cursor());
         assert_eq!(replay.plain_text().unwrap(), live.plain_text().unwrap());
-        replay.feed(b"\x1b[?1049l");
-        live.feed(b"\x1b[?1049l");
-        assert_eq!(replay.scrollback_rows(), live.scrollback_rows());
-        assert_eq!(replay.plain_text().unwrap(), live.plain_text().unwrap());
+    }
+
+    #[test]
+    fn sends_the_history_once_the_full_screen_program_has_left() {
+        let mut live = terminal(10_000);
+        live.feed(&varied_lines(0, 500));
+        live.feed(b"$ vim\r\n\x1b[?1049h\x1b[H\x1b[2Jediting\x1b[?1049l$ ");
+        let mut stream = SnapshotStream::new(&live, SnapshotScope::Full, 100_000).unwrap();
+        let streamed = drain(&mut stream, &live, 100);
+        assert!(!stream.history_deferred());
+        assert_same(&replayed(&streamed, 10_000), &live);
     }
 
     #[test]

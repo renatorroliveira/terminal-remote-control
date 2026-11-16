@@ -1,7 +1,7 @@
-//! Row-level access to a libghostty-vt terminal by raw handle: points, tracked rows, soft wraps, formatting a range of
-//! rows, and a private copy of the primary screen (S12).
+//! Row-level access to a libghostty-vt terminal by raw handle: points, tracked rows, soft wraps, and formatting a
+//! range of rows (S12).
 
-use std::ptr::{null, null_mut};
+use std::ptr::null_mut;
 
 use ghostty_vt_sys as sys;
 use sys::GhosttyFormatterOption as FormatterOption;
@@ -44,40 +44,6 @@ impl Drop for TrackedRow {
     fn drop(&mut self) {
         // SAFETY: the reference came from `ghostty_terminal_grid_ref_track` and is not used after this.
         unsafe { sys::ghostty_tracked_grid_ref_free(self.0) };
-    }
-}
-
-/// A terminal decoded from a binary snapshot of another, switched to its primary screen. libghostty-vt formats only
-/// the active screen, so this is how a snapshot reaches the primary screen while a full-screen program runs.
-pub(crate) struct PrimaryCopy(sys::GhosttyTerminal);
-
-impl PrimaryCopy {
-    /// Copies `terminal` and leaves the alternate screen in the copy.
-    pub(crate) fn of(terminal: sys::GhosttyTerminal) -> Result<Self, VtError> {
-        let mut ptr: *mut u8 = null_mut();
-        let mut len: usize = 0;
-        // SAFETY: `terminal` is live; `ptr` and `len` are valid out pointers, and the buffer is freed below.
-        check(unsafe { sys::ghostty_snapshot_encode_alloc(terminal, null(), &mut ptr, &mut len) })?;
-        let decoded = decode(ptr, len);
-        // SAFETY: `ptr` came from `ghostty_snapshot_encode_alloc` with the default allocator.
-        unsafe { sys::ghostty_free(null(), ptr, len) };
-        let copy = Self(decoded?);
-        let leave = b"\x1b[?1049l";
-        // SAFETY: the copy is a live terminal owned by `copy`, and `leave` outlives the call.
-        unsafe { sys::ghostty_terminal_vt_write(copy.0, leave.as_ptr(), leave.len()) };
-        Ok(copy)
-    }
-
-    /// The copy's handle; it stays owned by `self`.
-    pub(crate) fn raw(&self) -> sys::GhosttyTerminal {
-        self.0
-    }
-}
-
-impl Drop for PrimaryCopy {
-    fn drop(&mut self) {
-        // SAFETY: the terminal came from the snapshot decoder, which handed its ownership over, and is not used after.
-        unsafe { sys::ghostty_terminal_free(self.0) };
     }
 }
 
@@ -142,18 +108,6 @@ pub(crate) fn format_rows(
     formatter.set(FormatterOption::GHOSTTY_FORMATTER_OPT_TRIM, &false)?;
     formatter.set(FormatterOption::GHOSTTY_FORMATTER_OPT_SELECTION, &selection)?;
     formatter.format()
-}
-
-fn decode(ptr: *const u8, len: usize) -> Result<sys::GhosttyTerminal, VtError> {
-    let mut decoder: sys::GhosttySnapshotDecoder = null_mut();
-    // SAFETY: `ptr` holds `len` bytes that stay valid until the decoder is freed below.
-    check(unsafe { sys::ghostty_snapshot_decoder_new_buf(null(), &mut decoder, ptr, len) })?;
-    let mut terminal: sys::GhosttyTerminal = null_mut();
-    // SAFETY: `decoder` is live and `terminal` is a valid out pointer; ownership of the terminal passes to the caller.
-    let result = check(unsafe { sys::ghostty_snapshot_decoder_decode(decoder, &mut terminal) });
-    // SAFETY: the decoder is not used after this; freeing it keeps the decoded terminal.
-    unsafe { sys::ghostty_snapshot_decoder_free(decoder) };
-    result.map(|()| terminal)
 }
 
 fn grid_ref(terminal: sys::GhosttyTerminal, tag: Tag, x: u16, y: u32) -> Result<sys::GhosttyGridRef, VtError> {

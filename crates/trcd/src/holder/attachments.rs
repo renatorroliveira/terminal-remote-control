@@ -55,6 +55,8 @@ struct Attachment {
     state: State,
     legacy: bool,
     told_peer_input: Option<Instant>,
+    /// Whether its last whole-buffer snapshot came while a full-screen program ran, so it lacks the history (D-49).
+    lacks_history: bool,
 }
 
 enum Item {
@@ -82,6 +84,7 @@ impl Attachments {
             state: State::Live,
             legacy,
             told_peer_input: None,
+            lacks_history: false,
         };
         match from_offset
             .filter(|_| !legacy)
@@ -155,6 +158,23 @@ impl Attachments {
         attachment.stream(id, SnapshotScope::Full, session);
     }
 
+    /// The full-screen program left the alternate screen: each attachment that joined while it ran gets the whole
+    /// scrollback and screen, a protocol 1 one after an in-band reset (D-49).
+    pub fn left_alternate_screen(&mut self, session: &Session<'_>) {
+        for (&id, attachment) in self.list.iter_mut().filter(|(_, attachment)| attachment.lacks_history) {
+            attachment.clear();
+            if attachment.legacy {
+                attachment.output(RESET.to_vec());
+            } else {
+                attachment.event(HolderEvent::Resync {
+                    attachment: id,
+                    kind: ResyncKind::Full,
+                });
+            }
+            attachment.stream(id, SnapshotScope::Full, session);
+        }
+    }
+
     /// Queues live output for every attachment that is up to date; one whose queue overflows falls behind.
     pub fn push(&mut self, output: &[u8]) {
         for attachment in self.list.values_mut() {
@@ -220,6 +240,9 @@ impl Attachment {
             }
             None => None,
         };
+        if scope == SnapshotScope::Full {
+            self.lacks_history = stream.as_ref().is_some_and(SnapshotStream::history_deferred);
+        }
         self.state = State::Streaming { stream, scope };
     }
 
@@ -727,5 +750,78 @@ mod tests {
             fixture.attachments.input_from(1, start + Duration::from_secs(1)).len(),
             1
         );
+    }
+
+    impl Fixture {
+        fn left_alternate_screen(&mut self) {
+            let session = Session {
+                terminal: Some(&self.terminal),
+                log: &self.log,
+                max_rows: 10_000,
+            };
+            self.attachments.left_alternate_screen(&session);
+        }
+    }
+
+    const VIM: &[u8] = b"$ vim\r\n\x1b[?1049h\x1b[H\x1b[2Jediting";
+
+    #[test]
+    fn sends_the_history_to_a_client_that_joined_a_full_screen_program_once_it_ends() {
+        let mut fixture = Fixture::new();
+        fixture.output(&"old\r\n".repeat(20).into_bytes());
+        fixture.output(VIM);
+        fixture.attach(1, u32::MAX, None, false);
+        fixture.attach(2, u32::MAX, Some(0), false);
+        let joined = fixture.drain();
+        let mut replay = terminal();
+        replay.feed(&output_of(&joined, 1));
+        assert!(replay.alternate_screen());
+        assert_eq!(replay.scrollback_rows(), 0);
+        fixture.output(b"\x1b[?1049l$ ");
+        fixture.left_alternate_screen();
+        let after = fixture.drain();
+        assert!(matches!(
+            events(&after)[..],
+            [
+                HolderEvent::Resync {
+                    attachment: 1,
+                    kind: ResyncKind::Full
+                },
+                HolderEvent::Synced { attachment: 1, .. }
+            ]
+        ));
+        let mut rebuilt = terminal();
+        rebuilt.feed(&output_of(&after, 1));
+        assert_eq!(rebuilt.plain_text().unwrap(), fixture.terminal.plain_text().unwrap());
+        assert_eq!(rebuilt.scrollback_rows(), fixture.terminal.scrollback_rows());
+        assert_eq!(output_of(&after, 2), b"\x1b[?1049l$ ");
+    }
+
+    #[test]
+    fn starts_a_protocol_1_client_over_with_the_whole_buffer_once_the_program_ends() {
+        let mut fixture = Fixture::new();
+        fixture.output(&"old\r\n".repeat(20).into_bytes());
+        fixture.output(VIM);
+        fixture.attach(1, u32::MAX, None, true);
+        fixture.drain();
+        fixture.output(b"\x1b[?1049l$ ");
+        fixture.left_alternate_screen();
+        let after = output_of(&fixture.drain(), 1);
+        assert!(after.starts_with(RESET));
+        let mut rebuilt = terminal();
+        rebuilt.feed(&after);
+        assert_eq!(rebuilt.plain_text().unwrap(), fixture.terminal.plain_text().unwrap());
+    }
+
+    #[test]
+    fn asks_nothing_more_of_a_client_that_had_the_history_before_the_program_started() {
+        let mut fixture = Fixture::new();
+        fixture.output(&"old\r\n".repeat(20).into_bytes());
+        fixture.attach(1, u32::MAX, None, false);
+        fixture.drain();
+        fixture.output(VIM);
+        fixture.output(b"\x1b[?1049l");
+        fixture.left_alternate_screen();
+        assert!(events(&fixture.drain()).is_empty());
     }
 }
