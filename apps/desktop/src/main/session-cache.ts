@@ -16,6 +16,7 @@ const SESSION_SCHEMA: z.ZodType<CachedSession> = z.strictObject({
     shell: TEXT,
     order: z.number().int().min(0).max(1_000_000),
     state: z.enum(['starting', 'running', 'exited', 'stopped', 'failedToStart', 'unspecified']),
+    restoreSeen: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).exactOptional(),
 });
 
 /** What `sessions.json` may hold: for each known host, what its session list showed (P-30, SEC-05.1). */

@@ -1,7 +1,15 @@
 import axe from 'axe-core';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { type AppScreen, CONNECTED, connectedHost, installTokens, renderApp } from './app-test-harness';
+import { bashSession } from '../sessions/workspace-test-doubles';
+import {
+    type AppScreen,
+    CONNECTED,
+    CONNECTED_SAVING,
+    connectedHost,
+    installTokens,
+    renderApp,
+} from './app-test-harness';
 
 describe('App (US-1.6.1)', () => {
     it('has a sessions sidebar and the named main region, with nothing open yet', async () => {
@@ -529,5 +537,52 @@ describe('App: creating and switching sessions (US-1.7, US-1.8.2)', () => {
         await expect
             .poll(() => terminals.options.at(-1))
             .toEqual({ profileId: 'zsh', cwd: '/srv/app', name: 'deploy', env: { EDITOR: 'vim', OLD: null } });
+        await expect.element(dialog.getByRole('switch', { name: 'Restore after restart' })).not.toBeInTheDocument();
+    });
+
+    it('creates a session that saves no scrollback on a daemon that saves it (US-3.2.2)', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const { client, terminals, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client, CONNECTED_SAVING);
+        await screen.getByRole('combobox', { name: 'New host' }).click();
+        await userEvent.keyboard('{Shift>}{Meta>}t{/Meta}{/Shift}');
+        const dialog = screen.getByRole('dialog', { name: 'New session' });
+        await expect.element(dialog.getByRole('switch', { name: 'Restore after restart' })).toBeChecked();
+        await dialog.getByText('Save scrollback to disk', { exact: true }).click();
+        await noViolations();
+        await dialog.getByRole('button', { name: 'Create' }).click();
+        await expect
+            .poll(() => terminals.options.at(-1))
+            .toEqual({ profileId: 'login', env: {}, options: { restore: true, saveScrollback: false } });
+    });
+});
+
+describe('App: Session settings (US-3.2.1, US-3.2.2)', () => {
+    it('sets what a session restores and saves, from its context menu', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const saving = { ...bashSession('a'), options: { restore: true, saveScrollback: true } };
+        const { client, rendered } = renderApp(400, [saving]);
+        const screen = await rendered;
+        await connectedHost(screen, client, CONNECTED_SAVING);
+        (screen.getByRole('treeitem', { name: 'bash, Running' }).element() as HTMLElement).focus();
+        await userEvent.keyboard('{Shift>}{F10}{/Shift}');
+        await screen.getByRole('menuitem', { name: 'Session settings…' }).click();
+        const dialog = screen.getByRole('dialog', { name: 'Settings for bash' });
+        const restore = dialog.getByRole('switch', { name: 'Restore after restart' });
+        await expect.element(restore).toHaveFocus();
+        await expect.element(dialog.getByRole('switch', { name: 'Save scrollback to disk' })).toBeChecked();
+        await noViolations();
+        await userEvent.keyboard(' ');
+        await dialog.getByRole('button', { name: 'Save' }).click();
+        await expect
+            .poll(() => client.requests)
+            .toContainEqual({
+                type: 'setSessionOptions',
+                session: 'a',
+                options: { restore: false, saveScrollback: true },
+            });
     });
 });

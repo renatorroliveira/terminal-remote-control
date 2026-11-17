@@ -205,10 +205,24 @@ that says "after restart" is unit-tested.
 
 - The badge until opened, the per-host announcement, the marker in review mode; e2e across a test-host restart.
 
+As built (ST-45, 2026-11-16): `sessions.json` keeps `restoreSeen` per session, the restore time it was last opened
+after. The announcement counts each host's restores not yet reported in this run and not opened before they
+arrived, so the session open at the time counts too; a restore still badged at the next launch is announced again
+then, once. Sessions kept ended read "Ended by restart" or "Processes ended". The e2e test restarts the Ubuntu test
+host's container with two sessions and checks the badge, the announcement, the saved output above the marker, and
+new input below it.
+
 **ST-46 Session settings and Clear scrollback** (US-3.2, SEC-05.2)
 
 - The two checkboxes in New session… and Session settings…, Clear scrollback and its key binding
   (`docs/design/keymap.md`), persistence failures shown and announced.
+
+As built (ST-46, 2026-11-16): the two settings are switches, as on the settings page, shown only for daemons from
+protocol 3 on; Session settings… appears only for a session whose daemon reports its options. Clear scrollback is
+in the Edit menu, the terminal's context menu, the palette and Accessibility help, and announces "Scrollback
+cleared." once the daemon has done it; a session on an older holder refuses it as unsupported. A persistence
+failure is a "scrollback not saved" badge in the session's name, its reason in the session's description, and an
+assertive announcement and an error notification once until saving works again.
 
 **ST-47 Host details and daemon management** (US-3.3.1–3, SEC-07, SEC-08)
 
@@ -256,14 +270,14 @@ that says "after restart" is unit-tested.
 | Story | Status  | Commit |
 | ----- | ------- | ------ |
 | ST-38 | Done    | —      |
-| ST-39 | Planned | —      |
-| ST-40 | Planned | —      |
-| ST-41 | Planned | —      |
-| ST-42 | Planned | —      |
-| ST-43 | Planned | —      |
-| ST-44 | Planned | —      |
-| ST-45 | Planned | —      |
-| ST-46 | Planned | —      |
+| ST-39 | Done    | —      |
+| ST-40 | Done    | —      |
+| ST-41 | Done    | —      |
+| ST-42 | Done    | —      |
+| ST-43 | Done    | —      |
+| ST-44 | Done    | —      |
+| ST-45 | Done    | —      |
+| ST-46 | Done    | —      |
 | ST-47 | Planned | —      |
 | ST-48 | Planned | —      |
 | ST-49 | Planned | —      |

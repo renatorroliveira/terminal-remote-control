@@ -167,6 +167,7 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'Default terminal text size',
             'Review mode',
             'Find…',
+            'Clear scrollback',
             'Accessibility help',
             'User guide',
             'Settings…',
@@ -429,6 +430,20 @@ describe('Shell find over rows a resync skipped (D-45)', () => {
         shell.run('terminal.find');
         expect(terminals.fills).toBe(1);
         await vi.waitFor(() => expect(shell.state.getState().find?.result).toEqual({ index: 4, count: 5 }));
+    });
+});
+
+describe('Shell: Clear scrollback (US-3.2.3)', () => {
+    it('clears the open session’s scrollback in the daemon and says so, or that no session is open', async () => {
+        const { shell, client, workspace, spoken } = await setup();
+        shell.run('terminal.clearScrollback');
+        client.push('host-0', CONNECTED);
+        await expect.poll(() => workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
+        workspace.open('host-0/a');
+        spoken.length = 0;
+        shell.run('terminal.clearScrollback');
+        await expect.poll(() => spoken).toContain('Scrollback cleared.');
+        expect(client.requests).toContainEqual({ type: 'clearScrollback', session: 'a' });
     });
 });
 

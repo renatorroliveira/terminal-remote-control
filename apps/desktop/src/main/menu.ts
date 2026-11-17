@@ -109,7 +109,10 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
     ];
 }
 
-/** The terminal's context menu: Copy (with a selection), Paste, List Links and Look Up (A11Y-11.11, US-1.12). */
+/**
+ * The terminal's context menu: Copy (with a selection), Paste, List Links, Look Up and Clear Scrollback (A11Y-11.11,
+ * US-1.12, US-3.2.3).
+ */
 export function terminalContextMenu(
     options: Pick<MenuOptions, 'keymap' | 'onCommand' | 'onLookUp'>,
     canCopy: boolean,
@@ -120,6 +123,8 @@ export function terminalContextMenu(
         { type: 'separator' },
         command(options, 'terminal.listLinks', MAIN_STRINGS.listLinks),
         { label: MAIN_STRINGS.lookUp, enabled: canCopy, click: () => options.onLookUp() },
+        { type: 'separator' },
+        command(options, 'terminal.clearScrollback', MAIN_STRINGS.clearScrollback),
     ];
 }
 
@@ -144,6 +149,8 @@ function editMenu(options: MenuOptions): MenuItemConstructorOptions {
             { role: 'copy' },
             { role: 'paste' },
             { role: 'selectAll' },
+            { type: 'separator' },
+            command(options, 'terminal.clearScrollback', MAIN_STRINGS.clearScrollback),
             { type: 'separator' },
             { label: MAIN_STRINGS.lookUp, accelerator: 'Ctrl+Cmd+D', click: () => options.onLookUp() },
             { type: 'separator' },

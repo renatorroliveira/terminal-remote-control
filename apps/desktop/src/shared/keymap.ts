@@ -20,6 +20,7 @@ export const COMMAND_IDS = [
     'terminal.zoomReset',
     'review.toggle',
     'terminal.find',
+    'terminal.clearScrollback',
     'settings.show',
     'app.quitAndStopAll',
 ] as const;
@@ -87,6 +88,7 @@ export const DEFAULT_KEYMAP: Readonly<Partial<Record<CommandId, string>>> = {
     'terminal.zoomReset': 'Cmd+0',
     'review.toggle': 'Option+F2',
     'terminal.find': 'Cmd+F',
+    'terminal.clearScrollback': 'Cmd+K',
     'settings.show': 'Cmd+,',
 };
 

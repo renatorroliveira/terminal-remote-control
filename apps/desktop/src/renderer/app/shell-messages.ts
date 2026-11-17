@@ -87,6 +87,11 @@ export const commandMessages = defineMessages<CommandId>({
         defaultMessage: 'Quit and Stop All Sessions…',
         description: 'Command name; asks before it stops every session on every connected host and quits.',
     },
+    'terminal.clearScrollback': {
+        id: 'command.terminalClearScrollback',
+        defaultMessage: 'Clear scrollback',
+        description: 'Command name: deletes the open session’s scrollback, on the host’s disk too.',
+    },
     'terminal.listLinks': {
         id: 'command.terminalListLinks',
         defaultMessage: 'List links…',
@@ -110,6 +115,11 @@ export const shellAnnouncements = defineMessages({
         id: 'announce.nextKey',
         defaultMessage: 'The next key goes to the terminal.',
         description: 'Announced after the send-next-key command.',
+    },
+    scrollbackCleared: {
+        id: 'announce.scrollbackCleared',
+        defaultMessage: 'Scrollback cleared.',
+        description: 'Announced after Clear scrollback deleted the open session’s scrollback.',
     },
     noSession: {
         id: 'announce.noSession',
@@ -343,6 +353,16 @@ export const failedActionMessages = defineMessages<FailedAction>({
         id: 'failure.reattach',
         defaultMessage: 'Couldn’t reattach every session on {host}; their terminals were closed.',
         description: 'Reported when sessions fail to reattach after a reconnect; their terminals are removed.',
+    },
+    options: {
+        id: 'failure.options',
+        defaultMessage: 'Couldn’t change what a session on {host} restores and saves.',
+        description: 'Reported when changing a session’s Restore after restart or Save scrollback to disk fails.',
+    },
+    clearScrollback: {
+        id: 'failure.clearScrollback',
+        defaultMessage: 'Couldn’t clear the scrollback of a session on {host}.',
+        description: 'Reported when clearing a session’s scrollback fails.',
     },
 });
 

@@ -1,4 +1,4 @@
-import type { CreateSessionSpec, SessionInfo, ShellProfile } from '@trc/protocol';
+import type { CreateSessionSpec, SessionInfo, SessionOptions, ShellProfile } from '@trc/protocol';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ConnectionState } from '../../shared/connection';
 import type { TrcBridge } from '../../shared/contract';
@@ -7,7 +7,13 @@ import type { CachedSession, SessionCache } from '../../shared/session-cache';
 import type { Settings } from '../../shared/settings';
 import { type ClientRequest, type HostClient, HostRequestError } from '../connection/host-client';
 import type { TerminalConnection } from '../terminal/terminal-view';
-import { cachedSessions, restoredSession, type SessionCacheStore, watchSessionCache } from './session-cache';
+import {
+    cachedSessions,
+    restoredSession,
+    type SessionCacheStore,
+    seenRestores,
+    watchSessionCache,
+} from './session-cache';
 import {
     EMPTY_WORKSPACE,
     type FailedAction,
@@ -21,6 +27,7 @@ import {
     hostToggled,
     hostUpdated,
     isConnected,
+    restoresSeen,
     type SessionKey,
     sessionActivity,
     sessionBell,
@@ -56,7 +63,7 @@ export interface TerminalHost {
     /** Shows a session's terminal and focuses it, attaching it the first time. */
     show(key: SessionKey, hostId: string, session: SessionInfo): void;
     /** Creates a session on a host at the terminal area's size, with the options given. */
-    create(hostId: string, options?: SessionOptions): Promise<SessionInfo>;
+    create(hostId: string, options?: NewSessionOptions): Promise<SessionInfo>;
     /** Lets a host's terminals send input, or refuses it while the host is disconnected or reconnecting (US-1.14.2). */
     setHostConnection(hostId: string, connection: TerminalConnection): void;
     /**
@@ -103,7 +110,7 @@ export interface RunningSessions {
 }
 
 /** What a new session may set beyond its size (US-1.7.2). */
-export type SessionOptions = Partial<Pick<CreateSessionSpec, 'profileId' | 'cwd' | 'name' | 'env'>>;
+export type NewSessionOptions = Partial<Pick<CreateSessionSpec, 'profileId' | 'cwd' | 'name' | 'env' | 'options'>>;
 
 /** What pressing a host's connection button does now. */
 export type ConnectionAction = 'connect' | 'disconnect' | 'cancel' | 'review-key' | 'retry';
@@ -363,7 +370,7 @@ export class WorkspaceController {
     }
 
     /** Creates a session on a connected host and opens it (US-1.7.1). */
-    async newSession(hostId: string, options?: SessionOptions): Promise<void> {
+    async newSession(hostId: string, options?: NewSessionOptions): Promise<void> {
         const host = this.#host(hostId);
         if (host === undefined || !isConnected(host) || !(await this.#mayCreate(host))) {
             return;
@@ -376,7 +383,7 @@ export class WorkspaceController {
     }
 
     /** Creates a session with the options the New session dialog chose (US-1.7.2). */
-    newSessionWith(hostId: string, options: SessionOptions): Promise<void> {
+    newSessionWith(hostId: string, options: NewSessionOptions): Promise<void> {
         return this.newSession(hostId, options);
     }
 
@@ -423,9 +430,9 @@ export class WorkspaceController {
     }
 
     /** Stops a session: SIGHUP, then SIGTERM, then SIGKILL after the daemon's grace period (US-1.10.2). */
-    stopSession(key: SessionKey): Promise<void> {
+    async stopSession(key: SessionKey): Promise<void> {
         const grace = this.#preferences?.().stopGraceSeconds;
-        return this.#sessionRequest(key, 'stop', (session) => ({
+        await this.#sessionRequest(key, 'stop', (session) => ({
             type: 'stop',
             session,
             ...(grace === undefined ? {} : { graceMs: grace * 1_000 }),
@@ -433,18 +440,28 @@ export class WorkspaceController {
     }
 
     /** Restarts a session with its shell, directory and environment, keeping its scrollback (US-1.10.3). */
-    restartSession(key: SessionKey): Promise<void> {
-        return this.#sessionRequest(key, 'restart', (session) => ({ type: 'restart', session }));
+    async restartSession(key: SessionKey): Promise<void> {
+        await this.#sessionRequest(key, 'restart', (session) => ({ type: 'restart', session }));
     }
 
     /** Stops a session if it runs, then removes it and its scrollback (US-1.10.4). */
-    closeSession(key: SessionKey): Promise<void> {
-        return this.#sessionRequest(key, 'close', (session) => ({ type: 'close', session }));
+    async closeSession(key: SessionKey): Promise<void> {
+        await this.#sessionRequest(key, 'close', (session) => ({ type: 'close', session }));
+    }
+
+    /** Sets whether a session is restored after a restart and whether its scrollback is saved to disk (US-3.2). */
+    setSessionOptions(key: SessionKey, options: SessionOptions): Promise<boolean> {
+        return this.#sessionRequest(key, 'options', (session) => ({ type: 'setSessionOptions', session, options }));
+    }
+
+    /** Clears a session's scrollback in every client and on disk; resolves with whether the daemon did (US-3.2.3). */
+    clearScrollback(key: SessionKey): Promise<boolean> {
+        return this.#sessionRequest(key, 'clearScrollback', (session) => ({ type: 'clearScrollback', session }));
     }
 
     /** Moves a session to `index` among its host's sessions (US-1.10.6). */
-    moveSession(key: SessionKey, index: number): Promise<void> {
-        return this.#sessionRequest(key, 'move', (session) => ({ type: 'reorder', session, index }));
+    async moveSession(key: SessionKey, index: number): Promise<void> {
+        await this.#sessionRequest(key, 'move', (session) => ({ type: 'reorder', session, index }));
     }
 
     /** The running sessions on connected hosts, and the hosts with running sessions it cannot reach (US-2.1.4). */
@@ -517,21 +534,25 @@ export class WorkspaceController {
         key: SessionKey,
         action: FailedAction,
         request: (session: string) => ClientRequest,
-    ): Promise<void> {
+    ): Promise<boolean> {
         const found = this.#find(key);
-        if (found !== undefined) {
-            await this.#attempt(action, found.hostId, () =>
-                this.#client.request(found.hostId, request(found.session.id)),
-            );
+        if (found === undefined) {
+            return false;
         }
+        return this.#attempt(action, found.hostId, () => this.#client.request(found.hostId, request(found.session.id)));
     }
 
-    /** Runs an action; a failure becomes the workspace's latest action failure instead of an unhandled rejection. */
-    async #attempt(action: FailedAction, hostId: string, work: () => Promise<unknown>): Promise<void> {
+    /**
+     * Runs an action and resolves with whether it worked; a failure becomes the workspace's latest action failure
+     * instead of an unhandled rejection.
+     */
+    async #attempt(action: FailedAction, hostId: string, work: () => Promise<unknown>): Promise<boolean> {
         try {
             await work();
+            return true;
         } catch (error) {
             this.#failed(action, hostId, error);
+            return false;
         }
     }
 
@@ -573,7 +594,12 @@ export class WorkspaceController {
 
     #restore(hostId: string, cached: readonly CachedSession[]): void {
         if (cached.length > 0) {
-            this.#update((workspace) => hostRestored(workspace, hostId, cached.map(restoredSession)));
+            this.#update((workspace) =>
+                restoresSeen(
+                    hostRestored(workspace, hostId, cached.map(restoredSession)),
+                    seenRestores(hostId, cached),
+                ),
+            );
             this.#terminals.setHostConnection(hostId, 'reconnecting');
         }
     }

@@ -146,10 +146,13 @@ describe('menuTemplate: Edit', () => {
             'paste',
             'selectAll',
             'separator',
+            'Clear Scrollback',
+            'separator',
             'Look Up',
             'separator',
             'Speech',
         ]);
+        expect(edit.find((item) => item.label === 'Clear Scrollback')?.accelerator).toBe('Command+K');
         const lookUp = edit.find((item) => item.label === 'Look Up');
         expect(lookUp?.accelerator).toBe('Ctrl+Cmd+D');
         lookUp?.click?.(undefined as never, undefined, undefined as never);
@@ -193,7 +196,7 @@ describe('menuTemplate: Session', () => {
 });
 
 describe('terminalContextMenu (A11Y-11.11, US-1.12)', () => {
-    it('offers Copy only with a selection, Paste, List Links and Look Up', () => {
+    it('offers Copy only with a selection, Paste, List Links, Look Up and Clear Scrollback', () => {
         const commands: string[] = [];
         const lookUps: number[] = [];
         const menu = terminalContextMenu(
@@ -206,11 +209,14 @@ describe('terminalContextMenu (A11Y-11.11, US-1.12)', () => {
             'separator',
             'List Links…',
             'Look Up',
+            'separator',
+            'Clear Scrollback',
         ]);
         expect(menu[0]?.enabled).toBe(false);
         expect(menu[4]?.enabled).toBe(false);
         expect(terminalContextMenu(options(), true)[0]?.enabled).toBe(true);
         menu[3]?.click?.(undefined as never, undefined, undefined as never);
-        expect(commands).toEqual(['terminal.listLinks']);
+        menu[6]?.click?.(undefined as never, undefined, undefined as never);
+        expect(commands).toEqual(['terminal.listLinks', 'terminal.clearScrollback']);
     });
 });

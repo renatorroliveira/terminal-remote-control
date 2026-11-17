@@ -263,6 +263,124 @@
       "value": "Input from another client."
     }
   ],
+  "announce.persistenceFailed": [
+    {
+      "type": 0,
+      "value": "Scrollback of "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": " on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " can’t be saved: "
+    },
+    {
+      "type": 1,
+      "value": "reason"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.restored": [
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ": "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " session"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " sessions"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " restored."
+    }
+  ],
+  "announce.restoredAfterRestart": [
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " restarted: "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " session"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " sessions"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " restored."
+    }
+  ],
   "announce.reviewOutput": [
     {
       "type": 0,
@@ -279,6 +397,12 @@
     {
       "type": 0,
       "value": "Screen reader mode on."
+    }
+  ],
+  "announce.scrollbackCleared": [
+    {
+      "type": 0,
+      "value": "Scrollback cleared."
     }
   ],
   "announce.settingsNotSaved": [
@@ -519,6 +643,12 @@
       "value": "Show or hide the sidebar"
     }
   ],
+  "command.terminalClearScrollback": [
+    {
+      "type": 0,
+      "value": "Clear scrollback"
+    }
+  ],
   "command.terminalFind": [
     {
       "type": 0,
@@ -699,6 +829,20 @@
     {
       "type": 0,
       "value": "Add the key to your SSH agent with ssh-add, which asks for the PIN, then connect again."
+    }
+  ],
+  "failure.clearScrollback": [
+    {
+      "type": 0,
+      "value": "Couldn’t clear the scrollback of a session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
     }
   ],
   "failure.clipboard": [
@@ -1067,6 +1211,20 @@
     {
       "type": 0,
       "value": "."
+    }
+  ],
+  "failure.options": [
+    {
+      "type": 0,
+      "value": "Couldn’t change what a session on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " restores and saves."
     }
   ],
   "failure.other.problem": [
@@ -2391,6 +2549,20 @@
       "value": "session"
     }
   ],
+  "palette.session.settings": [
+    {
+      "type": 0,
+      "value": "Settings for "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": "…"
+    }
+  ],
   "palette.session.stop": [
     {
       "type": 0,
@@ -2469,6 +2641,36 @@
       },
       "offset": 0,
       "pluralType": "cardinal"
+    }
+  ],
+  "persistence.diskFull": [
+    {
+      "type": 0,
+      "value": "the disk is full"
+    }
+  ],
+  "persistence.other": [
+    {
+      "type": 0,
+      "value": "an error that the daemon’s log names"
+    }
+  ],
+  "persistence.quota": [
+    {
+      "type": 0,
+      "value": "your disk quota is used up"
+    }
+  ],
+  "persistence.readOnly": [
+    {
+      "type": 0,
+      "value": "the file system is read-only"
+    }
+  ],
+  "persistence.unspecified": [
+    {
+      "type": 0,
+      "value": "an unknown error"
     }
   ],
   "quit.first.body": [
@@ -2737,6 +2939,12 @@
       "value": "Restart"
     }
   ],
+  "session.action.settings": [
+    {
+      "type": 0,
+      "value": "Session settings…"
+    }
+  ],
   "session.action.stop": [
     {
       "type": 0,
@@ -2747,6 +2955,18 @@
     {
       "type": 0,
       "value": "Disconnected"
+    }
+  ],
+  "session.ended": [
+    {
+      "type": 0,
+      "value": "Ended"
+    }
+  ],
+  "session.endedByRestart": [
+    {
+      "type": 0,
+      "value": "Ended by restart"
     }
   ],
   "session.exited": [
@@ -2781,6 +3001,12 @@
       "value": "Failed to start"
     }
   ],
+  "session.processesEnded": [
+    {
+      "type": 0,
+      "value": "Processes ended"
+    }
+  ],
   "session.reconnecting": [
     {
       "type": 0,
@@ -2809,6 +3035,52 @@
     {
       "type": 0,
       "value": "Unknown state"
+    }
+  ],
+  "sessionSettings.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "sessionSettings.confirm": [
+    {
+      "type": 0,
+      "value": "Save"
+    }
+  ],
+  "sessionSettings.restore": [
+    {
+      "type": 0,
+      "value": "Restore after restart"
+    }
+  ],
+  "sessionSettings.restoreHint": [
+    {
+      "type": 0,
+      "value": "When a restart or a logout ends its processes, the daemon starts the shell again below the saved scrollback. Commands never run again."
+    }
+  ],
+  "sessionSettings.save": [
+    {
+      "type": 0,
+      "value": "Save scrollback to disk"
+    }
+  ],
+  "sessionSettings.saveHint": [
+    {
+      "type": 0,
+      "value": "Keeps the output in a private folder on the host, so it comes back after a restart. Turning it off deletes the saved copy."
+    }
+  ],
+  "sessionSettings.title": [
+    {
+      "type": 0,
+      "value": "Settings for "
+    },
+    {
+      "type": 1,
+      "value": "session"
     }
   ],
   "setting.audioCues": [
@@ -3777,6 +4049,28 @@
     {
       "type": 0,
       "value": "new output"
+    }
+  ],
+  "tree.notSaved": [
+    {
+      "type": 0,
+      "value": "scrollback not saved"
+    }
+  ],
+  "tree.notSavedBecause": [
+    {
+      "type": 0,
+      "value": "Scrollback not saved: "
+    },
+    {
+      "type": 1,
+      "value": "reason"
+    }
+  ],
+  "tree.restored": [
+    {
+      "type": 0,
+      "value": "restored"
     }
   ],
   "tree.sessionPlacedName": [

@@ -12,6 +12,8 @@ export interface CachedSession {
     /** Its position in the host's order. */
     readonly order: number;
     readonly state: SessionState;
+    /** The restore it was last opened after, in milliseconds since the Unix epoch, which clears its Restored badge. */
+    readonly restoreSeen?: number;
 }
 
 /** The most `sessions.json` takes: UTF-16 code units in a name, title or shell, and sessions per host and in all. */

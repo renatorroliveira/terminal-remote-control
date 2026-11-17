@@ -2,8 +2,15 @@ import type { SessionInfo } from '@trc/protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStore } from 'zustand/vanilla';
 import { CACHE_LIMITS, type SessionCache } from '../../shared/session-cache';
-import { cachedSessions, restoredSession, watchSessionCache } from './session-cache';
-import { EMPTY_WORKSPACE, sessionName, sessionsListed, type Workspace } from './workspace-model';
+import { cachedSessions, restoredSession, seenRestores, watchSessionCache } from './session-cache';
+import {
+    EMPTY_WORKSPACE,
+    restoresSeen,
+    sessionKey,
+    sessionName,
+    sessionsListed,
+    type Workspace,
+} from './workspace-model';
 import { bashSession } from './workspace-test-doubles';
 
 const HOST = 'host-0123456789abcdef';
@@ -42,6 +49,20 @@ describe('the session cache (US-2.3.2, P-30)', () => {
         const kept = cachedSessions(listed(many))[HOST] ?? [];
         expect(kept).toHaveLength(CACHE_LIMITS.sessionsPerHost);
         expect(kept[0]?.title).toBe('x'.repeat(CACHE_LIMITS.text - 1));
+    });
+});
+
+describe('the session cache: restores already seen (P-42)', () => {
+    it('keeps the restore each session was last opened after, and gives it back at the next launch', () => {
+        const restored = { at: 5, afterHostRestart: false };
+        let workspace = listed([
+            { ...bashSession('a'), restored },
+            { ...bashSession('b'), order: 1, restored },
+        ]);
+        workspace = restoresSeen(workspace, new Map([[sessionKey(HOST, 'a'), 5]]));
+        const cache = cachedSessions(workspace);
+        expect(cache[HOST]?.map((cached) => cached.restoreSeen)).toEqual([5, undefined]);
+        expect(seenRestores(HOST, cache[HOST] ?? [])).toEqual(new Map([[sessionKey(HOST, 'a'), 5]]));
     });
 });
 

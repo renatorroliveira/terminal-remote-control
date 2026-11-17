@@ -1,7 +1,7 @@
 import type { SessionInfo } from '@trc/protocol';
 import { DEFAULT_TERMINAL_APPEARANCE, type TerminalAppearance } from '../../shared/terminal-appearance';
 import { HostRequestError } from '../connection/host-client';
-import type { AttachFailure, SessionKey, SessionOptions, TerminalHost } from '../sessions/workspace-controller';
+import type { AttachFailure, NewSessionOptions, SessionKey, TerminalHost } from '../sessions/workspace-controller';
 import type { TerminalPalette } from '../ui/themes';
 import type { FindOptions, FindResult } from './find';
 import type { TerminalLink } from './hyperlinks';
@@ -276,7 +276,7 @@ export class TerminalRegistry implements TerminalHost {
      * that `show` reveals. A session shown while a create on its host is in flight waits for it, so the daemon's
      * announcement of the new session never builds a second terminal for it.
      */
-    create(hostId: string, options: SessionOptions = {}): Promise<SessionInfo> {
+    create(hostId: string, options: NewSessionOptions = {}): Promise<SessionInfo> {
         const creating = this.#creating.get(hostId) ?? new Set<Promise<unknown>>();
         this.#creating.set(hostId, creating);
         const tracked: Promise<SessionInfo> = this.#create(hostId, options).finally(() => {
@@ -445,7 +445,7 @@ export class TerminalRegistry implements TerminalHost {
         }
     }
 
-    async #create(hostId: string, options: SessionOptions): Promise<SessionInfo> {
+    async #create(hostId: string, options: NewSessionOptions): Promise<SessionInfo> {
         const entry = this.#newEntry(hostId);
         await entry.view.ready;
         const spec = { ...options, env: options.env ?? {}, scrollbackLines: this.#scrollback };

@@ -652,6 +652,26 @@ describe('WorkspaceController: managing sessions (US-1.10)', () => {
     });
 });
 
+describe('WorkspaceController: what a session saves (US-3.2)', () => {
+    it('sets what a session restores and saves, and clears its scrollback, saying whether that worked', async () => {
+        const { client, host, workspace } = await connectedSetup();
+        const key = `${host.id}/a`;
+        await workspace.setSessionOptions(key, { restore: false, saveScrollback: true });
+        expect(await workspace.clearScrollback(key)).toBe(true);
+        expect(client.requests).toEqual([
+            { type: 'setSessionOptions', session: 'a', options: { restore: false, saveScrollback: true } },
+            { type: 'clearScrollback', session: 'a' },
+        ]);
+        client.refused.add('clearScrollback');
+        client.refusal = 'unsupported';
+        expect(await workspace.clearScrollback(key)).toBe(false);
+        expect(workspace.store.getState().actionFailure).toMatchObject({
+            action: 'clearScrollback',
+            code: 'unsupported',
+        });
+    });
+});
+
 describe('WorkspaceController: failed actions (US-1.10, US-1.14.3, WCAG 3.3.1)', () => {
     it('reports a session action the daemon refuses, once per failure, and keeps working', async () => {
         const { client, host, workspace } = await connectedSetup();

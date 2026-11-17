@@ -24,6 +24,7 @@ export const MAIN_STRINGS = {
     defaultTextSize: 'Default Text Size',
     reviewMode: 'Review Mode',
     find: 'Find…',
+    clearScrollback: 'Clear Scrollback',
     theme: 'Theme',
     themeMidnight: 'Midnight',
     themeSystem: 'Match System',

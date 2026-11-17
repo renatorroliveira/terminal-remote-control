@@ -35,13 +35,26 @@ export interface Workspace {
     readonly unread: ReadonlySet<SessionKey>;
     /** Background sessions whose bell rang since they were last open (A11Y-08.2). */
     readonly bells: ReadonlySet<SessionKey>;
+    /** For each session, the restore it was last opened after, so its Restored badge clears (US-3.1.6, P-42). */
+    readonly restoreSeen: ReadonlyMap<SessionKey, number>;
     /** The last session or host action that failed, for the shell to show and announce (WCAG 3.3.1). */
     readonly actionFailure: ActionFailure | undefined;
 }
 
 /** The actions whose failure the shell reports. */
 export type FailedAction =
-    'create' | 'open' | 'rename' | 'stop' | 'restart' | 'close' | 'move' | 'forget' | 'clipboard' | 'reattach';
+    | 'create'
+    | 'open'
+    | 'rename'
+    | 'stop'
+    | 'restart'
+    | 'close'
+    | 'move'
+    | 'forget'
+    | 'clipboard'
+    | 'reattach'
+    | 'options'
+    | 'clearScrollback';
 
 /** An action the daemon, the connection or the app refused (US-1.10, US-1.14.3). */
 export interface ActionFailure {
@@ -66,6 +79,8 @@ export interface SessionItem {
     readonly unread: boolean;
     /** Whether its bell rang while it was in the background (A11Y-08.2). */
     readonly bell: boolean;
+    /** Whether it was restored after its processes ended and has not been opened since (US-3.1.6, P-42). */
+    readonly restored: boolean;
     /** Whether its host is not connected, so it takes no input (US-1.14.1). */
     readonly disconnected: boolean;
     /** Whether its host is reconnecting by itself (US-2.2.2). */
@@ -94,6 +109,7 @@ export const EMPTY_WORKSPACE: Workspace = {
     failureNotice: undefined,
     unread: new Set(),
     bells: new Set(),
+    restoreSeen: new Map(),
     actionFailure: undefined,
 };
 
@@ -217,16 +233,21 @@ export function applySessionChange(sessions: readonly SessionInfo[], change: Ses
     }
 }
 
-/** Opens a session in the terminal area; its output counts as seen. */
+/** Opens a session in the terminal area; its output, and its restore, count as seen. */
 export function sessionOpened(workspace: Workspace, key: SessionKey | undefined): Workspace {
     if (key === undefined || (!workspace.unread.has(key) && !workspace.bells.has(key))) {
-        return { ...workspace, open: key };
+        return seeOpenRestore({ ...workspace, open: key });
     }
     const unread = new Set(workspace.unread);
     const bells = new Set(workspace.bells);
     unread.delete(key);
     bells.delete(key);
-    return { ...workspace, open: key, unread, bells };
+    return seeOpenRestore({ ...workspace, open: key, unread, bells });
+}
+
+/** Takes the restores already seen, as the session cache kept them at the last run (P-42). */
+export function restoresSeen(workspace: Workspace, seen: ReadonlyMap<SessionKey, number>): Workspace {
+    return { ...workspace, restoreSeen: new Map([...workspace.restoreSeen, ...seen]) };
 }
 
 /** Records a session's bell; unless it is open, its row shows a bell badge (A11Y-08.2). */
@@ -265,6 +286,9 @@ export function hostGroups(workspace: Workspace): readonly HostGroup[] {
                 key: sessionKey(host.id, session.id),
                 unread: workspace.unread.has(sessionKey(host.id, session.id)),
                 bell: workspace.bells.has(sessionKey(host.id, session.id)),
+                restored:
+                    session.restored !== undefined &&
+                    workspace.restoreSeen.get(sessionKey(host.id, session.id)) !== session.restored.at,
                 disconnected: !isConnected(host),
                 reconnecting: host.reconnecting,
                 label: sessionName(session),
@@ -294,7 +318,22 @@ function stillReconnecting(host: HostEntry, state: ConnectionState): boolean {
 function withSessions(workspace: Workspace, hostId: string, sessions: readonly SessionInfo[]): Workspace {
     const next = new Map(workspace.sessions);
     next.set(hostId, sessions);
-    return { ...workspace, sessions: next };
+    return seeOpenRestore({ ...workspace, sessions: next });
+}
+
+/** The open session's restore is seen at once: the user is looking at it. */
+function seeOpenRestore(workspace: Workspace): Workspace {
+    const key = workspace.open;
+    const at = key === undefined ? undefined : sessionOf(workspace, key)?.restored?.at;
+    if (key === undefined || at === undefined || workspace.restoreSeen.get(key) === at) {
+        return workspace;
+    }
+    return { ...workspace, restoreSeen: new Map([...workspace.restoreSeen, [key, at]]) };
+}
+
+function sessionOf(workspace: Workspace, key: SessionKey): SessionInfo | undefined {
+    const [hostId = '', id] = key.split('/');
+    return workspace.sessions.get(hostId)?.find((session) => session.id === id);
 }
 
 function sortByOrder(sessions: readonly SessionInfo[]): readonly SessionInfo[] {

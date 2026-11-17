@@ -102,6 +102,44 @@ export function removeInstall(alias: string, root: string): void {
     }
 }
 
+/** The docker container of a test host, such as `trc-test-hosts-ubuntu-1` for `trc-ubuntu`. */
+function container(alias: string): readonly string[] {
+    return [
+        '--context',
+        process.env['DOCKER_CONTEXT'] ?? 'colima-trc',
+        `trc-test-hosts-${alias.replace(/^trc-/, '')}-1`,
+    ];
+}
+
+/** Runs a shell command on a test host as its test user, from outside its sshd; returns its output, or `''`. */
+export function onTestHost(alias: string, script: string): string {
+    const [flag, context, name] = container(alias);
+    try {
+        return execFileSync(
+            'docker',
+            [flag ?? '', context ?? '', 'exec', '-u', 'tester', name ?? '', 'sh', '-c', script],
+            {
+                encoding: 'utf8',
+                timeout: 30_000,
+            },
+        );
+    } catch {
+        return '';
+    }
+}
+
+/**
+ * Restarts a test host's container, which ends every process in it as a reboot does but keeps its files and its
+ * boot ID (P-50).
+ */
+export function restartTestHost(alias: string): void {
+    const [flag, context, name] = container(alias);
+    execFileSync('docker', [flag ?? '', context ?? '', 'restart', '--time', '1', name ?? ''], {
+        stdio: 'ignore',
+        timeout: 60_000,
+    });
+}
+
 /**
  * Adds `destination` as a known host, choosing its SSH config suggestion by name so a pointer resting over the list
  * cannot pick another, connects it from its badge, creates a session, and returns the session's text
