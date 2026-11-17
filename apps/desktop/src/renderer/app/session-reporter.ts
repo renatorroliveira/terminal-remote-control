@@ -26,22 +26,28 @@ export interface SessionReporterOptions {
     readonly playCue: (cue: AudioCue) => void;
 }
 
+/** How long a host's restores may keep arriving, a list or one session event at a time, before they are announced. */
+export const RESTORE_SETTLE_MS = 750;
+
 /**
  * Announces politely, and lists, the sessions each host restored that are still badged Restored: once per host
- * and restore, saying whether the host restarted (US-3.1.6, P-42). Returns the function that stops watching.
+ * and restore, saying whether the host restarted (US-3.1.6, P-42). Restores that arrive within
+ * {@link RESTORE_SETTLE_MS} of each other make one announcement. Returns the function that stops watching.
  */
 export function reportRestores(options: SessionReporterOptions): () => void {
     const reported = new Map<SessionKey, number>();
+    const batches = new RestoreBatches(options);
     const report = (state: Workspace, before: Workspace) => {
         for (const group of hostGroups(state)) {
-            const fresh = freshRestores(group, before.restoreSeen, reported);
-            if (fresh.length > 0) {
-                announceRestores(options, group, fresh);
-            }
+            batches.add(group, freshRestores(group, before.restoreSeen, reported));
         }
     };
     report(options.store.getState(), options.store.getState());
-    return options.store.subscribe(report);
+    const stop = options.store.subscribe(report);
+    return () => {
+        stop();
+        batches.clear();
+    };
 }
 
 /**
@@ -103,15 +109,56 @@ function freshRestores(
     });
 }
 
-function announceRestores(
-    options: SessionReporterOptions,
-    group: HostGroup,
-    fresh: readonly { afterHostRestart: boolean }[],
-): void {
-    const message = fresh.some((entry) => entry.afterHostRestart)
-        ? restoreAnnouncements.afterRestart
-        : restoreAnnouncements.restored;
-    const text = options.intl.formatMessage(message, { host: group.host.destination, count: fresh.length });
-    options.notifications.add({ text, level: 'info' });
-    options.announcer.announce(text, { group: `restore:${group.host.id}` });
+interface RestoreBatch {
+    readonly host: string;
+    count: number;
+    afterHostRestart: boolean;
+    timer: ReturnType<typeof setTimeout> | undefined;
+}
+
+/** Each host's restores waiting to be announced together, until none arrives for a moment. */
+class RestoreBatches {
+    readonly #options: SessionReporterOptions;
+    readonly #batches = new Map<string, RestoreBatch>();
+
+    constructor(options: SessionReporterOptions) {
+        this.#options = options;
+    }
+
+    add(group: HostGroup, fresh: readonly { afterHostRestart: boolean }[]): void {
+        if (fresh.length === 0) {
+            return;
+        }
+        const hostId = group.host.id;
+        const batch = this.#batches.get(hostId) ?? {
+            host: group.host.destination,
+            count: 0,
+            afterHostRestart: false,
+            timer: undefined,
+        };
+        batch.count += fresh.length;
+        batch.afterHostRestart ||= fresh.some((entry) => entry.afterHostRestart);
+        clearTimeout(batch.timer);
+        batch.timer = setTimeout(() => this.#announce(hostId), RESTORE_SETTLE_MS);
+        this.#batches.set(hostId, batch);
+    }
+
+    clear(): void {
+        for (const batch of this.#batches.values()) {
+            clearTimeout(batch.timer);
+        }
+        this.#batches.clear();
+    }
+
+    #announce(hostId: string): void {
+        const batch = this.#batches.get(hostId);
+        this.#batches.delete(hostId);
+        if (batch === undefined) {
+            return;
+        }
+        const message = batch.afterHostRestart ? restoreAnnouncements.afterRestart : restoreAnnouncements.restored;
+        const text = this.#options.intl.formatMessage(message, { host: batch.host, count: batch.count });
+        this.#options.notifications.add({ text, level: 'info' });
+        this.#options.announcer.announce(text, { group: `restore:${hostId}` });
+    }
 }

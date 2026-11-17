@@ -1,6 +1,6 @@
 import type { SessionInfo } from '@trc/protocol';
 import { createIntl } from 'react-intl';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStore } from 'zustand/vanilla';
 import { messagesFor } from '../i18n/locale';
 import {
@@ -14,7 +14,17 @@ import {
 } from '../sessions/workspace-model';
 import { bashSession } from '../sessions/workspace-test-doubles';
 import type { NewNotification } from './notifications';
-import { reportPersistenceFailures, reportRestores } from './session-reporter';
+import { RESTORE_SETTLE_MS, reportPersistenceFailures, reportRestores } from './session-reporter';
+
+beforeEach(() => {
+    vi.useFakeTimers();
+});
+
+afterEach(() => {
+    vi.useRealTimers();
+});
+
+const settle = () => vi.advanceTimersByTime(RESTORE_SETTLE_MS);
 
 const HOST = 'host-0';
 
@@ -49,7 +59,9 @@ describe('reportRestores: one announcement per host and restore (US-3.1.6, P-42)
         const { said, listed, options, list } = harness();
         const stop = reportRestores(options);
         list([restored('a', 5, true), restored('b', 5, true), restored('c', 5, true), bashSession('d')]);
+        settle();
         list([restored('a', 5, true), restored('b', 5, true), restored('c', 5, true), bashSession('d')]);
+        settle();
         expect(said).toEqual([{ text: 'devbox-1 restarted: 3 sessions restored.', politeness: undefined }]);
         expect(listed).toEqual([{ text: 'devbox-1 restarted: 3 sessions restored.', level: 'info' }]);
         stop();
@@ -60,8 +72,10 @@ describe('reportRestores: one announcement per host and restore (US-3.1.6, P-42)
         store.setState((workspace) => restoresSeen(workspace, new Map([[sessionKey(HOST, 'b'), 7]])));
         const stop = reportRestores(options);
         list([restored('a', 7, false), restored('b', 7, false)]);
+        settle();
         expect(said.map((entry) => entry.text)).toEqual(['devbox-1: 1 session restored.']);
         list([restored('a', 9, false), restored('b', 7, false)]);
+        settle();
         expect(said.map((entry) => entry.text)).toEqual([
             'devbox-1: 1 session restored.',
             'devbox-1: 1 session restored.',
@@ -71,12 +85,15 @@ describe('reportRestores: one announcement per host and restore (US-3.1.6, P-42)
 });
 
 describe('reportRestores: the open session', () => {
-    it('counts the session open when its restore arrives, which that change marks seen', () => {
+    it('counts the session open when its restore arrives, and restores that arrive one by one, once', () => {
         const { said, options, list, store } = harness();
         list([bashSession('a'), { ...bashSession('b'), order: 1 }]);
         store.setState((workspace) => sessionOpened(workspace, sessionKey(HOST, 'b')));
         const stop = reportRestores(options);
+        list([restored('a', 7, false), { ...bashSession('b'), order: 1 }]);
         list([restored('a', 7, false), { ...restored('b', 7, false), order: 1 }]);
+        expect(said).toEqual([]);
+        settle();
         expect(said.map((entry) => entry.text)).toEqual(['devbox-1: 2 sessions restored.']);
         stop();
     });

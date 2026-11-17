@@ -307,21 +307,36 @@ pub fn kill_matching(pattern: &str) {
     if ran.is_ok() {
         return;
     }
-    let Ok(entries) = std::fs::read_dir("/proc") else {
-        return;
-    };
-    for entry in entries.filter_map(Result::ok) {
-        let Some(pid) = entry.file_name().to_str().and_then(|name| name.parse::<i32>().ok()) else {
-            continue;
-        };
-        let command = std::fs::read(entry.path().join("cmdline")).unwrap_or_default();
-        let command = String::from_utf8_lossy(&command).replace('\0', " ");
-        if command.contains(pattern)
-            && let Some(pid) = rustix::process::Pid::from_raw(pid)
-        {
-            let _ = rustix::process::kill_process(pid, rustix::process::Signal::KILL);
-        }
+    for pid in proc_matching(pattern) {
+        let _ = rustix::process::kill_process(pid, rustix::process::Signal::KILL);
     }
+}
+
+/// Whether a process whose command line contains `pattern` runs, from `pgrep` or, where it is missing, `/proc`.
+pub fn any_matching(pattern: &str) -> bool {
+    match std::process::Command::new("pgrep").args(["-f", pattern]).output() {
+        Ok(output) => !output.stdout.is_empty(),
+        Err(_) => !proc_matching(pattern).is_empty(),
+    }
+}
+
+/// The processes whose command line, read from `/proc`, contains `pattern`.
+fn proc_matching(pattern: &str) -> Vec<rustix::process::Pid> {
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return Vec::new();
+    };
+    entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let pid = entry.file_name().to_str()?.parse::<i32>().ok()?;
+            let command = std::fs::read(entry.path().join("cmdline")).unwrap_or_default();
+            let command = String::from_utf8_lossy(&command).replace('\0', " ");
+            command
+                .contains(pattern)
+                .then(|| rustix::process::Pid::from_raw(pid))
+                .flatten()
+        })
+        .collect()
 }
 
 /// The parent process of `pid`, from `ps` or, where `ps` is missing, `/proc`.

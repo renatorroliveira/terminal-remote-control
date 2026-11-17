@@ -59,6 +59,8 @@ export interface DaemonInfo {
     readonly service?: ServiceInfo;
     /** Where the daemon keeps its files, its account's home and since when it runs; daemons from 0.4.0 say. */
     readonly details?: DaemonDetails;
+    /** The version of the daemon this app bundles, which Upgrade daemon installs when it is newer (US-3.3.2). */
+    readonly bundled?: string;
 }
 
 /** Why a working connection was lost (US-1.14, NFR-07). */
@@ -117,7 +119,23 @@ export type HostRequest =
     /** Tries to reconnect now, after a failure that waits for the user or while backing off (US-2.2.3, US-2.2.4). */
     | { readonly type: 'retry'; readonly hostId: string }
     /** Stops reconnecting on its own until the user connects again (US-2.2.3). */
-    | { readonly type: 'stop-retrying'; readonly hostId: string };
+    | { readonly type: 'stop-retrying'; readonly hostId: string }
+    /**
+     * Ends the host's connection and removes the daemon over a new one: its processes end, and only what TRC wrote
+     * in the install location is deleted (US-3.3.3, P-46).
+     */
+    | {
+          readonly type: 'remove-daemon';
+          readonly hostId: string;
+          readonly target: ConnectTarget;
+          /** Milliseconds between the signals that stop each session; the daemon's default when absent. */
+          readonly graceMs?: number;
+      };
+
+/** How removing a host's daemon ended: what the install location kept that TRC did not write, or why it failed. */
+export type DaemonRemoval =
+    | { readonly kind: 'removed'; readonly kept: readonly string[] }
+    | { readonly kind: 'failed'; readonly failure: ConnectionFailure };
 
 /** A message from the connection host to the renderer. */
 export type HostEvent =
@@ -130,7 +148,8 @@ export type HostEvent =
           readonly reason: 'not-connected' | 'invalid';
           /** What the connection host could not deliver: a request, typed input, or output credit. */
           readonly what: 'request' | 'input' | 'credit';
-      };
+      }
+    | { readonly type: 'daemon-removed'; readonly hostId: string; readonly removal: DaemonRemoval };
 
 /** Request identifiers the connection host keeps for its own pings; the renderer uses the ones below. */
 export const RESERVED_REQUEST_IDS = 0x8000_0000;

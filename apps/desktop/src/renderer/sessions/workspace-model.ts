@@ -14,7 +14,12 @@ export interface HostEntry extends KnownHost {
     readonly reconnecting: boolean;
     /** The home folder its daemon last reported, which session names shorten to `~` (P-48). */
     readonly home?: string;
+    /** What the user asked its daemon to do that is still under way (US-3.3.2, US-3.3.3). */
+    readonly daemonAction?: DaemonAction;
 }
+
+/** A daemon change under way: a restart until the host connects again, or a removal until it ends. */
+export type DaemonAction = 'restarting' | 'removing';
 
 /** Identifies a session across hosts. */
 export type SessionKey = string;
@@ -54,7 +59,8 @@ export type FailedAction =
     | 'clipboard'
     | 'reattach'
     | 'options'
-    | 'clearScrollback';
+    | 'clearScrollback'
+    | 'restartDaemon';
 
 /** An action the daemon, the connection or the app refused (US-1.10, US-1.14.3). */
 export interface ActionFailure {
@@ -150,7 +156,9 @@ export function hostStateChanged(
     options: StateChangeOptions = { notifyFailure: true },
 ): Workspace {
     const hosts = workspace.hosts.map((host) =>
-        host.id === hostId ? { ...host, ...homeOf(state), state, reconnecting: stillReconnecting(host, state) } : host,
+        host.id === hostId
+            ? withoutRestart({ ...host, ...homeOf(state), state, reconnecting: stillReconnecting(host, state) })
+            : host,
     );
     if (state.status === 'failed' && options.notifyFailure && state.failure.kind !== 'host-key-rejected') {
         return { ...workspace, hosts, failureNotice: hostId };
@@ -162,6 +170,20 @@ export function hostStateChanged(
     sessions.delete(hostId);
     const open = workspace.open?.startsWith(`${hostId}/`) === true ? undefined : workspace.open;
     return { ...workspace, hosts, sessions, open };
+}
+
+/** Records what the user asked a host's daemon to do, or that it is done (US-3.3.2, US-3.3.3). */
+export function daemonActionChanged(workspace: Workspace, hostId: string, action: DaemonAction | undefined): Workspace {
+    return {
+        ...workspace,
+        hosts: workspace.hosts.map((host) => {
+            if (host.id !== hostId) {
+                return host;
+            }
+            const { daemonAction: _previous, ...rest } = host;
+            return action === undefined ? rest : { ...rest, daemonAction: action };
+        }),
+    };
 }
 
 /** Shows a host's sessions as cached at the last run, Reconnecting until the host lists its own (US-2.3.2). */
@@ -186,13 +208,23 @@ export function hostRemoved(workspace: Workspace, hostId: string): Workspace {
     };
 }
 
-/** Takes a host's changed record: its install location (US-1.4.3) or its clipboard permission (SEC-06.1). */
+/**
+ * Takes a host's changed record: its install location (US-1.4.3), its clipboard permission (SEC-06.1) or whether its
+ * daemon was removed (P-45).
+ */
 export function hostUpdated(workspace: Workspace, known: KnownHost): Workspace {
     return {
         ...workspace,
         hosts: workspace.hosts.map((host) =>
             host.id === known.id
-                ? { ...known, destination: host.destination, state: host.state, reconnecting: host.reconnecting }
+                ? {
+                      ...known,
+                      destination: host.destination,
+                      state: host.state,
+                      reconnecting: host.reconnecting,
+                      ...(host.home === undefined ? {} : { home: host.home }),
+                      ...(host.daemonAction === undefined ? {} : { daemonAction: host.daemonAction }),
+                  }
                 : host,
         ),
     };
@@ -347,4 +379,13 @@ function reorder(sessions: readonly SessionInfo[], order: readonly SessionId[]):
         return entry === undefined ? [] : [entry];
     });
     return [...ordered, ...sessions.filter((entry) => !order.includes(entry.id))];
+}
+
+/** A host that connected again has finished restarting its daemon (US-3.3.2). */
+function withoutRestart(host: HostEntry): HostEntry {
+    if (host.daemonAction !== 'restarting' || host.state.status !== 'connected') {
+        return host;
+    }
+    const { daemonAction: _done, ...rest } = host;
+    return rest;
 }

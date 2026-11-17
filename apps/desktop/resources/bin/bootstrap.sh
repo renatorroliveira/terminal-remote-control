@@ -4,6 +4,7 @@
 # such as startup-file noise, is ignored. The app sends one command per line:
 #   UPLOAD <size> <sha256> <version>, then exactly <size> bytes
 #   RUN <sha256>
+#   REMOVE
 #   EXIT
 # Errors are `ERROR <code> <detail>`. A failed run leaves nothing behind.
 # `root-unsafe` means another user could change the install location;
@@ -236,6 +237,64 @@ run_bridge() {
     exec "$bin" bridge
 }
 
+# The SHA-256 of a text, as the daemon names its systemd unit after its root's.
+hash_text() {
+    case $tool in
+    sha256sum) printf '%s' "$1" | sha256sum | cut -d' ' -f1 ;;
+    shasum) printf '%s' "$1" | shasum -a 256 | cut -d' ' -f1 ;;
+    openssl) printf '%s' "$1" | openssl dgst -sha256 | sed 's/^.*= *//' ;;
+    esac
+}
+
+# Ends every process run from this install's versions/, after stopping the
+# core's systemd unit, so the unit never restarts a core it is removing.
+stop_processes() {
+    if [ "$tool" != none ] && command -v systemctl >/dev/null 2>&1; then
+        unit=trcd-$(hash_text "$root" | cut -c1-8).service
+        systemctl --user stop "$unit" >/dev/null 2>&1
+    fi
+    for signal in TERM KILL; do
+        found=
+        for proc in /proc/[0-9]*; do
+            exe=$(readlink "$proc/exe" 2>/dev/null) || continue
+            case $exe in
+            "$root/versions/"*)
+                kill -"$signal" "${proc#/proc/}" 2>/dev/null
+                found=1
+                ;;
+            esac
+        done
+        [ -n "$found" ] || return 0
+        sleep 1
+    done
+}
+
+# Removes the daemon (US-3.3.3, P-46): ends its processes, then deletes only
+# the entries TRC creates in the install location, and the location itself
+# once it is empty, so a moved location never loses other files. Reports
+# what it left.
+remove_install() {
+    [ -d "$root" ] || {
+        say "REMOVED"
+        return
+    }
+    stop_processes
+    if [ -d "$root/run" ]; then
+        rm -rf "$root/run"
+    elif [ -d "/tmp/trc-$uid" ] && [ -O "/tmp/trc-$uid" ] && [ ! -L "/tmp/trc-$uid" ]; then
+        rm -rf "/tmp/trc-$uid"
+    fi
+    rm -rf "$root/versions" "$root/sessions" "$root/logs" "$root/install.lock"
+    rmdir "$root" 2>/dev/null
+    kept=
+    [ -d "$root" ] && kept=$(ls -A "$root" | tr '\n' '/' | sed 's#/$##')
+    if [ -n "$kept" ]; then
+        say "REMOVED kept=$kept"
+    else
+        say "REMOVED"
+    fi
+}
+
 cleanup() {
     [ -n "${staging:-}" ] && rm -rf "$staging"
     [ -n "${held_lock:-}" ] && rm -rf "$held_lock"
@@ -262,6 +321,7 @@ main() {
         case $command in
         UPLOAD) upload "$first" "$second" "$third" ;;
         RUN) run_bridge "$first" ;;
+        REMOVE) remove_install ;;
         EXIT) exit 0 ;;
         *) fail "protocol unknown command" ;;
         esac

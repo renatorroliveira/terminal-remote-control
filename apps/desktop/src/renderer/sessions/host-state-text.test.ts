@@ -38,4 +38,14 @@ describe('hostStateText', () => {
         );
         expect(hostStateText(intl, host({ status: 'connected', daemon }))).toBe('Connected');
     });
+
+    it('says Daemon removed for a host whose daemon the user removed, and what a daemon change is doing', () => {
+        expect(hostStateText(intl, { ...host({ status: 'closed' }), daemonRemoved: true })).toBe('Daemon removed');
+        expect(hostStateText(intl, { ...host({ status: 'idle' }), daemonRemoved: true })).toBe('Daemon removed');
+        const lost: ConnectionState = { status: 'disconnected', reason: 'channel-closed' };
+        expect(hostStateText(intl, { ...host(lost), daemonAction: 'restarting' })).toBe('Restarting the daemon');
+        expect(hostStateText(intl, { ...host({ status: 'closed' }), daemonAction: 'removing' })).toBe(
+            'Removing the daemon',
+        );
+    });
 });

@@ -57,6 +57,136 @@
       "value": "."
     }
   ],
+  "announce.daemonRemoveFailed": [
+    {
+      "type": 0,
+      "value": "Couldn’t remove the daemon from "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ". "
+    },
+    {
+      "type": 1,
+      "value": "problem"
+    }
+  ],
+  "announce.daemonRemoved": [
+    {
+      "type": 0,
+      "value": "Daemon removed from "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.daemonRemovedKept": [
+    {
+      "type": 0,
+      "value": "Daemon removed from "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ". "
+    },
+    {
+      "type": 1,
+      "value": "root"
+    },
+    {
+      "type": 0,
+      "value": " keeps "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " item"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " items"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " TRC did not write."
+    }
+  ],
+  "announce.daemonRemoving": [
+    {
+      "type": 0,
+      "value": "Removing the daemon from "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.daemonRestarted": [
+    {
+      "type": 0,
+      "value": "Daemon restarted on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.daemonRestarting": [
+    {
+      "type": 0,
+      "value": "Restarting the daemon on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "announce.findMatch": [
     {
       "type": 0,
@@ -731,6 +861,170 @@
       "value": "."
     }
   ],
+  "details.close": [
+    {
+      "type": 0,
+      "value": "Close"
+    }
+  ],
+  "details.connection": [
+    {
+      "type": 0,
+      "value": "Connection"
+    }
+  ],
+  "details.detached": [
+    {
+      "type": 0,
+      "value": "On its own, outside any service manager"
+    }
+  ],
+  "details.installRoot": [
+    {
+      "type": 0,
+      "value": "Install location"
+    }
+  ],
+  "details.lessThanAMinute": [
+    {
+      "type": 0,
+      "value": "Less than a minute"
+    }
+  ],
+  "details.logs": [
+    {
+      "type": 0,
+      "value": "Logs"
+    }
+  ],
+  "details.notConnected": [
+    {
+      "type": 0,
+      "value": "Connect to see the daemon’s version, uptime and logs."
+    }
+  ],
+  "details.remove": [
+    {
+      "type": 0,
+      "value": "Remove daemon from host…"
+    }
+  ],
+  "details.restart": [
+    {
+      "type": 0,
+      "value": "Restart daemon"
+    }
+  ],
+  "details.saving": [
+    {
+      "type": 0,
+      "value": "Saving scrollback"
+    }
+  ],
+  "details.savingFails": [
+    {
+      "type": 0,
+      "value": "Fails for "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " session"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " sessions"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": ": "
+    },
+    {
+      "type": 1,
+      "value": "reason"
+    }
+  ],
+  "details.service": [
+    {
+      "type": 0,
+      "value": "Runs"
+    }
+  ],
+  "details.systemd": [
+    {
+      "type": 0,
+      "value": "As a systemd user service"
+    }
+  ],
+  "details.title": [
+    {
+      "type": 0,
+      "value": "Details of "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "details.unknownService": [
+    {
+      "type": 0,
+      "value": "In a way this version does not know"
+    }
+  ],
+  "details.upgrade": [
+    {
+      "type": 0,
+      "value": "Upgrade daemon"
+    }
+  ],
+  "details.upgradeHint": [
+    {
+      "type": 0,
+      "value": "This app brings daemon "
+    },
+    {
+      "type": 1,
+      "value": "version"
+    },
+    {
+      "type": 0,
+      "value": ". Upgrading keeps every session."
+    }
+  ],
+  "details.uptime": [
+    {
+      "type": 0,
+      "value": "Running for"
+    }
+  ],
+  "details.version": [
+    {
+      "type": 0,
+      "value": "Daemon version"
+    }
+  ],
   "failure.authenticationAgentEmpty.problem": [
     {
       "type": 0,
@@ -1337,6 +1631,20 @@
       "value": "."
     }
   ],
+  "failure.restartDaemon": [
+    {
+      "type": 0,
+      "value": "Couldn’t restart the daemon on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "failure.rootUnsafe.problem": [
     {
       "type": 0,
@@ -1628,7 +1936,15 @@
     },
     {
       "type": 0,
-      "value": " from your hosts and closes its connection. Its sessions keep running on the host, and adding it again shows them."
+      "value": " from your hosts and closes its connection. If you leave them, its sessions keep running on the host, and adding it again shows them. Otherwise TRC stops them, deletes the daemon and what it wrote in "
+    },
+    {
+      "type": 1,
+      "value": "root"
+    },
+    {
+      "type": 0,
+      "value": " on the host, and then forgets it."
     }
   ],
   "forget.cancel": [
@@ -1640,7 +1956,13 @@
   "forget.confirm": [
     {
       "type": 0,
-      "value": "Forget"
+      "value": "Forget and leave sessions running"
+    }
+  ],
+  "forget.remove": [
+    {
+      "type": 0,
+      "value": "Stop sessions, remove the daemon and forget"
     }
   ],
   "forget.title": [
@@ -1839,6 +2161,20 @@
       "value": "host"
     }
   ],
+  "host.action.details": [
+    {
+      "type": 0,
+      "value": "Details of "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "…"
+    }
+  ],
   "host.action.disconnect": [
     {
       "type": 0,
@@ -1955,6 +2291,12 @@
       "value": "Connecting"
     }
   ],
+  "host.daemonRemoved": [
+    {
+      "type": 0,
+      "value": "Daemon removed"
+    }
+  ],
   "host.disconnected": [
     {
       "type": 0,
@@ -2029,6 +2371,18 @@
     {
       "type": 1,
       "value": "details"
+    }
+  ],
+  "host.removingDaemon": [
+    {
+      "type": 0,
+      "value": "Removing the daemon"
+    }
+  ],
+  "host.restartingDaemon": [
+    {
+      "type": 0,
+      "value": "Restarting the daemon"
     }
   ],
   "host.testPassed": [
@@ -2861,6 +3215,103 @@
     {
       "type": 0,
       "value": "."
+    }
+  ],
+  "removeDaemon.cancel": [
+    {
+      "type": 0,
+      "value": "Cancel"
+    }
+  ],
+  "removeDaemon.confirm": [
+    {
+      "type": 0,
+      "value": "Remove daemon"
+    }
+  ],
+  "removeDaemon.data": [
+    {
+      "type": 0,
+      "value": "It deletes the daemon’s programs, every session’s saved scrollback and its logs from "
+    },
+    {
+      "type": 1,
+      "value": "root"
+    },
+    {
+      "type": 0,
+      "value": " on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "; other files there stay. "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " then stays in the app, not connected, until you connect it, which installs the daemon again."
+    }
+  ],
+  "removeDaemon.sessions": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "=0": {
+          "value": [
+            {
+              "type": 0,
+              "value": "No session runs there."
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "This session stops:"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "These "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " sessions stop:"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "removeDaemon.title": [
+    {
+      "type": 0,
+      "value": "Remove the daemon from "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "?"
     }
   ],
   "rename.cancel": [

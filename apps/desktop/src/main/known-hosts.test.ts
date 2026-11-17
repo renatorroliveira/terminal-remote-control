@@ -68,6 +68,15 @@ describe('KnownHosts: forgetting, install locations and recent hosts (US-1.1.1, 
         expect((await hosts.list())[0]).toEqual(host);
     });
 
+    it('marks a host whose daemon the user removed, and clears the mark when it connects again (P-45)', async () => {
+        const hosts = new KnownHosts(directory());
+        const host = await hosts.add('devbox-1', '~/.trc');
+        expect(await hosts.setDaemonRemoved(host.id, true)).toEqual({ ...host, daemonRemoved: true });
+        expect((await hosts.list())[0]).toEqual({ ...host, daemonRemoved: true });
+        expect(await hosts.setDaemonRemoved(host.id, false)).toEqual(host);
+        await expect(hosts.setDaemonRemoved('host-0000000000000000', true)).rejects.toThrow(/no host/);
+    });
+
     it('keeps a host’s clipboard-write permission, off unless hosts.json turns it on (SEC-06.1)', async () => {
         const home = directory();
         const host = { id: 'host-0123456789abcdef', address: { destination: 'build' }, installRoot: '~/.trc' };

@@ -2,6 +2,7 @@ import type { ClientMessage, ErrorCode, ServerMessage } from '@trc/protocol';
 import {
     type ConnectionState,
     type ConnectTarget,
+    type DaemonRemoval,
     type HostEvent,
     type HostRequest,
     RESERVED_REQUEST_IDS,
@@ -61,6 +62,7 @@ export class HostClient {
     readonly #messages = new Map<string, Set<Listener<ServerMessage>>>();
     readonly #outputs = new Map<string, Set<Listener<Uint8Array>>>();
     readonly #inputRefused = new Set<Listener<string>>();
+    readonly #removals = new Map<string, Listener<DaemonRemoval>[]>();
     readonly #encoder = new TextEncoder();
     #nextRequestId = 1;
 
@@ -88,6 +90,18 @@ export class HostClient {
     /** Closes a host's connection. */
     disconnect(hostId: string): void {
         this.#post({ type: 'disconnect', hostId });
+    }
+
+    /**
+     * Ends a host's connection and removes its daemon: its processes end and only what TRC wrote in the install
+     * location is deleted (US-3.3.3, P-46); a connected daemon first stops every session, with `graceMs` between the
+     * stop signals. Resolves with what the location kept, or why the removal failed.
+     */
+    removeDaemon(hostId: string, target: ConnectTarget, graceMs?: number): Promise<DaemonRemoval> {
+        return new Promise((resolve) => {
+            this.#removals.set(hostId, [...(this.#removals.get(hostId) ?? []), resolve]);
+            this.#post({ type: 'remove-daemon', hostId, target, ...(graceMs === undefined ? {} : { graceMs }) });
+        });
     }
 
     /** Trusts the host key the user confirmed (US-1.2). */
@@ -164,6 +178,12 @@ export class HostClient {
                 break;
             case 'refused':
                 this.#onRefused(event);
+                break;
+            case 'daemon-removed':
+                for (const resolve of this.#removals.get(event.hostId) ?? []) {
+                    resolve(event.removal);
+                }
+                this.#removals.delete(event.hostId);
                 break;
         }
     }

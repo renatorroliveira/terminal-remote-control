@@ -364,6 +364,11 @@ export const failedActionMessages = defineMessages<FailedAction>({
         defaultMessage: 'Couldn’t clear the scrollback of a session on {host}.',
         description: 'Reported when clearing a session’s scrollback fails.',
     },
+    restartDaemon: {
+        id: 'failure.restartDaemon',
+        defaultMessage: 'Couldn’t restart the daemon on {host}.',
+        description: 'Reported when the daemon refuses Restart daemon.',
+    },
 });
 
 /** A settings change `config.json` refused, which the app undid (A11Y-10.3, WCAG 3.3.1). */

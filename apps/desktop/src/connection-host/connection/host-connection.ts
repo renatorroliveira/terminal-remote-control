@@ -17,9 +17,10 @@ import {
     type ConnectionFailure,
     type ConnectionState,
     type ConnectTarget,
+    type DaemonRemoval,
     RESERVED_REQUEST_IDS,
 } from '../../shared/connection';
-import { type BootstrapOutcome, runBootstrap } from '../bootstrap/driver';
+import { type BootstrapFailure, type BootstrapOutcome, runBootstrap, runRemoval } from '../bootstrap/driver';
 import type { DaemonManifest, DaemonPlatform } from '../bootstrap/manifest';
 import { buildBootstrapScript } from '../bootstrap/script';
 import type { AppLogger } from '../logging/app-log';
@@ -63,6 +64,20 @@ export interface ConnectionRuntime {
 
 type Answer = Extract<ServerMessage, { type: 'welcome' | 'incompatible' }>;
 
+/** An ssh process running the bootstrap's remote command, with the settings and nonce it started with. */
+interface OpenedSsh {
+    readonly process: SshProcess;
+    readonly config: EffectiveConfig;
+    readonly nonce: string;
+}
+
+/** The first protocol whose cores stop every session and delete their data before a removal (US-3.3.3). */
+const REMOVING_PROTOCOL = 3;
+/** The request ID of `removeDaemon`, among those the renderer never uses. */
+const REMOVAL_REQUEST_ID = 0xffff_ffff;
+/** How long a core may take to stop every session before the removal goes on without it. */
+const STOP_SESSIONS_TIMEOUT_MS = 60_000;
+
 /** How long the daemon has to answer `hello`. */
 const HANDSHAKE_TIMEOUT_MS = 15_000;
 const REMOTE_COMMAND = 'exec /bin/sh -s';
@@ -83,6 +98,8 @@ export class HostConnection implements HostConnectionLike {
     #wrapper: string | undefined;
     #pinger: Pinger | undefined;
     #answer: ((answer: Answer | undefined) => void) | undefined;
+    /** Resolves once the core answered `removeDaemon` or the channel closed. */
+    #stopped: (() => void) | undefined;
 
     /** Creates an idle connection to `target`, reporting to `listener`. */
     constructor(runtime: ConnectionRuntime, hostId: string, target: ConnectTarget, listener: ConnectionListener) {
@@ -106,7 +123,7 @@ export class HostConnection implements HostConnectionLike {
         try {
             await this.#attempt();
         } catch (error) {
-            this.#fail({ kind: 'other', details: error instanceof Error ? error.message : String(error) });
+            this.#fail({ kind: 'other', details: errorText(error) });
         }
     }
 
@@ -162,11 +179,85 @@ export class HostConnection implements HostConnectionLike {
         void this.#teardown();
     }
 
-    async #attempt(): Promise<void> {
+    /**
+     * Has a connected core from protocol 3 on stop every session, with `graceMs` between the stop signals, and delete
+     * their data; then closes the connection and removes the daemon over a new exec channel: the bootstrap's `REMOVE`
+     * step ends its processes and deletes only what TRC wrote in the install location (US-3.3.3, P-46). It works
+     * whether or not the daemon still answers.
+     */
+    async removeDaemon(graceMs?: number): Promise<DaemonRemoval> {
+        await this.#stopSessions(graceMs);
+        this.close();
+        try {
+            return await this.#remove();
+        } catch (error) {
+            return { kind: 'failed', failure: { kind: 'other', details: errorText(error) } };
+        } finally {
+            await this.#teardown();
+        }
+    }
+
+    /** Asks the core to stop every session and waits until it answered, its channel closed, or a minute passed. */
+    async #stopSessions(graceMs: number | undefined): Promise<void> {
+        const state = this.#state;
+        if (state.status !== 'connected' || state.daemon.proto < REMOVING_PROTOCOL) {
+            return;
+        }
+        const stopped = new Promise<void>((resolve) => {
+            this.#stopped = resolve;
+        });
+        const timer = setTimeout(() => this.#stopped?.(), STOP_SESSIONS_TIMEOUT_MS);
+        this.send({
+            type: 'removeDaemon',
+            requestId: REMOVAL_REQUEST_ID,
+            ...(graceMs === undefined ? {} : { graceMs }),
+        });
+        await stopped;
+        clearTimeout(timer);
+        this.#stopped = undefined;
+    }
+
+    async #remove(): Promise<DaemonRemoval> {
         const clientProblem = await this.#checkClient();
         if (clientProblem !== undefined) {
-            return this.#fail(clientProblem);
+            return { kind: 'failed', failure: clientProblem };
         }
+        const opened = await this.#open();
+        if ('failure' in opened) {
+            return { kind: 'failed', failure: opened.failure };
+        }
+        const bootNonce = randomBytes(8).toString('hex');
+        const outcome = await runRemoval(
+            { input: opened.process.child.stdin, output: opened.process.child.stdout },
+            {
+                script: buildBootstrapScript(this.#runtime.bootstrapTemplate, {
+                    nonce: bootNonce,
+                    root: this.#target.installRoot,
+                }),
+                nonce: bootNonce,
+            },
+        );
+        if (outcome.kind === 'removed') {
+            this.#runtime.log.info('daemon removed', { hostId: this.#hostId, kept: outcome.kept.length });
+            return outcome;
+        }
+        return { kind: 'failed', failure: await this.#failureOf(outcome.failure, opened) };
+    }
+
+    /** Why a removal stopped: what the host said, or, when ssh itself ended, what its errors mean. */
+    async #failureOf(failure: BootstrapFailure, { process, config, nonce }: OpenedSsh): Promise<ConnectionFailure> {
+        if (failure.kind !== 'closed') {
+            return fromBootstrap(failure);
+        }
+        await process.exited;
+        const classified = classifyFailure(process.stderr, nonce, config);
+        return classified.kind === 'host-key-unknown'
+            ? { kind: 'other', details: 'connect to the host first to trust its key' }
+            : fromSsh(classified, undefined);
+    }
+
+    /** Reads the host's effective SSH settings and starts ssh with the bootstrap's remote command. */
+    async #open(): Promise<OpenedSsh | { readonly failure: ConnectionFailure }> {
         const runtime = this.#runtime;
         const wrapper = await this.#writeWrapper();
         const config = await readEffectiveConfig(
@@ -175,11 +266,10 @@ export class HostConnection implements HostConnectionLike {
             runtime.env,
         );
         if (config === undefined) {
-            return this.#fail({ kind: 'other', details: 'ssh could not read the SSH configuration for this host' });
+            return { failure: { kind: 'other', details: 'ssh could not read the SSH configuration for this host' } };
         }
         this.#config = config;
-        const sshNonce = randomBytes(8).toString('hex');
-        const bootNonce = randomBytes(8).toString('hex');
+        const nonce = randomBytes(8).toString('hex');
         const process = startSsh({
             program: runtime.ssh,
             args: sshArguments({
@@ -189,11 +279,26 @@ export class HostConnection implements HostConnectionLike {
                 command: REMOTE_COMMAND,
                 seam: runtime.seam,
             }),
-            env: sshEnvironment(runtime.env, runtime.helpers, sshNonce),
-            nonce: sshNonce,
+            env: sshEnvironment(runtime.env, runtime.helpers, nonce),
+            nonce,
             onHelper: (line) => this.#onHelper(line),
         });
         this.#process = process;
+        return { process, config, nonce };
+    }
+
+    async #attempt(): Promise<void> {
+        const clientProblem = await this.#checkClient();
+        if (clientProblem !== undefined) {
+            return this.#fail(clientProblem);
+        }
+        const opened = await this.#open();
+        if ('failure' in opened) {
+            return this.#fail(opened.failure);
+        }
+        const { process, config, nonce: sshNonce } = opened;
+        const runtime = this.#runtime;
+        const bootNonce = randomBytes(8).toString('hex');
         const outcome = await runBootstrap(
             { input: process.child.stdin, output: process.child.stdout },
             {
@@ -282,6 +387,7 @@ export class HostConnection implements HostConnectionLike {
                     proto: answer.proto,
                     ...(answer.service === undefined ? {} : { service: answer.service }),
                     ...(answer.details === undefined ? {} : { details: answer.details }),
+                    bundled: this.#runtime.manifest.version,
                 },
             });
             return this.#startPinger(process);
@@ -335,6 +441,8 @@ export class HostConnection implements HostConnectionLike {
             this.#answer?.(message);
         } else if (message.type === 'pong' && message.requestId >= RESERVED_REQUEST_IDS) {
             this.#pinger?.pong(message.requestId);
+        } else if ((message.type === 'done' || message.type === 'error') && message.requestId === REMOVAL_REQUEST_ID) {
+            this.#stopped?.();
         } else if (this.#state.status === 'connected') {
             this.#listener.message(message);
         }
@@ -352,6 +460,7 @@ export class HostConnection implements HostConnectionLike {
         }
         this.#pinger?.stop();
         this.#answer?.(undefined);
+        this.#stopped?.();
         this.#dispatch({ type: 'lost', reason: 'channel-closed' });
     }
 
@@ -408,4 +517,8 @@ export class HostConnection implements HostConnectionLike {
         this.#listener.state(next);
         return true;
     }
+}
+
+function errorText(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
 }

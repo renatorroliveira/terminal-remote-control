@@ -46,6 +46,11 @@ export const hostActionMessages = {
         defaultMessage: 'Stop reconnecting to {host}',
         description: 'Host action while the host reconnects by itself (US-2.2.3).',
     }),
+    details: defineMessage<{ host: string }>({
+        id: 'host.action.details',
+        defaultMessage: 'Details of {host}…',
+        description: 'Host action that opens the host’s and its daemon’s details (US-3.3.1).',
+    }),
     forget: defineMessage<{ host: string }>({
         id: 'host.action.forget',
         defaultMessage: 'Forget {host}…',
@@ -85,13 +90,22 @@ export const forgetMessages = {
         defaultMessage: 'Forget {host}?',
         description: 'Confirmation title.',
     }),
-    body: defineMessage<{ host: string }>({
+    body: defineMessage<{ host: string; root: string }>({
         id: 'forget.body',
         defaultMessage:
-            'TRC removes {host} from your hosts and closes its connection. Its sessions keep running on the host, and adding it again shows them.',
-        description: 'Says what forgetting deletes and what it keeps.',
+            'TRC removes {host} from your hosts and closes its connection. If you leave them, its sessions keep running on the host, and adding it again shows them. Otherwise TRC stops them, deletes the daemon and what it wrote in {root} on the host, and then forgets it.',
+        description: 'Says what each way of forgetting a host deletes and what it keeps (US-3.3.4).',
     }),
-    confirm: defineMessage({ id: 'forget.confirm', defaultMessage: 'Forget', description: 'Button.' }),
+    confirm: defineMessage({
+        id: 'forget.confirm',
+        defaultMessage: 'Forget and leave sessions running',
+        description: 'Button: forget the host and leave its daemon and sessions on it.',
+    }),
+    remove: defineMessage({
+        id: 'forget.remove',
+        defaultMessage: 'Stop sessions, remove the daemon and forget',
+        description: 'Button: stop every session, remove the daemon from the host, then forget the host.',
+    }),
     cancel: defineMessage({ id: 'forget.cancel', defaultMessage: 'Cancel', description: 'Button.' }),
 };
 

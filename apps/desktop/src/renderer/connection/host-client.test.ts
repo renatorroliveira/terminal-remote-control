@@ -126,3 +126,16 @@ describe('HostClient: refused deliveries (US-1.14.2)', () => {
         expect(refused).toEqual(['h1']);
     });
 });
+
+describe('HostClient: removing a daemon (US-3.3.3)', () => {
+    it('asks the connection host to remove a daemon and resolves with how that went', async () => {
+        const { client, emit, next } = harness();
+        const target = { destination: 'devbox-1', installRoot: '~/.trc' };
+        const asked = next();
+        const removal = client.removeDaemon('h1', target);
+        expect(await asked).toEqual({ type: 'remove-daemon', hostId: 'h1', target });
+        emit({ type: 'daemon-removed', hostId: 'h2', removal: { kind: 'removed', kept: [] } });
+        emit({ type: 'daemon-removed', hostId: 'h1', removal: { kind: 'removed', kept: ['notes.txt'] } });
+        expect(await removal).toEqual({ kind: 'removed', kept: ['notes.txt'] });
+    });
+});

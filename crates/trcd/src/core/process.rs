@@ -5,6 +5,7 @@ use std::io::{self, Write};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::process::Stdio;
+use std::time::{Duration, Instant};
 
 use rustix::fs::{FlockOperation, Mode};
 use thiserror::Error;
@@ -21,6 +22,9 @@ use crate::run_dir::RunDir;
 use crate::service::{ScopeLauncher, read_host_facts};
 use crate::socket::bind_private;
 use crate::upgrade::lock_contents;
+
+/// How long a starting core waits for the core lock, which a core exiting after Restart daemon holds for moments.
+const LOCK_WAIT: Duration = Duration::from_secs(3);
 
 /// Why the core did not start.
 #[derive(Debug, Error)]
@@ -109,7 +113,7 @@ pub fn launch_detached(layout: &InstallLayout) -> io::Result<()> {
 }
 
 /// Takes the one-core-per-user lock and records the PID, version and checksum in it, so a newer bridge can tell
-/// whether to replace this core (D-46).
+/// whether to replace this core (D-46). Waits a moment for a core that is exiting after Restart daemon to let go.
 fn lock_single_instance(path: &Path, sha256: &str) -> Result<File, StartError> {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
@@ -118,10 +122,16 @@ fn lock_single_instance(path: &Path, sha256: &str) -> Result<File, StartError> {
         .truncate(false)
         .mode(0o600)
         .open(path)?;
-    match rustix::fs::flock(&file, FlockOperation::NonBlockingLockExclusive) {
-        Ok(()) => {}
-        Err(rustix::io::Errno::WOULDBLOCK) => return Err(StartError::AlreadyRunning),
-        Err(error) => return Err(io::Error::from(error).into()),
+    let started = Instant::now();
+    loop {
+        match rustix::fs::flock(&file, FlockOperation::NonBlockingLockExclusive) {
+            Ok(()) => break,
+            Err(rustix::io::Errno::WOULDBLOCK) if started.elapsed() < LOCK_WAIT => {
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            Err(rustix::io::Errno::WOULDBLOCK) => return Err(StartError::AlreadyRunning),
+            Err(error) => return Err(io::Error::from(error).into()),
+        }
     }
     file.set_len(0)?;
     file.write_all(lock_contents(std::process::id(), env!("CARGO_PKG_VERSION"), sha256).as_bytes())?;

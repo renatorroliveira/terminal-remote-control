@@ -102,6 +102,8 @@ impl Core {
             } => self.attach_request(client, request_id, &session, mode, from_offset),
             ClientMessage::Detach { request_id, session } => Some(self.detach(client, request_id, &session)),
             ClientMessage::Refresh { request_id, session } => Some(self.refresh(client, request_id, &session)),
+            ClientMessage::RestartDaemon { request_id } => Some(self.restart_daemon(request_id)),
+            ClientMessage::RemoveDaemon { request_id, grace_ms } => self.remove_daemon(client, request_id, grace_ms),
             other => Some(self.on_simple_request(other)),
         }
     }
@@ -155,7 +157,7 @@ impl Core {
                 self.saving_command(request_id, &session, &HolderCommand::ClearScrollback)
             }
             ClientMessage::RestartDaemon { request_id } | ClientMessage::RemoveDaemon { request_id, .. } => {
-                error(Some(request_id), ErrorCode::Unsupported, "not supported by this daemon")
+                error(Some(request_id), ErrorCode::Internal, "routed elsewhere")
             }
         }
     }
@@ -357,6 +359,7 @@ impl Core {
                     session_id: session.clone(),
                 },
             });
+            self.forgot_during_removal();
         }
     }
 }

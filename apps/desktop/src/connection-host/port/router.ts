@@ -1,9 +1,9 @@
 import type { ClientMessage, ServerMessage } from '@trc/protocol';
-import type { ConnectionState, ConnectTarget, HostEvent, HostRequest } from '../../shared/connection';
+import type { ConnectionState, ConnectTarget, DaemonRemoval, HostEvent, HostRequest } from '../../shared/connection';
 import { type EnableOptions, Reconnector } from '../connection/reconnector';
 import type { AppLogger } from '../logging/app-log';
 import { OutputBatcher } from './output-batcher';
-import { parseHostRequest } from './requests';
+import { parseHostRequest, requestProblem } from './requests';
 
 /** What a host connection reports. */
 export interface ConnectionListener {
@@ -25,6 +25,11 @@ export interface HostConnectionLike {
     /** Pings now with a short timeout, so a connection a wake or network change broke is noticed at once. */
     checkAlive(): void;
     close(): void;
+    /**
+     * Has a connected daemon stop every session, with `graceMs` between the stop signals, then ends the connection
+     * and removes the daemon from the host over a new one (US-3.3.3).
+     */
+    removeDaemon(graceMs?: number): Promise<DaemonRemoval>;
 }
 
 /** Creates the connection for a host. */
@@ -70,7 +75,7 @@ export class ConnectionRouter {
     handle(raw: unknown): void {
         const request = parseHostRequest(raw);
         if (request === undefined) {
-            this.#log.warn('invalid request');
+            this.#log.warn('invalid request', { ...requestKind(raw), problem: requestProblem(raw) });
             return;
         }
         this.#route(request);
@@ -113,7 +118,25 @@ export class ConnectionRouter {
             case 'stop-retrying':
                 this.#stopRetrying(request.hostId, existing);
                 break;
+            case 'remove-daemon':
+                this.#removeDaemon(
+                    request.hostId,
+                    this.#connectionFor(request.hostId, request.target),
+                    request.graceMs,
+                );
+                break;
         }
+    }
+
+    /**
+     * Stops the host reconnecting first, as the daemon's core exits once its sessions are stopped, then removes the
+     * daemon and reports how that went; the host stays disconnected.
+     */
+    #removeDaemon(hostId: string, connection: HostConnectionLike, graceMs: number | undefined): void {
+        this.#reconnectors.get(hostId)?.disable();
+        void connection
+            .removeDaemon(graceMs)
+            .then((removal) => this.#post({ type: 'daemon-removed', hostId, removal }));
     }
 
     /** Connects, or retries at once when the host is waiting to reconnect; from now on it reconnects by itself. */
@@ -183,4 +206,60 @@ export class ConnectionRouter {
         this.#reconnectors.set(hostId, reconnector);
         return connection;
     }
+}
+
+const CLIENT_MESSAGE_KINDS = {
+    hello: true,
+    ping: true,
+    listSessions: true,
+    listProfiles: true,
+    create: true,
+    rename: true,
+    reorder: true,
+    stop: true,
+    restart: true,
+    close: true,
+    attach: true,
+    refresh: true,
+    detach: true,
+    setSessionOptions: true,
+    clearScrollback: true,
+    restartDaemon: true,
+    removeDaemon: true,
+    resize: true,
+} as const satisfies Record<ClientMessage['type'], true>;
+const CLIENT_MESSAGE_TYPES: ReadonlySet<string> = new Set(Object.keys(CLIENT_MESSAGE_KINDS));
+
+const REQUEST_TYPES: ReadonlySet<string> = new Set<HostRequest['type']>([
+    'connect',
+    'send',
+    'input',
+    'credit',
+    'accept-host-key',
+    'reject-host-key',
+    'disconnect',
+    'retry',
+    'stop-retrying',
+    'remove-daemon',
+]);
+
+/**
+ * What kind of request a malformed one claimed to be, and for `send` which message, named only from the known kinds,
+ * so a log line never holds what the renderer sent.
+ */
+function requestKind(raw: unknown): { readonly request: string; readonly message: string | undefined } {
+    const type = typeOf(raw);
+    const request = type !== undefined && REQUEST_TYPES.has(type) ? type : 'other';
+    if (request !== 'send') {
+        return { request, message: undefined };
+    }
+    const message = typeOf((raw as { readonly message?: unknown }).message);
+    return { request, message: message !== undefined && CLIENT_MESSAGE_TYPES.has(message) ? message : 'other' };
+}
+
+function typeOf(value: unknown): string | undefined {
+    if (typeof value !== 'object' || value === null || !('type' in value)) {
+        return undefined;
+    }
+    return typeof value.type === 'string' ? value.type : undefined;
 }

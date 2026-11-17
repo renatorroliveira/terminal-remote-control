@@ -17,4 +17,6 @@ export interface KnownHost {
     readonly installRoot: string;
     /** Whether programs on this host may write the clipboard with OSC 52; off unless set (SEC-06.1). */
     readonly allowClipboardWrites?: boolean;
+    /** Whether the user removed its daemon, so the app does not connect it until the user does (US-3.3.3, P-45). */
+    readonly daemonRemoved?: boolean;
 }

@@ -1055,7 +1055,7 @@ the script until it has read `HELLO`.
     - An unsupported OS or architecture gets an error that names both, before
       anything is created.
 2. **Commands**, one per line: `UPLOAD <size> <sha256> <version>` followed by
-   exactly `<size>` bytes, `RUN <sha256>`, or `EXIT`.
+   exactly `<size>` bytes, `RUN <sha256>`, `REMOVE`, or `EXIT`.
 3. **Upload.**
     1. Create the root (its parent must exist) and `versions/`, remembering
        which it created. Both must pass the ownership and mode test, and so must
@@ -1078,7 +1078,15 @@ the script until it has read `HELLO`.
 4. **Run.** Check the version directory and binary pass the same test, print
    `RUNNING`, then `exec "$bin" bridge`. Protocol frames follow on
    the same channel.
-5. **Errors** are `ERROR <code> <detail>`, with the codes `unsupported-os`,
+5. **Remove (US-3.3.3, P-46).** Stop the core's systemd unit when there is
+   one, then end, with SIGTERM and then SIGKILL, every process whose executable
+   lies in the root's `versions/`. Delete `versions/`, `sessions/`, `logs/`,
+   `install.lock` and `run/` (or, when the root has none, the `/tmp/trc-<uid>`
+   fallback if the user owns it), then the root if it is empty. Answer
+   `REMOVED`, or `REMOVED kept=<name>/<name>…` naming what the root still
+   holds. The step works whether or not the core answers; the app first asks a
+   protocol 3 core to stop every session and delete `sessions/` itself.
+6. **Errors** are `ERROR <code> <detail>`, with the codes `unsupported-os`,
    `unsupported-arch`, `missing-tool`, `root-unusable`, `root-unsafe`, `noexec`,
    `checksum-mismatch`, `short-upload`, `lock-busy`, `self-test`,
    `not-installed` and `protocol`.

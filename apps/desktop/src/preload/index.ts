@@ -50,6 +50,8 @@ const bridge: TrcBridge = {
             ipcRenderer.invoke('hosts:set-install-root', id, installRoot) as Promise<KnownHost>,
         setClipboardWrites: (id, allowed) =>
             ipcRenderer.invoke('hosts:set-clipboard-writes', id, allowed) as Promise<KnownHost>,
+        setDaemonRemoved: (id, removed) =>
+            ipcRenderer.invoke('hosts:set-daemon-removed', id, removed) as Promise<KnownHost>,
     },
     links: {
         check: (target) => ipcRenderer.invoke('links:check', target) as Promise<LinkCheck | undefined>,

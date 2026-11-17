@@ -94,6 +94,21 @@ export const hostStateMessages = defineMessages({
         description: 'Host connection state while the app reconnects a lost host by itself.',
     },
     closed: { id: 'host.closed', defaultMessage: 'Closed', description: 'Host connection state.' },
+    daemonRemoved: {
+        id: 'host.daemonRemoved',
+        defaultMessage: 'Daemon removed',
+        description: 'Host state after the user removed its daemon; connecting installs it again (P-45).',
+    },
+    restartingDaemon: {
+        id: 'host.restartingDaemon',
+        defaultMessage: 'Restarting the daemon',
+        description: 'Host state while its daemon restarts at the user’s request (US-3.3.2).',
+    },
+    removingDaemon: {
+        id: 'host.removingDaemon',
+        defaultMessage: 'Removing the daemon',
+        description: 'Host state while the app removes its daemon (US-3.3.3).',
+    },
 });
 
 /** A session whose host reconnects by itself (US-2.2.2). */
