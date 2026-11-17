@@ -100,6 +100,14 @@ impl SessionStore {
             .collect()
     }
 
+    /// Deletes the whole `sessions` folder, as removing the daemon asks once every session has ended (US-3.3.3).
+    pub fn remove_all(&self) -> io::Result<()> {
+        match std::fs::remove_dir_all(&self.dir) {
+            Err(error) if error.kind() != io::ErrorKind::NotFound => Err(error),
+            _ => Ok(()),
+        }
+    }
+
     /// Deletes a session's data folder, as closing it asks (US-3.2.3).
     pub fn remove(&self, session: &SessionId) {
         match std::fs::remove_dir_all(self.session_dir(session)) {

@@ -8,6 +8,7 @@ import { keymapFor, type Settings } from '../../shared/settings';
 import { nextZoom, TERMINAL_ZOOM, type ZoomChange } from '../../shared/terminal-zoom';
 import { CommandRegistry } from '../commands/command-registry';
 import { installShortcuts } from '../commands/shortcuts';
+import { daemonAnnouncements } from '../sessions/daemon-messages';
 import { failureMessage } from '../sessions/failure-messages';
 import {
     connectStepAnnouncement,
@@ -25,6 +26,7 @@ import type { TerminalLink } from '../terminal/hyperlinks';
 import type { TerminalNotice } from '../terminal/notices';
 import { pastedLines } from '../terminal/paste';
 import type { Announcer } from './announcer';
+import { type DaemonActionOptions, removeDaemon, restartDaemon } from './daemon-actions';
 import { reportActionFailures, reportSettingsFailures } from './failure-reporter';
 import { type HelpContext, helpContext } from './help/help-context';
 import { linkAnnouncements } from './link-messages';
@@ -159,7 +161,7 @@ export type SessionDialog =
 
 /** A dialog about one host. */
 export interface HostDialog {
-    readonly kind: 'forget' | 'install-root';
+    readonly kind: 'forget' | 'install-root' | 'details' | 'remove-daemon';
     readonly hostId: string;
 }
 
@@ -311,6 +313,16 @@ export class Shell {
     /** Runs a command by ID, as the menus do; false when it is not registered. */
     run(id: CommandId): boolean {
         return this.commands.run(id);
+    }
+
+    /** Restarts a host's daemon, keeping its sessions, and says so (US-3.3.2). */
+    restartDaemon(hostId: string): Promise<void> {
+        return restartDaemon(this.#daemonOptions(), hostId);
+    }
+
+    /** Removes a host's daemon and everything TRC wrote there, says how that went, and resolves with whether it did. */
+    removeDaemon(hostId: string): Promise<boolean> {
+        return removeDaemon(this.#daemonOptions(), hostId);
     }
 
     /** Whether output announcements are muted for a session (A11Y-02.4). */
@@ -812,6 +824,11 @@ export class Shell {
         this.#announce(on ? screenReaderAnnouncements.on : screenReaderAnnouncements.off);
     }
 
+    #daemonOptions(): DaemonActionOptions {
+        const { workspace, intl, announcer, notifications } = this.#options;
+        return { workspace, intl, announcer, notifications, playCue: (cue) => this.playCue(cue) };
+    }
+
     #announce(message: MessageDescriptor): void {
         this.#options.announcer.announce(this.#options.intl.formatMessage(message));
     }
@@ -864,6 +881,29 @@ export class Shell {
         }
     }
 
+    /**
+     * Whether the host's connection changed because the user restarts or removes its daemon, which drops it by
+     * design: a restart reports only its return (US-3.3.2), and a removal reports its own outcome (US-3.3.3).
+     */
+    #daemonChanging(before: HostEntry, host: HostEntry): boolean {
+        if (before.daemonAction === 'restarting') {
+            this.#reportRestart(host);
+            return true;
+        }
+        return before.daemonAction === 'removing' || host.daemonAction === 'removing';
+    }
+
+    #reportRestart(host: HostEntry): void {
+        if (host.state.status !== 'connected') {
+            return;
+        }
+        const { intl, announcer, notifications } = this.#options;
+        this.playCue('connected');
+        const text = intl.formatMessage(daemonAnnouncements.restarted, { host: host.destination });
+        announcer.announce(text, { group: host.id });
+        notifications.add({ text, level: 'info' });
+    }
+
     #reportProgress(before: HostEntry, host: HostEntry): void {
         const { intl, announcer } = this.#options;
         const was = before.state;
@@ -888,6 +928,9 @@ export class Shell {
     #reportHost(before: HostEntry, host: HostEntry, inDialog: boolean): void {
         const { intl, announcer, notifications } = this.#options;
         const state = host.state;
+        if (this.#daemonChanging(before, host)) {
+            return;
+        }
         if (state.status === 'connected' && before.reconnecting) {
             this.playCue('connected');
             const text = intl.formatMessage(hostAnnouncements.reconnected, { host: host.destination });

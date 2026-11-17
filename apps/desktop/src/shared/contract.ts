@@ -38,6 +38,10 @@ export interface InvokeContract {
         readonly args: readonly [id: string, allowed: boolean];
         readonly result: KnownHost;
     };
+    readonly 'hosts:set-daemon-removed': {
+        readonly args: readonly [id: string, removed: boolean];
+        readonly result: KnownHost;
+    };
     readonly 'help:open-guide': {
         readonly args: readonly [section: GuideSection | undefined];
         readonly result: undefined;
@@ -96,6 +100,8 @@ export interface TrcBridge {
         setInstallRoot(id: string, installRoot: string): Promise<KnownHost>;
         /** Lets a host's programs write the clipboard with OSC 52, or stops them (SEC-06.1). */
         setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost>;
+        /** Marks a host whose daemon the user removed, or clears the mark (US-3.3.3, P-45). */
+        setDaemonRemoved(id: string, removed: boolean): Promise<KnownHost>;
     };
     readonly app: {
         /** Quits now: no session runs, or the user chose to quit (US-2.1). */

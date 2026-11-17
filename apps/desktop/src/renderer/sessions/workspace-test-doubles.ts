@@ -1,5 +1,5 @@
 import type { ErrorCode, ServerMessage, SessionInfo } from '@trc/protocol';
-import type { ConnectionState, ConnectTarget } from '../../shared/connection';
+import type { ConnectionState, ConnectTarget, DaemonRemoval } from '../../shared/connection';
 import { parseHostAddress } from '../../shared/host-address';
 import { DEFAULT_INSTALL_ROOT, isInstallRoot, type KnownHost } from '../../shared/hosts';
 import { type ClientRequest, HostRequestError } from '../connection/host-client';
@@ -75,6 +75,16 @@ export class FakeWorkspaceClient implements WorkspaceClient {
     /** Records the disconnect. */
     disconnect(hostId: string): void {
         this.calls.push(`disconnect ${hostId}`);
+    }
+
+    /** How the next daemon removal ends. */
+    removal: DaemonRemoval = { kind: 'removed', kept: [] };
+
+    /** Records the removal and closes the host's connection, as the connection host does. */
+    removeDaemon(hostId: string): Promise<DaemonRemoval> {
+        this.calls.push(`remove-daemon ${hostId}`);
+        this.#states.get(hostId)?.({ status: 'closed' });
+        return Promise.resolve(this.removal);
     }
 
     /** Records the accepted key. */
@@ -345,6 +355,19 @@ export class FakeKnownHostStore implements KnownHostStore {
         }
         const { allowClipboardWrites: _previous, ...host } = found;
         const changed = allowed ? { ...host, allowClipboardWrites: true } : host;
+        this.#hosts[index] = changed;
+        return Promise.resolve(changed);
+    }
+
+    /** Marks a host whose daemon was removed, or clears the mark. */
+    setDaemonRemoved(id: string, removed: boolean): Promise<KnownHost> {
+        const index = this.#hosts.findIndex((host) => host.id === id);
+        const found = this.#hosts[index];
+        if (found === undefined) {
+            return Promise.reject(new Error(`no host ${id}`));
+        }
+        const { daemonRemoved: _previous, ...host } = found;
+        const changed = removed ? { ...host, daemonRemoved: true } : host;
         this.#hosts[index] = changed;
         return Promise.resolve(changed);
     }

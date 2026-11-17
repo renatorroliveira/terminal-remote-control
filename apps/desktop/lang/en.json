@@ -19,6 +19,30 @@
     "defaultMessage": "{host}: {step}.",
     "description": "Announced politely at each step of connecting."
   },
+  "announce.daemonRemoveFailed": {
+    "defaultMessage": "Couldn’t remove the daemon from {host}. {problem}",
+    "description": "Announced and listed when removing the daemon fails."
+  },
+  "announce.daemonRemoved": {
+    "defaultMessage": "Daemon removed from {host}.",
+    "description": "Announced and listed once the daemon and everything TRC wrote on the host are deleted."
+  },
+  "announce.daemonRemovedKept": {
+    "defaultMessage": "Daemon removed from {host}. {root} keeps {count, plural, one {# item} other {# items}} TRC did not write.",
+    "description": "Announced and listed when the install location holds other files, which stay."
+  },
+  "announce.daemonRemoving": {
+    "defaultMessage": "Removing the daemon from {host}.",
+    "description": "Announced when the user confirms Remove daemon from host."
+  },
+  "announce.daemonRestarted": {
+    "defaultMessage": "Daemon restarted on {host}.",
+    "description": "Announced and listed once the host connects to its restarted daemon."
+  },
+  "announce.daemonRestarting": {
+    "defaultMessage": "Restarting the daemon on {host}.",
+    "description": "Announced when the user restarts a host’s daemon; its sessions keep running."
+  },
   "announce.findMatch": {
     "defaultMessage": "Match {index, number} of {count, number}.",
     "description": "Announced as find selects a match."
@@ -279,6 +303,82 @@
     "defaultMessage": "Copied all {lines, number} lines. Assistive technology sees the first {cap, number}.",
     "description": "Announced after a copy of more lines than the OS sees selected."
   },
+  "details.close": {
+    "defaultMessage": "Close",
+    "description": "Button."
+  },
+  "details.connection": {
+    "defaultMessage": "Connection",
+    "description": "Label."
+  },
+  "details.detached": {
+    "defaultMessage": "On its own, outside any service manager",
+    "description": "How the daemon runs: detached from the service manager."
+  },
+  "details.installRoot": {
+    "defaultMessage": "Install location",
+    "description": "Label of the read-only field holding the daemon’s install location."
+  },
+  "details.lessThanAMinute": {
+    "defaultMessage": "Less than a minute",
+    "description": "The daemon’s uptime when it started a moment ago."
+  },
+  "details.logs": {
+    "defaultMessage": "Logs",
+    "description": "Label of the read-only field holding the folder of the daemon’s logs."
+  },
+  "details.notConnected": {
+    "defaultMessage": "Connect to see the daemon’s version, uptime and logs.",
+    "description": "Shown in the details of a host that is not connected."
+  },
+  "details.remove": {
+    "defaultMessage": "Remove daemon from host…",
+    "description": "Button that asks for confirmation first."
+  },
+  "details.restart": {
+    "defaultMessage": "Restart daemon",
+    "description": "Button."
+  },
+  "details.saving": {
+    "defaultMessage": "Saving scrollback",
+    "description": "Label."
+  },
+  "details.savingFails": {
+    "defaultMessage": "Fails for {count, plural, one {# session} other {# sessions}}: {reason}",
+    "description": "The daemon cannot save the scrollback of some sessions (US-3.1.2)."
+  },
+  "details.service": {
+    "defaultMessage": "Runs",
+    "description": "Label: how the daemon runs."
+  },
+  "details.systemd": {
+    "defaultMessage": "As a systemd user service",
+    "description": "How the daemon runs: under the user’s systemd instance."
+  },
+  "details.title": {
+    "defaultMessage": "Details of {host}",
+    "description": "Title of the dialog about a host and its daemon."
+  },
+  "details.unknownService": {
+    "defaultMessage": "In a way this version does not know",
+    "description": "How the daemon runs, when it says something this app does not know."
+  },
+  "details.upgrade": {
+    "defaultMessage": "Upgrade daemon",
+    "description": "Button."
+  },
+  "details.upgradeHint": {
+    "defaultMessage": "This app brings daemon {version}. Upgrading keeps every session.",
+    "description": "Why Upgrade daemon shows: the host runs an older daemon."
+  },
+  "details.uptime": {
+    "defaultMessage": "Running for",
+    "description": "Label."
+  },
+  "details.version": {
+    "defaultMessage": "Daemon version",
+    "description": "Label."
+  },
   "failure.authenticationAgentEmpty.problem": {
     "defaultMessage": "Your SSH agent holds no keys, so ssh had no key to offer {name}.",
     "description": "What went wrong when a connection failed."
@@ -507,6 +607,10 @@
     "defaultMessage": "Couldn’t restart the session on {host}.",
     "description": "Reported when a restart fails."
   },
+  "failure.restartDaemon": {
+    "defaultMessage": "Couldn’t restart the daemon on {host}.",
+    "description": "Reported when the daemon refuses Restart daemon."
+  },
   "failure.rootUnsafe.problem": {
     "defaultMessage": "Other users can change the install location on {name}, or a folder above it.",
     "description": "What went wrong when a connection failed."
@@ -624,16 +728,20 @@
     "description": "Search landmark."
   },
   "forget.body": {
-    "defaultMessage": "TRC removes {host} from your hosts and closes its connection. Its sessions keep running on the host, and adding it again shows them.",
-    "description": "Says what forgetting deletes and what it keeps."
+    "defaultMessage": "TRC removes {host} from your hosts and closes its connection. If you leave them, its sessions keep running on the host, and adding it again shows them. Otherwise TRC stops them, deletes the daemon and what it wrote in {root} on the host, and then forgets it.",
+    "description": "Says what each way of forgetting a host deletes and what it keeps (US-3.3.4)."
   },
   "forget.cancel": {
     "defaultMessage": "Cancel",
     "description": "Button."
   },
   "forget.confirm": {
-    "defaultMessage": "Forget",
-    "description": "Button."
+    "defaultMessage": "Forget and leave sessions running",
+    "description": "Button: forget the host and leave its daemon and sessions on it."
+  },
+  "forget.remove": {
+    "defaultMessage": "Stop sessions, remove the daemon and forget",
+    "description": "Button: stop every session, remove the daemon from the host, then forget the host."
   },
   "forget.title": {
     "defaultMessage": "Forget {host}?",
@@ -755,6 +863,10 @@
     "defaultMessage": "Connect {host}",
     "description": "Accessible name of the connection button of a disconnected host."
   },
+  "host.action.details": {
+    "defaultMessage": "Details of {host}…",
+    "description": "Host action that opens the host’s and its daemon’s details (US-3.3.1)."
+  },
   "host.action.disconnect": {
     "defaultMessage": "Disconnect {host}",
     "description": "Accessible name of the connection button of a connected host."
@@ -803,6 +915,10 @@
     "defaultMessage": "Connecting",
     "description": "Host connection state."
   },
+  "host.daemonRemoved": {
+    "defaultMessage": "Daemon removed",
+    "description": "Host state after the user removed its daemon; connecting installs it again (P-45)."
+  },
   "host.disconnected": {
     "defaultMessage": "Disconnected",
     "description": "Host connection state."
@@ -834,6 +950,14 @@
   "host.reconnectingDetails": {
     "defaultMessage": "Reconnecting. Last attempt: {details}",
     "description": "Description of a host that reconnects by itself, with what ssh or the host reported last time."
+  },
+  "host.removingDaemon": {
+    "defaultMessage": "Removing the daemon",
+    "description": "Host state while the app removes its daemon (US-3.3.3)."
+  },
+  "host.restartingDaemon": {
+    "defaultMessage": "Restarting the daemon",
+    "description": "Host state while its daemon restarts at the user’s request (US-3.3.2)."
   },
   "host.testPassed": {
     "defaultMessage": "The connection to {host} works.",
@@ -1174,6 +1298,26 @@
   "quit.stopAll.unreachable": {
     "defaultMessage": "Not connected, so its sessions keep running: {hosts}.",
     "description": "Names the hosts TRC cannot reach, whose sessions it cannot stop."
+  },
+  "removeDaemon.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button."
+  },
+  "removeDaemon.confirm": {
+    "defaultMessage": "Remove daemon",
+    "description": "Button."
+  },
+  "removeDaemon.data": {
+    "defaultMessage": "It deletes the daemon’s programs, every session’s saved scrollback and its logs from {root} on {host}; other files there stay. {host} then stays in the app, not connected, until you connect it, which installs the daemon again.",
+    "description": "What removing the daemon deletes, and what happens to the host."
+  },
+  "removeDaemon.sessions": {
+    "defaultMessage": "{count, plural, =0 {No session runs there.} one {This session stops:} other {These # sessions stop:}}",
+    "description": "Introduces the list of sessions that removing the daemon stops."
+  },
+  "removeDaemon.title": {
+    "defaultMessage": "Remove the daemon from {host}?",
+    "description": "Title of the confirmation before removing a host’s daemon."
   },
   "rename.cancel": {
     "defaultMessage": "Cancel",

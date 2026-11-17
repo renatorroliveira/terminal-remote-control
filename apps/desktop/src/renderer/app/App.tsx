@@ -6,6 +6,7 @@ import { APP_IDENTITY } from '../../shared/app-identity';
 import { SIDEBAR_WIDTH } from '../../shared/layout';
 import { shellMessages } from '../i18n/messages';
 import { ConnectionFailureDialog } from '../sessions/ConnectionFailureDialog';
+import { DaemonDialogs } from '../sessions/DaemonDialogs';
 import { ADD_HOST_ATTRIBUTE, HostDialogs } from '../sessions/HostDialogs';
 import { LogoutWarningDialog } from '../sessions/LogoutWarningDialog';
 import { sidebarMessages } from '../sessions/messages';
@@ -60,6 +61,7 @@ export function App({ workspace, terminals, shell }: AppProps) {
                 <StatusBar workspace={workspace} shell={shell} />
                 <ConnectionFailureDialog workspace={workspace} />
                 <HostDialogs workspace={workspace} shell={shell} />
+                <DaemonDialogs workspace={workspace} shell={shell} />
                 <SessionDialogs workspace={workspace} shell={shell} />
                 <CommandPalette shell={shell} workspace={workspace} />
                 <NotificationsDialog shell={shell} />

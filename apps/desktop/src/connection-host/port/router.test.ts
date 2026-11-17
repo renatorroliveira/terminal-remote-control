@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ConnectionState, ConnectTarget, HostEvent } from '../../shared/connection';
+import type { ConnectionState, ConnectTarget, DaemonRemoval, HostEvent } from '../../shared/connection';
 import type { ConnectionListener, HostConnectionLike } from './router';
 import { ConnectionRouter } from './router';
 
@@ -40,6 +40,10 @@ class FakeConnection implements HostConnectionLike {
     close(): void {
         this.calls.push('close');
     }
+    async removeDaemon(graceMs?: number): Promise<DaemonRemoval> {
+        this.calls.push(graceMs === undefined ? 'remove' : `remove ${graceMs}`);
+        return { kind: 'removed', kept: ['notes.txt'] };
+    }
 
     /** Reports a state, as the real connection does through its listener. */
     report(state: ConnectionState): void {
@@ -54,6 +58,7 @@ function setup() {
     const posted: HostEvent[] = [];
     const created: FakeConnection[] = [];
     const warnings: string[] = [];
+    const warned: unknown[] = [];
     const router = new ConnectionRouter(
         (event) => posted.push(event),
         (_hostId, _target, listener) => {
@@ -61,9 +66,16 @@ function setup() {
             created.push(connection);
             return connection;
         },
-        { info: () => undefined, warn: (event) => warnings.push(event), error: () => undefined },
+        {
+            info: () => undefined,
+            warn: (event, fields) => {
+                warnings.push(event);
+                warned.push(fields);
+            },
+            error: () => undefined,
+        },
     );
-    return { router, posted, created, warnings };
+    return { router, posted, created, warnings, warned };
 }
 
 describe('ConnectionRouter', () => {
@@ -113,11 +125,46 @@ describe('ConnectionRouter', () => {
         ]);
     });
 
-    it('drops and logs malformed requests', () => {
-        const { router, posted, warnings } = setup();
+    it('drops and logs malformed requests, naming only their kind and never what they carry', () => {
+        const { router, posted, warnings, warned } = setup();
         router.handle({ type: 'connect', hostId: 'h1' });
+        router.handle({ type: 'send', hostId: 'h1', message: { type: 'resize', requestId: 1, session: 'x' } });
+        router.handle({ type: 'send', hostId: 'h1', message: { type: 'secret text' } });
+        router.handle('nonsense');
         expect(posted).toEqual([]);
-        expect(warnings).toEqual(['invalid request']);
+        expect(warnings).toEqual(['invalid request', 'invalid request', 'invalid request', 'invalid request']);
+        expect(warned).toMatchObject([
+            { request: 'connect', message: undefined, problem: 'invalid_type at target' },
+            { request: 'send', message: 'resize', problem: expect.stringContaining('at message') },
+            { request: 'send', message: 'other' },
+            { request: 'other', message: undefined },
+        ]);
+    });
+});
+
+describe('ConnectionRouter: removing a daemon (US-3.3.3)', () => {
+    it('stops reconnecting, removes the daemon through the host’s connection and reports how it went', async () => {
+        const { router, created, posted } = setup();
+        router.handle({ type: 'connect', hostId: 'h1', target });
+        router.handle({ type: 'remove-daemon', hostId: 'h1', target, graceMs: 2000 });
+        await vi.waitFor(() =>
+            expect(posted).toContainEqual({
+                type: 'daemon-removed',
+                hostId: 'h1',
+                removal: { kind: 'removed', kept: ['notes.txt'] },
+            }),
+        );
+        expect(created).toHaveLength(1);
+        expect(created[0]?.calls).toEqual(['connect', 'remove 2000']);
+        created[0]?.report({ status: 'disconnected', reason: 'channel-closed' });
+        expect(posted.filter((event) => event.type === 'state' && event.state.status === 'reconnecting')).toEqual([]);
+    });
+
+    it('removes the daemon of a host that never connected', async () => {
+        const { router, created, posted } = setup();
+        router.handle({ type: 'remove-daemon', hostId: 'h2', target });
+        await vi.waitFor(() => expect(posted.at(-1)).toMatchObject({ type: 'daemon-removed', hostId: 'h2' }));
+        expect(created[0]?.calls).toEqual(['remove']);
     });
 });
 

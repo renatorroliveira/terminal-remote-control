@@ -59,6 +59,14 @@ describe('parseBootstrapLine', () => {
         });
     });
 
+    it('parses what a removal left in the install location (US-3.3.3)', () => {
+        expect(parseBootstrapLine('n1 REMOVED', 'n1')).toEqual({ kind: 'removed', kept: [] });
+        expect(parseBootstrapLine('n1 REMOVED kept=notes.txt/work', 'n1')).toEqual({
+            kind: 'removed',
+            kept: ['notes.txt', 'work'],
+        });
+    });
+
     it('treats a malformed line from the host as a protocol error', () => {
         expect(parseBootstrapLine(`${nonce} HELLO os=Linux`, nonce)).toEqual({
             kind: 'error',

@@ -1,6 +1,6 @@
 import type { CreateSessionSpec, SessionInfo, SessionOptions, ShellProfile } from '@trc/protocol';
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type { ConnectionState } from '../../shared/connection';
+import type { ConnectionState, DaemonRemoval } from '../../shared/connection';
 import type { TrcBridge } from '../../shared/contract';
 import type { KnownHost } from '../../shared/hosts';
 import type { CachedSession, SessionCache } from '../../shared/session-cache';
@@ -15,6 +15,7 @@ import {
     watchSessionCache,
 } from './session-cache';
 import {
+    daemonActionChanged,
     EMPTY_WORKSPACE,
     type FailedAction,
     failureAcknowledged,
@@ -53,6 +54,7 @@ export type WorkspaceClient = Pick<
     | 'onState'
     | 'onMessage'
     | 'request'
+    | 'removeDaemon'
 >;
 
 /** Where known hosts are kept: the main process's `hosts.json` (P-18). */
@@ -209,7 +211,7 @@ export class WorkspaceController {
      */
     connectAll(): void {
         for (const host of this.store.getState().hosts) {
-            if (this.connectionAction(host) === 'connect') {
+            if (this.connectionAction(host) === 'connect' && host.daemonRemoved !== true) {
                 this.#automatic.add(host.id);
                 this.#client.connect(host.id, { ...host.address, installRoot: host.installRoot }, { restore: true });
             }
@@ -232,10 +234,63 @@ export class WorkspaceController {
         }
         this.#automatic.delete(hostId);
         if (action === 'connect') {
+            this.#connectRemoved(host);
             this.#client.connect(host.id, { ...host.address, installRoot: host.installRoot });
         } else if (action !== 'review-key') {
             this.#client.disconnect(host.id);
         }
+    }
+
+    /**
+     * Restarts a connected host's daemon: the core ends, its sessions keep running, and the host reconnects by itself
+     * to a new core that adopts them (US-3.3.2). Resolves with whether the daemon took the request.
+     */
+    async restartDaemon(hostId: string): Promise<boolean> {
+        this.#update((workspace) => daemonActionChanged(workspace, hostId, 'restarting'));
+        const restarted = await this.#attempt('restartDaemon', hostId, () =>
+            this.#client.request(hostId, { type: 'restartDaemon' }),
+        );
+        if (!restarted) {
+            this.#update((workspace) => daemonActionChanged(workspace, hostId, undefined));
+        }
+        return restarted;
+    }
+
+    /**
+     * Removes a host's daemon (US-3.3.3, P-45, P-46): the connection host has a connected daemon from protocol 3 on
+     * stop every session with the stop grace period and delete their data; then the connection closes and the
+     * bootstrap's `REMOVE` step ends what is left and deletes what TRC wrote. The host stays, marked Daemon removed, and is not connected again
+     * until the user connects it. Resolves with what the install location kept, or why the removal failed.
+     */
+    async removeDaemon(hostId: string): Promise<DaemonRemoval | undefined> {
+        const host = this.#host(hostId);
+        if (host === undefined) {
+            return undefined;
+        }
+        this.#update((workspace) => daemonActionChanged(workspace, hostId, 'removing'));
+        const grace = this.#preferences?.().stopGraceSeconds;
+        const target = { ...host.address, installRoot: host.installRoot };
+        const removal = await this.#client.removeDaemon(
+            hostId,
+            target,
+            grace === undefined ? undefined : grace * 1_000,
+        );
+        if (removal.kind === 'removed') {
+            await this.#markRemoved(hostId, true);
+        }
+        this.#update((workspace) => daemonActionChanged(workspace, hostId, undefined));
+        return removal;
+    }
+
+    /** Connects again, so the bootstrap installs the bundled daemon and its bridge replaces an older core (US-3.3.2). */
+    upgradeDaemon(hostId: string): void {
+        const host = this.#host(hostId);
+        if (host === undefined) {
+            return;
+        }
+        this.#automatic.delete(hostId);
+        this.#client.disconnect(hostId);
+        this.#client.connect(hostId, { ...host.address, installRoot: host.installRoot });
     }
 
     /** Stops a reconnecting host retrying by itself; it shows its last state until the user connects it (US-2.2.3). */
@@ -604,6 +659,21 @@ export class WorkspaceController {
         }
     }
 
+    /** A host whose daemon was removed loses the mark once the user connects it, which installs it again (P-45). */
+    #connectRemoved(host: HostEntry): void {
+        if (host.daemonRemoved === true) {
+            void this.#markRemoved(host.id, false);
+        }
+    }
+
+    /** Keeps in `hosts.json` whether a host's daemon was removed; a refused save leaves the host as it was. */
+    async #markRemoved(hostId: string, removed: boolean): Promise<void> {
+        const known = await this.#hosts.setDaemonRemoved(hostId, removed).catch(() => undefined);
+        if (known !== undefined) {
+            this.#update((workspace) => hostUpdated(workspace, known));
+        }
+    }
+
     #add(host: KnownHost): void {
         const known = this.#host(host.id) !== undefined;
         this.#update((workspace) => hostAdded(workspace, host));
@@ -682,9 +752,11 @@ export class WorkspaceController {
         }
     }
 
+    /** Lists a host's sessions; a list that arrives after the host stopped being connected is dropped. */
     async #listSessions(hostId: string): Promise<void> {
         const reply = await this.#client.request(hostId, { type: 'listSessions' }).catch(() => undefined);
-        if (reply?.type === 'sessions') {
+        const host = this.#host(hostId);
+        if (reply?.type === 'sessions' && host !== undefined && isConnected(host)) {
             this.#update((workspace) => sessionsListed(workspace, hostId, reply.sessions));
             for (const session of reply.sessions) {
                 this.#terminals.updateSession(sessionKey(hostId, session.id), session);

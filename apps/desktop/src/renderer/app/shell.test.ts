@@ -112,6 +112,7 @@ async function setup(narrow = false, stored: Partial<Settings> = {}) {
     const settings = new SettingsStore(source);
     const intl = createIntl({ locale: 'en', messages: messagesFor('en') });
     const cues: AudioCue[] = [];
+    const notifications = new NotificationCenter(() => 0);
     const shell = new Shell({
         workspace,
         terminals,
@@ -129,7 +130,7 @@ async function setup(narrow = false, stored: Partial<Settings> = {}) {
             announce: (text: string, options?: AnnounceOptions) =>
                 spoken.push(options?.politeness === 'assertive' ? `! ${text}` : text),
         },
-        notifications: new NotificationCenter(() => 0),
+        notifications,
         keymap: resolveKeymap({}),
         intl,
         document,
@@ -142,7 +143,21 @@ async function setup(narrow = false, stored: Partial<Settings> = {}) {
     await settings.load();
     await workspace.addHost('devbox-1');
     const zooms = (): (number | undefined)[] => source.changes.map((change) => change.terminalZoom);
-    return { client, terminals, workspace, shell, spoken, saved, screenReader, intl, links, zooms, source, cues };
+    return {
+        client,
+        terminals,
+        workspace,
+        shell,
+        spoken,
+        saved,
+        screenReader,
+        intl,
+        links,
+        zooms,
+        source,
+        cues,
+        notifications,
+    };
 }
 
 describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
@@ -444,6 +459,41 @@ describe('Shell: Clear scrollback (US-3.2.3)', () => {
         shell.run('terminal.clearScrollback');
         await expect.poll(() => spoken).toContain('Scrollback cleared.');
         expect(client.requests).toContainEqual({ type: 'clearScrollback', session: 'a' });
+    });
+});
+
+describe('Shell: managing a host’s daemon (US-3.3.2, US-3.3.3)', () => {
+    const SAVING = { status: 'connected', daemon: { version: '0.4.0', sha256: 'ab', proto: 3 } } as const;
+    const listed = (notifications: NotificationCenter) =>
+        notifications.store.getState().items.map((item) => [item.level, item.text]);
+
+    it('restarts the daemon and says so, instead of reporting the connection lost', async () => {
+        const { shell, client, workspace, spoken, notifications } = await setup();
+        client.push('host-0', SAVING);
+        await expect.poll(() => workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
+        spoken.length = 0;
+        await shell.restartDaemon('host-0');
+        client.push('host-0', { status: 'disconnected', reason: 'channel-closed' });
+        client.push('host-0', SAVING);
+        expect(spoken).toEqual(['Restarting the daemon on devbox-1.', 'Daemon restarted on devbox-1.']);
+        expect(listed(notifications)).toEqual([['info', 'Daemon restarted on devbox-1.']]);
+    });
+
+    it('removes the daemon and says what it kept in the install location, or why it failed', async () => {
+        const { shell, client, spoken, notifications } = await setup();
+        client.push('host-0', SAVING);
+        spoken.length = 0;
+        client.removal = { kind: 'removed', kept: ['notes.txt'] };
+        await shell.removeDaemon('host-0');
+        client.removal = { kind: 'failed', failure: { kind: 'no-answer', details: '' } };
+        await shell.removeDaemon('host-0');
+        expect(spoken).toEqual([
+            'Removing the daemon from devbox-1.',
+            'Daemon removed from devbox-1. ~/.trc keeps 1 item TRC did not write.',
+            'Removing the daemon from devbox-1.',
+            expect.stringMatching(/^! Couldn’t remove the daemon from devbox-1\. /),
+        ]);
+        expect(listed(notifications).map(([level]) => level)).toEqual(['error', 'info']);
     });
 });
 

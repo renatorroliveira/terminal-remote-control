@@ -102,7 +102,10 @@ function useDialogHost(props: HostDialogsProps, kind: 'forget' | 'install-root')
     return dialog?.kind === kind ? hosts.find((host) => host.id === dialog.hostId) : undefined;
 }
 
-/** Confirms forgetting a host, naming what it removes and what stays (A11Y-11.9); Cancel has focus. */
+/**
+ * Asks how to forget a host (US-3.3.4, A11Y-11.9): leave its sessions running, or stop them and remove the daemon
+ * first; Cancel has focus. A daemon that could not be removed keeps the host, and the failure is reported.
+ */
 function ForgetHostDialog(props: HostDialogsProps) {
     const intl = useIntl();
     const host = useDialogHost(props, 'forget');
@@ -112,9 +115,14 @@ function ForgetHostDialog(props: HostDialogsProps) {
             return;
         }
         close();
-        void props.workspace.forgetHost(host.id).then(() => {
-            setTimeout(() => document.querySelector<HTMLElement>(`[${ADD_HOST_ATTRIBUTE}]`)?.focus(), 0);
-        });
+        void forgetAndFocus(props.workspace, host.id);
+    };
+    const removeAndForget = (): void => {
+        if (host === undefined) {
+            return;
+        }
+        close();
+        void removeThenForget(props, host.id);
     };
     return (
         <ModalOverlay
@@ -129,11 +137,17 @@ function ForgetHostDialog(props: HostDialogsProps) {
                             {intl.formatMessage(forgetMessages.title, { host: host.destination })}
                         </Heading>
                         <p id="trc-forget-text" className={styles['text']}>
-                            {intl.formatMessage(forgetMessages.body, { host: host.destination })}
+                            {intl.formatMessage(forgetMessages.body, {
+                                host: host.destination,
+                                root: host.installRoot,
+                            })}
                         </p>
                         <div className={styles['actions']}>
                             <Button autoFocus className={BUTTON} onPress={close}>
                                 {intl.formatMessage(forgetMessages.cancel)}
+                            </Button>
+                            <Button className={BUTTON} onPress={removeAndForget}>
+                                {intl.formatMessage(forgetMessages.remove)}
                             </Button>
                             <Button className={PRIMARY_BUTTON} onPress={forget}>
                                 {intl.formatMessage(forgetMessages.confirm)}
@@ -144,6 +158,19 @@ function ForgetHostDialog(props: HostDialogsProps) {
             </Modal>
         </ModalOverlay>
     );
+}
+
+/** Removes a host's daemon, then forgets the host once that worked; a failed removal keeps it (US-3.3.4). */
+async function removeThenForget(props: HostDialogsProps, hostId: string): Promise<void> {
+    if (await props.shell.removeDaemon(hostId)) {
+        await forgetAndFocus(props.workspace, hostId);
+    }
+}
+
+/** Forgets a host, then puts focus in the Add host field, as the host's row is gone. */
+async function forgetAndFocus(workspace: WorkspaceController, hostId: string): Promise<void> {
+    await workspace.forgetHost(hostId);
+    setTimeout(() => document.querySelector<HTMLElement>(`[${ADD_HOST_ATTRIBUTE}]`)?.focus(), 0);
 }
 
 /** Moves a host's install location for hosts whose home folder cannot run programs (US-1.4.3). */

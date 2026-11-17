@@ -107,6 +107,51 @@ export async function runBootstrap(channel: BootstrapChannel, options: Bootstrap
     }
 }
 
+/** What removing the daemon needs besides the channel. */
+export interface RemovalOptions {
+    /** The script with its parameters, from `buildBootstrapScript`. */
+    readonly script: string;
+    /** The nonce the script was built with. */
+    readonly nonce: string;
+    /** How long the host may take to answer; {@link BOOTSTRAP_TIMING} when not given. */
+    readonly timing?: BootstrapTiming;
+}
+
+/** How removing the daemon ended: what the host kept in the install location, or why it stopped. */
+export type RemovalOutcome =
+    | { readonly kind: 'removed'; readonly kept: readonly string[] }
+    | { readonly kind: 'failed'; readonly failure: BootstrapFailure };
+
+/**
+ * Removes the daemon over an exec channel (US-3.3.3, P-46): sends the script, waits for the host's hello, and runs
+ * its `REMOVE` step, which ends the daemon's processes and deletes only what TRC wrote in the install location.
+ */
+export async function runRemoval(channel: BootstrapChannel, options: RemovalOptions): Promise<RemovalOutcome> {
+    const reader = new LineReader(channel.output);
+    const timing = options.timing ?? BOOTSTRAP_TIMING;
+    const ignoreWriteErrors = (): void => undefined;
+    channel.input.on('error', ignoreWriteErrors);
+    try {
+        const deadline = Date.now() + timing.helloMs;
+        await send(channel.input, options.script, deadline);
+        const hello = await next(reader, options.nonce, deadline);
+        if ('failure' in hello || hello.line.kind !== 'hello') {
+            return { kind: 'failed', failure: 'failure' in hello ? hello.failure : unexpected(hello.line) };
+        }
+        const removing = Date.now() + timing.stepMs;
+        await send(channel.input, 'REMOVE\n', removing);
+        const answer = await next(reader, options.nonce, removing);
+        if ('failure' in answer || answer.line.kind !== 'removed') {
+            return { kind: 'failed', failure: 'failure' in answer ? answer.failure : unexpected(answer.line) };
+        }
+        await send(channel.input, 'EXIT\n', Date.now() + timing.stepMs);
+        return { kind: 'removed', kept: answer.line.kept };
+    } finally {
+        reader.release();
+        channel.input.off('error', ignoreWriteErrors);
+    }
+}
+
 async function follow(
     conversation: Conversation,
     plan: InstallPlan,

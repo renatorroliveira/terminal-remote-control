@@ -112,12 +112,23 @@ find them in the command palette:
 
 - **New session**, **Connect**, **Disconnect** or **Cancel connecting**.
 - **Test connection**: connects, says whether it works, and disconnects again.
+- **Details**: the connection, the daemon's version, how long it has run, how it runs (as a systemd user service or
+  on its own), whether it fails to save some sessions' scrollback, and its install and log locations, which you can
+  select and copy. From there:
+    - **Upgrade daemon** shows when the host runs an older daemon than this app brings. TRC also upgrades an older
+      daemon by itself when it connects; either way every session keeps running.
+    - **Restart daemon** restarts the daemon's core. Sessions keep running, and TRC reconnects at once.
+    - **Remove daemon from host…** lists the sessions that will stop and what it deletes, and asks first. It stops
+      every session, then deletes the daemon's programs, the sessions' saved scrollback and its logs from the install
+      location; files you put there stay. The host stays in TRC as "Daemon removed" and isn't connected again, even
+      at launch, until you connect it, which installs the daemon again.
 - **Change install location**: for a host whose home folder can't run programs (mounted `noexec`), pick another
   folder, such as one on another disk. The next connection uses it. Only you, or root, may be able to change that
   folder and each folder above it; a shared folder is fine only with the sticky bit, as `/var/tmp` has. TRC refuses
   a location other users could change, since they could swap the daemon it runs.
-- **Forget**: removes the host from TRC after you confirm. Its sessions keep running on the host, and adding the host
-  again shows them.
+- **Forget**: removes the host from TRC, after asking what happens to its sessions: **Forget and leave sessions
+  running** keeps them on the host, and adding the host again shows them; **Stop sessions, remove the daemon and
+  forget** removes the daemon first, as above, and keeps the host if that fails.
 
 ## Connect
 
@@ -438,7 +449,23 @@ terminal output, keystrokes, environment values or keys.
 
 On each host, the daemon lives in `~/.trc`: its binaries under `versions/`, its socket under `run/`, its logs, and
 each session's record and saved scrollback under `sessions/`, readable only by you.
-To remove TRC from a host, end its sessions, then delete `~/.trc` there.
+
+### Removing TRC by hand
+
+Remove daemon from host, in a host's details, does all of this for you. Without the app, on a Linux host:
+
+1. End the daemon and its sessions: `pkill -f "$HOME/.trc/versions/"` (use the host's install location if you moved
+   it). If the daemon ran as a systemd user service, `systemctl --user stop 'trcd-*.service'` stops it first.
+2. Delete what TRC wrote: `rm -rf ~/.trc/versions ~/.trc/sessions ~/.trc/logs ~/.trc/run ~/.trc/install.lock`, then
+   `rmdir ~/.trc` if nothing else is left there. A host whose install location has a long path keeps the daemon's
+   sockets in `/tmp/trc-<your user ID>` instead of `run/`; delete that folder too.
+
+TRC registers nothing outside the install location on a host: no service file, no shell startup line and nothing
+that starts at boot.
+
+On the Mac, quit TRC, then delete the app from Applications, the TRC home (`~/.trc`, or the folder `TRC_HOME` names)
+and `~/Library/Application Support/Terminal Remote Control`. The keys TRC accepted at a first connection stay in
+your `~/.ssh/known_hosts`, as any ssh client's do.
 
 The licenses of the software TRC includes are in the app, in
 `Terminal Remote Control.app/Contents/Resources/notices/THIRD_PARTY_NOTICES.txt`; Electron's and Chromium's are in

@@ -1,6 +1,6 @@
 import type { ExitStatus, ServerMessage, SessionInfo } from '@trc/protocol';
 import { describe, expect, it } from 'vitest';
-import type { ConnectionState, ConnectTarget } from '../../shared/connection';
+import type { ConnectionState, ConnectTarget, DaemonRemoval } from '../../shared/connection';
 import type { KnownHost } from '../../shared/hosts';
 import type { SessionCache } from '../../shared/session-cache';
 import { type ClientRequest, type ConnectOptions, HostRequestError } from '../connection/host-client';
@@ -63,6 +63,14 @@ class FakeClient implements WorkspaceClient {
 
     acceptHostKey(hostId: string, fingerprint: string): void {
         this.calls.push(`accept ${hostId} ${fingerprint}`);
+    }
+
+    removal: DaemonRemoval = { kind: 'removed', kept: [] };
+
+    removeDaemon(hostId: string, target: ConnectTarget, graceMs?: number): Promise<DaemonRemoval> {
+        this.calls.push(`remove-daemon ${hostId} ${target.installRoot} ${String(graceMs)}`);
+        this.states.get(hostId)?.({ status: 'closed' });
+        return Promise.resolve(this.removal);
     }
 
     rejectHostKey(hostId: string): void {
@@ -163,6 +171,18 @@ class FakeHosts extends FakeKnownHostStore {
 
     override setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost> {
         return this.readOnly ? Promise.reject(new Error('read-only')) : super.setClipboardWrites(id, allowed);
+    }
+
+    override setDaemonRemoved(id: string, removed: boolean): Promise<KnownHost> {
+        const index = this.hosts.findIndex((host) => host.id === id);
+        const found = this.hosts[index];
+        if (found === undefined) {
+            return super.setDaemonRemoved(id, removed);
+        }
+        const { daemonRemoved: _previous, ...host } = found;
+        const changed = removed ? { ...host, daemonRemoved: true } : host;
+        this.hosts[index] = changed;
+        return Promise.resolve(changed);
     }
 }
 
@@ -669,6 +689,72 @@ describe('WorkspaceController: what a session saves (US-3.2)', () => {
             action: 'clearScrollback',
             code: 'unsupported',
         });
+    });
+});
+
+describe('WorkspaceController: managing a host’s daemon (US-3.3.2, US-3.3.3, P-45)', () => {
+    const saving = { ...connected, daemon: { ...connected.daemon, proto: 3 } } as const;
+
+    it('restarts the daemon and marks the host restarting until it connects again', async () => {
+        const { client, host, workspace } = await connectedSetup();
+        expect(await workspace.restartDaemon(host.id)).toBe(true);
+        expect(client.requests).toEqual([{ type: 'restartDaemon' }]);
+        expect(workspace.store.getState().hosts[0]?.daemonAction).toBe('restarting');
+        client.states.get(host.id)?.({ status: 'disconnected', reason: 'channel-closed' });
+        expect(workspace.store.getState().hosts[0]?.daemonAction).toBe('restarting');
+        client.states.get(host.id)?.(connected);
+        expect(workspace.store.getState().hosts[0]?.daemonAction).toBeUndefined();
+    });
+
+    it('removes the daemon with the stop grace period, and keeps the host as Daemon removed', async () => {
+        const { client, host, workspace } = await connectedSetup({
+            autoClose: false,
+            stopGraceSeconds: 3,
+            newSessionFolder: 'home',
+        });
+        client.states.get(host.id)?.(saving);
+        client.requests.length = 0;
+        expect(await workspace.removeDaemon(host.id)).toEqual({ kind: 'removed', kept: [] });
+        expect(client.requests).toEqual([]);
+        expect(client.calls).toContain(`remove-daemon ${host.id} ~/.trc 3000`);
+        const removed = workspace.store.getState().hosts[0];
+        expect(removed).toMatchObject({ daemonRemoved: true, state: { status: 'closed' } });
+        expect(removed?.daemonAction).toBeUndefined();
+        expect(workspace.store.getState().sessions.get(host.id)).toBeUndefined();
+    });
+
+    it('keeps a host whose daemon could not be removed as it was', async () => {
+        const { client, workspace } = setup();
+        const host = await workspace.addHost('devbox-1');
+        client.removal = { kind: 'failed', failure: { kind: 'unreachable', host: 'devbox-1', port: 22, details: '' } };
+        expect(await workspace.removeDaemon(host.id)).toEqual(client.removal);
+        expect(client.requests).toEqual([]);
+        expect(workspace.store.getState().hosts[0]?.daemonRemoved).toBeUndefined();
+        expect(workspace.store.getState().hosts[0]?.daemonAction).toBeUndefined();
+    });
+
+    it('leaves a removed host out of the launch’s connections, and connects it when the user asks', async () => {
+        const { client, hosts, workspace } = setup();
+        hosts.hosts.push({
+            id: 'host-k',
+            address: { destination: 'devbox-1' },
+            installRoot: '~/.trc',
+            daemonRemoved: true,
+        });
+        await workspace.load();
+        workspace.connectAll();
+        expect(client.targets).toEqual([]);
+        workspace.toggleConnection('host-k');
+        expect(client.targets).toEqual([['host-k', { destination: 'devbox-1', installRoot: '~/.trc' }]]);
+        await expect.poll(() => hosts.hosts[0]?.daemonRemoved).toBeUndefined();
+        expect(workspace.store.getState().hosts[0]?.daemonRemoved).toBeUndefined();
+    });
+
+    it('upgrades the daemon by connecting again, which installs the bundled one', async () => {
+        const { client, host, workspace } = await connectedSetup();
+        workspace.upgradeDaemon(host.id);
+        expect(client.calls).toContain(`disconnect ${host.id}`);
+        expect(client.targets.at(-1)).toEqual([host.id, { destination: 'devbox-1', installRoot: '~/.trc' }]);
     });
 });
 

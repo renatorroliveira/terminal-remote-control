@@ -5,7 +5,14 @@ import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { decodeServerMessage, encodeClientMessage, FrameDecoder, FrameKind, type ServerMessage } from '@trc/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
-import { type BootstrapOptions, type BootstrapOutcome, type BootstrapStep, runBootstrap } from './driver';
+import {
+    type BootstrapOptions,
+    type BootstrapOutcome,
+    type BootstrapStep,
+    type RemovalOutcome,
+    runBootstrap,
+    runRemoval,
+} from './driver';
 import { LineReader } from './line-reader';
 import { parseBootstrapLine } from './lines';
 import { parseDaemonManifest } from './manifest';
@@ -279,6 +286,47 @@ describe('bootstrap install locations', () => {
         const elsewhere = freshRoot('trc-noexec', '/var/tmp');
         const accepted = await bootstrap('trc-noexec', elsewhere);
         expect(await handshake(accepted)).toMatchObject({ type: 'welcome' });
+    });
+});
+
+async function remove(alias: string, root: string): Promise<RemovalOutcome> {
+    const channel = open(alias);
+    const nonce = randomBytes(8).toString('hex');
+    return runRemoval(channel, {
+        script: buildBootstrapScript(template, { nonce, root: root.replace('$HOME', '~') }),
+        nonce,
+    });
+}
+
+/** How many processes on the host run a binary from `root`'s versions folder. */
+function processesUnder(alias: string, root: string): number {
+    const script = `for p in /proc/[0-9]*; do readlink "$p/exe"; done 2>/dev/null | grep -c "^${root}/versions/" || true`;
+    return Number(remote(alias, script).trim().split('\n').at(-1));
+}
+
+describe.each(['trc-ubuntu', 'trc-alpine'])('removing the daemon from %s (US-3.3.3, P-46)', (alias) => {
+    it('ends the daemon, deletes what TRC wrote and the location once empty', async () => {
+        const root = freshRoot(alias);
+        const bootstrapped = await bootstrap(alias, root);
+        await handshake(bootstrapped);
+        const home = remote(alias, 'echo "$HOME"').trim().split('\n').at(-1) ?? '';
+        const physical = root.replace('$HOME', home);
+        expect(processesUnder(alias, physical)).toBeGreaterThan(0);
+        expect(await remove(alias, root)).toEqual({ kind: 'removed', kept: [] });
+        expect(exists(alias, root)).toBe(false);
+        expect(processesUnder(alias, physical)).toBe(0);
+    });
+
+    it('keeps a file TRC did not write, and the location that holds it', async () => {
+        const root = freshRoot(alias);
+        await handshake(await bootstrap(alias, root));
+        remote(alias, `echo mine > "${root}/notes.txt"`);
+        expect(await remove(alias, root)).toEqual({ kind: 'removed', kept: ['notes.txt'] });
+        expect(remote(alias, `ls -A "${root}"`).trim().split('\n').at(-1)).toBe('notes.txt');
+    });
+
+    it('says so when there is nothing to remove', async () => {
+        expect(await remove(alias, freshRoot(alias))).toEqual({ kind: 'removed', kept: [] });
     });
 });
 

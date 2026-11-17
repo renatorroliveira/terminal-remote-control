@@ -207,7 +207,8 @@ that says "after restart" is unit-tested.
 
 As built (ST-45, 2026-11-16): `sessions.json` keeps `restoreSeen` per session, the restore time it was last opened
 after. The announcement counts each host's restores not yet reported in this run and not opened before they
-arrived, so the session open at the time counts too; a restore still badged at the next launch is announced again
+arrived, so the session open at the time counts too, and restores that arrive within 750 ms of each other, a
+list or one event at a time, make one announcement; a restore still badged at the next launch is announced again
 then, once. Sessions kept ended read "Ended by restart" or "Processes ended". The e2e test restarts the Ubuntu test
 host's container with two sessions and checks the badge, the announcement, the saved output above the marker, and
 new input below it.
@@ -230,10 +231,25 @@ assertive announcement and an error notification once until saving works again.
   are not connected again (P-45). Tests that removal leaves nothing TRC wrote and keeps a foreign file in a moved
   root.
 
+As built (ST-47, 2026-11-16): Details of {host}… is a host action (context menu, hosts panel, palette). Upgrade
+daemon shows only when the daemon is older than the one the app brings (`DaemonInfo.bundled`); it reconnects, which
+installs the bundled daemon and replaces the older core. Restart daemon makes the core answer, stop serving, flush
+its replies, remove its socket and exit; a new core waits up to 3 s for the old one's lock, so a reconnect that
+races the exit still starts one. The app reports the reconnection as "Daemon restarted", not as a lost connection.
+Remove first asks a protocol 3 core to stop every session (Stop, then Shutdown, with the grace period) and delete
+`sessions/`, then runs `REMOVE`, which the connection host sends over a new exec channel; `hosts.json` keeps
+`daemonRemoved`. Persistence failures also show in the details. Writing the e2e and integration tests turned up a
+renderer request the connection host refused without a trace, so a refused request now logs its kind and the
+schema paths at fault, never its values.
+
 **ST-48 Forget host and manual removal** (US-3.3.4–5)
 
 - The three-way Forget dialog; USER_GUIDE sections on what is saved, restore, and manual removal from a Linux host
   and from the Mac; the in-app guide rendered again.
+
+As built (ST-48, 2026-11-16): Forget offers Cancel (focused), Stop sessions, remove the daemon and forget, and
+Forget and leave sessions running; a removal that fails keeps the host and says why. USER_GUIDE has After a restart,
+the host's Details actions and Removing TRC by hand.
 
 **ST-49 E3 verification** (NFR-08, NFR-09, NFR-05, NFR-06, NFR-11)
 
@@ -278,7 +294,7 @@ assertive announcement and an error notification once until saving works again.
 | ST-44 | Done    | —      |
 | ST-45 | Done    | —      |
 | ST-46 | Done    | —      |
-| ST-47 | Planned | —      |
-| ST-48 | Planned | —      |
+| ST-47 | Done    | —      |
+| ST-48 | Done    | —      |
 | ST-49 | Planned | —      |
 | ST-50 | Planned | —      |

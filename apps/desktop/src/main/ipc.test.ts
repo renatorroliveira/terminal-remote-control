@@ -51,6 +51,12 @@ function handlers(display: unknown = {}): InvokeHandlers {
             installRoot: '~/.trc',
             ...(allowed ? { allowClipboardWrites: true } : {}),
         }),
+        'hosts:set-daemon-removed': async (id, removed) => ({
+            id,
+            address: { destination: 'x' },
+            installRoot: '~/.trc',
+            ...(removed ? { daemonRemoved: true } : {}),
+        }),
     };
 }
 

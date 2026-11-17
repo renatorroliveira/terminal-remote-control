@@ -5,6 +5,7 @@
 
 mod attach;
 mod holder_events;
+mod manage;
 mod recovery;
 mod requests;
 mod size;
@@ -71,12 +72,18 @@ pub struct Core {
     accepting: AcceptBackoff,
     /// What each session's `meta.json` last received, so unchanged records are not written again.
     written: BTreeMap<SessionId, SessionMeta>,
+    /// The `removeDaemon` request waiting for every session to end (US-3.3.3).
+    removal: Option<(ClientId, u32)>,
+    /// Set once the core should stop serving and exit, after a restart or a removal was asked for.
+    exiting: bool,
 }
 
 type ClientId = u64;
 
 struct ClientLink {
     sender: FrameSender,
+    /// The task writing `sender`'s frames, awaited when the core exits so its last replies arrive.
+    writer: tokio::task::JoinHandle<()>,
     greeted: bool,
     /// The app protocol the client negotiated.
     proto: u32,
@@ -148,6 +155,8 @@ impl Core {
             next_client: 1,
             accepting: AcceptBackoff::default(),
             written: BTreeMap::new(),
+            removal: None,
+            exiting: false,
         }
     }
 
@@ -174,9 +183,10 @@ impl Core {
         }
     }
 
-    /// Serves app connections on `listener` forever.
+    /// Serves app connections on `listener` until an app asks the core to restart or the daemon to be removed, then
+    /// delivers what it queued for each app and returns, leaving every holder running (US-3.3.2).
     pub async fn serve(mut self, listener: UnixListener) {
-        loop {
+        while !self.exiting {
             tokio::select! {
                 accepted = listener.accept(), if self.accepting.ready() => {
                     self.on_accept(accepted.map(|(stream, _)| stream));
@@ -185,6 +195,8 @@ impl Core {
                 Some(event) = self.events.recv() => self.on_event(event),
             }
         }
+        drop(listener);
+        self.finish().await;
     }
 
     fn on_accept(&mut self, accepted: io::Result<UnixStream>) {
@@ -199,11 +211,12 @@ impl Core {
         let id = self.next_client;
         self.next_client += 1;
         let (read, write) = stream.into_split();
-        let (sender, _writer) = FrameSender::spawn(write);
+        let (sender, writer) = FrameSender::spawn(write);
         self.clients.insert(
             id,
             ClientLink {
                 sender,
+                writer,
                 greeted: false,
                 proto: 1,
                 streams: BTreeMap::new(),

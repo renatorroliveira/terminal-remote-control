@@ -25,6 +25,7 @@ const HOST_SCHEMA: z.ZodType<KnownHost> = z
             .strict(),
         installRoot: z.string().min(1).max(4096),
         allowClipboardWrites: z.boolean().exactOptional(),
+        daemonRemoved: z.boolean().exactOptional(),
     })
     .strict();
 
@@ -80,6 +81,13 @@ export class KnownHosts {
     setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost> {
         return this.#change(id, ({ allowClipboardWrites: _previous, ...host }) =>
             allowed ? { ...host, allowClipboardWrites: true } : host,
+        );
+    }
+
+    /** Marks a host whose daemon the user removed, so it is not connected at launch (P-45); false drops the mark. */
+    setDaemonRemoved(id: string, removed: boolean): Promise<KnownHost> {
+        return this.#change(id, ({ daemonRemoved: _previous, ...host }) =>
+            removed ? { ...host, daemonRemoved: true } : host,
         );
     }
 

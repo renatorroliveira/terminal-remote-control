@@ -133,6 +133,7 @@ describe('HostConnection sessions over real ssh', () => {
                     logDir: expect.stringMatching(/^\/home\/tester\/\.trct-[0-9a-f]+\/logs$/),
                     startedAt: expect.any(Number),
                 },
+                bundled: manifest.version,
             },
         });
         const steps = observed.states.flatMap((state) => (state.status === 'connecting' ? [state.step] : []));
@@ -145,6 +146,19 @@ describe('HostConnection sessions over real ssh', () => {
         await until(() => received(observed, stream).length > 0);
         connection.input(stream, Buffer.from('echo trc-$((6*7))\r'));
         await until(() => received(observed, stream).includes('trc-42'));
+    });
+});
+
+describe('HostConnection: removing the daemon (US-3.3.3)', () => {
+    it('stops the daemon, deletes what it wrote and leaves the connection closed', async () => {
+        const observed = open('trc-ubuntu', knownHosts('trusted'));
+        await observed.connection.connect();
+        expect((await settled(observed))?.status).toBe('connected');
+        observed.connection.send({ type: 'create', requestId: 1, spec: { env: {}, size: { cols: 80, rows: 24 } } });
+        await awaitMessage(observed, 'created');
+        expect(await observed.connection.removeDaemon()).toEqual({ kind: 'removed', kept: [] });
+        expect(observed.connection.state.status).toBe('closed');
+        expect(await observed.connection.removeDaemon()).toEqual({ kind: 'removed', kept: [] });
     });
 });
 

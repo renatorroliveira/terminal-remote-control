@@ -1,7 +1,7 @@
 import { PassThrough, Writable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import type { BootstrapStep } from './driver';
-import { runBootstrap } from './driver';
+import { runBootstrap, runRemoval } from './driver';
 import type { DaemonManifest } from './manifest';
 
 const sha = 'f'.repeat(64);
@@ -188,5 +188,28 @@ describe('runBootstrap after an upload (SEC-04.3)', () => {
             },
         });
         expect(host.received()).not.toContain('RUN ');
+    });
+});
+
+describe('runRemoval (US-3.3.3)', () => {
+    it('asks the host to remove the daemon and reports what it kept, then lets the script exit', async () => {
+        const host = fakeHost();
+        const outcome = runRemoval(host, { script: 'SCRIPT\n', nonce });
+        await until(() => host.received().includes('SCRIPT\n'));
+        say(host, 'HELLO os=Linux arch=arm64 checksum=sha256sum installed=-');
+        await until(() => host.received().includes('REMOVE\n'));
+        say(host, 'REMOVED kept=notes.txt');
+        expect(await outcome).toEqual({ kind: 'removed', kept: ['notes.txt'] });
+        expect(host.received()).toBe('SCRIPT\nREMOVE\nEXIT\n');
+    });
+
+    it('reports a host that refuses the install location', async () => {
+        const host = fakeHost();
+        const outcome = runRemoval(host, { script: 'SCRIPT\n', nonce });
+        say(host, 'ERROR root-unsafe /home is writable by others');
+        expect(await outcome).toEqual({
+            kind: 'failed',
+            failure: { kind: 'host', code: 'root-unsafe', detail: '/home is writable by others' },
+        });
     });
 });

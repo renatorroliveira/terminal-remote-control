@@ -50,6 +50,10 @@ class SlowKnownHostStore implements KnownHostStore {
         return this.#hosts.setClipboardWrites(id, allowed);
     }
 
+    setDaemonRemoved(id: string, removed: boolean): Promise<KnownHost> {
+        return this.#hosts.setDaemonRemoved(id, removed);
+    }
+
     finish(): void {
         for (const done of this.#waiting.splice(0)) {
             done();

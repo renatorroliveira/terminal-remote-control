@@ -390,12 +390,36 @@ describe('App: forgetting and moving hosts (A11Y-11.9, US-1.4.3, US-1.1.5)', () 
         await userEvent.keyboard('{Enter}');
         await hostMenu(screen, 'Forget devbox-1…');
         const confirm = screen.getByRole('alertdialog', { name: 'Forget devbox-1?' });
-        await expect.poll(() => confirm.element().textContent).toContain('Its sessions keep running on the host');
+        await expect.poll(() => confirm.element().textContent).toContain('sessions keep running on the host');
         await expect.element(confirm.getByRole('button', { name: 'Cancel' })).toHaveFocus();
         await noViolations();
-        await confirm.getByRole('button', { name: 'Forget' }).click();
+        await confirm.getByRole('button', { name: 'Forget and leave sessions running' }).click();
         await expect.element(screen.getByText('No hosts yet.')).toBeVisible();
         await expect.element(screen.getByRole('combobox', { name: 'New host' })).toHaveFocus();
+    });
+
+    it('stops the sessions, removes the daemon and forgets the host, as the user chooses (US-3.3.4)', async () => {
+        await page.viewport(1400, 800);
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        await hostMenu(screen, 'Forget devbox-1…');
+        const confirm = screen.getByRole('alertdialog', { name: 'Forget devbox-1?' });
+        await confirm.getByRole('button', { name: 'Stop sessions, remove the daemon and forget' }).click();
+        await expect.poll(() => client.calls).toContain('remove-daemon host-0');
+        await expect.element(screen.getByText('No hosts yet.')).toBeVisible();
+    });
+
+    it('keeps a host whose daemon could not be removed, and says why (US-3.3.4)', async () => {
+        await page.viewport(1400, 800);
+        const { client, spoken, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        client.removal = { kind: 'failed', failure: { kind: 'no-answer', details: '' } };
+        await hostMenu(screen, 'Forget devbox-1…');
+        await screen.getByRole('button', { name: 'Stop sessions, remove the daemon and forget' }).click();
+        await expect.poll(() => spoken.join('\n')).toContain('Couldn’t remove the daemon from devbox-1.');
+        await expect.element(screen.getByRole('button', { name: 'Connect devbox-1' })).toBeVisible();
     });
 
     it('moves the install location, refusing a relative path', async () => {
@@ -429,6 +453,91 @@ describe('App: forgetting and moving hosts (A11Y-11.9, US-1.4.3, US-1.1.5)', () 
         client.push('host-0', CONNECTED);
         await expect.poll(() => spoken).toContain('The connection to devbox-1 works.');
         expect(client.calls).toContain('disconnect host-0');
+    });
+});
+
+describe('App: a host’s daemon (US-3.3.1 to US-3.3.3)', () => {
+    const details = {
+        home: '/home/me',
+        installRoot: '/home/me/.trc',
+        logDir: '/home/me/.trc/logs',
+        startedAt: Date.now() - 2 * 86_400_000 - 3 * 3_600_000,
+    };
+    const daemon = {
+        version: '0.4.0',
+        sha256: 'ab',
+        proto: 3,
+        service: { manager: 'detached', sessionsEndAtLogout: false },
+        details,
+        bundled: '0.4.0',
+    } as const;
+
+    it('shows the daemon’s details with copyable locations, and restarts it', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client, { status: 'connected', daemon });
+        await hostMenu(screen, 'Details of devbox-1…');
+        const dialog = screen.getByRole('dialog', { name: 'Details of devbox-1' });
+        await expect.poll(() => dialog.element().textContent).toContain('0.4.0');
+        expect(dialog.element().textContent).toContain('2 days, 3 hours');
+        expect(dialog.element().textContent).toContain('On its own, outside any service manager');
+        await expect.element(dialog.getByRole('textbox', { name: 'Install location' })).toHaveValue('/home/me/.trc');
+        await expect.element(dialog.getByRole('textbox', { name: 'Logs' })).toHaveValue('/home/me/.trc/logs');
+        await expect.element(dialog.getByRole('button', { name: 'Upgrade daemon' })).not.toBeInTheDocument();
+        await noViolations();
+        await dialog.getByRole('button', { name: 'Restart daemon' }).click();
+        await expect.poll(() => client.requests).toContainEqual({ type: 'restartDaemon' });
+    });
+
+    it('says in the details when the daemon cannot save some sessions’ scrollback (US-3.1.2)', async () => {
+        await page.viewport(1400, 800);
+        const failing = { ...bashSession('a'), persistenceFailure: 'diskFull' } as const;
+        const { client, rendered } = renderApp(400, [failing]);
+        const screen = await rendered;
+        await connectedHost(screen, client, { status: 'connected', daemon });
+        await hostMenu(screen, 'Details of devbox-1…');
+        const dialog = screen.getByRole('dialog', { name: 'Details of devbox-1' });
+        await expect.poll(() => dialog.element().textContent).toContain('Fails for 1 session: the disk is full');
+    });
+
+    it('offers Upgrade daemon when the host runs an older daemon than the app brings', async () => {
+        await page.viewport(1400, 800);
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client, { status: 'connected', daemon: { ...daemon, version: '0.3.0' } });
+        await hostMenu(screen, 'Details of devbox-1…');
+        const dialog = screen.getByRole('dialog', { name: 'Details of devbox-1' });
+        await dialog.getByRole('button', { name: 'Upgrade daemon' }).click();
+        await expect.poll(() => client.calls).toContain('disconnect host-0');
+        expect(client.calls.at(-1)).toBe('connect host-0 devbox-1');
+    });
+
+    it('removes the daemon after a confirmation that lists the sessions that stop and the data deleted', async () => {
+        await page.viewport(1400, 800);
+        onTestFinished(installTokens());
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client, { status: 'connected', daemon });
+        await hostMenu(screen, 'Details of devbox-1…');
+        await screen.getByRole('button', { name: 'Remove daemon from host…' }).click();
+        const confirm = screen.getByRole('alertdialog', { name: 'Remove the daemon from devbox-1?' });
+        await expect.poll(() => confirm.element().textContent).toContain('This session stops:');
+        expect(
+            confirm
+                .getByRole('listitem')
+                .elements()
+                .map((item) => item.textContent),
+        ).toEqual(['bash']);
+        expect(confirm.element().textContent).toContain('logs from ~/.trc on devbox-1');
+        await expect.element(confirm.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+        await noViolations();
+        await confirm.getByRole('button', { name: 'Remove daemon' }).click();
+        await expect.poll(() => client.calls).toContain('remove-daemon host-0');
+        await expect
+            .element(screen.getByRole('button', { name: 'Connect devbox-1' }))
+            .toHaveAccessibleDescription('Daemon removed');
     });
 });
 

@@ -20,7 +20,8 @@ export interface WorkspaceAction {
 
 /**
  * A host's actions: a new session while it is connected; connect, disconnect or cancel; and, with the shell, test
- * the connection, move the install location and forget the host (US-1.1.5, US-1.4.3, A11Y-11.9).
+ * the connection, show its and its daemon's details, move the install location and forget the host (US-1.1.5,
+ * US-1.4.3, US-3.3.1, A11Y-11.9).
  */
 export function hostActions(
     intl: IntlShape,
@@ -56,6 +57,9 @@ export function hostActions(
                   ...(action === 'connect'
                       ? [named('test', hostActionMessages.test, () => void shell.testConnection(host.id))]
                       : []),
+                  named('details', hostActionMessages.details, () =>
+                      shell.setHostDialog({ kind: 'details', hostId: host.id }),
+                  ),
                   named('install-root', hostActionMessages.installRoot, () =>
                       shell.setHostDialog({ kind: 'install-root', hostId: host.id }),
                   ),

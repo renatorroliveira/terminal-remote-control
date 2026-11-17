@@ -40,6 +40,7 @@ export type BootstrapLine =
     | { readonly kind: 'progress'; readonly step: ProgressStep }
     | { readonly kind: 'installed'; readonly sha256: string; readonly version: string }
     | { readonly kind: 'running' }
+    | { readonly kind: 'removed'; readonly kept: readonly string[] }
     | { readonly kind: 'error'; readonly code: BootstrapErrorCode; readonly detail: string };
 
 const ERROR_CODES: ReadonlySet<string> = new Set<BootstrapErrorCode>([
@@ -77,6 +78,8 @@ export function parseBootstrapLine(line: string, nonce: string): BootstrapLine |
             return parseInstalled(rest);
         case 'RUNNING':
             return { kind: 'running' };
+        case 'REMOVED':
+            return parseRemoved(rest);
         case 'ERROR':
             return parseError(rest);
         default:
@@ -117,6 +120,17 @@ function parseInstalled(rest: string): BootstrapLine {
     return SHA256_PATTERN.test(sha256) && version !== ''
         ? { kind: 'installed', sha256, version }
         : protocolError('malformed INSTALLED line');
+}
+
+function parseRemoved(rest: string): BootstrapLine {
+    if (rest === '') {
+        return { kind: 'removed', kept: [] };
+    }
+    const [key, list] = splitFirst(rest, '=');
+    if (key !== 'kept') {
+        return protocolError('malformed REMOVED line');
+    }
+    return { kind: 'removed', kept: list.split('/').filter((name) => name !== '') };
 }
 
 function parseError(rest: string): BootstrapLine {
