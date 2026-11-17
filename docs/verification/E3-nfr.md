@@ -17,8 +17,9 @@ E2's results (`E1-nfr.md`, `E2-nfr.md`) still describe what E3 did not change.
 
 ## Results
 
-One full run of `pnpm test:nfr` on `84a38fe`, nothing else running on the machine. Review rounds 3 and 4 changed how
-the core decides restores and retries records, and how a snapshot defers history, none of which these measure.
+One full run of `pnpm test:nfr` on `84a38fe`, nothing else running on the machine. Review rounds 3 and 4 then changed
+how the core decides restores and retries records, and how a snapshot defers history when a full-screen program starts
+while it streams, a case these runs don't reach.
 
 | ID     | Measurement                                                                                                                    | Value      | Target                     |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------ | ---------- | -------------------------- |
@@ -82,22 +83,42 @@ the core decides restores and retries records, and how a snapshot defers history
 - **SEC-08**: the canary run finds no canary under the daemon's `logs/` and `run/` or in the app's logs, and every
   saved file is 0600 in a 0700 folder.
 
-## Reboot soak (US-3.1, ST-49)
+## Soak with saving on (NFR-11, US-3.1)
 
-`reboot.soak.test.ts` restarts `trc-ubuntu` 100 times with 3 sessions that each print a cycle's marker, and checks
-each cycle that every session is restored once, shows its marker exactly once above a restore marker, and takes
-input. It ran on `84a38fe`, waiting 31 s after each restore for the rule that review round 3 later dropped.
+E2's scenarios of `pnpm test:soak` ran again on `d4023ab`'s daemon and test build, with every session saving its
+scrollback, beside `reboot.soak.test.ts`: 100 restarts of `trc-ubuntu` with 3 sessions that each print a cycle's
+marker, checking each cycle that every session is restored once, shows its marker exactly once above a restore
+marker, and takes input. The daemon, logout and first app-level scenarios ran at the same time on 2026-11-17, as in E2,
+each on its own host in the one VM; until 04:07 UTC a leftover worker of an interrupted run also ran scenarios on the
+same hosts, so the daemon scenarios' connect-again times include that load. The scenarios it overlapped (app quit,
+app crash, network flap, the app launches, the detached daemon kill and the reboot soak) ran again afterwards, and
+their reruns are the values below. Every scenario lost no session.
 
-| ID     | Measurement                                                                     | Value | Target |
-| ------ | ------------------------------------------------------------------------------- | ----- | ------ |
-| US-3.1 | trc-ubuntu: sessions lost or restored twice in 100 restarts                     | 0.0   | 0      |
-| US-3.1 | trc-ubuntu: host restart to every session restored and taking input, p95 of 100 | 0.8 s | —      |
+| ID     | Measurement                                                                                                                               | Value  | Target     |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------- |
+| NFR-11 | app launches on trc-ubuntu: sessions lost in 50 quits and 50 crashes                                                                      | 0.0    | 0          |
+| NFR-11 | app quit (ssh connection closed) on trc-alpine: sessions lost in 1000 cycles                                                              | 0.0    | 0          |
+| NFR-07 | app quit (ssh connection closed) on trc-alpine: connect again (ssh and daemon check), p95 of 1000                                         | 247 ms | ≤ 5,000 ms |
+| NFR-11 | network flap (connection stalled, then a new one) on trc-alpine: sessions lost in 1000 cycles                                             | 0.0    | 0          |
+| NFR-07 | network flap (connection stalled, then a new one) on trc-alpine: connect again (ssh and daemon check), p95 of 1000                        | 246 ms | ≤ 5,000 ms |
+| NFR-11 | app crash (ssh process killed) on trc-rocky: sessions lost in 1000 cycles                                                                 | 0.0    | 0          |
+| NFR-07 | app crash (ssh process killed) on trc-rocky: connect again (ssh and daemon check), p95 of 1000                                            | 337 ms | ≤ 5,000 ms |
+| NFR-11 | logout without lingering (KillUserProcesses=no) on trc-systemd: sessions lost in 1000 cycles                                              | 0.0    | 0          |
+| NFR-07 | logout without lingering (KillUserProcesses=no) on trc-systemd: connect again (ssh and daemon check), p95 of 1000                         | 331 ms | ≤ 5,000 ms |
+| NFR-11 | daemon kill, detached on trc-ubuntu: sessions lost in 1000 cycles                                                                         | 0.0    | 0          |
+| NFR-07 | daemon kill, detached on trc-ubuntu: connect again (ssh and daemon check), p95 of 1000                                                    | 366 ms | ≤ 5,000 ms |
+| NFR-11 | daemon kill, under systemd with lingering on trc-systemd-linger: sessions lost in 1000 cycles                                             | 0.0    | 0          |
+| NFR-07 | daemon kill, under systemd with lingering on trc-systemd-linger: connect again (ssh and daemon check), p95 of 1000                        | 349 ms | ≤ 5,000 ms |
+| NFR-11 | daemon upgrade 0.2.0 to this build, detached on trc-ubuntu: sessions lost in 1000 cycles                                                  | 0.0    | 0          |
+| NFR-07 | daemon upgrade 0.2.0 to this build, detached on trc-ubuntu: connect again (ssh and daemon check), p95 of 1000                             | 576 ms | ≤ 5,000 ms |
+| NFR-11 | daemon upgrade 0.2.0 to this build, under systemd with lingering on trc-systemd-linger: sessions lost in 1000 cycles                      | 0.0    | 0          |
+| NFR-07 | daemon upgrade 0.2.0 to this build, under systemd with lingering on trc-systemd-linger: connect again (ssh and daemon check), p95 of 1000 | 666 ms | ≤ 5,000 ms |
+| US-3.1 | trc-ubuntu: sessions lost or restored twice in 100 restarts                                                                               | 0.0    | 0          |
+| US-3.1 | trc-ubuntu: host restart to every session restored and taking input, p95 of 100                                                           | 0.9 s  | —          |
 
-A container restart keeps the VM's boot ID, so these restores say the processes ended rather than "after restart";
-the boot-ID rule is unit-tested, and `host-restart.spec.ts` restarts all six Linux test hosts, the three systemd ones
-included.
-
-## Soak with saving on (NFR-11)
-
-The E2 scenarios of `pnpm test:soak` run again with every session saving its scrollback; their results follow here
-once the run completes.
+- A container restart keeps the VM's boot ID, so the reboot soak's restores say the processes ended rather than
+  "after restart"; the boot-ID rule is unit-tested, and `host-restart.spec.ts` restarts all six Linux test hosts, the
+  three systemd ones included. An earlier 100-restart run on `84a38fe`, waiting 31 s after each restore for the rule
+  review round 3 dropped, also lost nothing (p95 0.8 s).
+- The other scenarios are E2's (`E2-nfr.md`): the upgrade cycles start under 0.2.0's daemon, whose holders this
+  build's core adopts 1,000 times on each host.
