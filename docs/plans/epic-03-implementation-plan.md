@@ -2,7 +2,7 @@
 
 | Field  | Value                                                                                     |
 | ------ | ----------------------------------------------------------------------------------------- |
-| Status | Draft v1, decisions confirmed by the owner on 2026-11-16                                  |
+| Status | Done: E3 ships as v0.4.0 on 2026-11-17, after five review rounds (§8)                     |
 | Owner  | Renato Oliveira                                                                           |
 | Scope  | PRD §9.3 (US-3.1 to US-3.3) plus every global requirement for what E3 delivers            |
 | Inputs | [PRD.md](../PRD.md) v0.16, [TECH_STACK.md](../TECH_STACK.md) v1.7, the E2 plan and v0.3.0 |
@@ -41,6 +41,7 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 | P-49 | Protocol 3 (N = 3). The daemon still accepts protocol 1 and 2 clients, and the core speaks holder protocols 1 to 3: an E1 or E2 holder keeps its behavior until its session closes (P-27), and the core records its session on disk from its `hello`, so it is restored, without scrollback, after a reboot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | P-50 | A host reboot in the tests is `docker restart` of the test container: every process dies and the files stay. On the systemd hosts, systemd boots again and starts the lingering user manager, and the core starts only when the app connects (P-39). The detached hosts restart the same way.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | P-51 | Review at the end of E3 as P-33 had it: `code-reviewer` (TypeScript, Rust) and `technical-auditor` (security, reliability, release) over every commit after v0.3.0, in rounds until no critical or high finding remains. A fix that would change the PRD, behavior, a design or an owner decision waits for the owner. The release workflow then cuts `v0.4.0` (`bump: minor`).                                                                                                                                                                                                                                                                                                                                                                                                               |
+| P-52 | **Owner, 2026-11-17.** The release workflow cuts `v0.4.0` once the reviews, the soak and the suites pass; the owner runs `E3-manual-at.md`'s passes on the released 0.4.0 rather than before it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## 3. Design
 
@@ -291,40 +292,42 @@ the host's Details actions and Removing TRC by hand.
 
 ## 6. Human checkpoints
 
-| When  | The owner does                                                                                                                      |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| ST-39 | Optional: look at the new session rows, status bar and 140-column grid in a development build.                                      |
-| ST-50 | Decide any review finding whose fix would change the PRD, behavior, a design or an owner decision; test the build; accept the gate. |
+| When  | The owner does                                                                                                                                         |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ST-39 | Optional: look at the new session rows, status bar and 140-column grid in a development build.                                                         |
+| ST-50 | Decide any review finding whose fix would change the PRD, behavior, a design or an owner decision; run `E3-manual-at.md` on the released 0.4.0 (P-52). |
 
 ## 7. Status
 
-| Story | Status      | Commit |
-| ----- | ----------- | ------ |
-| ST-38 | Done        | —      |
-| ST-39 | Done        | —      |
-| ST-40 | Done        | —      |
-| ST-41 | Done        | —      |
-| ST-42 | Done        | —      |
-| ST-43 | Done        | —      |
-| ST-44 | Done        | —      |
-| ST-45 | Done        | —      |
-| ST-46 | Done        | —      |
-| ST-47 | Done        | —      |
-| ST-48 | Done        | —      |
-| ST-49 | In progress | —      |
-| ST-50 | Planned     | —      |
+| Story | Status | Commit |
+| ----- | ------ | ------ |
+| ST-38 | Done   | —      |
+| ST-39 | Done   | —      |
+| ST-40 | Done   | —      |
+| ST-41 | Done   | —      |
+| ST-42 | Done   | —      |
+| ST-43 | Done   | —      |
+| ST-44 | Done   | —      |
+| ST-45 | Done   | —      |
+| ST-46 | Done   | —      |
+| ST-47 | Done   | —      |
+| ST-48 | Done   | —      |
+| ST-49 | Done   | —      |
+| ST-50 | Done   | —      |
 
 ## 8. Reviews (P-51)
 
-`code-reviewer` and `technical-auditor` reviewed every commit after v0.3.0. Each finding was fixed, test-first, or
-is listed below with why it stays.
+`code-reviewer` and `technical-auditor` reviewed every commit after v0.3.0 in five rounds; the fifth found no critical
+or high finding once `E3-nfr.md` existed, which closed the gate. Each finding was fixed, test-first, or is listed
+below with why it stays.
 
-| Round | Code review (C/H/M/L) | Audit (C/H/M/L) | Fixes                     |
-| ----- | --------------------- | --------------- | ------------------------- |
-| 1     | 0 / 2 / 6 / 7         | 0 / 1 / 8 / 1   | `169c866`                 |
-| 2     | 0 / 2 / 2 / 3         | 0 / 2 / 4 / 3   | `b5cf950`                 |
-| 3     | 0 / 0 / 1 / 3         | 0 / 2 / 2 / 1   | `f23b038`                 |
-| 4     | 0 / 0 / 1 / 2         | 0 / 0 / 1 / 1   | the review round 4 commit |
+| Round | Code review (C/H/M/L) | Audit (C/H/M/L) | Fixes     |
+| ----- | --------------------- | --------------- | --------- |
+| 1     | 0 / 2 / 6 / 7         | 0 / 1 / 8 / 1   | `169c866` |
+| 2     | 0 / 2 / 2 / 3         | 0 / 2 / 4 / 3   | `b5cf950` |
+| 3     | 0 / 0 / 1 / 3         | 0 / 2 / 2 / 1   | `f23b038` |
+| 4     | 0 / 0 / 1 / 2         | 0 / 0 / 1 / 1   | `e0f7b56` |
+| 5     | 0 / 0 / 0 / 0         | 0 / 1 / 0 / 0   | `7e5a165` |
 
 The highs:
 
@@ -339,6 +342,7 @@ The highs:
 - A rewrite that landed after a later record was dropped marked the file current, losing that record; the file now
   stays stale until a rewrite finished after the last drop lands (round 2).
 - The Mac's `sessions.json` kept the program-set title of a session that saves nothing to disk (round 2).
+- The PRD marked NFR-09's exception resolved before `E3-nfr.md` existed to show it (round 5).
 - ST-44 was marked Done without its restart of every test host and its restore of a 0.3.0 session; both tests now
   exist (round 2), and the systemd hosts restart too (round 3).
 - A session restored less than 30 s earlier stayed ended when its processes ended again, against US-3.1.3; only the
