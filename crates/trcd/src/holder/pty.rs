@@ -407,7 +407,14 @@ fn retryable(error: &std::io::Error) -> bool {
 fn process_cwd(pid: u32) -> Option<String> {
     std::fs::read_link(format!("/proc/{pid}/cwd"))
         .ok()
-        .map(|path| path.to_string_lossy().into_owned())
+        .map(|path| without_deleted_mark(path.to_string_lossy().into_owned()))
+}
+
+/// A working folder as `/proc` names it, without the ` (deleted)` Linux adds once the folder is gone, so a restore
+/// says which folder no longer exists (US-3.1.7).
+#[cfg(any(target_os = "linux", test))]
+fn without_deleted_mark(path: String) -> String {
+    path.strip_suffix(" (deleted)").map_or(path.clone(), str::to_owned)
 }
 
 #[cfg(not(target_os = "linux"))]
@@ -420,6 +427,12 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+
+    #[test]
+    fn names_a_deleted_working_folder_without_the_mark_linux_adds() {
+        assert_eq!(without_deleted_mark("/tmp/gone (deleted)".into()), "/tmp/gone");
+        assert_eq!(without_deleted_mark("/home/me".into()), "/home/me");
+    }
 
     fn spec(script: &str) -> SpawnSpec {
         SpawnSpec {
