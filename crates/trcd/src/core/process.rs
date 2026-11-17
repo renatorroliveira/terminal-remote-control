@@ -15,6 +15,7 @@ use trc_protocol::{DaemonDetails, ServiceInfo, ServiceManager};
 use super::account::current_account;
 use super::service::{Core, CoreContext};
 use super::store::{SessionStore, boot_id};
+use crate::command::Supervisor;
 use crate::digest::sha256_file;
 use crate::install::InstallLayout;
 use crate::private_dir::ensure_private_dir;
@@ -37,11 +38,11 @@ pub enum StartError {
     Io(#[from] io::Error),
 }
 
-/// Runs the core in the foreground until it is killed. Under systemd (`systemd`), holders start in their own
-/// transient scopes, outside the unit's control group (US-2.5.2).
+/// Runs the core in the foreground until it is killed. Under systemd, holders start in their own transient scopes,
+/// outside the unit's control group (US-2.5.2); under launchd they already run in sessions of their own (D-50).
 ///
 /// The core creates its files with umask 077; holders get back the umask the core inherited.
-pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
+pub fn run(layout: &InstallLayout, supervisor: Supervisor) -> Result<(), StartError> {
     let uid = rustix::process::geteuid().as_raw();
     let login_umask = rustix::process::umask(Mode::from_raw_mode(0o077));
     let run = RunDir::for_root(&layout.root, uid);
@@ -57,7 +58,11 @@ pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
     listener.set_nonblocking(true)?;
     let account = current_account();
     let facts = read_host_facts(&account.user, uid);
-    let scope = if systemd { ScopeLauncher::find() } else { None };
+    let scope = if supervisor == Supervisor::Systemd {
+        ScopeLauncher::find()
+    } else {
+        None
+    };
     let details = DaemonDetails {
         home: account.home.clone(),
         install_root: layout.root.to_string_lossy().into_owned(),
@@ -72,11 +77,7 @@ pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
         account,
         holder_umask: login_umask,
         service: ServiceInfo {
-            manager: if scope.is_some() {
-                ServiceManager::Systemd
-            } else {
-                ServiceManager::Detached
-            },
+            manager: service_manager(supervisor, scope.is_some()),
             sessions_end_at_logout: facts.sessions_end_at_logout(),
         },
         scope,
@@ -115,6 +116,16 @@ pub fn launch_detached(layout: &InstallLayout) -> io::Result<()> {
 
 /// Takes the one-core-per-user lock and records the PID, version and checksum in it, so a newer bridge can tell
 /// whether to replace this core (D-46). Waits a moment for a core that is exiting after Restart daemon to let go.
+/// What runs the core, as Welcome says: systemd only when holders can start in their own scopes, as a core whose
+/// holders would die with its unit serves no better than a detached one.
+fn service_manager(supervisor: Supervisor, scopes: bool) -> ServiceManager {
+    match supervisor {
+        Supervisor::Systemd if scopes => ServiceManager::Systemd,
+        Supervisor::Launchd => ServiceManager::Launchd,
+        Supervisor::Systemd | Supervisor::None => ServiceManager::Detached,
+    }
+}
+
 fn lock_single_instance(path: &Path, sha256: &str) -> Result<File, StartError> {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
@@ -143,5 +154,18 @@ fn remove_stale(socket: &Path) -> io::Result<()> {
     match std::fs::remove_file(socket) {
         Err(error) if error.kind() != io::ErrorKind::NotFound => Err(error),
         _ => Ok(()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn names_the_manager_that_runs_the_core() {
+        assert_eq!(service_manager(Supervisor::Systemd, true), ServiceManager::Systemd);
+        assert_eq!(service_manager(Supervisor::Systemd, false), ServiceManager::Detached);
+        assert_eq!(service_manager(Supervisor::Launchd, false), ServiceManager::Launchd);
+        assert_eq!(service_manager(Supervisor::None, false), ServiceManager::Detached);
     }
 }

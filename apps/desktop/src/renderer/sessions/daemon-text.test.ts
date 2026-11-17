@@ -19,9 +19,12 @@ describe('uptimeText (US-3.3.1)', () => {
     });
 });
 
-describe('serviceText (US-2.4, US-3.3.1)', () => {
+describe('serviceText (US-2.4, US-3.3.1, US-4.4.1)', () => {
     it('says how the daemon runs', () => {
         expect(serviceText(intl, { manager: 'systemd', sessionsEndAtLogout: false })).toBe('As a systemd user service');
+        expect(serviceText(intl, { manager: 'launchd', sessionsEndAtLogout: false })).toBe(
+            'As a LaunchAgent, which starts at login',
+        );
         expect(serviceText(intl, { manager: 'detached', sessionsEndAtLogout: false })).toBe(
             'On its own, outside any service manager',
         );

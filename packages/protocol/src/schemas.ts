@@ -49,7 +49,9 @@ const errorCode: z.ZodType<ErrorCode> = z
 const replay: z.ZodType<Replay> = z.enum(['delta', 'snapshot', 'unspecified']).catch('unspecified');
 const resyncKind: z.ZodType<ResyncKind> = z.enum(['screen', 'full', 'unspecified']).catch('unspecified');
 const detachReason: z.ZodType<DetachReason> = z.enum(['attachedElsewhere', 'unspecified']).catch('unspecified');
-const serviceManager: z.ZodType<ServiceManager> = z.enum(['systemd', 'detached', 'unspecified']).catch('unspecified');
+const serviceManager: z.ZodType<ServiceManager> = z
+    .enum(['systemd', 'launchd', 'detached', 'unspecified'])
+    .catch('unspecified');
 const serviceInfo: z.ZodType<ServiceInfo> = z.object({ manager: serviceManager, sessionsEndAtLogout: z.boolean() });
 const daemonDetails: z.ZodType<DaemonDetails> = z.object({
     home: z.string(),

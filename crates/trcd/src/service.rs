@@ -72,9 +72,14 @@ pub fn read_host_facts(user: &str, uid: u32) -> HostFacts {
 
 /// The transient unit's name for an install root, so two install roots never share a core.
 pub fn unit_name(root: &Path) -> String {
+    format!("trcd-{}.service", root_hash8(root))
+}
+
+/// The first 8 hex digits of an install root's SHA-256, which name its systemd unit and its LaunchAgent, so two
+/// install roots never share a core.
+pub fn root_hash8(root: &Path) -> String {
     let digest = Sha256::digest(root.as_os_str().as_encoded_bytes());
-    let hex: String = digest.iter().take(4).map(|byte| format!("{byte:02x}")).collect();
-    format!("trcd-{hex}.service")
+    digest.iter().take(4).map(|byte| format!("{byte:02x}")).collect()
 }
 
 /// Starts `binary core --systemd` as a transient user unit restarted on failure, with the caller's umask and account
@@ -227,30 +232,46 @@ fn unit_running(active_state: &str) -> bool {
 }
 
 /// Runs a probe and returns its standard output when it succeeds within [`PROBE_TIMEOUT`].
-fn probe(program: &str, args: &[&str]) -> Option<String> {
-    let mut child = Command::new(program)
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .ok()?;
-    let deadline = Instant::now() + PROBE_TIMEOUT;
-    loop {
-        match child.try_wait() {
-            Ok(Some(status)) if status.success() => break,
-            Ok(Some(_)) | Err(_) => return None,
-            Ok(None) if Instant::now() >= deadline => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return None;
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(10)),
-        }
+pub(crate) fn probe(program: &str, args: &[&str]) -> Option<String> {
+    let mut child = spawn_probe(program, args, Stdio::piped())?;
+    if !finished_in_time(&mut child) {
+        return None;
     }
     let mut output = String::new();
     std::io::Read::read_to_string(&mut child.stdout.take()?, &mut output).ok()?;
     Some(output)
+}
+
+/// Runs a command, discarding its output, and says whether it succeeded within [`PROBE_TIMEOUT`].
+pub(crate) fn succeeds(program: &str, args: &[&str]) -> bool {
+    spawn_probe(program, args, Stdio::null()).is_some_and(|mut child| finished_in_time(&mut child))
+}
+
+fn spawn_probe(program: &str, args: &[&str], stdout: Stdio) -> Option<std::process::Child> {
+    Command::new(program)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(stdout)
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()
+}
+
+/// Waits for a probe; one still running at [`PROBE_TIMEOUT`] is killed, and counts as a failure.
+fn finished_in_time(child: &mut std::process::Child) -> bool {
+    let deadline = Instant::now() + PROBE_TIMEOUT;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.success(),
+            Err(_) => return false,
+            Ok(None) if Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return false;
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(10)),
+        }
+    }
 }
 
 #[cfg(test)]

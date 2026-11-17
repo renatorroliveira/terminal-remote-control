@@ -8,6 +8,7 @@ pub mod digest;
 pub mod frame_io;
 pub mod holder;
 pub mod install;
+pub mod launchd;
 pub mod logging;
 pub mod peer;
 pub mod private_dir;

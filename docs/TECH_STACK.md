@@ -688,7 +688,19 @@ outside the install root.
     - The Mac's own daemon uses the default install root `~/.trc`, beside the
       app's files, so other computers that add the Mac reach the same daemon
       (D-51).
-    - Remote Macs without a GUI login get a detached core (R7).
+    - The bridge registers the agent only where `launchctl print gui/<uid>`
+      finds a GUI login session; otherwise the core runs detached, as on Linux
+      (R7). The agent runs `trcd core --launchd`, with the bridge's `HOME`,
+      `USER`, `LOGNAME`, `SHELL`, `PATH` and umask, `ProcessType` Interactive
+      and its standard error in the install's private `logs/launchd.log`.
+    - A bridge that finds the agent loaded but its core stopped (after Restart
+      daemon) runs `launchctl kickstart`; a plist that changed is booted out,
+      rewritten and bootstrapped; an upgrade boots the old agent out first. No
+      step ends a holder, and a logout ends only the core (S8, P-62).
+    - `KeepAlive` restarts a core after any unsuccessful exit, so under launchd
+      a core refused for another core or an untrusted install exits with 0.
+    - Remove daemon boots the agent out and deletes its plist before deleting
+      the install.
 - **Windows (E6).**
     - Each holder owns its pseudoconsole and starts with
       `CREATE_BREAKAWAY_FROM_JOB | DETACHED_PROCESS`.

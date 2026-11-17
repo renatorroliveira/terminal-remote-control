@@ -24,11 +24,13 @@ export function uptimeText(intl: IntlShape, startedAt: number, now: number): str
     return parts.length === 0 ? intl.formatMessage(detailsMessages.lessThanAMinute) : parts.join(', ');
 }
 
-/** How the daemon runs: under the user's systemd instance or on its own (US-2.4, US-3.3.1). */
+/** How the daemon runs: under the user's systemd instance, as a LaunchAgent, or on its own (US-2.4, US-3.3.1). */
 export function serviceText(intl: IntlShape, service: ServiceInfo): string {
     switch (service.manager) {
         case 'systemd':
             return intl.formatMessage(detailsMessages.systemd);
+        case 'launchd':
+            return intl.formatMessage(detailsMessages.launchd);
         case 'detached':
             return intl.formatMessage(detailsMessages.detached);
         default:

@@ -564,3 +564,20 @@ fn frame_fixture_decodes_to_its_description() {
     }
     assert_eq!(decoder.next_frame().unwrap(), None);
 }
+
+#[test]
+fn names_each_service_manager_and_reads_an_unknown_one_as_unspecified() {
+    let named = [
+        (ServiceManager::Systemd, "\"systemd\""),
+        (ServiceManager::Launchd, "\"launchd\""),
+        (ServiceManager::Detached, "\"detached\""),
+    ];
+    for (manager, json) in named {
+        assert_eq!(serde_json::to_string(&manager).unwrap(), json);
+        assert_eq!(serde_json::from_str::<ServiceManager>(json).unwrap(), manager);
+    }
+    assert_eq!(
+        serde_json::from_str::<ServiceManager>("\"runit\"").unwrap(),
+        ServiceManager::Unspecified
+    );
+}

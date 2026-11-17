@@ -101,6 +101,8 @@ pub enum DetachReason {
 pub enum ServiceManager {
     /// The user's systemd instance, which restarts the daemon after a crash.
     Systemd,
+    /// A launchd LaunchAgent, which starts the daemon at login and restarts it after a crash (US-4.4.1, US-4.3.2).
+    Launchd,
     /// Nothing: the daemon runs detached, and the app starts it again when it finds it stopped.
     Detached,
     /// A manager this version does not know.

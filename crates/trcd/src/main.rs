@@ -24,14 +24,18 @@ fn main() -> ExitCode {
     if command == Command::Version {
         return print_version();
     }
+    let refusal = |status| command.supervisor().refusal_status(status);
     let layout = match trusted_layout() {
         Ok(layout) => layout,
-        Err(message) => return fail(EXIT_UNTRUSTED_INSTALL, &message),
+        Err(message) => return fail(refusal(EXIT_UNTRUSTED_INSTALL), &message),
     };
     match command {
-        Command::Core { detach: false, systemd } => match trcd::core::process::run(&layout, systemd) {
+        Command::Core {
+            detach: false,
+            supervisor,
+        } => match trcd::core::process::run(&layout, supervisor) {
             Ok(()) => ExitCode::SUCCESS,
-            Err(StartError::AlreadyRunning) => fail(EXIT_ALREADY_RUNNING, "another core is already running"),
+            Err(StartError::AlreadyRunning) => fail(refusal(EXIT_ALREADY_RUNNING), "another core is already running"),
             Err(StartError::Io(error)) => fail(EXIT_OS_ERROR, &error.to_string()),
         },
         Command::Core { detach: true, .. } => finish(trcd::core::process::launch_detached(&layout)),

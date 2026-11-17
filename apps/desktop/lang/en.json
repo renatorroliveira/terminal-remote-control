@@ -319,6 +319,10 @@
     "defaultMessage": "Install location",
     "description": "Label of the read-only field holding the daemon’s install location."
   },
+  "details.launchd": {
+    "defaultMessage": "As a LaunchAgent, which starts at login",
+    "description": "How the daemon runs: as a macOS launchd LaunchAgent, which starts it at login."
+  },
   "details.lessThanAMinute": {
     "defaultMessage": "Less than a minute",
     "description": "The daemon’s uptime when it started a moment ago."

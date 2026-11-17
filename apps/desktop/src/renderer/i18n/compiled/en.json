@@ -885,6 +885,12 @@
       "value": "Install location"
     }
   ],
+  "details.launchd": [
+    {
+      "type": 0,
+      "value": "As a LaunchAgent, which starts at login"
+    }
+  ],
   "details.lessThanAMinute": [
     {
       "type": 0,

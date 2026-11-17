@@ -20,7 +20,9 @@ pub const WAIT: Duration = Duration::from_secs(10);
 
 static NEXT: AtomicU32 = AtomicU32::new(0);
 
-/// A temporary install root: `<base>/r/versions/test/trcd`, plus a home directory for the account.
+/// A temporary install root: `<base>/r/versions/test/trcd`, plus a home directory for the account and `<base>/bin`,
+/// whose `launchctl` always fails, so a bridge on a Mac with a GUI login starts its core detached unless a test
+/// asks for launchd with [`Installed::command_under_launchd`].
 pub struct Installed {
     /// The base directory, under `/tmp` so socket paths stay short.
     pub base: PathBuf,
@@ -55,6 +57,10 @@ impl Installed {
         std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o700)).unwrap();
         let home = base.join("home");
         std::fs::DirBuilder::new().mode(0o700).create(&home).unwrap();
+        std::fs::DirBuilder::new().mode(0o700).create(base.join("bin")).unwrap();
+        let stub = base.join("bin/launchctl");
+        std::fs::write(&stub, "#!/bin/sh\nexit 1\n").unwrap();
+        std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o700)).unwrap();
         Self {
             root: base.join("r"),
             base,
@@ -68,8 +74,19 @@ impl Installed {
         self.root.join("run/core.sock")
     }
 
-    /// A command running the installed binary with a minimal account environment.
+    /// A command running the installed binary with a minimal account environment, where `launchctl` fails.
     pub fn command(&self, args: &[&str]) -> Command {
+        let mut command = self.command_under_launchd(args);
+        command.env(
+            "PATH",
+            format!("{}:/usr/local/bin:/usr/bin:/bin", self.base.join("bin").display()),
+        );
+        command
+    }
+
+    /// A command running the installed binary with a minimal account environment and the system's `launchctl`, so
+    /// a bridge registers its core as a temporary LaunchAgent for this install (P-58), which `drop` boots out.
+    pub fn command_under_launchd(&self, args: &[&str]) -> Command {
         let mut command = Command::new(&self.binary);
         command
             .args(args)
@@ -93,8 +110,22 @@ impl Installed {
 }
 
 impl Drop for Installed {
-    /// Ends every process the install's binary still runs, as holders outlive their core by design, then removes it.
+    /// Boots out the install's LaunchAgent, if a test registered one, ends every process the install's binary still
+    /// runs, as holders outlive their core by design, then removes it.
     fn drop(&mut self) {
+        if cfg!(target_os = "macos")
+            && let Ok(root) = std::fs::canonicalize(&self.root)
+        {
+            let service = format!(
+                "gui/{}/{}",
+                rustix::process::geteuid().as_raw(),
+                trcd::launchd::agent_label(&root)
+            );
+            let _ = Command::new("launchctl")
+                .args(["bootout", &service])
+                .stderr(Stdio::null())
+                .status();
+        }
         if let Some(name) = self.base.file_name() {
             let pattern = format!("{}/r/versions/test/trcd", name.to_string_lossy());
             let _ = Command::new("pkill").args(["-KILL", "-f", &pattern]).status();

@@ -3,6 +3,7 @@
 //! than the running core replaces it first, which upgrades the daemon without ending a session (US-2.5.3, D-46).
 
 use std::io;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
@@ -11,6 +12,7 @@ use tokio::net::UnixStream;
 
 use crate::core::account::current_account;
 use crate::install::InstallLayout;
+use crate::launchd::{agent_is_running, has_gui_session, start_agent};
 use crate::peer::is_same_user;
 use crate::private_dir::verify_private_dir;
 use crate::run_dir::RunDir;
@@ -80,20 +82,36 @@ fn trusted(stream: UnixStream) -> io::Result<UnixStream> {
     }
 }
 
-/// Starts the core as D-44 says: a systemd user unit where that keeps sessions longer, otherwise detached. A unit
-/// that cannot start falls back to detached, unless systemd is restarting the unit's own core, which then serves.
+/// Starts the core under the host's service manager where that keeps sessions longer, otherwise detached. A manager
+/// that cannot start it falls back to detached, unless the manager runs the install's own core, which then serves.
 fn start_core(layout: &InstallLayout) -> io::Result<()> {
     let binary = newest_core_binary(layout);
-    let facts = read_host_facts(&current_account().user, rustix::process::geteuid().as_raw());
-    if facts.mode() == ServiceMode::Systemd {
-        let umask = current_umask();
-        match start_unit(&binary, &layout.root, umask) {
-            Ok(()) => return Ok(()),
-            Err(_) if unit_is_running(&layout.root) => return Ok(()),
-            Err(error) => eprintln!("trcd: {error}; starting the core detached"),
-        }
+    match start_supervised(&binary, &layout.root) {
+        Some(Ok(())) => return Ok(()),
+        Some(Err(error)) => eprintln!("trcd: {error}; starting the core detached"),
+        None => {}
     }
     start_detached(&binary)
+}
+
+/// Starts the core as a LaunchAgent where the user has a GUI login session (P-61), or as a systemd user unit where
+/// D-44 asks for one; `None` where neither applies.
+fn start_supervised(binary: &Path, root: &Path) -> Option<io::Result<()>> {
+    let uid = rustix::process::geteuid().as_raw();
+    if has_gui_session(uid) {
+        let started = start_agent(binary, root, current_umask(), &home());
+        return Some(started.or_else(|error| if agent_is_running(root) { Ok(()) } else { Err(error) }));
+    }
+    if read_host_facts(&current_account().user, uid).mode() != ServiceMode::Systemd {
+        return None;
+    }
+    let started = start_unit(binary, root, current_umask());
+    Some(started.or_else(|error| if unit_is_running(root) { Ok(()) } else { Err(error) }))
+}
+
+/// The user's home folder, where the LaunchAgent's plist goes: `HOME`, as the connection set it, else the account's.
+fn home() -> PathBuf {
+    std::env::var_os("HOME").map_or_else(|| PathBuf::from(current_account().home), PathBuf::from)
 }
 
 fn current_umask() -> rustix::fs::Mode {
@@ -102,7 +120,7 @@ fn current_umask() -> rustix::fs::Mode {
     mask
 }
 
-fn start_detached(binary: &std::path::Path) -> io::Result<()> {
+fn start_detached(binary: &Path) -> io::Result<()> {
     let status = std::process::Command::new(binary)
         .args(["core", "--detach"])
         .current_dir("/")

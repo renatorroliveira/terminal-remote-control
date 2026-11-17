@@ -31,6 +31,13 @@ describe('decodeServerMessage', () => {
         expect(result).toEqual({ ok: true, message: { type: 'error', code: 'unspecified', message: 'x' } });
     });
 
+    it('keeps a daemon that runs as a LaunchAgent (US-4.4.1)', () => {
+        const welcome = readFixture('v3', 'server', 'welcome.json') as { readonly service: object };
+        const launchd = { ...welcome, service: { ...welcome.service, manager: 'launchd' } };
+
+        expect(decodeServerMessage(asPayload(launchd))).toEqual({ ok: true, message: launchd });
+    });
+
     it('rejects unknown message types, wrong field types and invalid JSON (SEC-06)', () => {
         expect(decodeServerMessage(asPayload({ type: 'selfDestruct' })).ok).toBe(false);
         expect(decodeServerMessage(asPayload({ type: 'pong', requestId: 'one' })).ok).toBe(false);
