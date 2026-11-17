@@ -7,9 +7,11 @@ import {
     hostAdded,
     hostGroups,
     hostStateChanged,
+    restoresSeen,
     sessionChanged,
     sessionKey,
     sessionName,
+    sessionOpened,
     sessionsListed,
     type Workspace,
 } from './workspace-model';
@@ -98,6 +100,41 @@ describe('the workspace model: where each session is (P-48)', () => {
         let workspace = hostStateChanged(hostAdded(EMPTY_WORKSPACE, known('h1', 'devbox-1')), 'h1', connected);
         workspace = sessionsListed(workspace, 'h1', [session('a', { cwd: '/home/jordan' })]);
         expect(hostGroups(workspace)[0]?.sessions[0]?.place).toBe('/home/jordan');
+    });
+});
+
+describe('the workspace model: restored sessions (US-3.1.6, P-42)', () => {
+    const restored = (at: number) => ({ at, afterHostRestart: true });
+    const badges = (workspace: Workspace) => hostGroups(workspace)[0]?.sessions.map((item) => item.restored);
+
+    it('marks a restored session until it is opened, and again after its next restore', () => {
+        let workspace = hostStateChanged(hostAdded(EMPTY_WORKSPACE, known('h1', 'devbox-1')), 'h1', connected);
+        workspace = sessionsListed(workspace, 'h1', [session('a', { restored: restored(5) }), session('b')]);
+        expect(badges(workspace)).toEqual([true, false]);
+        workspace = sessionOpened(workspace, sessionKey('h1', 'a'));
+        expect(badges(workspace)).toEqual([false, false]);
+        workspace = sessionOpened(workspace, sessionKey('h1', 'b'));
+        workspace = sessionsListed(workspace, 'h1', [session('a', { restored: restored(9) }), session('b')]);
+        expect(badges(workspace)).toEqual([true, false]);
+        expect(workspace.restoreSeen.get(sessionKey('h1', 'a'))).toBe(5);
+    });
+
+    it('never marks the open session, which the user is looking at', () => {
+        let workspace = hostStateChanged(hostAdded(EMPTY_WORKSPACE, known('h1', 'devbox-1')), 'h1', connected);
+        workspace = sessionsListed(workspace, 'h1', [session('a')]);
+        workspace = sessionOpened(workspace, sessionKey('h1', 'a'));
+        workspace = sessionChanged(workspace, 'h1', {
+            kind: 'updated',
+            session: session('a', { restored: restored(7) }),
+        });
+        expect(badges(workspace)).toEqual([false]);
+    });
+
+    it('remembers the restores already seen, as the session cache keeps them', () => {
+        let workspace = hostAdded(EMPTY_WORKSPACE, known('h1', 'devbox-1'));
+        workspace = restoresSeen(workspace, new Map([[sessionKey('h1', 'a'), 5]]));
+        workspace = sessionsListed(workspace, 'h1', [session('a', { restored: restored(5) })]);
+        expect(badges(workspace)).toEqual([false]);
     });
 });
 

@@ -102,6 +102,27 @@ describe('SessionTree: states and badges (US-1.14.1, A11Y-08.2, US-1.8.3)', () =
         await expect.element(screen.getByRole('treeitem', { name: 'build, Running' })).toBeVisible();
     });
 
+    it('marks a restored session until it opens, and says why an unrestored one ended (US-3.1.6, US-3.1.8)', async () => {
+        const { screen, workspace } = await renderTree([
+            { ...bashSession('a'), customName: 'build', restored: { at: 5, afterHostRestart: true } },
+            { ...bashSession('b'), customName: 'logs', order: 1, state: 'exited', exit: { ended: 'hostRestart' } },
+        ]);
+        await expect.element(screen.getByRole('treeitem', { name: 'build, Running, restored' })).toBeVisible();
+        await expect.element(screen.getByRole('treeitem', { name: 'logs, Ended by restart' })).toBeVisible();
+        workspace.open('host-0/a');
+        await expect.element(screen.getByRole('treeitem', { name: 'build, Running' })).toBeVisible();
+    });
+
+    it('marks a session whose scrollback cannot be saved, with the reason in its description (US-3.1.2)', async () => {
+        const { screen } = await renderTree([
+            { ...bashSession('a'), customName: 'build', persistenceFailure: 'quota' },
+        ]);
+        const row = screen.getByRole('treeitem', { name: 'build, Running, scrollback not saved' });
+        await expect
+            .element(row)
+            .toHaveAccessibleDescription('devbox-1 Scrollback not saved: your disk quota is used up');
+    });
+
     it('reorders a session dragged onto another of its host (US-1.10.6)', async () => {
         const { client, screen } = await renderTree();
         const transfer = new DataTransfer();

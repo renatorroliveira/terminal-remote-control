@@ -47,6 +47,10 @@ export class TerminalGeometry {
     #fitted: () => void = () => undefined;
     #extraSpacing = 0;
     #forced: GridSize | undefined;
+    /** The cell size last measured on a drawn grid. */
+    #cellSize: CellSize | undefined;
+    /** The screen's size when the grid last changed, until the renderer draws the new grid. */
+    #undrawn: Size | undefined;
 
     /** Binds the geometry to a terminal and its elements; `options.onFit` hears the grid each fit finds. */
     constructor(terminal: Terminal, elements: GeometryElements, ats: AtsSurface, options: GeometryOptions) {
@@ -107,6 +111,7 @@ export class TerminalGeometry {
         const width = shown.cols * cell.width + SCROLLBAR_WIDTH;
         this.#elements.host.style.width = `${width + padding(this.#elements.host).width}px`;
         if (shown.cols !== this.#terminal.cols || shown.rows !== this.#terminal.rows) {
+            this.#undrawn = this.#screen();
             this.#terminal.resize(shown.cols, shown.rows);
         }
         this.align();
@@ -153,12 +158,31 @@ export class TerminalGeometry {
         });
     }
 
+    /**
+     * The size of one cell: the drawn screen over the grid, or the last one measured while the renderer has not drawn
+     * the grid's last change. xterm.js draws a resize only once the terminal is in view, and the screen it keeps
+     * meanwhile, over the new grid, would give a smaller cell and a larger grid at every fit.
+     */
     #cell(): CellSize | undefined {
+        const screen = this.#screen();
+        if (screen === undefined) {
+            return undefined;
+        }
+        const undrawn = this.#undrawn;
+        if (undrawn !== undefined && undrawn.width === screen.width && undrawn.height === screen.height) {
+            return this.#cellSize;
+        }
+        this.#undrawn = undefined;
+        this.#cellSize = { width: screen.width / this.#terminal.cols, height: screen.height / this.#terminal.rows };
+        return this.#cellSize;
+    }
+
+    #screen(): Size | undefined {
         const screen = this.#terminal.element?.querySelector('.xterm-screen')?.getBoundingClientRect();
         if (screen === undefined || screen.width === 0 || screen.height === 0) {
             return undefined;
         }
-        return { width: screen.width / this.#terminal.cols, height: screen.height / this.#terminal.rows };
+        return { width: screen.width, height: screen.height };
     }
 }
 

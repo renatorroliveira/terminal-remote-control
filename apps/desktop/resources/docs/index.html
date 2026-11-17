@@ -105,15 +105,25 @@
 <ul>
 <li><strong>Opening.</strong> Moving through the list doesn't switch sessions. Opening one moves focus to its terminal, and TRC says its name, host and state, and whether it has output you haven't seen.</li>
 <li><strong>Where a session is.</strong> Each session's name starts with the last two folders it's working in, such as <code>src/trc</code>, with your home folder shown as <code>~</code>, as in <code>~/src</code>. TRC shows it once the host has connected.</li>
-<li><strong>States.</strong> A shape at the end of each session says its state: filled while it runs, half filled while it starts or its host reconnects, hollow while its host is disconnected, and a circle with a dash once it has exited, stopped or failed to start. Pointing at it shows the state, and VoiceOver reads it with the name: Starting, Running, Exited (with the exit code or signal), Stopped, Failed to start, Disconnected or Reconnecting. &quot;New output&quot; shows while it has output you haven't seen. VoiceOver also reads its position, such as &quot;2 of 3&quot;.</li>
-<li><strong>New session with options.</strong> Choose the host, the shell, the working folder, a name, and environment variables (one <code>NAME=value</code> per line; <code>NAME=</code> removes a variable).</li>
-<li><strong>Session actions.</strong> Rename (an empty name shows the title the program sets), Stop, Restart (same shell, folder and environment; the scrollback stays), Duplicate (same shell and folder), Move up, Move down, and Close, which asks first because it deletes the session and its scrollback. You can also drag a session up or down its host's list. The command palette lists the open session's actions too.</li>
+<li><strong>States.</strong> A shape at the end of each session says its state: filled while it runs, half filled while it starts or its host reconnects, hollow while its host is disconnected, and a circle with a dash once it has exited, stopped or failed to start. Pointing at it shows the state, and VoiceOver reads it with the name: Starting, Running, Exited (with the exit code or signal), Stopped, Failed to start, Ended by restart, Processes ended, Disconnected or Reconnecting. &quot;New output&quot; shows while it has output you haven't seen, &quot;restored&quot; until you open a session the host <a href="#after-a-restart">restored</a>, and &quot;scrollback not saved&quot; while the host can't save its scrollback (VoiceOver reads why with the host's name). VoiceOver also reads its position, such as &quot;2 of 3&quot;.</li>
+<li><strong>New session with options.</strong> Choose the host, the shell, the working folder, a name, and environment variables (one <code>NAME=value</code> per line; <code>NAME=</code> removes a variable). On a host whose daemon is 0.4.0 or later, two switches also choose whether the session is restored after a restart and whether its scrollback is saved to disk.</li>
+<li><strong>Session actions.</strong> Rename (an empty name shows the title the program sets), Session settings… (the two switches above), Stop, Restart (same shell, folder and environment; the scrollback stays), Duplicate (same shell and folder), Move up, Move down, and Close, which asks first because it deletes the session and its scrollback, on the host's disk too. You can also drag a session up or down its host's list. The command palette lists the open session's actions too.</li>
 <li><strong>Ending a session.</strong> Type <code>exit</code>, or end its program. A session that exits cleanly (code 0) leaves the list, unless you turn off &quot;Close sessions that exit cleanly&quot; in <a href="#settings">Settings</a>; one that failed stays, so you can read its last output.</li>
 <li><strong>Stopping.</strong> Stop asks the program to end, then forces it after the seconds Settings sets (5 by default).</li>
 </ul>
-<p>Sessions keep running on the host when you quit the app, when it crashes or is forced to quit, and when the connection drops. When the app connects again, it lists them, and opening one shows its screen as the host has it now, with the output they wrote while you were away. A host reboot ends them in this release.</p>
+<p>Sessions keep running on the host when you quit the app, when it crashes or is forced to quit, and when the connection drops. When the app connects again, it lists them, and opening one shows its screen as the host has it now, with the output they wrote while you were away. They also come back after the host restarts; see <a href="#after-a-restart">After a restart</a>.</p>
 <p>On a Linux host where your user has lingering on (<code>loginctl enable-linger</code>), the host's systemd keeps the TRC daemon running and restarts it if it fails; elsewhere the daemon runs on its own. Either way your sessions outlive the connection. The exception is a host that ends your processes when your last connection closes (<code>KillUserProcesses=yes</code>) while lingering is off: its status says &quot;Connected; sessions end when its last connection closes&quot;, and TRC warns you before the first session you create there. TRC never turns lingering on for you; the host's administrator can.</p>
 <p>The first time you quit while sessions run, TRC says that they keep running and offers Quit, Quit and Stop All Sessions, and Cancel; it doesn't ask again. To end every session, choose Quit and Stop All Sessions… in the TRC menu or the command palette: TRC says how many sessions on how many hosts it will stop, and names any host that isn't connected, whose sessions keep running. Once you confirm, it stops them and quits; if a host refuses, TRC stays open and says which.</p>
+<h3 id="after-a-restart">After a restart</h3>
+<p>The daemon saves each session's scrollback to disk on the host as it arrives, in a folder only you can read under the install location (<code>~/.trc/sessions</code>), a couple of seconds behind the screen at most. When a restart of the host, a logout that ends your processes, or a crash ends a session's processes while it was running, the daemon brings the session back the next time TRC connects: the same shell, name, size, place in the list and environment, in the folder it was last in, below its saved scrollback and a line such as &quot;Session restored after restart on 2026-11-16 09:30:00 UTC. Previous processes ended.&quot; Only the shell starts; nothing that ran in it runs again, and variables you exported in the shell are gone. If its folder no longer exists, it starts in your home folder and says so. The saved scrollback is history you can read, select and copy, in review mode too; new output continues below the line.</p>
+<p>TRC says how many sessions each host restored, such as &quot;devbox-1 restarted: 3 sessions restored&quot;, lists it in Notifications, and marks each session &quot;restored&quot; until you open it on this Mac. Sessions you stopped or that had exited stay in the list as they were, with their saved scrollback; one whose restore is off shows &quot;Ended by restart&quot; or &quot;Processes ended&quot;. Close or restart them when you're done.</p>
+<p>Two switches in Session settings… choose what each session keeps; both are on for new sessions:</p>
+<ul>
+<li><strong>Restore after restart.</strong> Off, the session stays ended after a restart, with its saved scrollback.</li>
+<li><strong>Save scrollback to disk.</strong> Off, none of its output is written to disk, so it comes back without scrollback. Turning it off deletes what was saved. Use it for sessions that print secrets.</li>
+</ul>
+<p><strong>Clear scrollback</strong> (Command-K, the Edit menu, the terminal's context menu or the command palette) clears the open session's scrollback in every app that has it open and deletes the copy on disk; TRC says &quot;Scrollback cleared&quot;. Closing a session deletes everything saved for it. If the host can't save a session's scrollback, for example because its disk is full, TRC says so once, the session shows &quot;scrollback not saved&quot;, and it keeps running; saving resumes by itself once it can.</p>
+<p>Nothing starts the daemon when the host boots: TRC registers nothing outside the install location. The sessions come back when TRC next connects and starts the daemon.</p>
 <h3 id="sharing-a-session-with-another-computer">Sharing a session with another computer</h3>
 <p>The app on another computer can open the same session at the same time: both see its output as it comes and both can type. The session's size follows the computer you used last. When the other computer sets it, your terminal shows the session at that size, and the status bar and the terminal's description say &quot;Size set by another client&quot;; focus the terminal or type to take the size back. When the other computer types into the session you have open, TRC says &quot;Input from another client&quot; once, until it stops typing for a few seconds.</p>
 <p>A session started before you updated the host's daemon from 0.2.0 serves one computer at a time until you close it. When another computer opens it, your terminal says &quot;Opened on another client — input not sent&quot;; open the session again to take it back.</p>
@@ -125,6 +135,7 @@
 <tr><td>Copy the selection</td><td>Command-C. Wrapped lines come out as the program printed them</td></tr>
 <tr><td>Paste</td><td>Command-V. More than one line asks first and says how many</td></tr>
 <tr><td>Copy, Paste, List Links and Look Up</td><td>Shift-F10, the Menu key, Control-click or right-click</td></tr>
+<tr><td>Clear the scrollback</td><td>Command-K, also on disk on the host</td></tr>
 <tr><td>Select text</td><td>Drag. Drag past the top or bottom edge to scroll; farther is faster</td></tr>
 <tr><td>Scroll back and forward a page</td><td>Shift-Page Up and Shift-Page Down</td></tr>
 <tr><td>Look up the selected word</td><td>Control-Command-D, or Edit, then Look Up</td></tr>
@@ -158,6 +169,7 @@
 <tr><td>List the links on the screen</td><td>Shift-Command-O</td></tr>
 <tr><td>Review mode, the whole buffer as text</td><td>Option-F2</td></tr>
 <tr><td>Find in the terminal</td><td>Command-F</td></tr>
+<tr><td>Clear the scrollback, on the host's disk too</td><td>Command-K</td></tr>
 <tr><td>Actions for the focused session or host</td><td>Shift-F10, the Menu key, Control-click or right-click</td></tr>
 </tbody>
 </table>
@@ -229,7 +241,7 @@
 <p>To use another folder, set <code>TRC_HOME</code> when you start the app. A leading <code>~</code> means your home folder, and a relative path lies under it:</p>
 <pre><code class="language-sh">TRC_HOME=~/work/trc open -n &quot;/Applications/Terminal Remote Control.app&quot;</code></pre>
 <p>Logs and Chromium's own data stay in <code>~/Library/Application Support/Terminal Remote Control</code>. Logs never hold terminal output, keystrokes, environment values or keys.</p>
-<p>On each host, the daemon lives in <code>~/.trc</code>: its binaries under <code>versions/</code>, its socket under <code>run/</code> and its logs. To remove TRC from a host, end its sessions, then delete <code>~/.trc</code> there.</p>
+<p>On each host, the daemon lives in <code>~/.trc</code>: its binaries under <code>versions/</code>, its socket under <code>run/</code>, its logs, and each session's record and saved scrollback under <code>sessions/</code>, readable only by you. To remove TRC from a host, end its sessions, then delete <code>~/.trc</code> there.</p>
 <p>The licenses of the software TRC includes are in the app, in <code>Terminal Remote Control.app/Contents/Resources/notices/THIRD_PARTY_NOTICES.txt</code>; Electron's and Chromium's are in <code>LICENSE.electron.txt</code> and <code>LICENSES.chromium.html</code> beside it.</p>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <table>
@@ -249,7 +261,7 @@
 <p>If the app doesn't open after you download it, see <a href="#install">Install</a>, step 3.</p>
 <p><code>ssh -G &lt;host&gt;</code> shows the settings ssh will use for a host, and <code>ssh -v &lt;host&gt;</code> shows each connection step.</p>
 <h2 id="whats-not-there-yet">What's not there yet</h2>
-<p>Later epics add sessions that survive a host reboot, local sessions on the Mac, macOS hosts, and the Windows and Linux apps. <a href="https://github.com/renatorroliveira/terminal-remote-control/blob/main/docs/PRD.md">The PRD</a> has the full plan.</p>
+<p>Later epics add local sessions on the Mac, macOS hosts, and the Windows and Linux apps. <a href="https://github.com/renatorroliveira/terminal-remote-control/blob/main/docs/PRD.md">The PRD</a> has the full plan.</p>
 </main>
 </body>
 </html>

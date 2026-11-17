@@ -9,7 +9,7 @@ import type { TerminalConnection } from '../terminal/terminal-view';
 import type {
     AttachFailure,
     KnownHostStore,
-    SessionOptions,
+    NewSessionOptions,
     TerminalHost,
     WorkspaceClient,
 } from './workspace-controller';
@@ -145,10 +145,10 @@ export class FakeTerminalHost implements TerminalHost {
     }
 
     /** The options of every create, in order. */
-    readonly options: (SessionOptions | undefined)[] = [];
+    readonly options: (NewSessionOptions | undefined)[] = [];
 
     /** Returns the next prepared session. */
-    create(_hostId: string, options?: SessionOptions): Promise<SessionInfo> {
+    create(_hostId: string, options?: NewSessionOptions): Promise<SessionInfo> {
         this.options.push(options);
         const next = this.#created.shift();
         return next === undefined ? Promise.reject(new Error('no session prepared')) : Promise.resolve(next);

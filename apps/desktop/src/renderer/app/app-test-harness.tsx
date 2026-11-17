@@ -1,7 +1,9 @@
+import type { SessionInfo } from '@trc/protocol';
 import { createIntl } from 'react-intl';
 import { expect } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
+import type { ConnectionState } from '../../shared/connection';
 import type { GuideSection } from '../../shared/guide';
 import { resolveKeymap } from '../../shared/keymap';
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings';
@@ -22,6 +24,9 @@ import { Shell } from './shell';
 
 /** A connected host's state. */
 export const CONNECTED = { status: 'connected', daemon: { version: '0.1.0', sha256: 'ab', proto: 1 } } as const;
+
+/** A connection to a daemon that saves scrollback and restores sessions (protocol 3, US-3.2). */
+export const CONNECTED_SAVING = { status: 'connected', daemon: { version: '0.4.0', sha256: 'ab', proto: 3 } } as const;
 
 /** Loads the Midnight tokens, as the app does; returns their removal. */
 export function installTokens(): () => void {
@@ -54,8 +59,8 @@ export class RecordingSettingsSource {
 }
 
 /** Renders the whole app over test doubles, with a shell recording what it saves and speaks. */
-export function renderApp(savedWidth = 400) {
-    const client = new FakeWorkspaceClient([bashSession('a')]);
+export function renderApp(savedWidth = 400, sessions: readonly SessionInfo[] = [bashSession('a')]) {
+    const client = new FakeWorkspaceClient(sessions);
     const terminals = new FakeTerminalHost([bashSession('b')]);
     const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore());
     const saved: (number | boolean)[] = [];
@@ -111,10 +116,14 @@ export function renderApp(savedWidth = 400) {
 }
 
 /** Adds devbox-1 from the sidebar and reports it connected. */
-export async function connectedHost(screen: AppScreen, client: FakeWorkspaceClient) {
+export async function connectedHost(
+    screen: AppScreen,
+    client: FakeWorkspaceClient,
+    state: ConnectionState = CONNECTED,
+) {
     await screen.getByRole('combobox', { name: 'New host' }).fill('devbox-1');
     await userEvent.keyboard('{Enter}');
-    client.push('host-0', CONNECTED);
+    client.push('host-0', state);
     await expect.element(screen.getByRole('button', { name: 'New session on devbox-1' })).toBeVisible();
 }
 

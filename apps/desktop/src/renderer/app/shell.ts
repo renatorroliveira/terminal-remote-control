@@ -32,6 +32,7 @@ import type { NotificationCenter } from './notifications';
 import { clipboardWrittenMessage, copyCappedMessage } from './paste-messages';
 import { QuitFlow, type QuitFlowOptions } from './quit-flow';
 import { RegionCycler } from './regions';
+import { reportPersistenceFailures, reportRestores } from './session-reporter';
 import type { SettingsStore } from './settings/settings-store';
 import {
     commandMessages,
@@ -153,7 +154,7 @@ export interface ShellState {
 
 /** A dialog about a session, or the New session dialog. */
 export type SessionDialog =
-    | { readonly kind: 'rename' | 'close'; readonly key: SessionKey }
+    | { readonly kind: 'rename' | 'close' | 'settings'; readonly key: SessionKey }
     | { readonly kind: 'new'; readonly hostId: string | undefined };
 
 /** A dialog about one host. */
@@ -284,6 +285,8 @@ export class Shell {
             playCue: (cue: AudioCue) => this.playCue(cue),
         };
         const stopFailures = reportActionFailures({ ...reporting, store: this.#options.workspace.store });
+        const stopRestores = reportRestores({ ...reporting, store: this.#options.workspace.store });
+        const stopPersistence = reportPersistenceFailures({ ...reporting, store: this.#options.workspace.store });
         const settings = this.#options.settings;
         const stopSettingsFailures =
             settings === undefined ? () => undefined : reportSettingsFailures(settings, reporting);
@@ -297,6 +300,8 @@ export class Shell {
             stopRegions();
             stopHosts();
             stopFailures();
+            stopRestores();
+            stopPersistence();
             stopSettingsFailures();
             stopScreenReader();
             stopSettings();
@@ -641,6 +646,7 @@ export class Shell {
             'terminal.zoomReset': () => this.#zoom('reset'),
             'review.toggle': () => this.#toggleReview(),
             'terminal.find': () => this.openFind(),
+            'terminal.clearScrollback': () => void this.#clearScrollback(),
             'help.accessibility': () => this.openHelp(),
             'help.userGuide': () => this.openGuide(),
             'settings.show': () => void this.openSettings(),
@@ -657,6 +663,15 @@ export class Shell {
             return;
         }
         void this.#options.workspace.newSessionHere();
+    }
+
+    async #clearScrollback(): Promise<void> {
+        const open = this.#options.workspace.store.getState().open;
+        if (open === undefined) {
+            this.#announce(shellAnnouncements.noSession);
+        } else if (await this.#options.workspace.clearScrollback(open)) {
+            this.#announce(shellAnnouncements.scrollbackCleared);
+        }
     }
 
     #toggleReview(): void {

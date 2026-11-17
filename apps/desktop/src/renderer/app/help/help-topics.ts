@@ -23,6 +23,7 @@ const TOPICS: Readonly<Record<HelpContext, readonly Topic[]>> = {
     terminal: [
         'review.toggle',
         'terminal.find',
+        'terminal.clearScrollback',
         'terminal.listLinks',
         { action: keys.openLink, keys: 'Cmd+click' },
         { action: keys.copy, keys: 'Cmd+C' },

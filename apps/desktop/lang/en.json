@@ -91,6 +91,18 @@
     "defaultMessage": "Input from another client.",
     "description": "Announced politely once per burst when another computer types into the open session."
   },
+  "announce.persistenceFailed": {
+    "defaultMessage": "Scrollback of {session} on {host} can’t be saved: {reason}.",
+    "description": "Announced and listed when the daemon cannot save a session’s scrollback to disk."
+  },
+  "announce.restored": {
+    "defaultMessage": "{host}: {count, plural, one {# session} other {# sessions}} restored.",
+    "description": "Announced and listed when the daemon restored sessions whose processes ended."
+  },
+  "announce.restoredAfterRestart": {
+    "defaultMessage": "{host} restarted: {count, plural, one {# session} other {# sessions}} restored.",
+    "description": "Announced and listed when a host restarted and the daemon restored its sessions."
+  },
   "announce.reviewOutput": {
     "defaultMessage": "New output. Command-Down Arrow goes to the end.",
     "description": "Announced once when output arrives while review mode is open."
@@ -102,6 +114,10 @@
   "announce.screenReaderOn": {
     "defaultMessage": "Screen reader mode on.",
     "description": "Announced when screen-reader mode turns on: the open session’s output is spoken."
+  },
+  "announce.scrollbackCleared": {
+    "defaultMessage": "Scrollback cleared.",
+    "description": "Announced after Clear scrollback deleted the open session’s scrollback."
   },
   "announce.settingsNotSaved": {
     "defaultMessage": "Couldn’t save the settings, so they are back as they were.",
@@ -219,6 +235,10 @@
     "defaultMessage": "Show or hide the sidebar",
     "description": "Command name."
   },
+  "command.terminalClearScrollback": {
+    "defaultMessage": "Clear scrollback",
+    "description": "Command name: deletes the open session’s scrollback, on the host’s disk too."
+  },
   "command.terminalFind": {
     "defaultMessage": "Find…",
     "description": "Command name."
@@ -306,6 +326,10 @@
   "failure.authenticationPinRequired.remedy": {
     "defaultMessage": "Add the key to your SSH agent with ssh-add, which asks for the PIN, then connect again.",
     "description": "How to fix a failed connection."
+  },
+  "failure.clearScrollback": {
+    "defaultMessage": "Couldn’t clear the scrollback of a session on {host}.",
+    "description": "Reported when clearing a session’s scrollback fails."
   },
   "failure.clipboard": {
     "defaultMessage": "Couldn’t change whether {host} may write the clipboard.",
@@ -426,6 +450,10 @@
   "failure.open": {
     "defaultMessage": "Couldn’t open the session on {host}.",
     "description": "Reported when a session shown for the first time fails to attach."
+  },
+  "failure.options": {
+    "defaultMessage": "Couldn’t change what a session on {host} restores and saves.",
+    "description": "Reported when changing a session’s Restore after restart or Save scrollback to disk fails."
   },
   "failure.other.problem": {
     "defaultMessage": "The connection to {name} failed.",
@@ -1047,6 +1075,10 @@
     "defaultMessage": "Restart {session}",
     "description": "Palette entry."
   },
+  "palette.session.settings": {
+    "defaultMessage": "Settings for {session}…",
+    "description": "Palette entry: what the open session restores and saves (US-3.2)."
+  },
   "palette.session.stop": {
     "defaultMessage": "Stop {session}",
     "description": "Palette entry."
@@ -1074,6 +1106,26 @@
   "paste.title": {
     "defaultMessage": "{lines, plural, one {Paste # line?} other {Paste # lines?}}",
     "description": "Title of the confirmation before a paste of more than one line."
+  },
+  "persistence.diskFull": {
+    "defaultMessage": "the disk is full",
+    "description": "Why scrollback cannot be saved: the host’s disk is full."
+  },
+  "persistence.other": {
+    "defaultMessage": "an error that the daemon’s log names",
+    "description": "Why scrollback cannot be saved: another error, named in the daemon’s log."
+  },
+  "persistence.quota": {
+    "defaultMessage": "your disk quota is used up",
+    "description": "Why scrollback cannot be saved: the user’s disk quota on the host is used up."
+  },
+  "persistence.readOnly": {
+    "defaultMessage": "the file system is read-only",
+    "description": "Why scrollback cannot be saved: the host’s file system is read-only."
+  },
+  "persistence.unspecified": {
+    "defaultMessage": "an unknown error",
+    "description": "Why scrollback cannot be saved: a reason this version does not know."
   },
   "quit.first.body": {
     "defaultMessage": "Sessions keep running on their hosts after TRC quits, and TRC reconnects to them when it opens again. To end them, choose Quit and Stop All Sessions, here or in the TRC menu. This message won’t appear again.",
@@ -1171,6 +1223,10 @@
     "defaultMessage": "Restart",
     "description": "Session action."
   },
+  "session.action.settings": {
+    "defaultMessage": "Session settings…",
+    "description": "Session action: what the session restores and saves (US-3.2)."
+  },
   "session.action.stop": {
     "defaultMessage": "Stop",
     "description": "Session action."
@@ -1178,6 +1234,14 @@
   "session.disconnected": {
     "defaultMessage": "Disconnected",
     "description": "Session state while its host is not connected."
+  },
+  "session.ended": {
+    "defaultMessage": "Ended",
+    "description": "Session state after its processes ended for a reason this version does not know."
+  },
+  "session.endedByRestart": {
+    "defaultMessage": "Ended by restart",
+    "description": "Session state after a restart of its host ended its processes and it was not restored."
   },
   "session.exited": {
     "defaultMessage": "Exited",
@@ -1194,6 +1258,10 @@
   "session.failedToStart": {
     "defaultMessage": "Failed to start",
     "description": "Session state."
+  },
+  "session.processesEnded": {
+    "defaultMessage": "Processes ended",
+    "description": "Session state after its processes ended, such as at logout, and it was not restored."
   },
   "session.reconnecting": {
     "defaultMessage": "Reconnecting",
@@ -1214,6 +1282,34 @@
   "session.unspecified": {
     "defaultMessage": "Unknown state",
     "description": "Session state."
+  },
+  "sessionSettings.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Button."
+  },
+  "sessionSettings.confirm": {
+    "defaultMessage": "Save",
+    "description": "Button."
+  },
+  "sessionSettings.restore": {
+    "defaultMessage": "Restore after restart",
+    "description": "Switch: start the session’s shell again after a restart of its host ends its processes."
+  },
+  "sessionSettings.restoreHint": {
+    "defaultMessage": "When a restart or a logout ends its processes, the daemon starts the shell again below the saved scrollback. Commands never run again.",
+    "description": "What Restore after restart does."
+  },
+  "sessionSettings.save": {
+    "defaultMessage": "Save scrollback to disk",
+    "description": "Switch: keep the session’s output in files on the host."
+  },
+  "sessionSettings.saveHint": {
+    "defaultMessage": "Keeps the output in a private folder on the host, so it comes back after a restart. Turning it off deletes the saved copy.",
+    "description": "What Save scrollback to disk does."
+  },
+  "sessionSettings.title": {
+    "defaultMessage": "Settings for {session}",
+    "description": "Title of the dialog that sets what a session restores and saves."
   },
   "setting.audioCues": {
     "defaultMessage": "Sound cues",
@@ -1750,6 +1846,18 @@
   "tree.newOutput": {
     "defaultMessage": "new output",
     "description": "Badge of a session with output the user has not seen."
+  },
+  "tree.notSaved": {
+    "defaultMessage": "scrollback not saved",
+    "description": "Badge of a session whose scrollback the daemon cannot save to disk."
+  },
+  "tree.notSavedBecause": {
+    "defaultMessage": "Scrollback not saved: {reason}",
+    "description": "Description of a session whose scrollback cannot be saved, with the reason."
+  },
+  "tree.restored": {
+    "defaultMessage": "restored",
+    "description": "Badge of a session the daemon restored after its processes ended, until it is opened."
   },
   "tree.sessionPlacedName": {
     "defaultMessage": "{place} {name}",

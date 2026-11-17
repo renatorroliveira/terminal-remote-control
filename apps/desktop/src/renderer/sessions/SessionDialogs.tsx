@@ -24,8 +24,9 @@ import type { SessionDialog, Shell } from '../app/shell';
 import { BUTTON, PRIMARY_BUTTON } from '../ui/buttons';
 import styles from '../ui/dialog.module.css';
 import { parseEnvironment } from './environment';
+import { DEFAULT_SAVING, SessionSavingFields, SessionSettingsForm } from './SessionSavingFields';
 import { closeMessages, newSessionMessages, renameMessages } from './session-messages';
-import type { SessionOptions, WorkspaceController } from './workspace-controller';
+import type { NewSessionOptions, WorkspaceController } from './workspace-controller';
 import { hostGroups, isConnected, type SessionItem } from './workspace-model';
 
 /** What the session dialogs act on. */
@@ -34,7 +35,13 @@ export interface SessionDialogsProps {
     readonly shell: Shell;
 }
 
-/** The dialogs about sessions: Rename (US-1.10.1), Close (US-1.10.4) and New session (US-1.7.2). */
+/** The first protocol whose daemons save scrollback and restore sessions (US-3.2, P-49). */
+const SAVING_PROTOCOL = 3;
+
+/**
+ * The dialogs about sessions: Rename (US-1.10.1), Session settings (US-3.2), Close (US-1.10.4) and New session
+ * (US-1.7.2).
+ */
 export function SessionDialogs(props: SessionDialogsProps) {
     const dialog = useStore(props.shell.state, (state) => state.sessionDialog);
     const close = (): void => props.shell.setSessionDialog(undefined);
@@ -71,11 +78,14 @@ function DialogFor(props: DialogForProps) {
     if (item === undefined) {
         return null;
     }
-    return dialog.kind === 'rename' ? (
-        <RenameForm item={item.entry} {...props} />
-    ) : (
-        <CloseConfirmation item={item.entry} host={item.host} {...props} />
-    );
+    switch (dialog.kind) {
+        case 'rename':
+            return <RenameForm item={item.entry} {...props} />;
+        case 'settings':
+            return <SessionSettingsForm item={item.entry} workspace={props.workspace} onClose={props.onClose} />;
+        case 'close':
+            return <CloseConfirmation item={item.entry} host={item.host} {...props} />;
+    }
 }
 
 function RenameForm(props: DialogForProps & { readonly item: SessionItem }) {
@@ -151,10 +161,14 @@ function NewSessionForm(props: DialogForProps & { readonly hostId: string | unde
     const profiles = useProfiles(props.workspace, hostId);
     const [profileId, setProfileId] = useState<string>();
     const [fields, setFields] = useState<NewSessionFields>({ cwd: '', name: '', env: '' });
+    const [saving, setSaving] = useState(DEFAULT_SAVING);
     const [envInvalid, setEnvInvalid] = useState(false);
+    const host = hosts.find((entry) => entry.id === hostId);
+    const savesSessions = host?.state.status === 'connected' && host.state.daemon.proto >= SAVING_PROTOCOL;
     const create = (event: FormEvent): void => {
         event.preventDefault();
-        const options = sessionOptions(fields, profileId ?? profiles[0]?.id);
+        const chosen = sessionOptions(fields, profileId ?? profiles[0]?.id);
+        const options = chosen === undefined || !savesSessions ? chosen : { ...chosen, options: saving };
         if (options === undefined) {
             setEnvInvalid(true);
         } else if (hostId !== undefined) {
@@ -192,6 +206,7 @@ function NewSessionForm(props: DialogForProps & { readonly hostId: string | unde
                         onChange={setProfileId}
                     />
                     <SessionFields fields={fields} envInvalid={envInvalid} onChange={field} />
+                    {savesSessions && <SessionSavingFields options={saving} onChange={setSaving} />}
                     <div className={styles['actions']}>
                         <Button className={BUTTON} onPress={props.onClose}>
                             {intl.formatMessage(newSessionMessages.cancel)}
@@ -246,7 +261,7 @@ function SessionFields({ fields, envInvalid, onChange }: SessionFieldsProps) {
     );
 }
 
-function sessionOptions(fields: NewSessionFields, profileId: string | undefined): SessionOptions | undefined {
+function sessionOptions(fields: NewSessionFields, profileId: string | undefined): NewSessionOptions | undefined {
     const env = parseEnvironment(fields.env);
     if (env === undefined) {
         return undefined;

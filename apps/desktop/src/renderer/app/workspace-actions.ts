@@ -73,8 +73,8 @@ export interface SessionPosition {
 }
 
 /**
- * A session's actions in its context menu (US-1.10): open, and with the shell rename, stop while it runs, restart,
- * duplicate, move up or down, and close after a confirmation.
+ * A session's actions in its context menu (US-1.10): open, and with the shell rename, its settings on a daemon that
+ * saves sessions (US-3.2), stop while it runs, restart, duplicate, move up or down, and close after a confirmation.
  */
 export function sessionActions(
     intl: IntlShape,
@@ -163,8 +163,10 @@ function managedSessionActions({
     labelled,
 }: ManagedContext): readonly WorkspaceAction[] {
     const running = item.session.state === 'running' || item.session.state === 'starting';
+    const saving = item.session.options !== undefined;
     return [
         labelled('rename', () => shell.setSessionDialog({ kind: 'rename', key: item.key })),
+        ...(saving ? [labelled('settings', () => shell.setSessionDialog({ kind: 'settings', key: item.key }))] : []),
         ...(running ? [labelled('stop', () => void workspace.stopSession(item.key))] : []),
         labelled('restart', () => void workspace.restartSession(item.key)),
         labelled('duplicate', () => void workspace.duplicateSession(item.key)),

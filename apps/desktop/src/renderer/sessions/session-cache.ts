@@ -1,7 +1,7 @@
 import type { SessionInfo } from '@trc/protocol';
 import type { StoreApi } from 'zustand/vanilla';
 import { CACHE_LIMITS, type CachedSession, type SessionCache } from '../../shared/session-cache';
-import type { Workspace } from './workspace-model';
+import { type SessionKey, sessionKey, type Workspace } from './workspace-model';
 
 /** Where the session cache is kept: the main process's `sessions.json` (P-30). */
 export interface SessionCacheStore {
@@ -25,11 +25,22 @@ export function cachedSessions(workspace: Workspace): SessionCache {
     for (const [hostId, sessions] of [...workspace.sessions].slice(0, CACHE_LIMITS.hosts)) {
         const kept = sessions.slice(0, Math.min(CACHE_LIMITS.sessionsPerHost, room));
         if (kept.length > 0) {
-            hosts[hostId] = kept.map(cachedSession);
+            hosts[hostId] = kept.map((session) =>
+                cachedSession(session, workspace.restoreSeen.get(sessionKey(hostId, session.id))),
+            );
             room -= kept.length;
         }
     }
     return hosts;
+}
+
+/** The restores a host's cached sessions were last opened after, so their Restored badges stay clear (P-42). */
+export function seenRestores(hostId: string, cached: readonly CachedSession[]): ReadonlyMap<SessionKey, number> {
+    return new Map(
+        cached.flatMap((session) =>
+            session.restoreSeen === undefined ? [] : [[sessionKey(hostId, session.id), session.restoreSeen] as const],
+        ),
+    );
 }
 
 /** A cached session as the list shows it until its host lists it again (US-2.3.2). */
@@ -98,7 +109,7 @@ export function watchSessionCache(
     };
 }
 
-function cachedSession(session: SessionInfo): CachedSession {
+function cachedSession(session: SessionInfo, restoreSeen: number | undefined): CachedSession {
     return {
         id: session.id,
         ...(session.customName === undefined ? {} : { name: clipped(session.customName) }),
@@ -106,6 +117,7 @@ function cachedSession(session: SessionInfo): CachedSession {
         shell: clipped(session.profile.name),
         order: session.order,
         state: session.state,
+        ...(restoreSeen === undefined ? {} : { restoreSeen }),
     };
 }
 

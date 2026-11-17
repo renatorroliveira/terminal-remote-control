@@ -9,9 +9,16 @@ import { PlusIcon } from '../ui/icons';
 import { hostStateText } from './host-state-text';
 import { typeAhead } from './list-keys';
 import { hostSessionsMessages, sessionRowMessage } from './messages';
+import { persistenceFailureMessages } from './restore-messages';
 import { SessionStateBadge } from './SessionStateBadge';
 import styles from './SessionTree.module.css';
-import { hostRowMessage, sessionPlacedNameMessage, sessionRowWithBadgeMessage, treeMessages } from './session-messages';
+import {
+    hostRowMessage,
+    notSavedBecauseMessage,
+    sessionPlacedNameMessage,
+    sessionRowWithBadgeMessage,
+    treeMessages,
+} from './session-messages';
 import { sessionStateText } from './session-state-text';
 import { type TreeRow, treeAction } from './tree-keys';
 import type { WorkspaceController } from './workspace-controller';
@@ -179,11 +186,9 @@ function SessionRow(props: SessionRowProps) {
     const intl = useIntl();
     const { item, focus, workspace } = props;
     const state = sessionStateText(intl, item);
-    const badges = [
-        ...(item.unread ? [intl.formatMessage(treeMessages.newOutput)] : []),
-        ...(item.bell ? [intl.formatMessage(treeMessages.bell)] : []),
-    ];
-    const badge = badges.length === 0 ? undefined : intl.formatList(badges, { type: 'unit' });
+    const badge = rowBadge(intl, item);
+    const failure = item.session.persistenceFailure;
+    const failureId = `${item.key}-persistence`;
     const name =
         item.place === undefined
             ? item.label
@@ -201,7 +206,7 @@ function SessionRow(props: SessionRowProps) {
             aria-setsize={props.position.count}
             aria-selected={item.key === props.open}
             aria-label={label}
-            aria-describedby={`${props.hostId}-tree-name`}
+            aria-describedby={`${props.hostId}-tree-name${failure === undefined ? '' : ` ${failureId}`}`}
             tabIndex={focus.current?.key === item.key ? 0 : -1}
             data-tree-key={item.key}
             data-session-key={item.key}
@@ -222,9 +227,27 @@ function SessionRow(props: SessionRowProps) {
                 <span>{item.label}</span>
                 {badge !== undefined && <span className={styles['badge']}> {badge}</span>}
             </span>
+            {failure !== undefined && (
+                <span id={failureId} hidden>
+                    {intl.formatMessage(notSavedBecauseMessage, {
+                        reason: intl.formatMessage(persistenceFailureMessages[failure]),
+                    })}
+                </span>
+            )}
             <SessionStateBadge item={item} state={state} />
         </div>
     );
+}
+
+/** A session row's badges as one phrase, such as "new output, bell", or none (US-1.8.3, A11Y-08.2, P-42). */
+function rowBadge(intl: IntlShape, item: SessionItem): string | undefined {
+    const badges = [
+        ...(item.restored ? [intl.formatMessage(treeMessages.restored)] : []),
+        ...(item.unread ? [intl.formatMessage(treeMessages.newOutput)] : []),
+        ...(item.bell ? [intl.formatMessage(treeMessages.bell)] : []),
+        ...(item.session.persistenceFailure === undefined ? [] : [intl.formatMessage(treeMessages.notSaved)]),
+    ];
+    return badges.length === 0 ? undefined : intl.formatList(badges, { type: 'unit' });
 }
 
 interface TreeFocus {

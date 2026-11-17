@@ -13,6 +13,23 @@ export const treeMessages = defineMessages({
         defaultMessage: 'bell',
         description: 'Badge of a background session whose bell rang.',
     },
+    restored: {
+        id: 'tree.restored',
+        defaultMessage: 'restored',
+        description: 'Badge of a session the daemon restored after its processes ended, until it is opened.',
+    },
+    notSaved: {
+        id: 'tree.notSaved',
+        defaultMessage: 'scrollback not saved',
+        description: 'Badge of a session whose scrollback the daemon cannot save to disk.',
+    },
+});
+
+/** The description of a session whose scrollback cannot be saved, with the reason (US-3.1.2). */
+export const notSavedBecauseMessage = defineMessage<{ reason: string }>({
+    id: 'tree.notSavedBecause',
+    defaultMessage: 'Scrollback not saved: {reason}',
+    description: 'Description of a session whose scrollback cannot be saved, with the reason.',
 });
 
 /** A host row's accessible name. */
@@ -40,6 +57,11 @@ export const sessionPlacedNameMessage = defineMessage<{ place: string; name: str
 export const sessionActionMessages = defineMessages({
     open: { id: 'session.action.open', defaultMessage: 'Open', description: 'Session action.' },
     rename: { id: 'session.action.rename', defaultMessage: 'Rename…', description: 'Session action.' },
+    settings: {
+        id: 'session.action.settings',
+        defaultMessage: 'Session settings…',
+        description: 'Session action: what the session restores and saves (US-3.2).',
+    },
     stop: { id: 'session.action.stop', defaultMessage: 'Stop', description: 'Session action.' },
     restart: { id: 'session.action.restart', defaultMessage: 'Restart', description: 'Session action.' },
     duplicate: { id: 'session.action.duplicate', defaultMessage: 'Duplicate', description: 'Session action.' },
@@ -54,6 +76,11 @@ export const paletteSessionMessages = {
         id: 'palette.session.rename',
         defaultMessage: 'Rename {session}…',
         description: 'Palette entry.',
+    }),
+    settings: defineMessage<{ session: string }>({
+        id: 'palette.session.settings',
+        defaultMessage: 'Settings for {session}…',
+        description: 'Palette entry: what the open session restores and saves (US-3.2).',
     }),
     stop: defineMessage<{ session: string }>({
         id: 'palette.session.stop',
@@ -159,4 +186,37 @@ export const newSessionMessages = {
     }),
     create: defineMessage({ id: 'newSession.create', defaultMessage: 'Create', description: 'Button.' }),
     cancel: defineMessage({ id: 'newSession.cancel', defaultMessage: 'Cancel', description: 'Button.' }),
+};
+
+/** What a session restores and saves, in Session settings… and New session… (US-3.2). */
+export const savingMessages = {
+    title: defineMessage<{ session: string }>({
+        id: 'sessionSettings.title',
+        defaultMessage: 'Settings for {session}',
+        description: 'Title of the dialog that sets what a session restores and saves.',
+    }),
+    restore: defineMessage({
+        id: 'sessionSettings.restore',
+        defaultMessage: 'Restore after restart',
+        description: 'Switch: start the session’s shell again after a restart of its host ends its processes.',
+    }),
+    restoreHint: defineMessage({
+        id: 'sessionSettings.restoreHint',
+        defaultMessage:
+            'When a restart or a logout ends its processes, the daemon starts the shell again below the saved scrollback. Commands never run again.',
+        description: 'What Restore after restart does.',
+    }),
+    save: defineMessage({
+        id: 'sessionSettings.save',
+        defaultMessage: 'Save scrollback to disk',
+        description: 'Switch: keep the session’s output in files on the host.',
+    }),
+    saveHint: defineMessage({
+        id: 'sessionSettings.saveHint',
+        defaultMessage:
+            'Keeps the output in a private folder on the host, so it comes back after a restart. Turning it off deletes the saved copy.',
+        description: 'What Save scrollback to disk does.',
+    }),
+    cancel: defineMessage({ id: 'sessionSettings.cancel', defaultMessage: 'Cancel', description: 'Button.' }),
+    confirm: defineMessage({ id: 'sessionSettings.confirm', defaultMessage: 'Save', description: 'Button.' }),
 };

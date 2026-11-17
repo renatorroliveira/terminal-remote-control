@@ -172,13 +172,17 @@ The Sessions list is a tree: each connected host, then its sessions. It is one s
 - **States.** A shape at the end of each session says its state: filled while it runs, half filled while it starts
   or its host reconnects, hollow while its host is disconnected, and a circle with a dash once it has exited,
   stopped or failed to start. Pointing at it shows the state, and VoiceOver reads it with the name: Starting,
-  Running, Exited (with the exit code or signal), Stopped, Failed to start, Disconnected or Reconnecting. "New
-  output" shows while it has output you haven't seen. VoiceOver also reads its position, such as "2 of 3".
+  Running, Exited (with the exit code or signal), Stopped, Failed to start, Ended by restart, Processes ended,
+  Disconnected or Reconnecting. "New output" shows while it has output you haven't seen, "restored" until you open
+  a session the host [restored](#after-a-restart), and "scrollback not saved" while the host can't save its
+  scrollback (VoiceOver reads why with the host's name). VoiceOver also reads its position, such as "2 of 3".
 - **New session with options.** Choose the host, the shell, the working folder, a name, and environment variables
-  (one `NAME=value` per line; `NAME=` removes a variable).
-- **Session actions.** Rename (an empty name shows the title the program sets), Stop, Restart (same shell, folder
-  and environment; the scrollback stays), Duplicate (same shell and folder), Move up, Move down, and Close, which
-  asks first because it deletes the session and its scrollback. You can also drag a session up or down its
+  (one `NAME=value` per line; `NAME=` removes a variable). On a host whose daemon is 0.4.0 or later, two switches
+  also choose whether the session is restored after a restart and whether its scrollback is saved to disk.
+- **Session actions.** Rename (an empty name shows the title the program sets), Session settings… (the two
+  switches above), Stop, Restart (same shell, folder and environment; the scrollback stays), Duplicate (same shell
+  and folder), Move up, Move down, and Close, which asks first because it deletes the session and its scrollback,
+  on the host's disk too. You can also drag a session up or down its
   host's list. The command palette lists the open session's actions too.
 - **Ending a session.** Type `exit`, or end its program. A session that exits cleanly (code 0) leaves the list,
   unless you turn off "Close sessions that exit cleanly" in [Settings](#settings); one that failed stays, so you
@@ -187,7 +191,8 @@ The Sessions list is a tree: each connected host, then its sessions. It is one s
 
 Sessions keep running on the host when you quit the app, when it crashes or is forced to quit, and when the
 connection drops. When the app connects again, it lists them, and opening one shows its screen as the host has
-it now, with the output they wrote while you were away. A host reboot ends them in this release.
+it now, with the output they wrote while you were away. They also come back after the host restarts; see
+[After a restart](#after-a-restart).
 
 On a Linux host where your user has lingering on (`loginctl enable-linger`), the host's systemd keeps the TRC
 daemon running and restarts it if it fails; elsewhere the daemon runs on its own. Either way your sessions outlive
@@ -201,6 +206,38 @@ Sessions, and Cancel; it doesn't ask again. To end every session, choose Quit an
 menu or the command palette: TRC says how many sessions on how many hosts it will stop, and names any host that
 isn't connected, whose sessions keep running. Once you confirm, it stops them and quits; if a host refuses, TRC
 stays open and says which.
+
+### After a restart
+
+The daemon saves each session's scrollback to disk on the host as it arrives, in a folder only you can read under
+the install location (`~/.trc/sessions`), a couple of seconds behind the screen at most. When a restart of the
+host, a logout that ends your processes, or a crash ends a session's processes while it was running, the daemon
+brings the session back the next time TRC connects: the same shell, name, size, place in the list and environment,
+in the folder it was last in, below its saved scrollback and a line such as "Session restored after restart on
+2026-11-16 09:30:00 UTC. Previous processes ended." Only the shell starts; nothing that ran in it runs again, and
+variables you exported in the shell are gone. If its folder no longer exists, it starts in your home folder and
+says so. The saved scrollback is history you can read, select and copy, in review mode too; new output continues
+below the line.
+
+TRC says how many sessions each host restored, such as "devbox-1 restarted: 3 sessions restored", lists it in
+Notifications, and marks each session "restored" until you open it on this Mac. Sessions you stopped or that had
+exited stay in the list as they were, with their saved scrollback; one whose restore is off shows "Ended by restart"
+or "Processes ended". Close or restart them when you're done.
+
+Two switches in Session settings… choose what each session keeps; both are on for new sessions:
+
+- **Restore after restart.** Off, the session stays ended after a restart, with its saved scrollback.
+- **Save scrollback to disk.** Off, none of its output is written to disk, so it comes back without scrollback.
+  Turning it off deletes what was saved. Use it for sessions that print secrets.
+
+**Clear scrollback** (Command-K, the Edit menu, the terminal's context menu or the command palette) clears the
+open session's scrollback in every app that has it open and deletes the copy on disk; TRC says "Scrollback
+cleared". Closing a session deletes everything saved for it. If the host can't save a session's scrollback, for
+example because its disk is full, TRC says so once, the session shows "scrollback not saved", and it keeps running;
+saving resumes by itself once it can.
+
+Nothing starts the daemon when the host boots: TRC registers nothing outside the install location. The sessions
+come back when TRC next connects and starts the daemon.
 
 ### Sharing a session with another computer
 
@@ -224,6 +261,7 @@ Command key belongs to the app.
 | Copy the selection                  | Command-C. Wrapped lines come out as the program printed them       |
 | Paste                               | Command-V. More than one line asks first and says how many          |
 | Copy, Paste, List Links and Look Up | Shift-F10, the Menu key, Control-click or right-click               |
+| Clear the scrollback                | Command-K, also on disk on the host                                 |
 | Select text                         | Drag. Drag past the top or bottom edge to scroll; farther is faster |
 | Scroll back and forward a page      | Shift-Page Up and Shift-Page Down                                   |
 | Look up the selected word           | Control-Command-D, or Edit, then Look Up                            |
@@ -290,6 +328,7 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 | List the links on the screen                 | Shift-Command-O                                       |
 | Review mode, the whole buffer as text        | Option-F2                                             |
 | Find in the terminal                         | Command-F                                             |
+| Clear the scrollback, on the host's disk too | Command-K                                             |
 | Actions for the focused session or host      | Shift-F10, the Menu key, Control-click or right-click |
 
 - **Regions.** Moving to a region puts you back where you were in it. A hidden sidebar is skipped.
@@ -397,7 +436,8 @@ TRC_HOME=~/work/trc open -n "/Applications/Terminal Remote Control.app"
 Logs and Chromium's own data stay in `~/Library/Application Support/Terminal Remote Control`. Logs never hold
 terminal output, keystrokes, environment values or keys.
 
-On each host, the daemon lives in `~/.trc`: its binaries under `versions/`, its socket under `run/` and its logs.
+On each host, the daemon lives in `~/.trc`: its binaries under `versions/`, its socket under `run/`, its logs, and
+each session's record and saved scrollback under `sessions/`, readable only by you.
 To remove TRC from a host, end its sessions, then delete `~/.trc` there.
 
 The licenses of the software TRC includes are in the app, in
@@ -424,5 +464,4 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 
 ## What's not there yet
 
-Later epics add sessions that survive a host reboot, local sessions on the Mac, macOS hosts, and the Windows and
-Linux apps. [The PRD](docs/PRD.md) has the full plan.
+Later epics add local sessions on the Mac, macOS hosts, and the Windows and Linux apps. [The PRD](docs/PRD.md) has the full plan.
