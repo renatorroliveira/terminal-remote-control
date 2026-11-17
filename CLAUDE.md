@@ -45,7 +45,9 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
   macOS Accessibility permission). Both build a test build
   (`pnpm --filter @trc/desktop build:test`, `TRC_TEST_BUILD=1`), which compiles
   in the P-14 seam (`TRC_TEST_*`); every test launch gets a scratch `TRC_HOME`; their live-terminal tests skip
-  unless the test hosts are up and the daemons are built. Test launches open
+  unless the test hosts are up and the daemons are built. Only launches that set
+  `TRC_TEST_LOCAL_HOME` (a scratch home for its LaunchAgent plist) get This
+  computer, whose daemon installs in their scratch `TRC_HOME` (P-58). Test launches open
   unseen (`TRC_TEST_BACKGROUND=1`, D-27): transparent, click-through, in the
   bottom-right corner, never focused. `pnpm test:ax` must take focus, so warn
   the owner before running it.

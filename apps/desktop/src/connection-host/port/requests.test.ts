@@ -16,6 +16,11 @@ describe('parseHostRequest (zod at the renderer boundary)', () => {
                 target: { destination: 'devbox-1', installRoot: '~/.trc' },
                 restore: true,
             },
+            {
+                type: 'connect',
+                hostId: 'local',
+                target: { destination: 'localhost', installRoot: '/home/tester/.trc', local: true },
+            },
             { type: 'send', hostId: 'h1', message: { type: 'listSessions', requestId: 1 } },
             { type: 'input', hostId: 'h1', stream: 1, data: new Uint8Array([3]) },
             { type: 'credit', hostId: 'h1', stream: 1, bytes: 65_536 },

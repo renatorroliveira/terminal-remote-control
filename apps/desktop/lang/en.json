@@ -971,6 +971,10 @@
     "defaultMessage": "The connection to {host} works.",
     "description": "Announced when a connection test succeeds."
   },
+  "host.thisComputer": {
+    "defaultMessage": "This computer",
+    "description": "The name of the Mac the app runs on, listed first among the hosts, whose sessions run locally."
+  },
   "host.touch": {
     "defaultMessage": "Touch your security key for {host}",
     "description": "Shown and announced while ssh waits for a FIDO security key touch."

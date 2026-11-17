@@ -1,6 +1,13 @@
 import { defineMessage, defineMessages } from 'react-intl';
 import type { ConnectStep } from '../../shared/connection';
 
+/** This computer's name, wherever a host is named (US-4.2.1). */
+export const thisComputerMessage = defineMessage({
+    id: 'host.thisComputer',
+    defaultMessage: 'This computer',
+    description: 'The name of the Mac the app runs on, listed first among the hosts, whose sessions run locally.',
+});
+
 /** Each step of reaching a host's daemon, shown and announced politely (US-1.4.5). */
 export const connectStepMessages = defineMessages<ConnectStep>({
     connecting: { id: 'step.connecting', defaultMessage: 'Connecting', description: 'Connection step.' },

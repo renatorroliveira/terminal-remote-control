@@ -30,5 +30,6 @@ export function createRuntime(init: ConnectionHostInit): ConnectionRuntime {
         manifest: existsSync(manifestFile) ? parseDaemonManifest(readFileSync(manifestFile, 'utf8')) : NO_DAEMONS,
         readBinary: (platform) => readFile(join(daemons, platform, 'trcd')),
         log,
+        localHome: init.localHome,
     };
 }

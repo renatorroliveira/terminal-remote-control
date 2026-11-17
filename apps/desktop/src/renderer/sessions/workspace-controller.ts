@@ -2,7 +2,7 @@ import type { CreateSessionSpec, SessionInfo, SessionOptions, ShellProfile } fro
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ConnectionState, DaemonRemoval } from '../../shared/connection';
 import type { TrcBridge } from '../../shared/contract';
-import type { KnownHost } from '../../shared/hosts';
+import { connectTarget, type KnownHost } from '../../shared/hosts';
 import type { CachedSession, SessionCache } from '../../shared/session-cache';
 import type { Settings } from '../../shared/settings';
 import { type ClientRequest, type HostClient, HostRequestError } from '../connection/host-client';
@@ -101,6 +101,8 @@ export interface WorkspaceOptions {
      * resolves true to create it (US-2.4.4). Without it, sessions are created without asking.
      */
     readonly confirmSessionsEndAtLogout?: (hostId: string) => Promise<boolean>;
+    /** This computer's name in the sidebar and wherever a host is named (US-4.2.1). */
+    readonly localName?: string;
 }
 
 /** How many sessions run, on how many connected hosts, and which hosts with running sessions are not connected. */
@@ -139,6 +141,7 @@ export class WorkspaceController {
     readonly #unfollow = new Map<string, () => void>();
     readonly #cache: SessionCacheStore | undefined;
     readonly #confirmEndsAtLogout: ((hostId: string) => Promise<boolean>) | undefined;
+    readonly #localName: string | undefined;
     #stopCache: () => void = () => undefined;
     /** The host a session was last opened or created on (US-1.7.1). */
     #lastHost: string | undefined;
@@ -159,6 +162,7 @@ export class WorkspaceController {
         this.#preferences = options.preferences;
         this.#cache = options.cache;
         this.#confirmEndsAtLogout = options.confirmSessionsEndAtLogout;
+        this.#localName = options.localName;
         this.store = createStore<Workspace>(() => EMPTY_WORKSPACE);
     }
 
@@ -213,7 +217,7 @@ export class WorkspaceController {
         for (const host of this.store.getState().hosts) {
             if (this.connectionAction(host) === 'connect' && host.daemonRemoved !== true) {
                 this.#automatic.add(host.id);
-                this.#client.connect(host.id, { ...host.address, installRoot: host.installRoot }, { restore: true });
+                this.#client.connect(host.id, connectTarget(host), { restore: true });
             }
         }
     }
@@ -235,7 +239,7 @@ export class WorkspaceController {
         this.#automatic.delete(hostId);
         if (action === 'connect') {
             this.#connectRemoved(host);
-            this.#client.connect(host.id, { ...host.address, installRoot: host.installRoot });
+            this.#client.connect(host.id, connectTarget(host));
         } else if (action !== 'review-key') {
             this.#client.disconnect(host.id);
         }
@@ -269,7 +273,7 @@ export class WorkspaceController {
         }
         this.#update((workspace) => daemonActionChanged(workspace, hostId, 'removing'));
         const grace = this.#preferences?.().stopGraceSeconds;
-        const target = { ...host.address, installRoot: host.installRoot };
+        const target = connectTarget(host);
         const removal = await this.#client.removeDaemon(
             hostId,
             target,
@@ -290,7 +294,7 @@ export class WorkspaceController {
         }
         this.#automatic.delete(hostId);
         this.#client.disconnect(hostId);
-        this.#client.connect(hostId, { ...host.address, installRoot: host.installRoot });
+        this.#client.connect(hostId, connectTarget(host));
     }
 
     /** Stops a reconnecting host retrying by itself; it shows its last state until the user connects it (US-2.2.3). */
@@ -676,7 +680,7 @@ export class WorkspaceController {
 
     #add(host: KnownHost): void {
         const known = this.#host(host.id) !== undefined;
-        this.#update((workspace) => hostAdded(workspace, host));
+        this.#update((workspace) => hostAdded(workspace, host, this.#localName));
         if (!known) {
             this.#follow(host.id);
         }

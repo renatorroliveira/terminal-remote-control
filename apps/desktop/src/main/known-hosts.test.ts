@@ -88,3 +88,45 @@ describe('KnownHosts: forgetting, install locations and recent hosts (US-1.1.1, 
         expect(hosts.map((entry) => entry.allowClipboardWrites)).toEqual([undefined, true]);
     });
 });
+
+describe('KnownHosts: This computer (US-4.1, US-4.2.1, P-56)', () => {
+    it('lists This computer first, installing in the TRC home, before the hosts the user added', async () => {
+        const home = directory();
+        const hosts = new KnownHosts(home, { localRoot: home });
+        const added = await hosts.add('devbox-1', '~/.trc');
+        expect(await hosts.list()).toEqual([
+            { id: 'local', address: { destination: 'localhost' }, installRoot: home, local: true },
+            added,
+        ]);
+    });
+
+    it('keeps This computer’s settings and never forgets or moves it', async () => {
+        const home = directory();
+        const hosts = new KnownHosts(home, { localRoot: home });
+        await hosts.setClipboardWrites('local', true);
+        await hosts.setDaemonRemoved('local', true);
+        await expect(hosts.remove('local')).rejects.toThrow(/This computer/);
+        await expect(hosts.setInstallRoot('local', '/opt/trc')).rejects.toThrow(/This computer/);
+        const [local] = await new KnownHosts(home, { localRoot: home }).list();
+        expect(local).toEqual({
+            id: 'local',
+            address: { destination: 'localhost' },
+            installRoot: home,
+            local: true,
+            allowClipboardWrites: true,
+            daemonRemoved: true,
+        });
+    });
+
+    it('installs This computer in the TRC home it runs with, whatever hosts.json says', async () => {
+        const home = directory();
+        writeFileSync(
+            join(home, 'hosts.json'),
+            JSON.stringify({
+                hosts: [{ id: 'local', address: { destination: 'localhost' }, installRoot: '/elsewhere', local: true }],
+            }),
+        );
+        const [local] = await new KnownHosts(home, { localRoot: home }).list();
+        expect(local?.installRoot).toBe(home);
+    });
+});

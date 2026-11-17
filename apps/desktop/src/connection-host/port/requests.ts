@@ -8,6 +8,7 @@ const target = z.strictObject({
     destination: z.string().min(1).max(1024),
     port: z.number().int().min(1).max(65_535).exactOptional(),
     installRoot: z.string().min(1).max(4096),
+    local: z.literal(true).exactOptional(),
 });
 
 const renderMessage = ClientMessageSchema.refine(

@@ -3,6 +3,7 @@ import { createIntl } from 'react-intl';
 import type { Settings } from '../../shared/settings';
 import type { HostClient } from '../connection/host-client';
 import { DEFAULT_LOCALE, messagesFor } from '../i18n/locale';
+import { thisComputerMessage } from '../sessions/host-messages';
 import {
     terminalDisconnectedMessage,
     terminalLabelMessage,
@@ -123,7 +124,10 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
         onAttachFailed: (key, error) => workspace?.attachFailed(key, error),
         ...(sources.onPeerInput === undefined ? {} : { onPeerInput: sources.onPeerInput }),
     });
-    workspace = new WorkspaceController(sources.client, terminals, sources.hosts, workspaceOptions(sources));
+    workspace = new WorkspaceController(sources.client, terminals, sources.hosts, {
+        ...workspaceOptions(sources),
+        localName: intl.formatMessage(thisComputerMessage),
+    });
     return { workspace, terminals };
 }
 

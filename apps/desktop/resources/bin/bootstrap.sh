@@ -237,7 +237,8 @@ run_bridge() {
     exec "$bin" bridge
 }
 
-# The SHA-256 of a text, as the daemon names its systemd unit after its root's.
+# The SHA-256 of a text, as the daemon names its systemd unit and LaunchAgent
+# after its root's real path, with every symbolic link resolved.
 hash_text() {
     case $tool in
     sha256sum) printf '%s' "$1" | sha256sum | cut -d' ' -f1 ;;
@@ -251,7 +252,8 @@ hash_text() {
 # a core it is removing.
 stop_processes() {
     if [ "$tool" != none ]; then
-        stop_service "$(hash_text "$root" | cut -c1-8)"
+        canonical=$(cd "$root" 2>/dev/null && pwd -P) || canonical=$root
+        stop_service "$(hash_text "$canonical" | cut -c1-8)"
     fi
     for signal in TERM KILL; do
         found=
@@ -312,7 +314,7 @@ owned() {
     versions:.staging.*) return 0 ;;
     versions:*) is_hex "$2" 64 ;;
     sessions:*) is_hex "$2" 16 ;;
-    logs:core.*log) return 0 ;;
+    logs:core.*log | logs:launchd.log) return 0 ;;
     run:core.sock | run:core.lock | run:upgrade.lock) return 0 ;;
     holders:*.sock) is_hex "${2%.sock}" 16 ;;
     *) return 1 ;;

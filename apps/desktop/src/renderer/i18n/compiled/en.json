@@ -2411,6 +2411,12 @@
       "value": " works."
     }
   ],
+  "host.thisComputer": [
+    {
+      "type": 0,
+      "value": "This computer"
+    }
+  ],
   "host.touch": [
     {
       "type": 0,

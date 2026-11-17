@@ -23,11 +23,17 @@ export interface SshLaunch {
     readonly nonce: string;
     /** Called with each helper line as it arrives. */
     readonly onHelper: (line: HelperLine) => void;
+    /** The working folder; the app's own when absent. */
+    readonly cwd?: string | undefined;
 }
 
 /** Starts ssh, splitting its stderr into lines and reporting the app helpers' lines as they arrive. */
-export function startSsh({ program, args, env, nonce, onHelper }: SshLaunch): SshProcess {
-    const child = spawn(program, [...args], { env, stdio: ['pipe', 'pipe', 'pipe'] });
+export function startSsh({ program, args, env, nonce, onHelper, cwd }: SshLaunch): SshProcess {
+    const child = spawn(program, [...args], {
+        env,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        ...(cwd === undefined ? {} : { cwd }),
+    });
     const stderr: string[] = [];
     let partial = '';
     child.stdin.on('error', () => undefined);

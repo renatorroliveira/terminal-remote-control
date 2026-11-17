@@ -11,6 +11,7 @@ export function readTestSeam(env: Readonly<Record<string, string | undefined>>):
         ...present('knownHosts', env['TRC_TEST_KNOWN_HOSTS']),
         ...present('installRoot', env['TRC_TEST_INSTALL_ROOT']),
         ...present('openedLinks', env['TRC_TEST_OPENED_LINKS']),
+        ...present('localHome', env['TRC_TEST_LOCAL_HOME']),
     };
 }
 

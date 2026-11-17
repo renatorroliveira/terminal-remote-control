@@ -397,6 +397,23 @@ describe('WorkspaceController: retrying (US-2.2.3, US-2.3.3)', () => {
         expect(client.calls).toEqual([`retry ${host.id}`, `stop-retrying ${host.id}`]);
     });
 
+    it('connects This computer without SSH and names it, first among the hosts (US-4.1, US-4.2.1, P-59)', async () => {
+        const client = new FakeClient();
+        const hosts = new FakeHosts();
+        hosts.hosts.push(
+            { id: 'local', address: { destination: 'localhost' }, installRoot: '/home/tester/.trc', local: true },
+            { id: 'host-a', address: { destination: 'devbox-1' }, installRoot: '~/.trc' },
+        );
+        const workspace = new WorkspaceController(client, new FakeTerminals(), hosts, { localName: 'This computer' });
+        await workspace.load();
+        workspace.connectAll();
+        expect(workspace.store.getState().hosts.map((host) => host.destination)).toEqual(['This computer', 'devbox-1']);
+        expect(client.targets).toEqual([
+            ['local', { destination: 'localhost', installRoot: '/home/tester/.trc', local: true }],
+            ['host-a', { destination: 'devbox-1', installRoot: '~/.trc' }],
+        ]);
+    });
+
     it('connects every known host at launch to restore it, retrying a failure (US-2.3.3)', async () => {
         const { client, hosts, workspace } = setup();
         hosts.hosts.push({ id: 'host-a', address: { destination: 'devbox-1' }, installRoot: '~/.trc' });

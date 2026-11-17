@@ -1,5 +1,6 @@
 import type { IntlShape, MessageDescriptor } from 'react-intl';
 import { SCREEN_READER_MODES } from '../../shared/accessibility';
+import type { KnownHost } from '../../shared/hosts';
 import { formatChord } from '../../shared/keymap';
 import { hostActionMessages } from '../sessions/host-messages';
 import { connectionActionMessage, hostSessionsMessages } from '../sessions/messages';
@@ -60,14 +61,21 @@ export function hostActions(
                   named('details', hostActionMessages.details, () =>
                       shell.setHostDialog({ kind: 'details', hostId: host.id }),
                   ),
-                  named('install-root', hostActionMessages.installRoot, () =>
-                      shell.setHostDialog({ kind: 'install-root', hostId: host.id }),
-                  ),
-                  named('forget', hostActionMessages.forget, () =>
-                      shell.setHostDialog({ kind: 'forget', hostId: host.id }),
+                  ...hostSettings(host).map((kind) =>
+                      named(kind, hostActionMessages[kind === 'forget' ? 'forget' : 'installRoot'], () =>
+                          shell.setHostDialog({ kind, hostId: host.id }),
+                      ),
                   ),
               ];
     return [...create, ...connection, ...stopRetrying, ...managed];
+}
+
+/**
+ * The host settings the user may change: its install location and whether the app knows it (US-1.4.3, A11Y-11.9).
+ * This computer has neither, as it always installs in the TRC home and stays first in the sidebar (US-4.2.1, P-56).
+ */
+export function hostSettings(host: KnownHost): readonly ('install-root' | 'forget')[] {
+    return host.local === true ? [] : ['install-root', 'forget'];
 }
 
 /** Where a session sits among its host's sessions. */
