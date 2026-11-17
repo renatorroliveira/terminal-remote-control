@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use tokio::time::Instant;
-use trc_protocol::SessionOptions;
+use trc_protocol::{PersistenceFailure, SessionOptions};
 use trc_vt::{GhosttyTerminal, TerminalState, strip_controls};
 
 use super::Holder;
@@ -45,16 +45,19 @@ impl Holder {
     }
 
     /// Saves what changed since the last save, and reports when saving starts or stops failing. Saving turned back on
-    /// while the last writer was still deleting its file starts here, once it has.
+    /// while the last writer was still deleting its file starts here, once it has; until then it is reported as
+    /// failing, so the app never shows a session saved that is not.
     pub(super) fn save(&mut self) {
         if self.retired.is_some() {
             self.start_saving(0);
         }
-        let (Some(persistence), Some(terminal)) = (&mut self.persistence, &self.terminal) else {
-            return;
+        let failure = match (&mut self.persistence, &self.terminal) {
+            (Some(persistence), Some(terminal)) => {
+                persistence.save(terminal, Instant::now());
+                persistence.failure()
+            }
+            _ => self.retired.as_ref().map(|_| PersistenceFailure::Other),
         };
-        persistence.save(terminal, Instant::now());
-        let failure = persistence.failure();
         if failure != self.status.persistence_failure {
             self.status.persistence_failure = failure;
             self.send_status();

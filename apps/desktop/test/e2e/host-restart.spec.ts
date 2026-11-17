@@ -12,8 +12,18 @@ import {
     testHostsMissing,
 } from './support/test-host';
 
-/** Every Linux test host, as each runs its daemon on its own and restarts with every process ended. */
-const HOSTS = ['trc-ubuntu', 'trc-alpine', 'trc-rocky'] as const;
+/**
+ * Every Linux test host: those that run the daemon on its own, the systemd host whose lingering keeps the daemon in
+ * its user unit (P-32), and the one that ends the user's processes at logout. Each restart ends every process (P-50).
+ */
+const HOSTS = [
+    'trc-ubuntu',
+    'trc-alpine',
+    'trc-rocky',
+    'trc-systemd',
+    'trc-systemd-linger',
+    'trc-systemd-kill',
+] as const;
 const missing = testHostsMissing();
 
 /** Types a command into the open terminal of `host` and waits until its output shows. */

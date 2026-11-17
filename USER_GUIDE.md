@@ -234,7 +234,9 @@ below the line.
 TRC says how many sessions each host restored, such as "devbox-1 restarted: 3 sessions restored", lists it in
 Notifications, and marks each session "restored" until you open it on this Mac. Sessions you stopped or that had
 exited stay in the list as they were, with their saved scrollback; one whose restore is off shows "Ended by restart"
-or "Processes ended". Close or restart them when you're done.
+or "Processes ended". Close or restart them when you're done. A session whose processes end 3 times within 10
+minutes while the daemon runs is left "Failed to start" instead of starting again and again; Restart starts it
+again below its saved scrollback.
 
 Two switches in Session settings… choose what each session keeps; both are on for new sessions:
 

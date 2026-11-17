@@ -15,6 +15,8 @@ use trc_protocol::{
 };
 
 const SIZE: TerminalSize = TerminalSize { cols: 80, rows: 24 };
+/// How many holder endings within ten minutes leave a session failed (`crates/trcd/src/core/relaunch.rs`).
+const MAX_ENDINGS: usize = 3;
 const OFF: SessionOptions = SessionOptions {
     restore: false,
     save_scrollback: true,
@@ -192,20 +194,23 @@ async fn brings_back_every_session_in_its_order_when_the_core_starts_after_all_p
 }
 
 #[tokio::test]
-async fn keeps_a_session_ended_when_its_holder_dies_again_moments_after_a_restore() {
+async fn restores_a_session_again_when_its_processes_end_moments_after_a_restore() {
     let installed = Installed::new();
     let core = installed.start_core();
     let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
     let session = create(&mut client, 1, spec("flaky", None, None)).await;
     attach(&mut client, 2, &session.id).await;
     kill_holders(&installed);
-    until_updated(&mut client, |info| {
+    let first = until_updated(&mut client, |info| {
         info.state == SessionState::Running && info.restored.is_some()
     })
     .await;
     kill_holders(&installed);
-    let ended = until_updated(&mut client, |info| info.state == SessionState::Exited).await;
-    assert_eq!(ended.exit.and_then(|exit| exit.ended), Some(EndCause::ProcessesEnded));
+    let again = until_updated(&mut client, |info| {
+        info.state == SessionState::Running && info.restored.is_some_and(|at| Some(at) != first.restored)
+    })
+    .await;
+    assert!(again.pid.is_some());
     stop(core);
 }
 
@@ -237,14 +242,15 @@ async fn leaves_failed_a_session_whose_holder_keeps_ending_until_restarted_below
     let session = create(&mut client, 1, spec("crashing", None, None)).await;
     let stream = attach(&mut client, 2, &session.id).await;
     print_saved(&mut client, &installed, stream, &session.id, "TRC-SAVED").await;
-    kill_holders(&installed);
-    until_updated(&mut client, |info| {
-        info.state == SessionState::Running && info.restored.is_some()
-    })
-    .await;
-    kill_holders(&installed);
-    until_updated(&mut client, |info| info.state == SessionState::Exited).await;
-    attach_text(&mut client, 3, &session.id).await;
+    let mut restored = None;
+    for _ in 1..MAX_ENDINGS {
+        kill_holders(&installed);
+        let info = until_updated(&mut client, |info| {
+            info.state == SessionState::Running && info.restored.is_some() && info.restored != restored
+        })
+        .await;
+        restored = info.restored;
+    }
     kill_holders(&installed);
     let failed = until_updated(&mut client, |info| info.state == SessionState::FailedToStart).await;
     assert!(failed.failure.unwrap_or_default().contains("kept ending"));

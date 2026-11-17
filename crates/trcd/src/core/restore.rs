@@ -6,9 +6,6 @@ use trc_protocol::{EndCause, ExitStatus, SessionState};
 use super::store::SessionMeta;
 use crate::time::format_utc;
 
-/// How long after a restore the same session is not restored again, so a shell that cannot start never loops.
-pub const RESTORE_AGAIN_AFTER_MS: u64 = 30_000;
-
 /// What happens to a session whose holder is gone.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Recovery {
@@ -24,19 +21,16 @@ pub enum Recovery {
     },
 }
 
-/// Decides a session's recovery from its record, the host's boot ID now, and the time now: one that was running and
-/// that the user had not stopped or closed is restored unless its restore is off or it was restored a moment ago.
-pub fn recovery(meta: &SessionMeta, boot_id: Option<&str>, now: u64) -> Recovery {
+/// Decides a session's recovery from its record and the host's boot ID now: one that was running and that the user
+/// had not stopped or closed is restored unless its restore is off, however recently it was last restored (US-3.1.3).
+/// A holder that keeps ending while the core runs is stopped by [`super::relaunch`] instead.
+pub fn recovery(meta: &SessionMeta, boot_id: Option<&str>) -> Recovery {
     let after_host_restart = matches!((meta.boot_id.as_deref(), boot_id), (Some(then), Some(now)) if then != now);
     let was_running = matches!(meta.info.state, SessionState::Starting | SessionState::Running);
-    let just_restored = meta
-        .info
-        .restored
-        .is_some_and(|restored| now.saturating_sub(restored.at) < RESTORE_AGAIN_AFTER_MS);
     if !was_running {
         return Recovery::Keep { ended: None };
     }
-    if meta.spec.options.restore && (after_host_restart || !just_restored) {
+    if meta.spec.options.restore {
         return Recovery::Restore { after_host_restart };
     }
     Recovery::Keep {
@@ -107,19 +101,19 @@ mod tests {
     fn restores_a_running_session_and_says_whether_the_host_restarted() {
         let running = meta(SessionState::Running, true);
         assert_eq!(
-            recovery(&running, Some("boot-1"), NOW),
+            recovery(&running, Some("boot-1")),
             Recovery::Restore {
                 after_host_restart: false
             }
         );
         assert_eq!(
-            recovery(&running, Some("boot-2"), NOW),
+            recovery(&running, Some("boot-2")),
             Recovery::Restore {
                 after_host_restart: true
             }
         );
         assert_eq!(
-            recovery(&running, None, NOW),
+            recovery(&running, None),
             Recovery::Restore {
                 after_host_restart: false
             }
@@ -129,13 +123,13 @@ mod tests {
     #[test]
     fn keeps_a_session_ended_when_its_restore_is_off() {
         assert_eq!(
-            recovery(&meta(SessionState::Running, false), Some("boot-2"), NOW),
+            recovery(&meta(SessionState::Running, false), Some("boot-2")),
             Recovery::Keep {
                 ended: Some(EndCause::HostRestart)
             }
         );
         assert_eq!(
-            recovery(&meta(SessionState::Starting, false), Some("boot-1"), NOW),
+            recovery(&meta(SessionState::Starting, false), Some("boot-1")),
             Recovery::Keep {
                 ended: Some(EndCause::ProcessesEnded)
             }
@@ -146,33 +140,25 @@ mod tests {
     fn keeps_a_session_that_had_exited_or_been_stopped_as_it_was() {
         for state in [SessionState::Exited, SessionState::Stopped, SessionState::FailedToStart] {
             assert_eq!(
-                recovery(&meta(state, true), Some("boot-2"), NOW),
+                recovery(&meta(state, true), Some("boot-2")),
                 Recovery::Keep { ended: None }
             );
         }
     }
 
     #[test]
-    fn does_not_restore_a_session_again_moments_after_it_was_unless_the_host_restarted() {
+    fn restores_a_session_again_however_recently_it_was_restored() {
         let mut again = meta(SessionState::Running, true);
         again.info.restored = Some(RestoreInfo {
             at: NOW - 1_000,
             after_host_restart: false,
         });
         assert_eq!(
-            recovery(&again, Some("boot-1"), NOW),
-            Recovery::Keep {
-                ended: Some(EndCause::ProcessesEnded)
+            recovery(&again, Some("boot-1")),
+            Recovery::Restore {
+                after_host_restart: false
             }
         );
-        assert!(matches!(
-            recovery(&again, Some("boot-2"), NOW),
-            Recovery::Restore { .. }
-        ));
-        assert!(matches!(
-            recovery(&again, Some("boot-1"), NOW + RESTORE_AGAIN_AFTER_MS),
-            Recovery::Restore { .. }
-        ));
     }
 
     #[test]
