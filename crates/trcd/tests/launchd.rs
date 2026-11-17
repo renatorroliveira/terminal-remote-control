@@ -75,6 +75,38 @@ async fn registers_the_core_as_a_launch_agent_that_keeps_every_session() {
     assert_eq!(session(&installed).await.pid, Some(shell));
 }
 
+#[tokio::test]
+async fn an_upgrade_replaces_the_agent_s_core_and_keeps_every_session() {
+    if !has_gui_session(rustix::process::geteuid().as_raw()) {
+        return;
+    }
+    let installed = Installed::new();
+    run_bridge(&installed);
+    let old = core_pid(&installed, None, "registered").await;
+    let (mut client, _) = greeted(&installed).await;
+    let shell = create_session(&mut client).await;
+    drop(client);
+    let lock = installed.root.join("run/core.lock");
+    let text = std::fs::read_to_string(&lock).unwrap();
+    let older: Vec<&str> = text
+        .lines()
+        .enumerate()
+        .map(|(index, line)| if index == 1 { "0.0.1" } else { line })
+        .collect();
+    std::fs::write(&lock, format!("{}\n", older.join("\n"))).unwrap();
+    run_bridge(&installed);
+    let new = core_pid(&installed, Some(old), "upgraded").await;
+    let (_, manager) = greeted(&installed).await;
+    assert_eq!(manager, Some(ServiceManager::Launchd), "{}", agent_state(&installed));
+    assert!(!alive(old));
+    assert!(alive(new));
+    assert_eq!(
+        session(&installed).await.pid,
+        Some(shell),
+        "the upgrade ended the session"
+    );
+}
+
 /// Asks the core to restart, as Restart daemon does, which ends it with status 0, so launchd leaves it stopped until
 /// a bridge starts the agent again (US-3.3.2).
 async fn restart_daemon(installed: &Installed, core: u32) {

@@ -15,7 +15,8 @@ use crate::service::{probe, root_hash8, succeeds};
 
 /// The variables the core's agent passes on from the bridge that registered it, as the systemd unit does.
 const PASSED_ENV: [&str; 5] = ["HOME", "USER", "LOGNAME", "SHELL", "PATH"];
-/// How often a bootstrap right after a `bootout` is tried, as launchd may still be removing the old agent.
+/// How often a bootstrap right after a `bootout`, or a kickstart right after a crash, is tried, as launchd may still
+/// be handling the old core.
 const BOOTSTRAP_ATTEMPTS: u32 = 10;
 const BOOTSTRAP_RETRY: Duration = Duration::from_millis(300);
 
@@ -147,11 +148,19 @@ pub fn start_agent(binary: &Path, root: &Path, umask: Mode, home: &Path) -> io::
     }
 }
 
-/// Whether launchd runs the core's agent for `root` now.
+/// Whether launchd runs the core's agent for `root`, or is about to start it again after it ended, so a new core
+/// comes up in it and starting another one elsewhere would leave it no lock to take.
 pub fn agent_is_running(root: &Path) -> bool {
     let uid = rustix::process::geteuid().as_raw();
     probe("launchctl", &["print", &format!("gui/{uid}/{}", agent_label(root))])
-        .is_some_and(|text| text.lines().any(|line| line.trim() == "state = running"))
+        .is_some_and(|text| starts_or_runs(&text))
+}
+
+/// Whether `launchctl print` says its service runs or is scheduled to start, from the service's own `state` line.
+pub fn starts_or_runs(print: &str) -> bool {
+    print
+        .lines()
+        .any(|line| matches!(line, "\tstate = running" | "\tstate = spawn scheduled"))
 }
 
 /// Unloads the core's agent for `root`, which ends its core but no holder, and leaves its plist for the next start
@@ -163,12 +172,17 @@ pub fn stop_agent(root: &Path) {
     }
 }
 
+/// Starts a loaded agent's core, trying again for a moment while launchd still handles a core that just ended.
 fn kickstart(service: &str) -> io::Result<()> {
-    if succeeds("launchctl", &["kickstart", service]) {
-        Ok(())
-    } else {
-        Err(io::Error::other("launchctl kickstart did not start the core's agent"))
+    for attempt in 1..=BOOTSTRAP_ATTEMPTS {
+        if succeeds("launchctl", &["kickstart", service]) {
+            return Ok(());
+        }
+        if attempt < BOOTSTRAP_ATTEMPTS {
+            std::thread::sleep(BOOTSTRAP_RETRY);
+        }
     }
+    Err(io::Error::other("launchctl kickstart did not start the core's agent"))
 }
 
 /// Writes the plist, readable and writable only by the user, then loads it, trying again for a moment while launchd
@@ -269,6 +283,17 @@ mod tests {
         }
         assert!(text.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist"));
         assert!(text.ends_with("</dict>\n</plist>\n"));
+    }
+
+    #[test]
+    fn counts_an_agent_launchd_is_about_to_start_again_as_running() {
+        let print = |state: &str| {
+            format!("gui/501/dev.trc.trcd-1 = {{\n\tstate = {state}\n\tendpoints = {{\n\t\tstate = active\n\t}}\n}}\n")
+        };
+        assert!(starts_or_runs(&print("running")));
+        assert!(starts_or_runs(&print("spawn scheduled")));
+        assert!(!starts_or_runs(&print("not running")));
+        assert!(!starts_or_runs("\t\tstate = running\n"));
     }
 
     #[test]
