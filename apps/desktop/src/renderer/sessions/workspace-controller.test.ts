@@ -704,6 +704,9 @@ describe('WorkspaceController: managing a host’s daemon (US-3.3.2, US-3.3.3, P
         expect(workspace.store.getState().hosts[0]?.daemonAction).toBe('restarting');
         client.states.get(host.id)?.(connected);
         expect(workspace.store.getState().hosts[0]?.daemonAction).toBeUndefined();
+        await workspace.restartDaemon(host.id);
+        client.states.get(host.id)?.({ status: 'closed' });
+        expect(workspace.store.getState().hosts[0]?.daemonAction).toBeUndefined();
     });
 
     it('removes the daemon with the stop grace period, and keeps the host as Daemon removed', async () => {

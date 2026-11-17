@@ -37,6 +37,7 @@ import { classifyFailure, diagnoseAuthentication } from '../ssh/classify';
 import { type EffectiveConfig, supportsKnownHostsCommand } from '../ssh/client-checks';
 import type { HelperLine } from '../ssh/helper-lines';
 import { appendKnownHost, fingerprintOf, knownHostsLine } from '../ssh/known-hosts';
+import { onLocalClock } from './daemon-details';
 import { fromBootstrap, fromSsh } from './failures';
 import { writeInputFrames } from './input-frames';
 import { type LifecycleEvent, reduceConnection } from './lifecycle';
@@ -386,7 +387,7 @@ export class HostConnection implements HostConnectionLike {
                     sha256: answer.binarySha256,
                     proto: answer.proto,
                     ...(answer.service === undefined ? {} : { service: answer.service }),
-                    ...(answer.details === undefined ? {} : { details: answer.details }),
+                    ...(answer.details === undefined ? {} : { details: onLocalClock(answer.details, Date.now()) }),
                     bundled: this.#runtime.manifest.version,
                 },
             });

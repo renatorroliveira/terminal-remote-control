@@ -325,6 +325,25 @@ describe.each(['trc-ubuntu', 'trc-alpine'])('removing the daemon from %s (US-3.3
         expect(remote(alias, `ls -A "${root}"`).trim().split('\n').at(-1)).toBe('notes.txt');
     });
 
+    it('keeps what the user put in folders named like TRC’s, and only that', async () => {
+        const root = freshRoot(alias);
+        await handshake(await bootstrap(alias, root));
+        remote(
+            alias,
+            `echo mine > "${root}/logs/notes.txt"; mkdir "${root}/sessions/mine"; echo mine > "${root}/run/x"`,
+        );
+        expect(await remove(alias, root)).toEqual({ kind: 'removed', kept: ['logs', 'run', 'sessions'] });
+        const left = remote(alias, `cd "${root}" && find . -mindepth 1 | sort`).trim().split('\n');
+        expect(left.slice(left.indexOf('./logs'))).toEqual([
+            './logs',
+            './logs/notes.txt',
+            './run',
+            './run/x',
+            './sessions',
+            './sessions/mine',
+        ]);
+    });
+
     it('says so when there is nothing to remove', async () => {
         expect(await remove(alias, freshRoot(alias))).toEqual({ kind: 'removed', kept: [] });
     });

@@ -11,7 +11,7 @@ use super::Core;
 use crate::core::registry::SessionRecord;
 use crate::core::restore::{Recovery, ended_exit, ended_marker, missing_folder_note, recovery, restore_marker};
 use crate::core::store::SessionMeta;
-use crate::holder::protocol::{HolderRestore, HolderSpec};
+use crate::holder::protocol::{HolderCommand, HolderRestore, HolderSpec};
 use crate::time::now_millis;
 
 impl Core {
@@ -20,16 +20,17 @@ impl Core {
         let Some(record) = self.registry.get(session) else {
             return;
         };
-        let meta = SessionMeta::of(&record.info, &record.spec, self.context.boot_id.as_deref());
+        let meta = SessionMeta::of(
+            &record.info,
+            &record.spec,
+            self.context.boot_id.as_deref(),
+            record.closing,
+        );
         if self.written.get(session) == Some(&meta) {
             return;
         }
-        match self.context.store.write(&meta) {
-            Ok(()) => {
-                self.written.insert(session.clone(), meta);
-            }
-            Err(error) => tracing::warn!(session = %session.0, %error, "the session's record could not be saved"),
-        }
+        self.context.store.write(&meta);
+        self.written.insert(session.clone(), meta);
     }
 
     /// Writes every session's record that changed, as a new order changes them all.
@@ -39,14 +40,23 @@ impl Core {
         }
     }
 
-    /// Brings back every saved session that no live holder serves, then lists every session in its saved order.
+    /// Brings back every saved session that no live holder serves and that the user had not closed, deletes those
+    /// they had, then lists every session in its saved order.
     pub(super) fn recover_saved(&mut self, live: &BTreeSet<SessionId>) {
         let saved = self.context.store.read_all();
         let order: BTreeMap<SessionId, u32> = saved
             .iter()
             .map(|meta| (meta.info.id.clone(), meta.info.order))
             .collect();
-        let mut gone: Vec<SessionMeta> = saved.into_iter().filter(|meta| !live.contains(&meta.info.id)).collect();
+        let (served, gone): (Vec<SessionMeta>, Vec<SessionMeta>) =
+            saved.into_iter().partition(|meta| live.contains(&meta.info.id));
+        for meta in &served {
+            self.settle_adopted(meta);
+        }
+        let (closed, mut gone): (Vec<SessionMeta>, Vec<SessionMeta>) = gone.into_iter().partition(|meta| meta.closing);
+        for meta in closed {
+            self.context.store.remove(&meta.info.id);
+        }
         gone.sort_by_key(|meta| meta.info.order);
         tracing::info!(sessions = gone.len(), "bringing back saved sessions");
         for meta in gone {
@@ -63,12 +73,31 @@ impl Core {
         self.persist_all();
     }
 
+    /// Gives an adopted session what only its record kept: when it was restored, and whether the user had closed it,
+    /// in which case it closes now.
+    pub(super) fn settle_adopted(&mut self, meta: &SessionMeta) {
+        let session = &meta.info.id;
+        let Some(record) = self.registry.get_mut(session) else {
+            return;
+        };
+        if record.info.restored.is_none() {
+            record.info.restored = meta.info.restored;
+        }
+        if !meta.closing {
+            return;
+        }
+        record.closing = true;
+        if !self.holder_command(session, &HolderCommand::Shutdown) {
+            self.forget(session);
+        }
+    }
+
     /// A holder ended while its session was not being closed: the session comes back where it stands in the list.
     pub(super) fn recover_in_place(&mut self, session: &SessionId) {
         let Some(record) = self.registry.get(session) else {
             return;
         };
-        let meta = SessionMeta::of(&record.info, &record.spec, self.context.boot_id.as_deref());
+        let meta = SessionMeta::of(&record.info, &record.spec, self.context.boot_id.as_deref(), false);
         let Recovered { record, restore } = self.recovered(meta);
         let (id, spec, name) = (
             record.info.id.clone(),

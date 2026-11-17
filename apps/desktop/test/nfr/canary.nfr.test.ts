@@ -16,7 +16,7 @@ function filesUnder(folder: string): readonly string[] {
 }
 
 describe.skipIf(missing !== undefined)('logs never hold terminal data (SEC-08)', () => {
-    it('keeps typed text, output and environment values out of the app and daemon logs', async () => {
+    it('keeps typed text, output and environment values out of the app and daemon logs, and saved sessions private', async () => {
         const canary = `trc-canary-${randomBytes(6).toString('hex')}`;
         const host = await connectLive('trc-ubuntu');
         const session = await host.session({ env: { TRC_CANARY: `${canary}-env` } });
@@ -30,7 +30,9 @@ describe.skipIf(missing !== undefined)('logs never hold terminal data (SEC-08)',
         const appLogs = filesUnder(APP_LOGS);
         const appHits = appLogs.filter((file) => readFileSync(file, 'utf8').includes('trc-canary-'));
         const daemonLogs = ssh(host.alias, `ls ~/${host.root}/logs | wc -l`).trim();
-        const daemonHits = ssh(host.alias, `grep -rIl trc-canary- ~/${host.root} 2>/dev/null || true`).trim();
+        const root = `~/${host.root}`;
+        const daemonHits = ssh(host.alias, `grep -rIl trc-canary- ${root}/logs ${root}/run 2>/dev/null || true`).trim();
+        const savedModes = ssh(host.alias, `find ${root}/sessions -exec stat -c '%a %F' {} + | sort -u`).trim();
         record({
             id: 'SEC-08',
             what: 'log files holding a typed, printed or environment canary',
@@ -42,5 +44,6 @@ describe.skipIf(missing !== undefined)('logs never hold terminal data (SEC-08)',
         expect(Number(daemonLogs)).toBeGreaterThan(0);
         expect(appHits).toEqual([]);
         expect(daemonHits).toBe('');
+        expect(savedModes.split('\n')).toEqual(['600 regular file', '700 directory']);
     }, 120_000);
 });

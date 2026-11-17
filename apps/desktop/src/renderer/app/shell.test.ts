@@ -479,6 +479,16 @@ describe('Shell: managing a host’s daemon (US-3.3.2, US-3.3.3)', () => {
         expect(listed(notifications)).toEqual([['info', 'Daemon restarted on devbox-1.']]);
     });
 
+    it('reports a restart whose reconnection fails as any failure, and stops saying it restarts', async () => {
+        const { shell, client, workspace, notifications } = await setup();
+        client.push('host-0', SAVING);
+        await shell.restartDaemon('host-0');
+        client.push('host-0', { status: 'disconnected', reason: 'channel-closed' });
+        client.push('host-0', { status: 'failed', failure: { kind: 'no-answer', details: '' } });
+        expect(workspace.store.getState().hosts[0]?.daemonAction).toBeUndefined();
+        expect(listed(notifications)[0]?.[1]).toMatch(/^Couldn’t connect to devbox-1\./);
+    });
+
     it('removes the daemon and says what it kept in the install location, or why it failed', async () => {
         const { shell, client, spoken, notifications } = await setup();
         client.push('host-0', SAVING);

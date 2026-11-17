@@ -11,7 +11,7 @@ use trc_protocol::PersistenceFailure;
 use trc_vt::{GhosttyTerminal, HistoryRows, HistoryTail, TerminalState, primary_screen};
 
 use super::scrollback_file::{Record, encode};
-use super::scrollback_writer::ScrollbackWriter;
+use super::scrollback_writer::{MAX_QUEUED_BYTES, ScrollbackWriter};
 
 /// How often new output is saved: well inside NFR-08's 5 s, with the time a write takes.
 pub const SAVE_INTERVAL: Duration = Duration::from_secs(2);
@@ -67,9 +67,21 @@ impl Persistence {
         self.screen_changed = true;
     }
 
-    /// Asks for a whole new file at the next save: after a resize reflowed the history, or Clear scrollback.
+    /// Asks for a whole new file at the next save, as after a resize reflowed the history.
     pub fn rewrite(&mut self) {
         self.rewrite_wanted = true;
+    }
+
+    /// Clear scrollback (US-3.2.3): deletes the file at once, even while a full-screen program keeps saving waiting,
+    /// and drops a rewrite in progress, which would bring the cleared rows back; the next save writes a whole new file.
+    pub fn clear(&mut self) {
+        self.writer.delete();
+        self.rewrite = None;
+        self.tail = HistoryTail::from_start();
+        self.appended_rows = 0;
+        self.rewritten_rows = 0;
+        self.rewrite_wanted = true;
+        self.screen_changed = true;
     }
 
     /// Why the scrollback is not being saved, while it is not.
@@ -128,7 +140,8 @@ impl Persistence {
     }
 
     /// Formats the next records of the new file; the last holds the screen, and the new file then replaces the old.
-    /// After [`REWRITE_SAVES`] saves it takes all the rest at once, which the terminal's own limit bounds.
+    /// It stops for this save once the writer has [`MAX_QUEUED_BYTES`] waiting; after [`REWRITE_SAVES`] saves it takes
+    /// all the rest at once, which the terminal's own limit bounds.
     fn continue_rewrite(&mut self, terminal: &GhosttyTerminal) {
         let Some(rewrite) = &mut self.rewrite else {
             return;
@@ -139,7 +152,11 @@ impl Persistence {
         } else {
             RECORDS_PER_SAVE
         };
+        let catching_up = records == u32::MAX;
         for _ in 0..records {
+            if !catching_up && self.writer.queued() >= MAX_QUEUED_BYTES {
+                return;
+            }
             let Some(rows) = take(&mut rewrite.tail, terminal) else {
                 return self.finish_rewrite(terminal);
             };
@@ -310,13 +327,27 @@ mod tests {
     }
 
     #[test]
+    fn deletes_the_cleared_scrollback_at_once_while_a_full_screen_program_runs() {
+        let dir = temp_dir("persist-clear-alternate");
+        let mut live = terminal(1_000);
+        let mut persistence = Persistence::start(&dir, 0, 1_000);
+        saved(&mut live, &mut persistence, &lines(0, 40));
+        saved(&mut live, &mut persistence, b"$ vim\r\n\x1b[?1049h\x1b[Hediting");
+        live.feed(b"\x1b[3J");
+        persistence.clear();
+        saved(&mut live, &mut persistence, b"more editing");
+        drop(persistence);
+        assert!(!dir.join(FILE_NAME).exists());
+    }
+
+    #[test]
     fn keeps_only_the_screen_after_clear_scrollback() {
         let dir = temp_dir("persist-clear");
         let mut live = terminal(1_000);
         let mut persistence = Persistence::start(&dir, 0, 1_000);
         saved(&mut live, &mut persistence, &lines(0, 40));
         live.feed(b"\x1b[3J");
-        persistence.rewrite();
+        persistence.clear();
         saved(&mut live, &mut persistence, b"$ ");
         drop(persistence);
         let shown = restored(&dir, 1_000);

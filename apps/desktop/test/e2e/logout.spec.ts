@@ -30,13 +30,13 @@ test.describe('a host that ends sessions at logout (US-2.4.4)', () => {
         await window.getByRole('option', { name: HOST, exact: true }).click();
         await window.getByRole('button', { name: 'Add host' }).click();
         await window.getByRole('button', { name: `Connect ${HOST}` }).click();
-        const ending = 'sessions end when its last connection closes';
+        const ending = 'programs end when its last connection closes';
         await expect(window.getByRole('treeitem', { name: new RegExp(`^${HOST}.*${ending}`) })).toBeVisible({
             timeout: 60_000,
         });
         const create = window.getByRole('button', { name: `New session on ${HOST}` });
         await create.click();
-        const warning = window.getByRole('alertdialog', { name: `Sessions on ${HOST} end when you disconnect` });
+        const warning = window.getByRole('alertdialog', { name: `Programs on ${HOST} end when you disconnect` });
         await warning.getByRole('button', { name: 'Create Session' }).click();
         const terminal = window.getByRole('textbox', { name: new RegExp(`, ${HOST}$`) });
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);

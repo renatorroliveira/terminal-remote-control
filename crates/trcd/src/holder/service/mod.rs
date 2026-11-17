@@ -140,7 +140,8 @@ impl Holder {
         }
     }
 
-    /// Serves cores connecting on `listener` until the session is shut down.
+    /// Serves cores connecting on `listener` until the session is shut down. The scrollback writer finishes before the
+    /// core's connection closes, as the core then deletes a closed session's folder.
     pub async fn run(mut self, listener: UnixListener) {
         let mut ticks = Ticks {
             status: interval(STATUS_INTERVAL),
@@ -152,6 +153,7 @@ impl Holder {
             self.step(&listener, &mut ticks).await;
             self.flush_output();
         }
+        drop(self.persistence.take());
         self.sender = None;
         if let Some(writer) = self.writer.take() {
             let _ = writer.await;

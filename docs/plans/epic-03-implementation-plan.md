@@ -51,20 +51,23 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 - **`meta.json`**, written by the core: the holder spec (profile, cwd, environment overrides, size, scrollback
   limit), name, order, the two options of US-3.2, the state and exit status, `restoredAt`, and the boot ID it last
   ran under. Each write goes to a temporary file, is fsynced and renamed, and the directory is fsynced.
-- **`history.log`**, written by the holder: append-only records `[u32 len][u32 crc32][VT bytes]`, one per batch of
-  logical lines that left the screen, formatted unwrapped so a restore at another width reflows them. A tracked row
-  marks the first line not yet written. `fdatasync` runs at most 2 s after a new record. When the log reaches twice
-  the scrollback limit, the holder rewrites it from its emulator's history into a temporary file, then fsyncs and
-  renames it. Recovery keeps the records before the first bad length or CRC.
-- **`screen.vt`**, written by the holder: the primary screen, with its cursor and modes, rewritten (temporary file,
-  fsync, rename) at most every 2 s while that screen changes. During a full-screen program the primary screen does
-  not change, so the last copy, at most 2 s older than the program's start, is the one restored.
+- **`scrollback.log`**, written by the holder: append-only records, each with its length and the first 4 bytes of
+  its SHA-256, holding the history rows that left the screen since the last record and, when it changed, the primary
+  screen with its cursor and modes. Rows keep their soft wraps, as a restore feeds them to a terminal of the
+  session's own size. A save runs every 2 s and ends with `fdatasync`. When what was appended outgrows a rewrite,
+  after a resize reflows the history, after Clear scrollback and to recover from a failed write, the holder writes a
+  whole new file into a temporary one, then syncs and renames it; a rewrite that fails is thrown away and the old
+  file kept. Recovery keeps the records before the first bad length or checksum. During a full-screen program the
+  primary screen does not change, so the last copy, at most 2 s older than the program's start, is the one
+  restored.
 - A writer thread in the holder does all the file work, so the PTY read loop never waits for the disk (D-04). A
   write that fails (a full disk or quota, EIO) is retried every 10 s, and the holder reports `persistence: failing`
   with the reason until a write succeeds; the session keeps running.
-- With "Save scrollback to disk" off, the holder writes neither file, and turning it off deletes both. "Clear
-  scrollback" makes the holder put `CSI 3 J` into its output stream (its emulator, every client and the log) and
-  truncate `history.log`. Closing a session deletes its directory once its holder exits.
+- With "Save scrollback to disk" off, the holder writes no `scrollback.log`, and turning it off deletes it; the
+  record also keeps no title, which programs set. "Clear scrollback" clears the emulator's history and every
+  client's, and the holder replaces the file with one holding only the screen. Closing a session deletes its
+  directory once its holder exits; the core marks the record closing first, so a core that ends before the holder
+  does deletes the session on its next start.
 
 ### 3.2 Restore (US-3.1, P-39 to P-41)
 
@@ -75,21 +78,26 @@ A starting core:
 2. reads every `sessions/*/meta.json`; a directory whose `meta.json` is unreadable is kept, logged and skipped;
 3. for each session without a live holder:
     - **restore**: it was running, the user had not stopped or closed it, and its restore option is on. A new holder
-      feeds `history.log` and `screen.vt` into its emulator, writes the P-40 marker below them, and starts the
+      feeds `scrollback.log` into its emulator, writes the P-40 marker below it, and starts the
       shell with the same profile, arguments, environment overrides, size, name and position, in the last known
       working directory. If that folder is gone, the shell starts in the home folder, and a line below the marker
       says so (US-3.1.7). Nothing that ran in the shell runs again.
     - **keep**: anything else. A holder starts with the saved history and screen and no process, in the state it
       had; one that was running shows "Ended by restart" (P-41).
-4. starts restores 4 at a time, so 100 sessions never start 100 shells at once, and serves the app meanwhile; each
-   session reports Starting until its shell runs.
+4. starts every restore at once and serves the app meanwhile; each session reports Starting until its shell runs.
+   (The plan had 4 at a time; no queue was built, as each holder only replays its own file and starts one
+   shell.)
+
+A holder that ends while its session is not being closed brings the session back the same way; one whose holder
+ends 3 times within a minute is left Failed to start, and Restart starts it again below its saved scrollback.
 
 Every session in the registry is written to `meta.json`, so order, names and options also survive a core restart,
 which E2 lost.
 
 ### 3.3 Holder protocol 3 and the alternate screen (P-47, P-49)
 
-- `start` carries an optional `restore { historyPath, screenPath, marker, missingCwd }` and the US-3.2 options;
+- `start` carries an optional `restore { lines, startShell, state, exit, failure }`, the marker lines and the state
+  of a session that stays ended, beside the US-3.2 options in its spec;
   `setOptions`, `clearScrollback` and the `persistence` status field are new.
 - A full attach or refresh while the alternate screen is active sends the screen only, as a screen resync does, and
   marks the attachment as lacking history. When the alternate screen ends, every such attachment gets
@@ -124,7 +132,7 @@ which E2 lost.
   dashed ring, every color at least 3:1 against the sidebar (A11Y-07); the working-directory prefix is muted text
   before the name, inside the accessible name so Voice Control can say what is shown (WCAG 2.5.3), and type-ahead
   matches the prefix or the name; the status bar's switches are React Aria `Switch`es, and Notifications is an icon
-  button named "Notifications, N" with its count drawn on it and a tooltip.
+  button named "Notifications N" (for example "Notifications 3") with its count drawn on it and a tooltip.
 
 ## 4. Stories
 
@@ -173,7 +181,7 @@ implement them land, and holder protocol 3 comes with ST-42 and ST-44, which use
 
 **ST-42 Holder persistence** (US-3.1.2, US-3.2, NFR-08, SEC-05)
 
-- §3.1 in the holder: the writer thread, `history.log`, `screen.vt`, compaction, recovery, the options, Clear
+- §3.1 in the holder: the writer thread, the scrollback file, compaction, recovery, the options, Clear
   scrollback, failure reports. Unit tests per file format; integration tests in the containers.
 
 **ST-43 History at program exit** (NFR-09, D-49)
@@ -298,3 +306,25 @@ the host's Details actions and Removing TRC by hand.
 | ST-48 | Done    | —      |
 | ST-49 | Planned | —      |
 | ST-50 | Planned | —      |
+
+## 8. Reviews (P-51)
+
+`code-reviewer` and `technical-auditor` reviewed every commit after v0.3.0. Each finding was fixed, test-first, or
+is listed below with why it stays.
+
+| Round | Code review (C/H/M/L) | Audit (C/H/M/L) | Fixes                     |
+| ----- | --------------------- | --------------- | ------------------------- |
+| 1     | 0 / 2 / 6 / 7         | 0 / 1 / 8 / 1   | the review round 1 commit |
+
+The highs:
+
+- A rewrite of the scrollback file that failed, or whose records the writer dropped when its queue was full, was
+  still renamed over the good file; a failed rewrite is now thrown away, and rewrites are never dropped (round 1).
+- The renderer kept a host marked "restarting" when its daemon restart failed or the host never reconnected, which
+  hid the next restart's announcement (round 1).
+- `canary.nfr.test.ts` failed on the saved session data it is meant to keep; it now scans the daemon's logs only and
+  checks that the saved files are private (round 1).
+
+What stays, and why:
+
+- P-44 names a checkbox; the two settings are switches, as every on-off setting in the app is, with P-44's label.

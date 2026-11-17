@@ -31,12 +31,13 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
   Ubuntu, Alpine and Rocky containers (Linux-only and other-user checks).
 - NFR measurements: `pnpm test:nfr` (needs the test hosts and the daemons;
   launches the app in the background); `node tools/nfr-report/nfr-report.ts`
-  prints the run's table for `docs/verification/E2-nfr.md`.
+  prints the run's table for `docs/verification/E3-nfr.md`.
 - Soak (NFR-11, P-25): `pnpm test:soak` (needs the test hosts, the daemons and
   `tools/test-hosts/fetch-old-daemon.sh`); `TRC_SOAK_CYCLES` (1,000),
   `TRC_SOAK_APP_CYCLES` (50) and `TRC_SOAK_LOGOUT_CYCLES` (1,000) set the
-  cycles, and `TRC_SOAK_HOST` the host of the ssh-level app quit and crash and of
-  the flap scenarios. It runs for hours (the logout scenario alone takes about
+  cycles, `TRC_SOAK_REBOOT_CYCLES` (100) the host restarts of the reboot soak,
+  and `TRC_SOAK_HOST` the host of the ssh-level app quit and crash and of the
+  flap scenarios. It runs for hours (the logout scenario alone takes about
   3.6 hours); each scenario file can run alone with
   `vitest run --project soak <file>`, and its sessions are reached through
   `docker exec` as well as ssh (`DOCKER_CONTEXT`, `colima-trc` by default).
@@ -101,8 +102,8 @@ A desktop terminal manager. An Electron app (built the way VS Code is) shows a
 session list on the left and the selected terminal in the center. Sessions
 belong to a per-user **daemon** on each host, not to the app, so they survive
 app quit, app crash, network loss and client reboot. After a host reboot, the
-daemon respawns each session's shell and restores its scrollback; it never
-re-runs commands.
+daemon respawns each session's shell below its saved scrollback when the app
+next connects; it never re-runs commands.
 
 ## Planned architecture
 

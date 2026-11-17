@@ -228,3 +228,151 @@ async fn attach_text(client: &mut AppClient, request_id: u32, session: &SessionI
         .await;
     client.text(stream)
 }
+
+#[tokio::test]
+async fn leaves_failed_a_session_whose_holder_keeps_ending_until_restarted_below_its_saved_scrollback() {
+    let installed = Installed::new();
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let session = create(&mut client, 1, spec("crashing", None, None)).await;
+    let stream = attach(&mut client, 2, &session.id).await;
+    print_saved(&mut client, &installed, stream, &session.id, "TRC-SAVED").await;
+    kill_holders(&installed);
+    until_updated(&mut client, |info| {
+        info.state == SessionState::Running && info.restored.is_some()
+    })
+    .await;
+    kill_holders(&installed);
+    until_updated(&mut client, |info| info.state == SessionState::Exited).await;
+    attach_text(&mut client, 3, &session.id).await;
+    kill_holders(&installed);
+    let failed = until_updated(&mut client, |info| info.state == SessionState::FailedToStart).await;
+    assert!(failed.failure.unwrap_or_default().contains("kept ending"));
+    client.send(&ClientMessage::Restart {
+        request_id: 4,
+        session: session.id.clone(),
+    });
+    until_updated(&mut client, |info| info.state == SessionState::Running).await;
+    let stream = attach(&mut client, 5, &session.id).await;
+    let text = client.text(stream);
+    assert!(
+        text.contains("TRC-SAVED-42") && text.contains("[Restarted at "),
+        "{text}"
+    );
+    stop(core);
+}
+
+#[tokio::test]
+async fn deletes_the_sessions_closed_before_the_core_ended_whether_or_not_their_holder_still_runs() {
+    let installed = Installed::new();
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let running = create(&mut client, 1, spec("running", None, None)).await;
+    let ended = create(&mut client, 2, spec("ended", None, None)).await;
+    let kept = create(&mut client, 3, spec("kept", None, None)).await;
+    for (request_id, session) in [(4, &running), (5, &ended), (6, &kept)] {
+        attach(&mut client, request_id, &session.id).await;
+    }
+    stop(core);
+    kill_matching(&format!("{}.sock", ended.id.0));
+    for session in [&running, &ended] {
+        mark_closing(&installed, &session.id);
+    }
+
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let started = Instant::now();
+    loop {
+        let names: Vec<Option<String>> = listed(&mut client)
+            .await
+            .into_iter()
+            .map(|info| info.custom_name)
+            .collect();
+        if names == [Some("kept".to_owned())] {
+            break;
+        }
+        assert!(started.elapsed() < Duration::from_secs(10), "{names:?}");
+        client.pause(Duration::from_millis(100)).await;
+    }
+    for session in [&running, &ended] {
+        let folder = installed.root.join("sessions").join(&session.id.0);
+        let started = Instant::now();
+        while folder.exists() {
+            assert!(started.elapsed() < Duration::from_secs(5), "{} was kept", session.id.0);
+            client.pause(Duration::from_millis(50)).await;
+        }
+    }
+    stop(core);
+}
+
+/// Marks a session's record closed, as a core that ended right after the user closed it leaves it.
+fn mark_closing(installed: &Installed, session: &SessionId) {
+    let file = installed.root.join("sessions").join(&session.0).join("meta.json");
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert!(!text.contains("\"closing\""), "{text}");
+    let marked = text.replacen('{', "{\"closing\":true,", 1);
+    std::fs::write(&file, marked).unwrap();
+}
+
+#[tokio::test]
+async fn restores_the_screen_below_a_full_screen_program_and_keeps_when_it_was_restored_across_a_core_restart() {
+    let installed = Installed::new();
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let session = create(&mut client, 1, spec("editor", None, None)).await;
+    let stream = attach(&mut client, 2, &session.id).await;
+    print_saved(&mut client, &installed, stream, &session.id, "TRC-PRIMARY").await;
+    client.input(stream, "printf '\\033[?1049hTRC-ALT-%s' $((40+2)); sleep 1000\r");
+    client.until(|c| c.text(stream).contains("TRC-ALT-42")).await;
+    client.pause(Duration::from_secs(3)).await;
+    kill_holders(&installed);
+    let restored = until_updated(&mut client, |info| {
+        info.state == SessionState::Running && info.restored.is_some()
+    })
+    .await;
+    let stream = attach(&mut client, 3, &session.id).await;
+    let text = client.text(stream);
+    assert!(
+        text.contains("TRC-PRIMARY-42") && !text.contains("TRC-ALT-42"),
+        "{text}"
+    );
+    client.input(stream, "echo TRC-AFTER-$((40+2))\r");
+    client.until(|c| c.text(stream).contains("TRC-AFTER-42")).await;
+    stop(core);
+
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let sessions = listed(&mut client).await;
+    assert_eq!(sessions[0].restored, restored.restored);
+    stop(core);
+}
+
+#[tokio::test]
+async fn restores_a_session_that_saves_nothing_to_disk_in_a_new_shell_below_only_the_marker() {
+    let installed = Installed::new();
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let unsaved = SessionOptions {
+        restore: true,
+        save_scrollback: false,
+    };
+    let session = create(&mut client, 1, spec("private", None, Some(unsaved))).await;
+    let stream = attach(&mut client, 2, &session.id).await;
+    client.input(stream, "echo TRC-UNSAVED-$((40+2))\r");
+    client.until(|c| c.text(stream).contains("TRC-UNSAVED-42")).await;
+    let folder = installed.root.join("sessions").join(&session.id.0);
+    assert!(!folder.join("scrollback.log").exists());
+    kill_holders(&installed);
+    until_updated(&mut client, |info| {
+        info.state == SessionState::Running && info.restored.is_some()
+    })
+    .await;
+    let stream = attach(&mut client, 3, &session.id).await;
+    let text = client.text(stream);
+    assert!(
+        text.contains("Session restored on ") && !text.contains("TRC-UNSAVED-42"),
+        "{text}"
+    );
+    assert!(!folder.join("scrollback.log").exists());
+    stop(core);
+}

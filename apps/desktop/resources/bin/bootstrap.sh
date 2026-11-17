@@ -269,6 +269,43 @@ stop_processes() {
     done
 }
 
+# Whether $1 is $2 lowercase hexadecimal digits, as version and session names are.
+is_hex() {
+    [ "${#1}" -eq "$2" ] || return 1
+    case $1 in
+    *[!0-9a-f]*) return 1 ;;
+    esac
+}
+
+# Whether the entry named $2 in TRC's folder $1 is one TRC creates.
+owned() {
+    case $1:$2 in
+    versions:.staging.*) return 0 ;;
+    versions:*) is_hex "$2" 64 ;;
+    sessions:*) is_hex "$2" 16 ;;
+    logs:core.*log) return 0 ;;
+    run:core.sock | run:core.lock | run:upgrade.lock) return 0 ;;
+    holders:*.sock) is_hex "${2%.sock}" 16 ;;
+    *) return 1 ;;
+    esac
+}
+
+# Deletes the entries TRC creates in its folder $2 of kind $1, then the folder
+# once it is empty; anything else stays.
+remove_owned() {
+    { [ -d "$2" ] && [ ! -L "$2" ]; } || return 0
+    for entry in "$2"/* "$2"/.[!.]*; do
+        { [ -e "$entry" ] || [ -L "$entry" ]; } || continue
+        if [ "$1:${entry##*/}" = run:holders ] && [ ! -L "$entry" ]; then
+            remove_owned holders "$entry"
+        elif owned "$1" "${entry##*/}"; then
+            rm -rf "$entry"
+        fi
+    done
+    rmdir "$2" 2>/dev/null
+    return 0
+}
+
 # Removes the daemon (US-3.3.3, P-46): ends its processes, then deletes only
 # the entries TRC creates in the install location, and the location itself
 # once it is empty, so a moved location never loses other files. Reports
@@ -280,11 +317,17 @@ remove_install() {
     }
     stop_processes
     if [ -d "$root/run" ]; then
-        rm -rf "$root/run"
+        remove_owned run "$root/run"
     elif [ -d "/tmp/trc-$uid" ] && [ -O "/tmp/trc-$uid" ] && [ ! -L "/tmp/trc-$uid" ]; then
-        rm -rf "/tmp/trc-$uid"
+        remove_owned run "/tmp/trc-$uid"
     fi
-    rm -rf "$root/versions" "$root/sessions" "$root/logs" "$root/install.lock"
+    for folder in versions sessions logs; do
+        remove_owned "$folder" "$root/$folder"
+    done
+    if [ -d "$root/install.lock" ] && [ ! -L "$root/install.lock" ]; then
+        rm -f "$root/install.lock/pid"
+        rmdir "$root/install.lock" 2>/dev/null
+    fi
     rmdir "$root" 2>/dev/null
     kept=
     [ -d "$root" ] && kept=$(ls -A "$root" | tr '\n' '/' | sed 's#/$##')

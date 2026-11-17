@@ -381,9 +381,15 @@ function reorder(sessions: readonly SessionInfo[], order: readonly SessionId[]):
     return [...ordered, ...sessions.filter((entry) => !order.includes(entry.id))];
 }
 
-/** A host that connected again has finished restarting its daemon (US-3.3.2). */
+/** The states a host passes through while its daemon restarts, before it connects again. */
+const RESTARTING: ReadonlySet<ConnectionState['status']> = new Set(['disconnected', 'reconnecting', 'connecting']);
+
+/**
+ * A host whose daemon restarts has finished once it connects again, or once its connection fails, closes or asks
+ * about its key instead, which the shell then reports as it would any other (US-3.3.2).
+ */
 function withoutRestart(host: HostEntry): HostEntry {
-    if (host.daemonAction !== 'restarting' || host.state.status !== 'connected') {
+    if (host.daemonAction !== 'restarting' || RESTARTING.has(host.state.status)) {
         return host;
     }
     const { daemonAction: _done, ...rest } = host;

@@ -73,7 +73,8 @@ impl Holder {
         }
     }
 
-    /// Clears the scrollback for every client, as output, and rewrites the file without it (US-3.2.3).
+    /// Clears the scrollback for every client, as output, deletes the file at once and writes it again without it
+    /// (US-3.2.3).
     pub(super) fn clear_scrollback(&mut self) {
         if let Some(terminal) = &mut self.terminal {
             terminal.feed(CLEAR_SCROLLBACK);
@@ -81,8 +82,7 @@ impl Holder {
         self.log.push(CLEAR_SCROLLBACK);
         self.attachments.push(CLEAR_SCROLLBACK);
         if let Some(persistence) = &mut self.persistence {
-            persistence.rewrite();
-            persistence.output();
+            persistence.clear();
         }
     }
 }

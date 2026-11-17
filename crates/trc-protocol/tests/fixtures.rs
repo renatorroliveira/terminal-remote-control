@@ -321,6 +321,7 @@ fn server_messages_v2() -> Vec<(&'static str, ServerMessage)> {
                         install_root: "/home/tester/.trc".into(),
                         log_dir: "/home/tester/.trc/logs".into(),
                         started_at: 1_794_400_000_000,
+                        uptime_ms: Some(90_000),
                     }),
                 },
             ),

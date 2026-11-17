@@ -1,11 +1,14 @@
 //! Every session's `meta.json` in its data folder (TECH_STACK §5.5, SEC-05.1): what the core needs to list it again
 //! and start it again after its processes ended (US-3.1.3), written whenever any of that changes. Each write goes to
-//! a temporary file that is synced, then renamed over the old one, and the folder is synced.
+//! a temporary file that is synced, then renamed over the old one, and the folder is synced. A thread of the store's
+//! own does the writing and deleting, in the order asked, so the core's event loop never waits for the disk.
 
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::{Receiver, Sender, channel, sync_channel};
+use std::thread::JoinHandle;
 
 use serde::{Deserialize, Serialize};
 use trc_protocol::{SessionId, SessionInfo};
@@ -31,16 +34,21 @@ pub struct SessionMeta {
     /// The host's boot ID when it was written, which tells a host restart from processes that only ended.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boot_id: Option<String>,
+    /// The user closed the session, so it is deleted rather than brought back, even if the core ends before its
+    /// holder does (US-1.10.4).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub closing: bool,
 }
 
 impl SessionMeta {
-    /// The record of a session as it is now.
-    pub fn of(info: &SessionInfo, spec: &HolderSpec, boot_id: Option<&str>) -> Self {
+    /// The record of a session as it is now; `closing` when the user closed it.
+    pub fn of(info: &SessionInfo, spec: &HolderSpec, boot_id: Option<&str>, closing: bool) -> Self {
         Self {
             format: FORMAT,
-            info: persisted(info),
+            info: persisted(info, spec.options.save_scrollback),
             spec: spec.clone(),
             boot_id: boot_id.map(str::to_owned),
+            closing,
         }
     }
 }
@@ -49,12 +57,29 @@ impl SessionMeta {
 pub struct SessionStore {
     dir: PathBuf,
     uid: u32,
+    jobs: Option<Sender<Job>>,
+    thread: Option<JoinHandle<()>>,
+}
+
+enum Job {
+    Write(Box<SessionMeta>),
+    Remove(SessionId),
+    RemoveAll(std::sync::mpsc::SyncSender<io::Result<()>>),
+    Flush(std::sync::mpsc::SyncSender<()>),
 }
 
 impl SessionStore {
-    /// The store of the sessions folder `dir`, whose folders belong to `uid`.
+    /// The store of the sessions folder `dir`, whose folders belong to `uid`, with its writing thread.
     pub fn new(dir: PathBuf, uid: u32) -> Self {
-        Self { dir, uid }
+        let (jobs, receiver) = channel();
+        let disk = Disk { dir: dir.clone(), uid };
+        let thread = std::thread::spawn(move || disk.run(&receiver));
+        Self {
+            dir,
+            uid,
+            jobs: Some(jobs),
+            thread: Some(thread),
+        }
     }
 
     /// A session's data folder.
@@ -69,22 +94,22 @@ impl SessionStore {
         Ok(dir)
     }
 
-    /// Writes a session's record; the old one stays whole until the new one has replaced it.
-    pub fn write(&self, meta: &SessionMeta) -> io::Result<()> {
-        let dir = self.prepare(&meta.info.id)?;
-        let encoded = serde_json::to_vec(meta).map_err(io::Error::other)?;
-        let temporary = dir.join(format!("{META_FILE}.new"));
-        let mut file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .mode(0o600)
-            .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits().cast_signed())
-            .open(&temporary)?;
-        file.write_all(&encoded)?;
-        file.sync_all()?;
-        std::fs::rename(&temporary, dir.join(META_FILE))?;
-        File::open(&dir)?.sync_all()
+    /// Reads one session's record, as when a holder that was silent at the core's start introduces itself.
+    pub fn read(&self, session: &SessionId) -> Option<SessionMeta> {
+        read_meta(&self.session_dir(session))
+    }
+
+    /// Has a session's record written; the old one stays whole until the new one has replaced it. A write that
+    /// fails is logged.
+    pub fn write(&self, meta: &SessionMeta) {
+        self.send(Job::Write(Box::new(meta.clone())));
+    }
+
+    /// Waits until every write and deletion asked for so far is done.
+    pub fn flush(&self) {
+        let (done, wait) = sync_channel(1);
+        self.send(Job::Flush(done));
+        let _ = wait.recv();
     }
 
     /// Every session's record that can be read, in no order; a folder whose record is missing or unreadable is
@@ -100,22 +125,93 @@ impl SessionStore {
             .collect()
     }
 
-    /// Deletes the whole `sessions` folder, as removing the daemon asks once every session has ended (US-3.3.3).
+    /// Deletes the whole `sessions` folder once every write asked for is done, as removing the daemon asks when every
+    /// session has ended (US-3.3.3), and waits for it.
     pub fn remove_all(&self) -> io::Result<()> {
-        match std::fs::remove_dir_all(&self.dir) {
-            Err(error) if error.kind() != io::ErrorKind::NotFound => Err(error),
-            _ => Ok(()),
+        let (done, wait) = sync_channel(1);
+        self.send(Job::RemoveAll(done));
+        wait.recv()
+            .unwrap_or_else(|_| Err(io::Error::other("the session store stopped")))
+    }
+
+    /// Has a session's data folder deleted, as closing it asks (US-3.2.3).
+    pub fn remove(&self, session: &SessionId) {
+        self.send(Job::Remove(session.clone()));
+    }
+
+    fn send(&self, job: Job) {
+        if let Some(jobs) = &self.jobs {
+            let _ = jobs.send(job);
+        }
+    }
+}
+
+impl Drop for SessionStore {
+    /// Lets the thread finish every write asked for, so a core that exits leaves every record current.
+    fn drop(&mut self) {
+        self.jobs = None;
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
+/// The store's writing thread.
+struct Disk {
+    dir: PathBuf,
+    uid: u32,
+}
+
+impl Disk {
+    fn run(&self, jobs: &Receiver<Job>) {
+        while let Ok(job) = jobs.recv() {
+            match job {
+                Job::Write(meta) => self.write(&meta),
+                Job::Remove(session) => remove_folder(&self.dir.join(&session.0), &session),
+                Job::RemoveAll(done) => {
+                    let _ = done.send(remove_tree(&self.dir));
+                }
+                Job::Flush(done) => {
+                    let _ = done.send(());
+                }
+            }
         }
     }
 
-    /// Deletes a session's data folder, as closing it asks (US-3.2.3).
-    pub fn remove(&self, session: &SessionId) {
-        match std::fs::remove_dir_all(self.session_dir(session)) {
-            Err(error) if error.kind() != io::ErrorKind::NotFound => {
-                tracing::warn!(session = %session.0, %error, "the session's data folder could not be deleted");
-            }
-            _ => {}
+    fn write(&self, meta: &SessionMeta) {
+        if let Err(error) = write_record(&self.dir.join(&meta.info.id.0), self.uid, meta) {
+            tracing::warn!(session = %meta.info.id.0, %error, "the session's record could not be saved");
         }
+    }
+}
+
+fn write_record(dir: &Path, uid: u32, meta: &SessionMeta) -> io::Result<()> {
+    ensure_private_dir(dir, uid)?;
+    let encoded = serde_json::to_vec(meta).map_err(io::Error::other)?;
+    let temporary = dir.join(format!("{META_FILE}.new"));
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .mode(0o600)
+        .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits().cast_signed())
+        .open(&temporary)?;
+    file.write_all(&encoded)?;
+    file.sync_all()?;
+    std::fs::rename(&temporary, dir.join(META_FILE))?;
+    File::open(dir)?.sync_all()
+}
+
+fn remove_folder(dir: &Path, session: &SessionId) {
+    if let Err(error) = remove_tree(dir) {
+        tracing::warn!(session = %session.0, %error, "the session's data folder could not be deleted");
+    }
+}
+
+fn remove_tree(dir: &Path) -> io::Result<()> {
+    match std::fs::remove_dir_all(dir) {
+        Err(error) if error.kind() != io::ErrorKind::NotFound => Err(error),
+        _ => Ok(()),
     }
 }
 
@@ -128,9 +224,9 @@ pub fn boot_id() -> Option<String> {
 }
 
 fn read_meta(dir: &Path) -> Option<SessionMeta> {
-    let read = std::fs::read(dir.join(META_FILE)).map_err(|error| error.to_string());
+    let read = std::fs::read(dir.join(META_FILE)).map_err(|error| format!("{:?}", error.kind()));
     let parsed =
-        read.and_then(|bytes| serde_json::from_slice::<SessionMeta>(&bytes).map_err(|error| error.to_string()));
+        read.and_then(|bytes| serde_json::from_slice::<SessionMeta>(&bytes).map_err(|error| parse_problem(&error)));
     match parsed {
         Ok(meta) if dir.file_name().and_then(|name| name.to_str()) == Some(meta.info.id.0.as_str()) => Some(meta),
         Ok(_) => {
@@ -144,12 +240,24 @@ fn read_meta(dir: &Path) -> Option<SessionMeta> {
     }
 }
 
-/// What of a session's description is worth keeping: not the live process ID or output time.
-fn persisted(info: &SessionInfo) -> SessionInfo {
+/// Where a record broke, without what it holds, as the log never holds a session's names or environment (SEC-08).
+fn parse_problem(error: &serde_json::Error) -> String {
+    format!(
+        "{:?} at line {} column {}",
+        error.classify(),
+        error.line(),
+        error.column()
+    )
+}
+
+/// What of a session's description is worth keeping: not the live process ID or output time, nor, for a session
+/// that saves nothing to disk, the title its program set, which is output (US-3.2.2).
+fn persisted(info: &SessionInfo, saves_output: bool) -> SessionInfo {
     SessionInfo {
         pid: None,
         last_output_at: None,
         persistence_failure: None,
+        title: if saves_output { info.title.clone() } else { None },
         ..info.clone()
     }
 }
@@ -207,7 +315,7 @@ pub(crate) fn sample_meta(id: &str, order: u32, state: trc_protocol::SessionStat
         restored: None,
         persistence_failure: None,
     };
-    let mut meta = SessionMeta::of(&info, &spec, Some("boot-1"));
+    let mut meta = SessionMeta::of(&info, &spec, Some("boot-1"), false);
     meta.info.state = state;
     meta
 }
@@ -232,8 +340,9 @@ mod tests {
     fn writes_records_only_the_user_can_read_and_reads_them_all_back() {
         let store = store("store-write");
         let (a, b) = (sample("0123456789abcdef", 0), sample("fedcba9876543210", 1));
-        store.write(&a).unwrap();
-        store.write(&b).unwrap();
+        store.write(&a);
+        store.write(&b);
+        store.flush();
         let mut read = store.read_all();
         read.sort_by_key(|meta| meta.info.order);
         assert_eq!(read, vec![a.clone(), b]);
@@ -246,7 +355,8 @@ mod tests {
     #[test]
     fn skips_folders_with_no_record_a_broken_one_or_another_session_s() {
         let store = store("store-skip");
-        store.write(&sample("0123456789abcdef", 0)).unwrap();
+        store.write(&sample("0123456789abcdef", 0));
+        store.flush();
         let broken = store.prepare(&SessionId("1111111111111111".into())).unwrap();
         std::fs::write(broken.join(META_FILE), b"{ not json").unwrap();
         store.prepare(&SessionId("2222222222222222".into())).unwrap();
@@ -264,10 +374,36 @@ mod tests {
         let mut meta = sample("0123456789abcdef", 0);
         meta.info.pid = Some(42);
         meta.info.last_output_at = Some(7);
-        let kept = SessionMeta::of(&meta.info, &meta.spec, None);
+        let kept = SessionMeta::of(&meta.info, &meta.spec, None, false);
         assert_eq!((kept.info.pid, kept.info.last_output_at), (None, None));
-        store.write(&kept).unwrap();
+        store.write(&kept);
         store.remove(&kept.info.id);
+        store.flush();
         assert!(!store.session_dir(&kept.info.id).exists());
+    }
+
+    #[test]
+    fn keeps_no_title_for_a_session_that_saves_nothing_to_disk() {
+        let mut meta = sample("0123456789abcdef", 0);
+        meta.info.title = Some("vim secrets.txt".into());
+        meta.spec.options.save_scrollback = false;
+        assert_eq!(SessionMeta::of(&meta.info, &meta.spec, None, false).info.title, None);
+        meta.spec.options.save_scrollback = true;
+        assert!(
+            SessionMeta::of(&meta.info, &meta.spec, None, false)
+                .info
+                .title
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn logs_where_a_record_broke_without_what_it_holds() {
+        let error = serde_json::from_slice::<SessionMeta>(br#"{"format":"secret-value"}"#).unwrap_err();
+        assert!(
+            !parse_problem(&error).contains("secret-value"),
+            "{}",
+            parse_problem(&error)
+        );
     }
 }

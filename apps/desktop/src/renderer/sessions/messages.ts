@@ -83,7 +83,7 @@ export const hostStateMessages = defineMessages({
     connected: { id: 'host.connected', defaultMessage: 'Connected', description: 'Host connection state.' },
     connectedEndsAtLogout: {
         id: 'host.connectedEndsAtLogout',
-        defaultMessage: 'Connected; sessions end when its last connection closes',
+        defaultMessage: 'Connected; programs end when its last connection closes',
         description: 'Host state when the host ends the user’s processes at logout and lingering is off (US-2.4.4).',
     },
     failed: { id: 'host.failed', defaultMessage: 'Connection failed', description: 'Host connection state.' },
@@ -346,13 +346,13 @@ export const terminalReviewMessage = defineMessage<{ session: string; host: stri
 export const logoutWarningMessages = {
     title: defineMessage<{ host: string }>({
         id: 'logoutWarning.title',
-        defaultMessage: 'Sessions on {host} end when you disconnect',
+        defaultMessage: 'Programs on {host} end when you disconnect',
         description: 'Title of the warning before the first session on a host that ends sessions at logout.',
     }),
     body: defineMessage<{ host: string }>({
         id: 'logoutWarning.body',
         defaultMessage:
-            '{host} ends your processes when your last connection to it closes, and lingering is off for your user, so its sessions end when TRC’s connection closes. To keep them, ask the host’s administrator to enable lingering for your user (loginctl enable-linger).',
+            '{host} ends your processes when your last connection to it closes, and lingering is off for your user, so the programs in its sessions end when TRC’s connection closes. TRC brings the sessions back below their saved scrollback the next time it connects, each in a new shell. To keep programs running, ask the host’s administrator to enable lingering for your user (loginctl enable-linger).',
         description: 'Why the sessions end and what keeps them.',
     }),
     create: defineMessage({

@@ -30,7 +30,7 @@ describe('hostStateText', () => {
     it('says when a connected host ends its sessions as its last connection closes (US-2.4.4)', () => {
         const ending = { manager: 'systemd', sessionsEndAtLogout: true } as const;
         expect(hostStateText(intl, host({ status: 'connected', daemon: { ...daemon, service: ending } }))).toBe(
-            'Connected; sessions end when its last connection closes',
+            'Connected; programs end when its last connection closes',
         );
         const kept = { manager: 'detached', sessionsEndAtLogout: false } as const;
         expect(hostStateText(intl, host({ status: 'connected', daemon: { ...daemon, service: kept } }))).toBe(

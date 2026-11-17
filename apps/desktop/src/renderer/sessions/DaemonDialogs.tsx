@@ -5,6 +5,7 @@ import { isOlderVersion } from '../../shared/versions';
 import type { Shell } from '../app/shell';
 import { BUTTON, PRIMARY_BUTTON } from '../ui/buttons';
 import styles from '../ui/dialog.module.css';
+import { useNow } from '../ui/use-now';
 import own from './DaemonDialogs.module.css';
 import { detailsMessages, removeMessages } from './daemon-messages';
 import { serviceText, uptimeText } from './daemon-text';
@@ -12,6 +13,9 @@ import { hostStateText } from './host-state-text';
 import { persistenceFailureMessages } from './restore-messages';
 import type { WorkspaceController } from './workspace-controller';
 import { type HostEntry, hostGroups } from './workspace-model';
+
+/** How often the shown uptime is brought up to date, as it shows whole minutes at most. */
+const UPTIME_REFRESH_MS = 60_000;
 
 /** What the daemon dialogs act on. */
 export interface DaemonDialogsProps {
@@ -107,6 +111,7 @@ function DetailsDialog({ host, shell, workspace, onClose }: HostDialogProps) {
  */
 function DaemonFacts({ host, workspace }: { readonly host: HostEntry; readonly workspace: WorkspaceController }) {
     const intl = useIntl();
+    const now = useNow(UPTIME_REFRESH_MS);
     const failures = useStore(workspace.store, (state) => state.sessions.get(host.id) ?? []).flatMap((session) =>
         session.persistenceFailure === undefined ? [] : [session.persistenceFailure],
     );
@@ -128,12 +133,7 @@ function DaemonFacts({ host, workspace }: { readonly host: HostEntry; readonly w
         ...(daemon === undefined ? [] : [[intl.formatMessage(detailsMessages.version), daemon.version] as const]),
         ...(daemon?.details === undefined
             ? []
-            : [
-                  [
-                      intl.formatMessage(detailsMessages.uptime),
-                      uptimeText(intl, daemon.details.startedAt, Date.now()),
-                  ] as const,
-              ]),
+            : [[intl.formatMessage(detailsMessages.uptime), uptimeText(intl, daemon.details.startedAt, now)] as const]),
         ...(daemon?.service === undefined
             ? []
             : [[intl.formatMessage(detailsMessages.service), serviceText(intl, daemon.service)] as const]),
