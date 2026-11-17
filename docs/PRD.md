@@ -2,9 +2,9 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.17                     |
+| Status       | Draft v0.18                     |
 | Owner        | Renato Oliveira                 |
-| Last updated | 2026-11-16                      |
+| Last updated | 2026-11-17                      |
 | Scope        | P0 in seven epics, then GA (E8) |
 | Name         | Terminal Remote Control (TRC)   |
 
@@ -909,6 +909,12 @@ Acceptance criteria:
    list. Sessions that exited with another code or a signal stay in the list
    with exit status and scrollback until closed, so the user can see why.
    Auto-close on clean exit is configurable and on by default.
+8. Close has a shortcut, Cmd+W on macOS and Ctrl+Shift+W on Windows and Linux
+   (where Ctrl+W is the shell's delete-word), which closes the open session in
+   any state through criterion 4's confirmation.
+9. An ended session's terminal shows a banner at its top that says why it ended
+   (its exit status or signal, stopped, or failed to start), with Restart and
+   Remove on its right. Remove opens criterion 4's confirmation.
 
 #### US-1.11 — Terminal emulation fidelity
 
@@ -1259,7 +1265,7 @@ Acceptance criteria:
    are unaffected (as in US-2.5).
 3. Upgrading the local daemon keeps sessions.
 
-#### US-4.4 — Local sessions come back after a reboot or logout
+#### US-4.4 — Local sessions survive a logout and come back after a reboot
 
 > As **Jordan**, I want my local sessions back after my Mac restarts, so that a
 > reboot is a minor interruption, not a reset.
@@ -1267,10 +1273,12 @@ Acceptance criteria:
 Acceptance criteria:
 
 1. The daemon starts automatically at login.
-2. Logging out ends user processes on macOS. Logout is therefore treated like a
-   reboot.
-3. After a reboot or logout, local sessions respawn as in US-3.1, with the
-   US-3.2 controls.
+2. Logging out ends no session: a logout stops the daemon's supervisor but not
+   the sessions' processes, and the daemon started at the next login, or by a
+   connection from another computer, takes them over, as after a daemon crash
+   (US-2.5).
+3. After a reboot, local sessions respawn as in US-3.1, with the US-3.2
+   controls.
 
 #### US-4.5 — Add macOS hosts
 
