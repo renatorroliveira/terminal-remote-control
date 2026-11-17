@@ -372,10 +372,12 @@ async fn restores_a_session_an_e1_or_e2_holder_ran_without_scrollback_once_its_p
     }
 }
 
-/// Waits until the core has written the session's record.
+/// Waits up to 10 s until the core has written the session's record.
 async fn recorded(client: &mut AppClient, installed: &Installed, id: &SessionId) {
     let record = installed.root.join("sessions").join(&id.0).join("meta.json");
+    let started = std::time::Instant::now();
     while !record.exists() {
+        assert!(started.elapsed() < Duration::from_secs(10), "the core wrote no record");
         client.pause(Duration::from_millis(20)).await;
     }
 }

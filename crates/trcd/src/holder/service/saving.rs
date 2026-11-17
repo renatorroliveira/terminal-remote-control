@@ -56,7 +56,7 @@ impl Holder {
                 persistence.save(terminal, Instant::now());
                 persistence.failure()
             }
-            _ => self.retired.as_ref().map(|_| PersistenceFailure::Other),
+            _ => self.waiting_to_save().then_some(PersistenceFailure::Other),
         };
         if failure != self.status.persistence_failure {
             self.status.persistence_failure = failure;
@@ -95,6 +95,12 @@ impl Holder {
         if let Some(persistence) = &mut self.persistence {
             persistence.clear();
         }
+    }
+
+    /// Whether saving is on but waits for the writer of a saving turned off to finish deleting its file.
+    fn waiting_to_save(&self) -> bool {
+        let saving = self.spec.as_ref().is_some_and(|spec| spec.options.save_scrollback);
+        saving && self.retired.is_some()
     }
 }
 

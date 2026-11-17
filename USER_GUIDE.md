@@ -222,21 +222,21 @@ stays open and says which.
 ### After a restart
 
 The daemon saves each session's scrollback to disk on the host as it arrives, in a folder only you can read under
-the install location (`~/.trc/sessions`), within 5 seconds of the screen (NFR-08). When a restart of the
-host, a logout that ends your processes, or a crash ends a session's processes while it was running, the daemon
-brings the session back the next time TRC connects: the same shell, name, size, place in the list and environment,
-in the folder it was last in, below its saved scrollback and a line such as "Session restored after restart on
-2026-11-16 09:30:00 UTC. Previous processes ended." Only the shell starts; nothing that ran in it runs again, and
-variables you exported in the shell are gone. If its folder no longer exists, it starts in your home folder and
-says so. The saved scrollback is history you can read, select and copy, in review mode too; new output continues
-below the line.
+the install location (`~/.trc/sessions`), within 5 seconds of the screen (NFR-08). When a restart of the host, a
+logout that ends your processes, or a crash of the daemon's own process for a session ends a session's processes
+while it was running, the daemon brings the session back the next time TRC connects: the same shell, name, size,
+place in the list and environment, in the folder it was last in, below its saved scrollback and a line such as
+"Session restored after restart on 2026-11-16 09:30:00 UTC. Previous processes ended." Only the shell starts;
+nothing that ran in it runs again, and variables you exported in the shell are gone. If its folder no longer exists,
+it starts in your home folder and says so. The saved scrollback is history you can read, select and copy, in review
+mode too; new output continues below the line.
 
 TRC says how many sessions each host restored, such as "devbox-1 restarted: 3 sessions restored", lists it in
 Notifications, and marks each session "restored" until you open it on this Mac. Sessions you stopped or that had
 exited stay in the list as they were, with their saved scrollback; one whose restore is off shows "Ended by restart"
-or "Processes ended". Close or restart them when you're done. A session whose processes end 3 times within 10
-minutes while the daemon runs is left "Failed to start" instead of starting again and again; Restart starts it
-again below its saved scrollback.
+or "Processes ended". A shell that exits, or that something ends on its own, leaves its session "Exited" as
+always. Close or restart them when you're done. A session whose daemon process ends 3 times within 10 minutes is
+left "Failed to start" instead of starting again and again; Restart starts it again below its saved scrollback.
 
 Two switches in Session settings… choose what each session keeps; both are on for new sessions:
 
@@ -498,4 +498,5 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 
 ## What's not there yet
 
-Later epics add local sessions on the Mac, macOS hosts, and the Windows and Linux apps. [The PRD](docs/PRD.md) has the full plan.
+Later epics add local sessions on the Mac, macOS hosts, and the Windows and Linux apps. [The PRD](docs/PRD.md) has
+the full plan.
