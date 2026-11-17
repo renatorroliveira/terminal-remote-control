@@ -47,8 +47,13 @@ jobs:
             - run: pnpm build
 
     daemon:
-        name: daemon (build and unit tests)
-        runs-on: ubuntu-24.04
+        name: daemon (build and unit tests, ${{ matrix.runner }})
+        strategy:
+            fail-fast: false
+            matrix:
+                # Linux natively, and the macOS daemon on both of its architectures (US-4.5.1, P-63).
+                runner: [ubuntu-24.04, macos-15, macos-15-intel]
+        runs-on: ${{ matrix.runner }}
         timeout-minutes: 30
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,15 +71,24 @@ jobs:
             - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
               with:
                   version: 0.17.1
-            - run: sudo apt-get update && sudo apt-get install -y minisign
+            - if: runner.os == 'Linux'
+              run: sudo apt-get update && sudo apt-get install -y minisign
+            - if: runner.os == 'macOS'
+              run: brew install minisign
             - run: tools/fetch-libghostty.sh
-            - run: cargo fmt --all --check
+            - if: runner.os == 'Linux'
+              run: cargo fmt --all --check
             - run: cargo clippy --locked --workspace --all-targets -- -D warnings
             - run: cargo nextest run --locked --workspace
-            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+            - if: runner.os == 'Linux'
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version: 24
-            - run: corepack enable pnpm
-            - run: pnpm install --frozen-lockfile --ignore-scripts
-            - run: pnpm notices:check
-            - run: pnpm gen:check
+            - if: runner.os == 'Linux'
+              run: corepack enable pnpm
+            - if: runner.os == 'Linux'
+              run: pnpm install --frozen-lockfile --ignore-scripts
+            - if: runner.os == 'Linux'
+              run: pnpm notices:check
+            - if: runner.os == 'Linux'
+              run: pnpm gen:check

@@ -4,9 +4,14 @@ import type { HelloLine } from './lines';
 import type { DaemonManifest } from './manifest';
 
 const bundledSha = 'b'.repeat(64);
+const universalSha = 'c'.repeat(64);
 const manifest: DaemonManifest = {
     version: '0.2.0',
-    binaries: { 'linux-x64': { sha256: 'a'.repeat(64), size: 1 }, 'linux-arm64': { sha256: bundledSha, size: 2 } },
+    binaries: {
+        'linux-x64': { sha256: 'a'.repeat(64), size: 1 },
+        'linux-arm64': { sha256: bundledSha, size: 2 },
+        'darwin-universal': { sha256: universalSha, size: 3 },
+    },
 };
 
 function hello(overrides: Partial<HelloLine>): HelloLine {
@@ -50,11 +55,22 @@ describe('planInstall', () => {
         ).toBe('upload');
     });
 
+    it('uploads the one universal binary to a Mac of either architecture (US-4.5.1)', () => {
+        for (const arch of ['arm64', 'x86_64']) {
+            expect(planInstall(hello({ os: 'Darwin', arch, checksum: 'shasum' }), manifest)).toEqual({
+                kind: 'upload',
+                platform: 'darwin-universal',
+                binary: { sha256: universalSha, size: 3 },
+                version: '0.2.0',
+            });
+        }
+    });
+
     it('reports an unsupported system with what is missing', () => {
-        expect(planInstall(hello({ os: 'Darwin' }), manifest)).toEqual({
+        expect(planInstall(hello({ os: 'FreeBSD' }), manifest)).toEqual({
             kind: 'unsupported',
             missing: 'os',
-            os: 'Darwin',
+            os: 'FreeBSD',
             arch: 'arm64',
         });
         expect(planInstall(hello({ arch: 'unsupported' }), manifest)).toMatchObject({

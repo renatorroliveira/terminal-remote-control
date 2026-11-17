@@ -11,6 +11,7 @@ import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { FuseV1Options, getCurrentFuseWire } from '@electron/fuses';
 import {
+    DAEMON_PLATFORMS,
     type DaemonFile,
     descendants,
     expectedFuses,
@@ -87,7 +88,7 @@ function filesUnder(folder: string): readonly string[] {
 
 function daemonFiles(resources: string): Readonly<Record<string, DaemonFile | undefined>> {
     return Object.fromEntries(
-        ['linux-x64', 'linux-arm64'].map((platform) => {
+        DAEMON_PLATFORMS.map((platform) => {
             const path = join(resources, 'daemon', platform, 'trcd');
             if (!existsSync(path)) {
                 return [platform, undefined];

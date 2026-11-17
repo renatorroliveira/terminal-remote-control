@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-/** The platforms the app bundles a daemon for (E1: Linux only). */
-export const DAEMON_PLATFORMS = ['linux-x64', 'linux-arm64'] as const;
+/** The platforms the app bundles a daemon for: Linux per architecture, and one universal binary for Macs (E4). */
+export const DAEMON_PLATFORMS = ['linux-x64', 'linux-arm64', 'darwin-universal'] as const;
 
 /** One bundled daemon platform. */
 export type DaemonPlatform = (typeof DAEMON_PLATFORMS)[number];
@@ -32,6 +32,7 @@ const manifestSchema = z.strictObject({
     binaries: z.strictObject({
         'linux-x64': binarySchema.exactOptional(),
         'linux-arm64': binarySchema.exactOptional(),
+        'darwin-universal': binarySchema.exactOptional(),
     }),
 });
 

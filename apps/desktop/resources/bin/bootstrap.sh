@@ -247,25 +247,52 @@ hash_text() {
 }
 
 # Ends every process run from this install's versions/, after stopping the
-# core's systemd unit, so the unit never restarts a core it is removing.
+# core's systemd unit or removing its LaunchAgent (D-50), so neither restarts
+# a core it is removing.
 stop_processes() {
-    if [ "$tool" != none ] && command -v systemctl >/dev/null 2>&1; then
-        unit=trcd-$(hash_text "$root" | cut -c1-8).service
-        systemctl --user stop "$unit" >/dev/null 2>&1
+    if [ "$tool" != none ]; then
+        stop_service "$(hash_text "$root" | cut -c1-8)"
     fi
     for signal in TERM KILL; do
         found=
-        for proc in /proc/[0-9]*; do
-            exe=$(readlink "$proc/exe" 2>/dev/null) || continue
-            case $exe in
-            "$root/versions/"*)
-                kill -"$signal" "${proc#/proc/}" 2>/dev/null
-                found=1
-                ;;
-            esac
+        for pid in $(install_processes); do
+            kill -"$signal" "$pid" 2>/dev/null
+            found=1
         done
         [ -n "$found" ] || return 0
         sleep 1
+    done
+}
+
+# Stops the core's systemd unit, or boots out its LaunchAgent and deletes the
+# agent's plist; $1 is the install root's short hash.
+stop_service() {
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user stop "trcd-$1.service" >/dev/null 2>&1
+    fi
+    agent=$HOME/Library/LaunchAgents/dev.trc.trcd-$1.plist
+    if [ -f "$agent" ] && [ ! -L "$agent" ]; then
+        launchctl bootout "gui/$uid/dev.trc.trcd-$1" >/dev/null 2>&1
+        rm -f "$agent"
+    fi
+}
+
+# The processes whose executable lies in this install's versions/: from /proc
+# on Linux, from ps on macOS, which has no /proc.
+install_processes() {
+    if [ -d /proc/self ]; then
+        for proc in /proc/[0-9]*; do
+            exe=$(readlink "$proc/exe" 2>/dev/null) || continue
+            case $exe in
+            "$root/versions/"*) echo "${proc#/proc/}" ;;
+            esac
+        done
+        return 0
+    fi
+    ps -axo pid=,comm= | while read -r pid exe; do
+        case $exe in
+        "$root/versions/"*) echo "$pid" ;;
+        esac
     done
 }
 
@@ -358,7 +385,10 @@ main() {
     arch=$(detect_arch "$machine")
     tool=$(detect_checksum)
     say "HELLO os=$os arch=$arch checksum=$tool installed=$(installed_versions)"
-    [ "$os" = Linux ] || fail "unsupported-os $os $machine"
+    case $os in
+    Linux | Darwin) ;;
+    *) fail "unsupported-os $os $machine" ;;
+    esac
     [ "$arch" != unsupported ] || fail "unsupported-arch $os $machine"
     while read -r command first second third; do
         case $command in

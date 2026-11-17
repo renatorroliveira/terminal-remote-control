@@ -65,16 +65,28 @@ describe('seamProblems', () => {
 describe('manifestProblems', () => {
     const manifest = JSON.stringify({
         version: '0.2.0',
-        binaries: { 'linux-x64': { sha256: 'aa', size: 2 }, 'linux-arm64': { sha256: 'bb', size: 3 } },
+        binaries: {
+            'linux-x64': { sha256: 'aa', size: 2 },
+            'linux-arm64': { sha256: 'bb', size: 3 },
+            'darwin-universal': { sha256: 'cc', size: 4 },
+        },
     });
 
     it('passes daemons that match the manifest and the app version (SEC-04.2)', () => {
-        const files = { 'linux-x64': { sha256: 'aa', size: 2 }, 'linux-arm64': { sha256: 'bb', size: 3 } };
+        const files = {
+            'linux-x64': { sha256: 'aa', size: 2 },
+            'linux-arm64': { sha256: 'bb', size: 3 },
+            'darwin-universal': { sha256: 'cc', size: 4 },
+        };
         expect(manifestProblems(manifest, files, '0.2.0')).toEqual([]);
     });
 
     it('names a changed or missing daemon, and a version that is not the app version', () => {
-        const files = { 'linux-x64': { sha256: 'ff', size: 2 }, 'linux-arm64': undefined };
+        const files = {
+            'linux-x64': { sha256: 'ff', size: 2 },
+            'linux-arm64': undefined,
+            'darwin-universal': { sha256: 'cc', size: 4 },
+        };
         expect(manifestProblems(manifest, files, '0.3.0')).toEqual([
             'daemon manifest version 0.2.0 is not the app version 0.3.0',
             'daemon linux-x64 does not match the manifest',
@@ -82,10 +94,11 @@ describe('manifestProblems', () => {
         ]);
     });
 
-    it('requires both Linux daemons', () => {
+    it('requires both Linux daemons and the macOS one (US-4.5.1)', () => {
         expect(manifestProblems(JSON.stringify({ version: '1.0.0', binaries: {} }), {}, '1.0.0')).toEqual([
             'daemon linux-x64 is missing from the manifest',
             'daemon linux-arm64 is missing from the manifest',
+            'daemon darwin-universal is missing from the manifest',
         ]);
     });
 });

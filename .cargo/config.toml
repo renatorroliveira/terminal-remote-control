@@ -6,3 +6,4 @@ daemon-arm64 = "zigbuild --release --target aarch64-unknown-linux-musl -p trcd"
 [env]
 TS_RS_EXPORT_DIR = { value = "packages/protocol/src/generated", relative = true }
 TS_RS_LARGE_INT = "number"
+MACOSX_DEPLOYMENT_TARGET = "13.0"

@@ -1812,7 +1812,7 @@
   "failure.unsupportedArch.remedy": [
     {
       "type": 0,
-      "value": "Connect to a Linux host on x86_64 or arm64."
+      "value": "Connect to a Linux host or a Mac, on x86_64 or arm64."
     }
   ],
   "failure.unsupportedChecksumTool.problem": [
@@ -1852,7 +1852,7 @@
   "failure.unsupportedOs.remedy": [
     {
       "type": 0,
-      "value": "Connect to a Linux host on x86_64 or arm64."
+      "value": "Connect to a Linux host or a Mac, on x86_64 or arm64."
     }
   ],
   "find.close": [

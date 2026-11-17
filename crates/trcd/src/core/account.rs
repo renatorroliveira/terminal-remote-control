@@ -55,20 +55,58 @@ pub fn resolve_account(env: impl Fn(&str) -> Option<String>, passwd: impl FnOnce
 
 /// The account of the running process.
 pub fn current_account() -> Account {
-    resolve_account(|name| std::env::var(name).ok(), getent_passwd)
+    resolve_account(|name| std::env::var(name).ok(), passwd_entry)
 }
 
 fn is_absolute(path: &str) -> bool {
     path.starts_with('/')
 }
 
-fn getent_passwd() -> Option<PasswdEntry> {
+/// The passwd entry of the running user, from `getent`, which sees NSS users a static binary cannot.
+#[cfg(not(target_os = "macos"))]
+fn passwd_entry() -> Option<PasswdEntry> {
     let uid = rustix::process::geteuid().as_raw().to_string();
     let output = std::process::Command::new("getent")
         .args(["passwd", &uid])
         .output()
         .ok()?;
     parse_passwd_line(String::from_utf8_lossy(&output.stdout).lines().next()?)
+}
+
+/// The passwd entry of the running user, from macOS's directory services through `getpwuid_r`.
+#[cfg(target_os = "macos")]
+fn passwd_entry() -> Option<PasswdEntry> {
+    let mut entry = std::mem::MaybeUninit::<libc::passwd>::zeroed();
+    let mut buffer = vec![0_u8; 4096];
+    let mut found = std::ptr::null_mut();
+    // SAFETY: `entry` and `buffer` are writable for their sizes, and `found` receives a pointer to `entry` or null.
+    let status = unsafe {
+        libc::getpwuid_r(
+            libc::geteuid(),
+            entry.as_mut_ptr(),
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            &raw mut found,
+        )
+    };
+    if status != 0 || found.is_null() {
+        return None;
+    }
+    // SAFETY: `getpwuid_r` filled `entry`, whose strings point into `buffer`, still alive here.
+    let entry = unsafe { entry.assume_init() };
+    let text = |field: *const libc::c_char| {
+        // SAFETY: each field is a NUL-terminated string in `buffer`, or null.
+        (!field.is_null()).then(|| {
+            unsafe { std::ffi::CStr::from_ptr(field) }
+                .to_string_lossy()
+                .into_owned()
+        })
+    };
+    Some(PasswdEntry {
+        name: text(entry.pw_name)?,
+        home: text(entry.pw_dir)?,
+        shell: text(entry.pw_shell)?,
+    })
 }
 
 #[cfg(test)]
@@ -88,6 +126,15 @@ mod tests {
     fn env(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
         let map: BTreeMap<String, String> = pairs.iter().map(|(k, v)| ((*k).to_owned(), (*v).to_owned())).collect();
         move |name| map.get(name).cloned()
+    }
+
+    #[test]
+    fn finds_this_user_s_passwd_entry() {
+        let found = passwd_entry().unwrap();
+        assert!(
+            !found.name.is_empty() && is_absolute(&found.home) && is_absolute(&found.shell),
+            "{found:?}"
+        );
     }
 
     #[test]

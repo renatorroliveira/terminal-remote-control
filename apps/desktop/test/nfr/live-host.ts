@@ -200,7 +200,7 @@ let nextRequest = 1;
 /** How a live host connects: the environment ssh gets, the daemons to install, and the install root to reuse. */
 export interface LiveOptions {
     readonly env?: Readonly<Record<string, string | undefined>>;
-    /** A folder holding `manifest.json`, `linux-x64/trcd` and `linux-arm64/trcd`, like the app's `resources/daemon`. */
+    /** A folder holding `manifest.json` and each platform's `trcd`, like the app's `resources/daemon`. */
     readonly daemons?: string;
     /** The install root under the home folder; a fresh one when absent. */
     readonly root?: string;
