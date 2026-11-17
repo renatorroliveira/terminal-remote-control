@@ -2,7 +2,7 @@
 
 | Field        | Value                                                               |
 | ------------ | ------------------------------------------------------------------- |
-| Status       | Decisions accepted (v1.7). S1–S7, S11–S13 done (§11); S8–S10 later. |
+| Status       | Decisions accepted (v1.8). S1–S7, S11–S13 done (§11); S8–S10 later. |
 | Owner        | Renato Oliveira                                                     |
 | Last updated | 2026-11-16                                                          |
 | Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.    |
@@ -679,8 +679,14 @@ outside the install root.
   scope could not start, still outlives a stop or restart of the core (P-34).
 - **macOS (E4).**
     - Holders call `setsid()`, and the LaunchAgent sets `AbandonProcessGroup`.
-    - Registration uses Electron's
-      `app.setLoginItemSettings({ type: 'agentService' })` (SMAppService).
+    - The core is a plain per-user LaunchAgent: a plist in
+      `~/Library/LaunchAgents` running the installed `versions/<sha256>/trcd`,
+      loaded with `launchctl bootstrap gui/<uid>`, with `RunAtLoad` and
+      `KeepAlive` on a crash (D-50). SMAppService waits for E8's Developer ID
+      signing, as it is reliable only for signed and notarized apps.
+    - The Mac's own daemon uses the default install root `~/.trc`, beside the
+      app's files, so other computers that add the Mac reach the same daemon
+      (D-51).
     - Remote Macs without a GUI login get a detached core (R7).
 - **Windows (E6).**
     - Each holder owns its pseudoconsole and starts with
@@ -1220,6 +1226,10 @@ docs/plans/               one implementation plan per epic
 - **minisign** verifies the libghostty-vt release signature (D-14).
 - **colima** runs the Linux test hosts in its own `trc` profile, and the
   **docker CLI** drives them (D-15). Both are development-only.
+- **tart** runs the macOS test hosts as local VMs on Apple's Virtualization
+  framework, from Homebrew's `openai/tools` tap with only its `softnet`
+  formula trusted (D-52). Each VM is deleted after its run, and the base image
+  at the end of E4. Development-only; royalty-free on personal machines.
 
 ### 9.2 TypeScript 7
 
@@ -1433,7 +1443,7 @@ Chromium, and Cargo.
 | E1   | §4.1–§4.4; macOS packaging, ad-hoc signed, and manual downloads (§4.5, D-17); the protocol (§6) with backpressure flow control instead of skip-to-latest (D-19); SSH and bootstrap (§7); POSIX shell profiles (§8); `trcd core`, `bridge` and `holder` on Linux musl, the core started detached by the bridge, without kill-scope isolation (D-20); all tooling (§9) |
 | E2   | Holders outside the kill scope and the Linux service-mode rule (§5.4, D-44); upgrades in place (D-46); protocol 2 with reconnect from an offset and skip-to-latest flow control (D-04) with `Resync` and rebuild (D-45); automatic reconnect and restore at launch; soak tests (NFR-11)                                                                              |
 | E3   | Persistence and restore (§5.5, D-48); history at program exit (D-49); protocol 3; daemon management                                                                                                                                                                                                                                                                  |
-| E4   | macOS `trcd` (universal2, LaunchAgent through SMAppService); local bridge; detached core on remote Macs                                                                                                                                                                                                                                                              |
+| E4   | macOS `trcd` (universal2, a plain LaunchAgent, D-50); the local bridge in the shared root (D-51); detached core on remote Macs; tart test hosts (D-52)                                                                                                                                                                                                               |
 | E5   | Shell-integration scripts and semantic events (§6, §8)                                                                                                                                                                                                                                                                                                               |
 | E6   | Windows: ConPTY holders, named pipes, Windows profile detection, Windows helpers in `trcd`, installer                                                                                                                                                                                                                                                                |
 | E7   | Linux desktop: AppImage, local systemd daemon, AT-detection fallback (R3)                                                                                                                                                                                                                                                                                            |
@@ -1456,7 +1466,7 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | S12 | E2   | Streaming a snapshot in blocks of rows through the formatter selection and tracked grid references while output arrives                                                             | NFR-09                       |
 | S13 | E2   | The renderer to connection-host message path on a sub-millisecond link ([results](spikes/S13.md), D-47)                                                                             | NFR-02                       |
 | S7  | E3   | Consistency of the persistence logs after a power cut                                                                                                                               | NFR-08                       |
-| S8  | E4   | `setsid` + `AbandonProcessGroup`; SMAppService registration; detached core on remote Macs                                                                                           | R4, R5, R7 (macOS)           |
+| S8  | E4   | `setsid` + `AbandonProcessGroup`; LaunchAgent registration with `launchctl`; detached core on remote Macs                                                                           | R4, R5, R7 (macOS)           |
 | S9  | E6   | ConPTY holder outside the app's job object; libghostty-vt on MSVC; re-verify the ATS with JAWS, NVDA and Narrator                                                                   | R1, R2, R4, R5, R8 (Windows) |
 | S10 | E7   | Chromium AT detection and Orca on Wayland and X11; re-verify the ATS                                                                                                                | R1, R2, R3 (Linux)           |
 
@@ -1513,6 +1523,9 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | D-47 | The main process turns off Chromium's `DeferRendererTasksAfterInput` (`--disable-features`) before the app is ready                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | S13: after a key press the feature held the echo's output message until the next frame, up to 10 ms on a 100 Hz display; without it the app adds about 5 ms at p95 on a 1 ms link (NFR-02)                                                                                         | Accepting E1's 15 ms local allowance; moving output to a worker, whose posts to the main thread wait the same way        |
 | D-48 | A starting core restores every session whose processes ended while it ran, unless the user stopped or closed it or turned its restore off; nothing registers the daemon to start at boot, so a host's sessions come back when the app next connects                                                                                                                                                                                                                                                                                                                                                                                                                                                               | The owner keeps D-44's rule that the app writes nothing outside the install root (P-39); a reboot, a logout that ends user processes and a killed holder lose the same work, and come back the same way (P-40)                                                                     | A persistent systemd user unit in `~/.config/systemd/user`; restoring only after a boot ID change                        |
 | D-49 | A client that attaches while a full-screen program runs gets that screen, and the shell's history and screen, streamed, when the program leaves the alternate screen; the holder keeps no copy of the primary screen                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | libghostty-vt formats only the active screen, and the app reads only the active buffer, so nothing it shows waits; this ends NFR-09's E2 exception for every session, including those that save nothing to disk (P-47)                                                             | Streaming the history from the on-disk log, which leaves the copy for sessions that do not save scrollback (P-37's plan) |
+| D-50 | On macOS the core is a plain per-user LaunchAgent: a plist in `~/Library/LaunchAgents` labelled `dev.trc.trcd-<hash8>` that runs the installed binary, loaded with `launchctl bootstrap gui/<uid>`, with `RunAtLoad`, `KeepAlive` on a crash and `AbandonProcessGroup`; remote Macs register it only with a GUI login session, else run detached                                                                                                                                                                                                                                                                                                                                                                  | No administrator, and it works on 0.x's ad-hoc signed builds; SMAppService needs signing and notarization (E8)                                                                                                                                                                     | US-4.1, US-4.3, US-4.4, US-4.5.2 (E4 plan P-55, P-60, P-61)                                                              |
+| D-51 | The Mac's own daemon uses the default install root `~/.trc`, beside the app's files                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | One daemon per user serves the Mac's sessions and every computer that adds the Mac as a host                                                                                                                                                                                       | US-4.5.3 (E4 plan P-56)                                                                                                  |
+| D-52 | macOS test hosts are local tart VMs, deleted after every run                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Real macOS over SSH without touching the owner's Mac (no Remote Login on it)                                                                                                                                                                                                       | — (E4 plan P-57)                                                                                                         |
 
 ## 13. Versions (verified 2026-11-11)
 
@@ -1545,7 +1558,7 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | Rust                          | 1.99.1  | serde / serde_json | 1.0.229 / 1.0.154 |
 | Zig (build only)              | 0.17.1  | ts-rs              | 12.0.1            |
 | minisign (dev only)           | 0.12    | colima (dev only)  | 0.10.3            |
-| docker CLI (dev only)         | 29.8.1  |                    |                   |
+| docker CLI (dev only)         | 29.8.1  | tart (dev only)    | 2.42.0            |
 | cargo-zigbuild                | 0.24.1  | sha2               | 0.11.1            |
 | libghostty-vt                 | 1.0.1   |                    |                   |
 | alacritty_terminal (fallback) | 0.26.0  | tracing            | 0.1.44            |
