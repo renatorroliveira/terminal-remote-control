@@ -3,4 +3,4 @@
 /**
  * What runs the host's daemon (US-2.4).
  */
-export type ServiceManager = "systemd" | "detached" | "unspecified";
+export type ServiceManager = "systemd" | "launchd" | "detached" | "unspecified";

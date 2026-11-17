@@ -70,6 +70,11 @@ export const detailsMessages = {
         defaultMessage: 'As a systemd user service',
         description: 'How the daemon runs: under the user’s systemd instance.',
     }),
+    launchd: defineMessage({
+        id: 'details.launchd',
+        defaultMessage: 'As a LaunchAgent, which starts at login',
+        description: 'How the daemon runs: as a macOS launchd LaunchAgent, which starts it at login.',
+    }),
     detached: defineMessage({
         id: 'details.detached',
         defaultMessage: 'On its own, outside any service manager',

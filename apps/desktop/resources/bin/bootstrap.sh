@@ -270,10 +270,12 @@ stop_service() {
     if command -v systemctl >/dev/null 2>&1; then
         systemctl --user stop "trcd-$1.service" >/dev/null 2>&1
     fi
-    agent=$HOME/Library/LaunchAgents/dev.trc.trcd-$1.plist
-    if [ -f "$agent" ] && [ ! -L "$agent" ]; then
+    if command -v launchctl >/dev/null 2>&1; then
         launchctl bootout "gui/$uid/dev.trc.trcd-$1" >/dev/null 2>&1
-        rm -f "$agent"
+        agent=$HOME/Library/LaunchAgents/dev.trc.trcd-$1.plist
+        if [ -f "$agent" ] && [ ! -L "$agent" ]; then
+            rm -f "$agent"
+        fi
     fi
 }
 

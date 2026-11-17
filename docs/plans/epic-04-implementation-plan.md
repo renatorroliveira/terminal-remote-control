@@ -63,13 +63,15 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 ### 3.2 launchd service mode (P-55, P-60, P-61)
 
 - The bridge, finding no core, writes `~/Library/LaunchAgents/dev.trc.trcd-<hash8>.plist` (mode 0600, holding no
-  secret) and runs `launchctl bootstrap gui/<uid>` on it, then waits for the core's socket; a
-  failure to bootstrap falls back to a detached core and says so in the daemon details.
-- An upgrade (D-46) boots the old agent out, rewrites the plist to the new `versions/<sha256>/trcd` and bootstraps
-  it; holders, in their own sessions, keep running, and the new core adopts them.
-- Restart daemon is `launchctl kickstart -k`; Remove daemon is `bootout`, then the plist's deletion, then E3's
-  removal.
-- Welcome's service info gains `launchd`; the details say "LaunchAgent, starts at login".
+  secret) and runs `launchctl bootstrap gui/<uid>` on it, then waits for the core's socket; an agent already loaded
+  is kickstarted, or replaced when its plist changed. A failure to register falls back to a detached core, which the
+  daemon details then show.
+- An upgrade (D-46) boots the old agent out, and the new bridge writes the plist for the new
+  `versions/<sha256>/trcd` and bootstraps it; holders, in their own sessions, keep running, and the new core adopts
+  them.
+- Restart daemon ends the core with status 0, which `KeepAlive` leaves stopped, and the next bridge kickstarts the
+  agent; Remove daemon is `bootout`, then the plist's deletion, then E3's removal.
+- Welcome's service info gains `launchd`; the details say "As a LaunchAgent, which starts at login".
 
 ### 3.3 This computer (US-4.1, US-4.2, P-56, P-59)
 
@@ -185,16 +187,16 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 
 ## 7. Status
 
-| Story | Status      | Commit |
-| ----- | ----------- | ------ |
-| ST-51 | Done        | —      |
-| ST-52 | Done        | —      |
-| ST-53 | In progress | —      |
-| ST-54 | Planned     | —      |
-| ST-55 | Planned     | —      |
-| ST-56 | Planned     | —      |
-| ST-57 | Planned     | —      |
-| ST-58 | Planned     | —      |
-| ST-59 | Planned     | —      |
-| ST-60 | Planned     | —      |
-| ST-61 | Planned     | —      |
+| Story | Status  | Commit  |
+| ----- | ------- | ------- |
+| ST-51 | Done    | c0177ae |
+| ST-52 | Done    | b12168c |
+| ST-53 | Done    | 780625a |
+| ST-54 | Done    | —       |
+| ST-55 | Planned | —       |
+| ST-56 | Planned | —       |
+| ST-57 | Planned | —       |
+| ST-58 | Planned | —       |
+| ST-59 | Planned | —       |
+| ST-60 | Planned | —       |
+| ST-61 | Planned | —       |

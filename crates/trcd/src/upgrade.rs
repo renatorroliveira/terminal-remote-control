@@ -14,6 +14,7 @@ use rustix::process::{Pid, Signal};
 
 use crate::digest::sha256_file;
 use crate::install::InstallLayout;
+use crate::launchd::stop_agent;
 use crate::run_dir::RunDir;
 use crate::service::stop_unit;
 
@@ -103,6 +104,7 @@ pub fn stop_core(core: &RunningCore, layout: &InstallLayout, run: &RunDir) -> io
         return Ok(());
     }
     stop_unit(&layout.root);
+    stop_agent(&layout.root);
     if wait_unlocked(run, Duration::from_millis(200)) {
         return Ok(());
     }
