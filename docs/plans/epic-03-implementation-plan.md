@@ -88,8 +88,10 @@ A starting core:
    (The plan had 4 at a time; no queue was built, as each holder only replays its own file and starts one
    shell.)
 
-A holder that ends while its session is not being closed brings the session back the same way; one whose holder
-ends 3 times within a minute is left Failed to start, and Restart starts it again below its saved scrollback.
+A holder that ends while its session is not being closed brings the session back the same way, with two limits
+applied in turn: a session restored less than 30 s ago is not restored again unless the host restarted, but kept
+ended with its scrollback; and a session whose holder ended 3 times within 10 minutes is left Failed to start.
+Restart starts either again below its saved scrollback.
 
 Every session in the registry is written to `meta.json`, so order, names and options also survive a core restart,
 which E2 lost.
@@ -114,10 +116,10 @@ which E2 lost.
 - **Restart daemon** asks the core to stop. The holders keep running, the app reconnects at once, and the bridge
   starts a core that adopts them (the US-2.5 path).
 - **Remove daemon from host…** lists the sessions that stop and the data that is deleted. The core stops every
-  session with the stop grace period, deletes `sessions/`, stops its unit and exits. The app then runs the
-  bootstrap's new `REMOVE` step over ssh, which ends any process whose executable lies in the root's `versions/`,
-  deletes `versions/`, `run/` (and its `/tmp` fallback), `logs/` and the lock files, removes the root if it is empty,
-  and reports what it left. The step also works when the core cannot be reached or speaks no common protocol.
+  session with the stop grace period, deletes `sessions/` and exits. The app then runs the bootstrap's new `REMOVE`
+  step over ssh, which stops the daemon's systemd unit, ends any process whose executable lies in the root's
+  `versions/`, deletes only the entries TRC creates in `versions/`, `sessions/`, `run/` (and its `/tmp` fallback) and
+  `logs/`, and the install lock, removes each folder and the root once empty, and reports what it left. The step also works when the core cannot be reached or speaks no common protocol.
 - **Forget host** asks: Forget and leave sessions running, Stop sessions, remove the daemon and forget, or Cancel.
 
 ### 3.5 App
@@ -204,7 +206,9 @@ reset and the whole snapshot. The NFR-09 test also measures the holder while tha
 As built (ST-44, 2026-11-16): the core writes a session's `meta.json` whenever what it keeps changes (not its
 process ID or output time), so order, names and options also survive a core restart. A holder that dies while the
 core runs is brought back in place at once, the same way; one that dies again within 30 s of a restore stays
-ended, so a shell that cannot start never loops. Restores start all at once rather than 4 at a time: a shell's start
+ended, so a shell that cannot start never loops, and the reviews added the second limit of §3.2 (3 holder endings in
+10 minutes). The restart of every test host is `host-restart.spec.ts` on Ubuntu, Alpine and Rocky, and the restore of
+a 0.3.0 session without scrollback is `core_shared.rs`'s older-holder test, both added in review round 2. Restores start all at once rather than 4 at a time: a shell's start
 is short, and holders queued behind others could not be attached meanwhile; ST-49 measures 100 at once. In the
 containers a `docker restart` keeps the VM's boot ID, so those restores say the processes ended; the boot-ID rule
 that says "after restart" is unit-tested.
@@ -291,21 +295,21 @@ the host's Details actions and Removing TRC by hand.
 
 ## 7. Status
 
-| Story | Status  | Commit |
-| ----- | ------- | ------ |
-| ST-38 | Done    | —      |
-| ST-39 | Done    | —      |
-| ST-40 | Done    | —      |
-| ST-41 | Done    | —      |
-| ST-42 | Done    | —      |
-| ST-43 | Done    | —      |
-| ST-44 | Done    | —      |
-| ST-45 | Done    | —      |
-| ST-46 | Done    | —      |
-| ST-47 | Done    | —      |
-| ST-48 | Done    | —      |
-| ST-49 | Planned | —      |
-| ST-50 | Planned | —      |
+| Story | Status      | Commit |
+| ----- | ----------- | ------ |
+| ST-38 | Done        | —      |
+| ST-39 | Done        | —      |
+| ST-40 | Done        | —      |
+| ST-41 | Done        | —      |
+| ST-42 | Done        | —      |
+| ST-43 | Done        | —      |
+| ST-44 | Done        | —      |
+| ST-45 | Done        | —      |
+| ST-46 | Done        | —      |
+| ST-47 | Done        | —      |
+| ST-48 | Done        | —      |
+| ST-49 | In progress | —      |
+| ST-50 | Planned     | —      |
 
 ## 8. Reviews (P-51)
 
@@ -314,7 +318,8 @@ is listed below with why it stays.
 
 | Round | Code review (C/H/M/L) | Audit (C/H/M/L) | Fixes                     |
 | ----- | --------------------- | --------------- | ------------------------- |
-| 1     | 0 / 2 / 6 / 7         | 0 / 1 / 8 / 1   | the review round 1 commit |
+| 1     | 0 / 2 / 6 / 7         | 0 / 1 / 8 / 1   | `169c866`                 |
+| 2     | 0 / 2 / 2 / 3         | 0 / 2 / 4 / 3   | the review round 2 commit |
 
 The highs:
 
@@ -324,7 +329,21 @@ The highs:
   hid the next restart's announcement (round 1).
 - `canary.nfr.test.ts` failed on the saved session data it is meant to keep; it now scans the daemon's logs only and
   checks that the saved files are private (round 1).
+- On a disk that stopped answering, each save queued another whole copy of the history; a rewrite now waits until
+  the last one has replaced the file (round 2).
+- A rewrite that landed after a later record was dropped marked the file current, losing that record; the file now
+  stays stale until a rewrite finished after the last drop lands (round 2).
+- The Mac's `sessions.json` kept the program-set title of a session that saves nothing to disk (round 2).
+- ST-44 was marked Done without its restart of every test host and its restore of a 0.3.0 session; both tests now
+  exist (round 2).
 
 What stays, and why:
 
 - P-44 names a checkbox; the two settings are switches, as every on-off setting in the app is, with P-44's label.
+- P-43 has Upgrade daemon "enabled only when" the host runs an older daemon; it is hidden otherwise rather than
+  disabled, as a disabled button is skipped by Tab and offers nothing to act on, and the details say "Up to date"
+  when the host runs the app's daemon, as P-43 asks.
+- With "Save scrollback to disk" off, `meta.json` still keeps the session's last working folder, which may come from
+  OSC 7: restoring the shell in its folder (US-3.1.3) needs it, and it is the shell's state rather than output.
+- A session whose holder introduced itself late joins the end of the list rather than its saved place, as the user
+  may have reordered the list meanwhile.

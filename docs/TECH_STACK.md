@@ -741,8 +741,10 @@ Rules:
   adds the marker line, then starts the shell. Commands are never re-run.
   A starting core restores every session no live holder serves, and a holder
   that dies while the core runs is restored in place, but not again within
-  30 s of a restore. Sessions that are not restored get a holder that runs
-  no shell and serves their saved scrollback (P-41).
+  30 s of a restore unless the host restarted; such a session is kept ended.
+  A session whose holder ended 3 times within 10 minutes is left Failed to
+  start instead. Sessions that are not restored get a holder that runs no
+  shell and serves their saved scrollback (P-41).
 
 There is no app-level encryption, because SEC-05's user-only permissions are
 the control (D-05, which resolves OQ-1). There is no SQLite either: it needs a

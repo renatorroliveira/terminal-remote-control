@@ -80,6 +80,9 @@ function DetailsDialog({ host, shell, workspace, onClose }: HostDialogProps) {
                     {intl.formatMessage(detailsMessages.upgradeHint, { version: daemon.bundled ?? '' })}
                 </p>
             )}
+            {daemon !== undefined && daemon.version === daemon.bundled && (
+                <p className={styles['hint']}>{intl.formatMessage(detailsMessages.upToDate)}</p>
+            )}
             <div className={styles['actions']}>
                 {upgradable && (
                     <Button className={BUTTON} onPress={upgrade}>

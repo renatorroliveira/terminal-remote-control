@@ -11,7 +11,7 @@ use trc_protocol::PersistenceFailure;
 use trc_vt::{GhosttyTerminal, HistoryRows, HistoryTail, TerminalState, primary_screen};
 
 use super::scrollback_file::{Record, encode};
-use super::scrollback_writer::{MAX_QUEUED_BYTES, ScrollbackWriter};
+use super::scrollback_writer::{MAX_QUEUED_BYTES, Retired, ScrollbackWriter};
 
 /// How often new output is saved: well inside NFR-08's 5 s, with the time a write takes.
 pub const SAVE_INTERVAL: Duration = Duration::from_secs(2);
@@ -49,8 +49,13 @@ impl Persistence {
     /// Starts saving to the scrollback file in `dir`, beginning with a whole new file of what the terminal holds;
     /// `keep` is how much of the file reading trusted, which stays until the new file replaces it.
     pub fn start(dir: &Path, keep: u64, scrollback_lines: u32) -> Self {
+        Self::with_writer(ScrollbackWriter::open(dir, keep), scrollback_lines)
+    }
+
+    /// Starts saving through `writer`, beginning with a whole new file of what the terminal holds.
+    fn with_writer(writer: ScrollbackWriter, scrollback_lines: u32) -> Self {
         Self {
-            writer: ScrollbackWriter::open(dir, keep),
+            writer,
             tail: HistoryTail::from_start(),
             rewrite: None,
             rewrite_wanted: true,
@@ -89,25 +94,29 @@ impl Persistence {
         self.writer.failure()
     }
 
-    /// Deletes the file, as turning "Save scrollback to disk" off asks (US-3.2.2), once queued writes are done.
-    pub fn delete(self) {
-        self.writer.delete();
+    /// Deletes the file, as turning "Save scrollback to disk" off asks (US-3.2.2), once queued writes are done,
+    /// without waiting for them: the writer finishes on its own.
+    pub fn delete(self) -> Retired {
+        self.writer.retire()
     }
 
     /// Saves what changed since the last save. Nothing changes on the primary screen while a full-screen program
-    /// runs, and libghostty-vt cannot format it then, so saving waits for the program to leave.
+    /// runs, and libghostty-vt cannot format it then, so saving waits for the program to leave. A new rewrite waits
+    /// until the last one has replaced the file, so a disk that stops answering never queues more than one copy of the
+    /// history (NFR-09).
     pub fn save(&mut self, terminal: &GhosttyTerminal, now: Instant) {
         if terminal.alternate_screen() {
             return;
         }
-        if self.writer.stale() && self.rewrite.is_none() && !self.rewrite_wanted {
+        let idle = self.rewrite.is_none() && !self.writer.rewriting();
+        if self.writer.stale() && idle && !self.rewrite_wanted {
             if self.writer.failure().is_some() {
                 self.retry(now);
             } else {
                 self.rewrite_wanted = true;
             }
         }
-        if self.rewrite_wanted && self.rewrite.is_none() {
+        if self.rewrite_wanted && idle {
             self.begin_rewrite();
         }
         if self.rewrite.is_some() {
@@ -231,6 +240,7 @@ mod tests {
 
     use super::*;
     use crate::holder::scrollback_file::{FILE_NAME, read};
+    use crate::holder::scrollback_writer::PausedDisk;
     use crate::test_support::temp_dir;
 
     fn terminal(scrollback_lines: usize) -> GhosttyTerminal {
@@ -263,10 +273,15 @@ mod tests {
         replay.plain_text().unwrap()
     }
 
+    /// Feeds output and saves it, then waits for the rewrite it may have finished to land, as the two seconds
+    /// between saves let it.
     fn saved(live: &mut GhosttyTerminal, persistence: &mut Persistence, output: &[u8]) {
         live.feed(output);
         persistence.output();
         persistence.save(live, Instant::now());
+        while persistence.writer.rewriting() {
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
     }
 
     #[test]
@@ -356,12 +371,41 @@ mod tests {
     }
 
     #[test]
+    fn queues_one_rewrite_at_a_time_while_the_disk_does_not_answer() {
+        let dir = temp_dir("persistence-stalled");
+        let (writer, disk) = PausedDisk::writer(&dir);
+        let mut persistence = Persistence::with_writer(writer, 1_000);
+        let mut live = terminal(1_000);
+        let start = Instant::now();
+        for save in 0..40_u32 {
+            live.feed(&lines(save * 2_000, 2_000));
+            persistence.output();
+            persistence.save(&live, start + SAVE_INTERVAL * save);
+        }
+        assert_eq!(disk.rewrites_waiting(), 1);
+    }
+
+    #[test]
     fn deletes_what_it_saved() {
         let dir = temp_dir("persist-delete");
         let mut live = terminal(1_000);
         let mut persistence = Persistence::start(&dir, 0, 1_000);
         saved(&mut live, &mut persistence, &lines(0, 40));
-        persistence.delete();
+        let retired = persistence.delete();
+        while !retired.finished() {
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
         assert!(!dir.join(FILE_NAME).exists());
+    }
+
+    #[test]
+    fn stops_saving_without_waiting_for_a_disk_that_does_not_answer() {
+        let dir = temp_dir("persist-delete-stalled");
+        let (writer, _disk) = PausedDisk::writer(&dir);
+        let mut persistence = Persistence::with_writer(writer, 1_000);
+        let mut live = terminal(1_000);
+        live.feed(&lines(0, 40));
+        persistence.save(&live, Instant::now());
+        assert!(persistence.delete().finished());
     }
 }

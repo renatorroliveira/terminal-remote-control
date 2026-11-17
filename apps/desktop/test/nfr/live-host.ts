@@ -218,6 +218,31 @@ export async function connectLive(alias: string, options: LiveOptions = {}): Pro
     return host;
 }
 
+/** Restarts a test host's container, which ends every process in it as a reboot does (P-50). */
+export function restartTestHost(alias: string): void {
+    const context = process.env['DOCKER_CONTEXT'] ?? 'colima-trc';
+    const container = `trc-test-hosts-${alias.replace(/^trc-/, '')}-1`;
+    execFileSync('docker', ['--context', context, 'restart', '--time', '1', container], {
+        stdio: 'ignore',
+        timeout: 60_000,
+    });
+}
+
+/** Connects `alias` to the install at `root` again, retrying for a minute while a restarted host's sshd comes up. */
+export async function reconnectLive(alias: string, root: string): Promise<LiveHost> {
+    const started = performance.now();
+    for (;;) {
+        try {
+            return await connectLive(alias, { root });
+        } catch (error) {
+            if (performance.now() - started > 60_000) {
+                throw error;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+    }
+}
+
 /** Closes every live host and removes its install. */
 export function closeLiveHosts(): void {
     for (const host of opened.splice(0)) {

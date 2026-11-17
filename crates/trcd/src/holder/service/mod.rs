@@ -26,6 +26,7 @@ use super::protocol::{
     HOLDER_PROTOCOL, HolderCommand, HolderEvent, HolderRestore, HolderSpec, HolderStatus, SESSION_STREAM,
 };
 use super::pty::{Pty, SpawnSpec};
+use super::scrollback_writer::Retired;
 use super::stop_plan::{DEFAULT_GRACE, StopSignal, stop_plan};
 use crate::accept_backoff::AcceptBackoff;
 use crate::frame_io::{FrameReader, FrameSender};
@@ -56,6 +57,8 @@ pub struct Holder {
     attachments: Attachments,
     /// The session's saving to disk, while "Save scrollback to disk" is on (US-3.2.2).
     persistence: Option<Persistence>,
+    /// The writer of a saving that was turned off, deleting the file on its own; saving starts again only after.
+    retired: Option<Retired>,
     status: HolderStatus,
     stopping: Option<Stopping>,
     after_exit: AfterExit,
@@ -120,6 +123,7 @@ impl Holder {
             log: OutputLog::default(),
             attachments: Attachments::default(),
             persistence: None,
+            retired: None,
             status: HolderStatus {
                 state: SessionState::Starting,
                 pid: None,
@@ -154,6 +158,7 @@ impl Holder {
             self.flush_output();
         }
         drop(self.persistence.take());
+        drop(self.retired.take());
         self.sender = None;
         if let Some(writer) = self.writer.take() {
             let _ = writer.await;

@@ -91,6 +91,11 @@ export const detailsMessages = {
         defaultMessage: 'This app brings daemon {version}. Upgrading keeps every session.',
         description: 'Why Upgrade daemon shows: the host runs an older daemon.',
     }),
+    upToDate: defineMessage({
+        id: 'details.upToDate',
+        defaultMessage: 'Up to date: the host runs the daemon this app brings.',
+        description: 'Why Upgrade daemon does not show (P-43).',
+    }),
     restart: defineMessage({ id: 'details.restart', defaultMessage: 'Restart daemon', description: 'Button.' }),
     remove: defineMessage({
         id: 'details.remove',

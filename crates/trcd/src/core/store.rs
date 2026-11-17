@@ -3,12 +3,14 @@
 //! a temporary file that is synced, then renamed over the old one, and the folder is synced. A thread of the store's
 //! own does the writing and deleting, in the order asked, so the core's event loop never waits for the disk.
 
+use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{Receiver, Sender, channel, sync_channel};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel, sync_channel};
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use trc_protocol::{SessionId, SessionInfo};
@@ -20,6 +22,8 @@ use crate::session_id::is_session_id;
 /// The file's name in a session's data folder.
 pub const META_FILE: &str = "meta.json";
 const FORMAT: u32 = 1;
+/// How long after a failed write the store tries the record again (US-3.1).
+const RETRY_AFTER: Duration = Duration::from_secs(10);
 
 /// What the core keeps of one session on disk.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -71,8 +75,18 @@ enum Job {
 impl SessionStore {
     /// The store of the sessions folder `dir`, whose folders belong to `uid`, with its writing thread.
     pub fn new(dir: PathBuf, uid: u32) -> Self {
+        Self::retrying_after(dir, uid, RETRY_AFTER)
+    }
+
+    /// The store, trying a write that failed again after `retry_after`.
+    fn retrying_after(dir: PathBuf, uid: u32, retry_after: Duration) -> Self {
         let (jobs, receiver) = channel();
-        let disk = Disk { dir: dir.clone(), uid };
+        let mut disk = Disk {
+            dir: dir.clone(),
+            uid,
+            failed: BTreeMap::new(),
+            retry_after,
+        };
         let thread = std::thread::spawn(move || disk.run(&receiver));
         Self {
             dir,
@@ -156,31 +170,67 @@ impl Drop for SessionStore {
     }
 }
 
-/// The store's writing thread.
+/// The store's writing thread, which tries every record it could not write again after a while, as the core writes
+/// a record only when it changes.
 struct Disk {
     dir: PathBuf,
     uid: u32,
+    failed: BTreeMap<SessionId, SessionMeta>,
+    retry_after: Duration,
 }
 
 impl Disk {
-    fn run(&self, jobs: &Receiver<Job>) {
-        while let Ok(job) = jobs.recv() {
-            match job {
-                Job::Write(meta) => self.write(&meta),
-                Job::Remove(session) => remove_folder(&self.dir.join(&session.0), &session),
-                Job::RemoveAll(done) => {
-                    let _ = done.send(remove_tree(&self.dir));
-                }
-                Job::Flush(done) => {
-                    let _ = done.send(());
-                }
+    fn run(&mut self, jobs: &Receiver<Job>) {
+        loop {
+            let next = if self.failed.is_empty() {
+                jobs.recv().map_err(|_| RecvTimeoutError::Disconnected)
+            } else {
+                jobs.recv_timeout(self.retry_after)
+            };
+            match next {
+                Ok(job) => self.handle(job),
+                Err(RecvTimeoutError::Timeout) => self.retry(),
+                Err(RecvTimeoutError::Disconnected) => return self.retry(),
             }
         }
     }
 
-    fn write(&self, meta: &SessionMeta) {
-        if let Err(error) = write_record(&self.dir.join(&meta.info.id.0), self.uid, meta) {
-            tracing::warn!(session = %meta.info.id.0, %error, "the session's record could not be saved");
+    fn handle(&mut self, job: Job) {
+        match job {
+            Job::Write(meta) => self.write(*meta),
+            Job::Remove(session) => {
+                self.failed.remove(&session);
+                remove_folder(&self.dir.join(&session.0), &session);
+            }
+            Job::RemoveAll(done) => {
+                self.failed.clear();
+                let _ = done.send(remove_tree(&self.dir));
+            }
+            Job::Flush(done) => {
+                let _ = done.send(());
+            }
+        }
+    }
+
+    fn retry(&mut self) {
+        for meta in std::mem::take(&mut self.failed).into_values() {
+            self.write(meta);
+        }
+    }
+
+    /// Writes a record; one that fails is logged the first time and kept to try again.
+    fn write(&mut self, meta: SessionMeta) {
+        let session = meta.info.id.clone();
+        match write_record(&self.dir.join(&session.0), self.uid, &meta) {
+            Ok(()) => {
+                self.failed.remove(&session);
+            }
+            Err(error) => {
+                if !self.failed.contains_key(&session) {
+                    tracing::warn!(session = %session.0, %error, "the session's record could not be saved; retrying");
+                }
+                self.failed.insert(session, meta);
+            }
         }
     }
 }
@@ -380,6 +430,32 @@ mod tests {
         store.remove(&kept.info.id);
         store.flush();
         assert!(!store.session_dir(&kept.info.id).exists());
+    }
+
+    #[test]
+    fn writes_a_record_again_once_its_folder_can_be_written() {
+        let dir = temp_dir("store-retry");
+        let store = SessionStore::retrying_after(
+            dir.clone(),
+            rustix::process::geteuid().as_raw(),
+            Duration::from_millis(20),
+        );
+        let meta = sample("0123456789abcdef", 0);
+        let blocker = dir.join(&meta.info.id.0);
+        std::fs::write(&blocker, b"not a folder").unwrap();
+        store.write(&meta);
+        store.flush();
+        assert!(store.read_all().is_empty());
+        std::fs::remove_file(&blocker).unwrap();
+        let started = std::time::Instant::now();
+        while store.read_all().is_empty() {
+            assert!(
+                started.elapsed() < Duration::from_secs(5),
+                "the record was never written again"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(store.read_all(), vec![meta]);
     }
 
     #[test]

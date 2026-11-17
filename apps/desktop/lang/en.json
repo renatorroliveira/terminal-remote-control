@@ -363,6 +363,10 @@
     "defaultMessage": "In a way this version does not know",
     "description": "How the daemon runs, when it says something this app does not know."
   },
+  "details.upToDate": {
+    "defaultMessage": "Up to date: the host runs the daemon this app brings.",
+    "description": "Why Upgrade daemon does not show (P-43)."
+  },
   "details.upgrade": {
     "defaultMessage": "Upgrade daemon",
     "description": "Button."
