@@ -87,14 +87,21 @@ impl SnapshotStream {
         self.phase == Phase::Done
     }
 
-    /// Whether this whole-buffer snapshot left out the history because a full-screen program ran when it started;
-    /// the client gets it once the program leaves the alternate screen (D-49).
+    /// Whether this whole-buffer snapshot left out the history, or the rest of it, because a full-screen program ran
+    /// when it started or began while it streamed; the client gets it once the program leaves the alternate screen
+    /// (D-49).
     pub fn history_deferred(&self) -> bool {
         self.deferred
     }
 
-    /// The next rows of history, or `None` once the history is done, which moves the stream on to the screen.
+    /// The next rows of history, or `None` once the history is done, which moves the stream on to the screen. A
+    /// full-screen program that started meanwhile defers the rest of the history, as only its screen can be formatted.
     fn history_block(&mut self, terminal: &GhosttyTerminal, rows: u32) -> Result<Option<Vec<u8>>, VtError> {
+        if is_alternate(terminal) {
+            self.deferred = true;
+            self.phase = Phase::Screen;
+            return Ok(None);
+        }
         let source = terminal.raw();
         let history = history_rows(source);
         let first = self.next.as_ref().map_or(Some(0), TrackedRow::y).unwrap_or(0);

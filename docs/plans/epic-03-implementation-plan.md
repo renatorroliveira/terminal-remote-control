@@ -323,7 +323,8 @@ is listed below with why it stays.
 | ----- | --------------------- | --------------- | ------------------------- |
 | 1     | 0 / 2 / 6 / 7         | 0 / 1 / 8 / 1   | `a08fc78`                 |
 | 2     | 0 / 2 / 2 / 3         | 0 / 2 / 4 / 3   | `84a38fe`                 |
-| 3     | 0 / 0 / 1 / 3         | 0 / 2 / 2 / 1   | the review round 3 commit |
+| 3     | 0 / 0 / 1 / 3         | 0 / 2 / 2 / 1   | `4f40940`                 |
+| 4     | 0 / 0 / 1 / 2         | 0 / 0 / 1 / 1   | the review round 4 commit |
 
 The highs:
 
@@ -355,5 +356,9 @@ What stays, and why:
   may have reordered the list meanwhile.
 - A holder that still serves its socket but never answers keeps its session hidden until the next core asks it
   again, as in E2: starting a second holder beside it would claim a restore that did not happen.
-- `shares_a_session_between_two_apps` failed once in the Alpine container and not in 75 reruns; the review found no
-  race that drops a second client's output, and busybox ash's cursor query at its prompt can swallow early input.
+- `shares_a_session_between_two_apps` failed once in the Alpine container and not in 75 reruns. The review found no
+  race that drops a second client's output; a guess, not shown, is that busybox ash's cursor query at its prompt
+  swallowed early input. The panic text of another failure, which prints both clients' output, would settle it.
+- A holder keeps SIGTERM's default action, so a reboot or a logout that ends user processes ends it before it could
+  report a shell that the same signal ended as Exited; the systemd hosts' restarts, where systemd signals every
+  process at shutdown, restore their sessions.

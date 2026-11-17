@@ -340,6 +340,9 @@ impl Attachment {
         };
         let done = stream.as_ref().is_none_or(SnapshotStream::is_done);
         let complete = stream.as_ref().is_none_or(SnapshotStream::complete);
+        if scope == SnapshotScope::Full && stream.as_ref().is_some_and(SnapshotStream::history_deferred) {
+            self.lacks_history = true;
+        }
         match block {
             Ok(Some(block)) => {
                 self.output(block);
@@ -795,6 +798,42 @@ mod tests {
         assert_eq!(rebuilt.plain_text().unwrap(), fixture.terminal.plain_text().unwrap());
         assert_eq!(rebuilt.scrollback_rows(), fixture.terminal.scrollback_rows());
         assert_eq!(output_of(&after, 2), b"\x1b[?1049l$ ");
+    }
+
+    #[test]
+    fn sends_the_history_once_a_full_screen_program_that_started_while_it_streamed_ends() {
+        let mut fixture = Fixture::new();
+        let history: String = (0..600).map(|row| format!("old {row}\r\n")).collect();
+        fixture.output(history.as_bytes());
+        fixture.attach(1, 1, None, false);
+        fixture.drain();
+        fixture.output(VIM);
+        fixture.grant(1, u32::MAX);
+        let rest = fixture.drain();
+        assert!(matches!(
+            events(&rest)[..],
+            [.., HolderEvent::Synced { attachment: 1, .. }]
+        ));
+        fixture.output(b"\x1b[?1049l$ ");
+        fixture.left_alternate_screen();
+        let after = fixture.drain();
+        assert!(
+            matches!(
+                events(&after)[..],
+                [
+                    HolderEvent::Resync {
+                        attachment: 1,
+                        kind: ResyncKind::Full
+                    },
+                    HolderEvent::Synced { attachment: 1, .. }
+                ]
+            ),
+            "{:?}",
+            events(&after)
+        );
+        let mut rebuilt = terminal();
+        rebuilt.feed(&output_of(&after, 1));
+        assert_eq!(rebuilt.scrollback_rows(), fixture.terminal.scrollback_rows());
     }
 
     #[test]

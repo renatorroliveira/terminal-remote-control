@@ -2,7 +2,7 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.16                     |
+| Status       | Draft v0.17                     |
 | Owner        | Renato Oliveira                 |
 | Last updated | 2026-11-16                      |
 | Scope        | P0 in seven epics, then GA (E8) |
@@ -651,6 +651,10 @@ applies from the epic in the last column onward.
   E3 drops the copy (owner, 2026-11-16): a client attaching during a
   full-screen program gets that screen, and the shell's history and screen
   when the program leaves it, as the app shows only the active screen.
+  **Resolved in E3** (ST-43, ST-49): attaching during a full-screen program
+  adds nothing measurable at either scrollback limit, and the history that
+  follows the program's end adds under 2 MiB at the 100,000-line maximum
+  (`docs/verification/E3-nfr.md`).
 
 ## 9. Epics
 
@@ -1138,8 +1142,10 @@ Acceptance criteria:
    boot (owner, E3).
 2. Scrollback is persisted to disk continuously (NFR-08, SEC-05).
 3. For each session whose processes ended while it was running — a reboot, a
-   logout that ends user processes, a killed process; not ones the user stopped
-   or closed (owner, E3) — the daemon starts a new process with the same shell,
+   logout that ends user processes, a killed or crashed daemon process for the
+   session (P-40); not ones the user stopped or closed, nor a shell that exited
+   or was ended on its own, which leaves the session Exited (US-1.9) (owner,
+   E3) — the daemon starts a new process with the same shell,
    arguments, name, size and list position, the environment the session was
    started with, and the last known working directory. The working directory
    comes from shell integration (OSC 7) when available (US-5.1), otherwise from
