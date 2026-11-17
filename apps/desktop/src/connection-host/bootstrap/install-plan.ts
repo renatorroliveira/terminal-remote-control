@@ -17,9 +17,22 @@ export type InstallPlan =
           readonly arch: string;
       };
 
-const PLATFORM_BY_ARCH: ReadonlyMap<string, DaemonPlatform> = new Map([
-    ['x86_64', 'linux-x64'],
-    ['arm64', 'linux-arm64'],
+/** The bundled binary for each system and architecture the host reports; a Mac of either runs the universal one. */
+const PLATFORMS: ReadonlyMap<string, ReadonlyMap<string, DaemonPlatform>> = new Map([
+    [
+        'Linux',
+        new Map<string, DaemonPlatform>([
+            ['x86_64', 'linux-x64'],
+            ['arm64', 'linux-arm64'],
+        ]),
+    ],
+    [
+        'Darwin',
+        new Map<string, DaemonPlatform>([
+            ['x86_64', 'darwin-universal'],
+            ['arm64', 'darwin-universal'],
+        ]),
+    ],
 ]);
 
 /**
@@ -34,10 +47,11 @@ export function planInstall(hello: HelloLine, manifest: DaemonManifest): Install
         os: hello.os,
         arch: hello.arch,
     });
-    if (hello.os !== 'Linux') {
+    const platforms = PLATFORMS.get(hello.os);
+    if (platforms === undefined) {
         return unsupported('os');
     }
-    const platform = PLATFORM_BY_ARCH.get(hello.arch);
+    const platform = platforms.get(hello.arch);
     const binary = platform === undefined ? undefined : manifest.binaries[platform];
     if (platform === undefined || binary === undefined) {
         return unsupported('arch');

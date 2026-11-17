@@ -7,8 +7,8 @@ export interface DaemonFile {
     readonly size: number;
 }
 
-/** The daemon platforms every release bundles (US-1.4.2). */
-const DAEMON_PLATFORMS = ['linux-x64', 'linux-arm64'] as const;
+/** The daemon platforms every release bundles (US-1.4.2, US-4.5.1). */
+export const DAEMON_PLATFORMS = ['linux-x64', 'linux-arm64', 'darwin-universal'] as const;
 const FUSE_LINE = /^\s+(\w+):\s*(true|false)\s*$/;
 const SEAM_NAME = /TRC_TEST_[A-Z_]+/g;
 

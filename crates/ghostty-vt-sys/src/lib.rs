@@ -39,8 +39,8 @@ mod tests {
             triple::zig_target("aarch64-unknown-linux-musl"),
             Some("aarch64-linux-musl")
         );
-        assert_eq!(triple::zig_target("aarch64-apple-darwin"), Some("aarch64-macos"));
-        assert_eq!(triple::zig_target("x86_64-apple-darwin"), Some("x86_64-macos"));
+        assert_eq!(triple::zig_target("aarch64-apple-darwin"), Some("aarch64-macos.13.0"));
+        assert_eq!(triple::zig_target("x86_64-apple-darwin"), Some("x86_64-macos.13.0"));
         assert_eq!(triple::zig_target("x86_64-unknown-linux-gnu"), Some("x86_64-linux-gnu"));
         assert_eq!(
             triple::zig_target("aarch64-unknown-linux-gnu"),

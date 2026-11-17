@@ -258,7 +258,7 @@ const FAILURE_MESSAGES: Readonly<
         }),
         remedy: defineMessage<FailureValues>({
             id: 'failure.unsupportedOs.remedy',
-            defaultMessage: 'Connect to a Linux host on x86_64 or arm64.',
+            defaultMessage: 'Connect to a Linux host or a Mac, on x86_64 or arm64.',
             description: 'How to fix a failed connection.',
         }),
     },
@@ -270,7 +270,7 @@ const FAILURE_MESSAGES: Readonly<
         }),
         remedy: defineMessage<FailureValues>({
             id: 'failure.unsupportedArch.remedy',
-            defaultMessage: 'Connect to a Linux host on x86_64 or arm64.',
+            defaultMessage: 'Connect to a Linux host or a Mac, on x86_64 or arm64.',
             description: 'How to fix a failed connection.',
         }),
     },

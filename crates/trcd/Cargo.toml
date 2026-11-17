@@ -22,5 +22,8 @@ tracing-subscriber.workspace = true
 trc-protocol = { path = "../trc-protocol" }
 trc-vt = { path = "../trc-vt" }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2.191"
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread"] }

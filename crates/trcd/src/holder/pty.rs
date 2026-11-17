@@ -417,7 +417,33 @@ fn without_deleted_mark(path: String) -> String {
     path.strip_suffix(" (deleted)").map_or(path.clone(), str::to_owned)
 }
 
-#[cfg(not(target_os = "linux"))]
+/// The working folder macOS reports for a process (`proc_pidinfo`'s vnode path information).
+#[cfg(target_os = "macos")]
+fn process_cwd(pid: u32) -> Option<String> {
+    let mut info = std::mem::MaybeUninit::<libc::proc_vnodepathinfo>::zeroed();
+    let size = i32::try_from(std::mem::size_of::<libc::proc_vnodepathinfo>()).ok()?;
+    // SAFETY: `info` is a writable buffer of exactly `size` bytes, which is all `proc_pidinfo` writes to.
+    let written = unsafe {
+        libc::proc_pidinfo(
+            i32::try_from(pid).ok()?,
+            libc::PROC_PIDVNODEPATHINFO,
+            0,
+            info.as_mut_ptr().cast(),
+            size,
+        )
+    };
+    if written != size {
+        return None;
+    }
+    // SAFETY: `proc_pidinfo` filled the whole structure, as `written` says.
+    let info = unsafe { info.assume_init() };
+    let path = info.pvi_cdir.vip_path;
+    // SAFETY: the kernel writes a NUL-terminated path into `vip_path`, which is `MAXPATHLEN` bytes long.
+    let path = unsafe { std::ffi::CStr::from_ptr(path.as_ptr().cast()) };
+    path.to_str().ok().filter(|path| !path.is_empty()).map(str::to_owned)
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 fn process_cwd(_pid: u32) -> Option<String> {
     None
 }
@@ -491,6 +517,25 @@ mod tests {
             "{} bytes queued",
             pty.queued_reply_bytes()
         );
+    }
+
+    #[tokio::test]
+    async fn reads_the_working_folder_of_the_process_from_the_os() {
+        let folder = std::env::temp_dir().join(format!("trc-pty-cwd-{}", std::process::id()));
+        std::fs::create_dir_all(&folder).unwrap();
+        let mut moved = spec("cd \"$TRC_FOLDER\" && echo moved && sleep 5");
+        moved
+            .env
+            .insert("TRC_FOLDER".into(), folder.to_string_lossy().into_owned());
+        let (pty, mut output) = Pty::spawn(&moved).unwrap();
+        let mut text = Vec::new();
+        while !String::from_utf8_lossy(&text).contains("moved") {
+            text.extend(output.chunks.recv().await.unwrap());
+        }
+        let expected = std::fs::canonicalize(&folder).unwrap();
+        assert_eq!(pty.cwd().map(std::path::PathBuf::from), Some(expected));
+        pty.signal(StopSignal::Kill);
+        let _ = std::fs::remove_dir(&folder);
     }
 
     #[tokio::test]

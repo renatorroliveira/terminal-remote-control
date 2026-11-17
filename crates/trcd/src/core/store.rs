@@ -274,10 +274,42 @@ fn remove_tree(dir: &Path) -> io::Result<()> {
 
 /// The host's boot ID, which changes with every boot; none where the OS has none.
 pub fn boot_id() -> Option<String> {
-    std::fs::read_to_string("/proc/sys/kernel/random/boot_id")
-        .ok()
+    read_boot_id()
         .map(|id| id.trim().to_owned())
         .filter(|id| !id.is_empty())
+}
+/// Linux's boot ID, which every boot changes.
+#[cfg(target_os = "linux")]
+fn read_boot_id() -> Option<String> {
+    std::fs::read_to_string("/proc/sys/kernel/random/boot_id").ok()
+}
+
+/// macOS's boot session UUID, which every boot changes and a logout keeps.
+#[cfg(target_os = "macos")]
+fn read_boot_id() -> Option<String> {
+    let mut buffer = [0_u8; 64];
+    let mut length = buffer.len();
+    // SAFETY: the name is NUL-terminated, and `buffer` is writable for `length` bytes, which `sysctlbyname` updates
+    // to the length it wrote.
+    let status = unsafe {
+        libc::sysctlbyname(
+            c"kern.bootsessionuuid".as_ptr(),
+            buffer.as_mut_ptr().cast(),
+            &raw mut length,
+            std::ptr::null_mut(),
+            0,
+        )
+    };
+    let written = buffer.get(..length).filter(|_| status == 0)?;
+    std::ffi::CStr::from_bytes_until_nul(written)
+        .ok()
+        .and_then(|id| id.to_str().ok())
+        .map(str::to_owned)
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn read_boot_id() -> Option<String> {
+    None
 }
 
 fn read_meta(dir: &Path) -> Option<SessionMeta> {
@@ -490,6 +522,13 @@ mod tests {
             store.write(&busy);
             std::thread::sleep(Duration::from_millis(20));
         }
+    }
+
+    #[test]
+    fn reads_the_id_of_this_boot_from_the_os() {
+        let id = boot_id().unwrap_or_default();
+        assert_eq!(id.len(), 36, "{id:?}");
+        assert_eq!(boot_id().as_deref(), Some(id.as_str()));
     }
 
     #[test]
