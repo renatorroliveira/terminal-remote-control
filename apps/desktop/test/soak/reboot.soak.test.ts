@@ -1,7 +1,15 @@
-import { execFileSync } from 'node:child_process';
 import type { SessionInfo } from '@trc/protocol';
 import { afterAll, describe, expect, it } from 'vitest';
-import { closeLiveHosts, connectLive, type LiveHost, ssh, testHostsMissing, waitFor } from '../nfr/live-host';
+import {
+    closeLiveHosts,
+    connectLive,
+    type LiveHost,
+    reconnectLive,
+    restartTestHost,
+    ssh,
+    testHostsMissing,
+    waitFor,
+} from '../nfr/live-host';
 import { percentile, record } from '../nfr/stats';
 import { soakCycles } from './soak';
 
@@ -9,35 +17,17 @@ import { soakCycles } from './soak';
 const CYCLES = soakCycles('TRC_SOAK_REBOOT_CYCLES', 100);
 const HOST = 'trc-ubuntu';
 const SESSIONS = 3;
+/**
+ * How long the daemon waits before it restores the same session again when the host's boot ID did not change
+ * (`RESTORE_AGAIN_AFTER_MS` in `crates/trcd/src/core/restore.rs`), plus a margin. A container restart keeps the VM's
+ * boot ID, so each cycle waits this long after the last restore, as a real reboot takes longer anyway.
+ */
+const RESTORE_AGAIN_AFTER_MS = 31_000;
 const MARKER = /Session restored (after restart )?on \d{4}-\d\d-\d\d \d\d:\d\d:\d\d UTC\. Previous processes ended\./g;
 
 afterAll(() => {
     closeLiveHosts();
 });
-
-/** Restarts the test host's container, which ends every process in it as a reboot does (P-50). */
-function restartHost(): void {
-    const context = process.env['DOCKER_CONTEXT'] ?? 'colima-trc';
-    execFileSync('docker', ['--context', context, 'restart', '--time', '1', 'trc-test-hosts-ubuntu-1'], {
-        stdio: 'ignore',
-        timeout: 60_000,
-    });
-}
-
-/** Connects to the run's install root again, retrying while the restarted host's sshd comes up. */
-async function reconnect(root: string): Promise<LiveHost> {
-    const started = performance.now();
-    for (;;) {
-        try {
-            return await connectLive(HOST, { root });
-        } catch (error) {
-            if (performance.now() - started > 60_000) {
-                throw error;
-            }
-            await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-    }
-}
 
 async function listed(host: LiveHost): Promise<readonly SessionInfo[]> {
     const { message } = await host.request({ type: 'listSessions', requestId: 70_000 }, 'sessions');
@@ -110,12 +100,16 @@ describe.skipIf(testHostsMissing() !== undefined)('soak: the host restarts (US-3
         }
         const restoredAt = new Map<string, number>();
         const back: number[] = [];
+        let lastRestore = Number.NEGATIVE_INFINITY;
         for (let cycle = 1; cycle <= CYCLES; cycle += 1) {
             await printSaved(host, ids, cycle);
+            const settled = lastRestore + RESTORE_AGAIN_AFTER_MS - performance.now();
+            await new Promise((resolve) => setTimeout(resolve, Math.max(0, settled)));
             host.connection.close();
-            restartHost();
+            restartTestHost(HOST);
             const restarted = performance.now();
-            host = await reconnect(root);
+            host = await reconnectLive(HOST, root);
+            lastRestore = performance.now();
             await checkRestored(host, ids, cycle, restoredAt);
             back.push(performance.now() - restarted);
         }

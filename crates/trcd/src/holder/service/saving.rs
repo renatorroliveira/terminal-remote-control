@@ -15,13 +15,17 @@ use crate::holder::scrollback_file::{FILE_NAME, read};
 const CLEAR_SCROLLBACK: &[u8] = b"\x1b[3J";
 
 impl Holder {
-    /// Starts saving when the session's options and data folder allow it; `keep` is how much of the folder's
-    /// scrollback file reading trusted.
+    /// Starts saving when the session's options and data folder allow it, and once the writer of a saving turned
+    /// off has deleted its file; `keep` is how much of the folder's scrollback file reading trusted.
     pub(super) fn start_saving(&mut self, keep: u64) {
+        if self.retired.as_ref().is_some_and(|retired| !retired.finished()) {
+            return;
+        }
+        self.retired = None;
         let Some(spec) = &self.spec else {
             return;
         };
-        if let (true, Some(dir)) = (spec.options.save_scrollback, &spec.data_dir) {
+        if let (true, Some(dir), None) = (spec.options.save_scrollback, &spec.data_dir, &self.persistence) {
             self.persistence = Some(Persistence::start(Path::new(dir), keep, spec.scrollback_lines));
         }
     }
@@ -40,8 +44,12 @@ impl Holder {
         kept
     }
 
-    /// Saves what changed since the last save, and reports when saving starts or stops failing.
+    /// Saves what changed since the last save, and reports when saving starts or stops failing. Saving turned back on
+    /// while the last writer was still deleting its file starts here, once it has.
     pub(super) fn save(&mut self) {
+        if self.retired.is_some() {
+            self.start_saving(0);
+        }
         let (Some(persistence), Some(terminal)) = (&mut self.persistence, &self.terminal) else {
             return;
         };
@@ -63,7 +71,7 @@ impl Holder {
         match (was_saving, options.save_scrollback) {
             (true, false) => {
                 if let Some(persistence) = self.persistence.take() {
-                    persistence.delete();
+                    self.retired = Some(persistence.delete());
                 }
                 self.status.persistence_failure = None;
                 self.send_status();

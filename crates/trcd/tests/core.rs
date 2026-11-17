@@ -389,6 +389,40 @@ async fn adopts_a_holder_that_answers_late_and_announces_its_session() {
     stop(next);
 }
 
+#[tokio::test]
+async fn brings_back_a_session_whose_holder_was_silent_at_start_and_then_died() {
+    let installed = Installed::new();
+    let core = installed.start_core();
+    let mut client = AppClient::greeted(&installed.core_socket()).await;
+    let (id, _stream) = running_session(&mut client, Some("lost")).await;
+    client.send(&ClientMessage::ListSessions { request_id: 3 });
+    let ServerMessage::Sessions { sessions, .. } = client.take(|m| matches!(m, ServerMessage::Sessions { .. })).await
+    else {
+        unreachable!()
+    };
+    let shell = i32::try_from(sessions[0].pid.unwrap()).unwrap();
+    let holder = rustix::process::Pid::from_raw(parent_of(shell)).unwrap();
+    stop(core);
+    client.until_closed().await;
+    let stopped = Stopped::new(holder);
+    let next = installed.start_core();
+    let mut client = AppClient::greeted(&installed.core_socket()).await;
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    rustix::process::kill_process(holder, rustix::process::Signal::KILL).unwrap();
+    drop(stopped);
+    let ServerMessage::SessionEvent {
+        change: SessionChange::Created { session },
+    } = client
+        .take(|m| matches!(m, ServerMessage::SessionEvent { change: SessionChange::Created { session } } if session.id == id))
+        .await
+    else {
+        unreachable!()
+    };
+    assert_eq!(session.custom_name.as_deref(), Some("lost"));
+    assert!(session.restored.is_some(), "{session:?}");
+    stop(next);
+}
+
 /// A process held stopped, which resumes when this drops, and is killed too when a panic dropped it, so a failing test
 /// never leaves a stopped holder behind.
 struct Stopped(rustix::process::Pid);

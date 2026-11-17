@@ -60,17 +60,29 @@ impl Core {
         gone.sort_by_key(|meta| meta.info.order);
         tracing::info!(sessions = gone.len(), "bringing back saved sessions");
         for meta in gone {
-            let Recovered { record, restore } = self.recovered(meta);
-            let (id, spec, name) = (
-                record.info.id.clone(),
-                record.spec.clone(),
-                record.info.custom_name.clone(),
-            );
-            self.registry.insert(record);
-            self.launch(id, spec, name, Some(restore));
+            self.bring_back(meta);
         }
         self.registry.arrange(&order);
         self.persist_all();
+    }
+
+    /// A holder that was silent at the core's start never introduced itself: its session comes back from its record
+    /// as one whose holder is gone does, at the end of the list, unless the user had closed it.
+    pub(super) fn recover_lost(&mut self, session: &SessionId) {
+        if self.registry.get(session).is_some() {
+            return;
+        }
+        let Some(meta) = self.context.store.read(session) else {
+            return;
+        };
+        if meta.closing {
+            return self.context.store.remove(session);
+        }
+        let info = self.bring_back(meta);
+        self.persist(session);
+        self.broadcast(&ServerMessage::SessionEvent {
+            change: SessionChange::Created { session: info },
+        });
     }
 
     /// Gives an adopted session what only its record kept: when it was restored, and whether the user had closed it,
@@ -113,6 +125,19 @@ impl Core {
         self.broadcast(&ServerMessage::SessionEvent {
             change: SessionChange::Updated { session: info },
         });
+    }
+
+    /// Lists a session brought back from its record and starts its new holder.
+    fn bring_back(&mut self, meta: SessionMeta) -> SessionInfo {
+        let Recovered { record, restore } = self.recovered(meta);
+        let (id, spec, name) = (
+            record.info.id.clone(),
+            record.spec.clone(),
+            record.info.custom_name.clone(),
+        );
+        let info = self.registry.insert(record);
+        self.launch(id, spec, name, Some(restore));
+        info
     }
 
     /// The record of a session brought back from `meta`, and what its new holder starts with.

@@ -67,12 +67,13 @@ pub async fn adopt_holders(run: &RunDir) -> Adoption {
 }
 
 /// Asks a holder that was silent at start again; its session, or `None` when it is gone or still does not answer, in
-/// which case its socket stays for the next core.
+/// which case the core brings the session back from its record (a holder that still holds its socket keeps a new
+/// one from starting, so the session shows as failed to start).
 pub async fn adopt_late(path: &Path, id: &SessionId) -> Option<Adopted> {
     match introduce_at(path, id, LATE_INTRODUCTION).await {
         Introduction::Adopted(found) => Some(*found),
         Introduction::Silent => {
-            tracing::warn!("a holder did not introduce itself; its socket is kept for the next core");
+            tracing::warn!("a holder did not introduce itself; its session comes back from its record");
             None
         }
         Introduction::Gone => None,

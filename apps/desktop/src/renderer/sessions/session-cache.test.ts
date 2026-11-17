@@ -39,6 +39,17 @@ describe('the session cache (US-2.3.2, P-30)', () => {
         expect(cachedSessions(listed(restored))).toEqual(cache);
     });
 
+    it('keeps no title its programs set for a session that saves nothing to disk (US-3.2.2)', () => {
+        const unsaved: SessionInfo = {
+            ...bashSession('a'),
+            title: 'cat secrets.txt',
+            options: { restore: true, saveScrollback: false },
+        };
+        expect(cachedSessions(listed([unsaved]))).toEqual({
+            [HOST]: [{ id: 'a', shell: 'bash', order: 0, state: 'running' }],
+        });
+    });
+
     it('keeps no more than sessions.json takes: long titles clipped whole, and at most 1,000 sessions a host', () => {
         const title = `${'x'.repeat(CACHE_LIMITS.text - 1)}😀 and more`;
         const many = Array.from({ length: CACHE_LIMITS.sessionsPerHost + 1 }, (_, order) => ({

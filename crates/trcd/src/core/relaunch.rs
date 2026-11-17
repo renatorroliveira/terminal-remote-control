@@ -7,8 +7,9 @@ use trc_protocol::SessionId;
 
 /// How many holder endings within [`WINDOW_MS`] keep a session from coming back.
 pub const MAX_ENDINGS: usize = 3;
-/// The time over which holder endings are counted, in milliseconds.
-pub const WINDOW_MS: u64 = 60_000;
+/// The time over which holder endings are counted, in milliseconds: long enough that a holder ending every 30 s, as
+/// often as a restore may follow another, still stops.
+pub const WINDOW_MS: u64 = 600_000;
 
 /// When each session's holder last ended.
 #[derive(Debug, Default)]
@@ -49,7 +50,7 @@ mod tests {
     }
 
     #[test]
-    fn counts_only_the_endings_of_the_last_minute() {
+    fn counts_only_the_endings_of_the_last_ten_minutes() {
         let mut ended = EndedHolders::default();
         assert!(ended.may_return(&id(), 0));
         assert!(ended.may_return(&id(), 1));

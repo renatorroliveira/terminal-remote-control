@@ -5,6 +5,7 @@ mod support;
 
 use std::collections::BTreeMap;
 use std::os::unix::fs::DirBuilderExt;
+use std::time::Duration;
 
 use support::{AppClient, Installed, stop};
 use tokio::net::UnixListener;
@@ -261,8 +262,8 @@ async fn serve_fake_holder(listener: UnixListener, home: String, proto: Option<u
     }
 }
 
-/// Serves a fake holder for session `id` where the core adopts it at start.
-fn plant_holder(installed: &Installed, id: &str, proto: Option<u32>) {
+/// Serves a fake holder for session `id` where the core adopts it at start, until the returned task is aborted.
+fn plant_holder(installed: &Installed, id: &str, proto: Option<u32>) -> tokio::task::JoinHandle<()> {
     let holders = installed.root.join("run/holders");
     std::fs::DirBuilder::new()
         .mode(0o700)
@@ -279,13 +280,13 @@ fn plant_holder(installed: &Installed, id: &str, proto: Option<u32>) {
         listener,
         installed.home.to_string_lossy().into_owned(),
         proto,
-    ));
+    ))
 }
 
 #[tokio::test]
 async fn answers_an_attach_that_a_second_attach_replaced_before_the_holder_did() {
     let installed = Installed::new();
-    plant_holder(&installed, "00000000000000e2", Some(2));
+    let _holder = plant_holder(&installed, "00000000000000e2", Some(2));
     let core = installed.start_core();
     let mut client = AppClient::greeted_with(&installed.core_socket(), 2).await;
     let id = SessionId("00000000000000e2".into());
@@ -315,7 +316,7 @@ async fn answers_an_attach_that_a_second_attach_replaced_before_the_holder_did()
 #[tokio::test]
 async fn adopts_a_session_whose_holder_an_e1_core_started() {
     let installed = Installed::new();
-    plant_holder(&installed, "00000000000000e1", None);
+    let _holder = plant_holder(&installed, "00000000000000e1", None);
     let core = installed.start_core();
     let mut client = AppClient::greeted_with(&installed.core_socket(), 2).await;
     let id = SessionId("00000000000000e1".into());
@@ -361,5 +362,44 @@ async fn adopts_a_session_whose_holder_an_e1_core_started() {
             )
         })
         .await;
+    stop(core);
+}
+
+#[tokio::test]
+async fn restores_a_session_an_older_holder_ran_without_scrollback_once_its_processes_ended() {
+    let installed = Installed::new();
+    let holder = plant_holder(&installed, "00000000000000e1", None);
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let id = SessionId("00000000000000e1".into());
+    attach(&mut client, 2, &id, None).await;
+    stop(core);
+    holder.abort();
+    let _ = holder.await;
+    assert!(installed.root.join("sessions").join(&id.0).join("meta.json").exists());
+
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let started = std::time::Instant::now();
+    let restored = loop {
+        client.send(&ClientMessage::ListSessions { request_id: 3 });
+        let ServerMessage::Sessions { sessions, .. } = client
+            .take(|m| matches!(m, ServerMessage::Sessions { request_id: 3, .. }))
+            .await
+        else {
+            unreachable!()
+        };
+        match sessions.into_iter().find(|session| session.id == id) {
+            Some(session) if session.state == SessionState::Running => break session,
+            listed => assert!(started.elapsed() < Duration::from_secs(15), "{listed:?}"),
+        }
+        client.pause(Duration::from_millis(100)).await;
+    };
+    assert!(restored.restored.is_some(), "{restored:?}");
+    let (stream, _) = attach(&mut client, 4, &id, None).await;
+    client
+        .until(|c| c.text(stream).contains("Previous processes ended."))
+        .await;
+    assert!(!client.text(stream).contains("e1-screen"));
     stop(core);
 }

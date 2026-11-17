@@ -35,13 +35,18 @@ struct Shared {
     stale: bool,
     /// Record bytes sent and not yet written.
     queued: usize,
+    /// Appends dropped so far; a rewrite brings the file up to date only if none was dropped after it was finished.
+    drops: u64,
+    /// Rewrites finished and not yet renamed over the file.
+    finishes_queued: usize,
 }
 
 enum Job {
     Append(Vec<u8>),
     BeginRewrite,
     RewriteRecord(Vec<u8>),
-    FinishRewrite,
+    /// Replaces the file, sent when `drops` appends had been dropped.
+    FinishRewrite(u64),
     Delete,
 }
 
@@ -50,15 +55,7 @@ impl ScrollbackWriter {
     pub fn open(dir: &Path, keep: u64) -> Self {
         let (jobs, receiver) = channel();
         let shared = Arc::new(Mutex::new(Shared::default()));
-        let mut disk = Disk {
-            path: dir.join(FILE_NAME),
-            dir: dir.to_path_buf(),
-            file: None,
-            length: keep,
-            rewrite: None,
-            rewrite_failed: false,
-            shared: Arc::clone(&shared),
-        };
+        let mut disk = Disk::new(dir, keep, Arc::clone(&shared));
         let thread = std::thread::spawn(move || disk.run(&receiver));
         Self {
             jobs: Some(jobs),
@@ -84,12 +81,23 @@ impl ScrollbackWriter {
 
     /// Syncs the new file and renames it over the current one.
     pub fn finish_rewrite(&self) {
-        self.send(Job::FinishRewrite);
+        let drops = self.lock().drops;
+        self.send(Job::FinishRewrite(drops));
     }
 
     /// Deletes the file, as "Save scrollback to disk" turned off asks (US-3.2.2).
     pub fn delete(&self) {
         self.send(Job::Delete);
+    }
+
+    /// Deletes the file once every queued write is done, without waiting for the disk: the thread finishes on its
+    /// own, and the returned handle says when it has.
+    pub fn retire(mut self) -> Retired {
+        self.send(Job::Delete);
+        self.jobs = None;
+        Retired {
+            thread: self.thread.take(),
+        }
     }
 
     /// Why the last write failed, until a rewrite succeeds.
@@ -107,29 +115,77 @@ impl ScrollbackWriter {
         self.lock().queued
     }
 
+    /// Whether a finished rewrite still waits to replace the file, so another would only queue a second copy.
+    pub fn rewriting(&self) -> bool {
+        self.lock().finishes_queued > 0
+    }
+
     /// Queues a job; an append the writer has no room for is dropped and marks the file stale instead.
     fn send(&self, job: Job) {
         let Some(jobs) = &self.jobs else {
             return;
         };
         let bytes = job.bytes();
+        let finish = usize::from(matches!(job, Job::FinishRewrite(_)));
         {
             let mut shared = self.lock();
             if matches!(job, Job::Append(_)) && shared.queued + bytes > MAX_QUEUED_BYTES {
                 shared.stale = true;
+                shared.drops += 1;
                 return;
             }
             shared.queued += bytes;
+            shared.finishes_queued += finish;
         }
         if jobs.send(job).is_err() {
             let mut shared = self.lock();
             shared.queued -= bytes;
+            shared.finishes_queued -= finish;
             shared.stale = true;
         }
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, Shared> {
         self.shared.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+/// A writer whose disk does nothing until a test says so, as a disk that stopped answering.
+#[cfg(test)]
+pub struct PausedDisk {
+    jobs: Receiver<Job>,
+    disk: Disk,
+}
+
+#[cfg(test)]
+impl PausedDisk {
+    /// A writer for the file in `dir`, and the disk side it waits on.
+    pub fn writer(dir: &Path) -> (ScrollbackWriter, Self) {
+        let (jobs, receiver) = channel();
+        let shared = Arc::new(Mutex::new(Shared::default()));
+        let disk = Disk::new(dir, 0, Arc::clone(&shared));
+        let writer = ScrollbackWriter {
+            jobs: Some(jobs),
+            shared,
+            thread: None,
+        };
+        (writer, Self { jobs: receiver, disk })
+    }
+
+    /// How many rewrites wait to replace the file.
+    pub fn rewrites_waiting(&self) -> usize {
+        self.disk
+            .shared
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .finishes_queued
+    }
+
+    /// Does every job sent so far.
+    pub fn catch_up(&mut self) {
+        while let Ok(job) = self.jobs.try_recv() {
+            self.disk.handle(job);
+        }
     }
 }
 
@@ -143,11 +199,32 @@ impl Drop for ScrollbackWriter {
     }
 }
 
+/// A writer that was told to delete the file and stop, finishing on its own.
+pub struct Retired {
+    thread: Option<JoinHandle<()>>,
+}
+
+impl Retired {
+    /// Whether the writer has done everything it was given, the deletion last.
+    pub fn finished(&self) -> bool {
+        self.thread.as_ref().is_none_or(JoinHandle::is_finished)
+    }
+}
+
+impl Drop for Retired {
+    /// Waits for the writer to finish, as a holder that exits must before the core deletes the session's folder.
+    fn drop(&mut self) {
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
 impl Job {
     fn bytes(&self) -> usize {
         match self {
             Self::Append(record) | Self::RewriteRecord(record) => record.len(),
-            Self::BeginRewrite | Self::FinishRewrite | Self::Delete => 0,
+            Self::BeginRewrite | Self::FinishRewrite(_) | Self::Delete => 0,
         }
     }
 }
@@ -165,6 +242,18 @@ struct Disk {
 }
 
 impl Disk {
+    fn new(dir: &Path, keep: u64, shared: Arc<Mutex<Shared>>) -> Self {
+        Self {
+            path: dir.join(FILE_NAME),
+            dir: dir.to_path_buf(),
+            file: None,
+            length: keep,
+            rewrite: None,
+            rewrite_failed: false,
+            shared,
+        }
+    }
+
     fn run(&mut self, jobs: &Receiver<Job>) {
         while let Ok(job) = jobs.recv() {
             self.handle(job);
@@ -174,15 +263,17 @@ impl Disk {
     fn handle(&mut self, job: Job) {
         let bytes = job.bytes();
         let rewriting = matches!(job, Job::BeginRewrite | Job::RewriteRecord(_));
+        let finish = usize::from(matches!(job, Job::FinishRewrite(_)));
         let result = match job {
             Job::Append(record) => self.append(&record),
             Job::BeginRewrite => self.begin_rewrite(),
             Job::RewriteRecord(record) => self.rewrite_record(&record),
-            Job::FinishRewrite => self.finish_rewrite(),
+            Job::FinishRewrite(drops) => self.finish_rewrite(drops),
             Job::Delete => self.delete(),
         };
         let mut shared = self.shared.lock().unwrap_or_else(PoisonError::into_inner);
         shared.queued = shared.queued.saturating_sub(bytes);
+        shared.finishes_queued = shared.finishes_queued.saturating_sub(finish);
         drop(shared);
         if let Err(error) = result {
             tracing::warn!(%error, "the scrollback could not be saved");
@@ -224,8 +315,9 @@ impl Disk {
     }
 
     /// Syncs the new file, renames it over the old one and syncs the folder, so either file is whole after a crash. A
-    /// rewrite that failed on the way is deleted instead, and the old file stays, stale, until the next one.
-    fn finish_rewrite(&mut self) -> io::Result<()> {
+    /// rewrite that failed on the way is deleted instead, and the old file stays, stale, until the next one. The file
+    /// stays stale too when an append was dropped after the rewrite was finished, as no file holds that record.
+    fn finish_rewrite(&mut self, drops: u64) -> io::Result<()> {
         let Some(file) = self.rewrite.take() else {
             return Ok(());
         };
@@ -241,7 +333,7 @@ impl Disk {
         File::open(&self.dir)?.sync_all()?;
         let mut shared = self.shared.lock().unwrap_or_else(PoisonError::into_inner);
         shared.failure = None;
-        shared.stale = false;
+        shared.stale = shared.drops != drops;
         Ok(())
     }
 
@@ -319,6 +411,19 @@ mod tests {
         let mut history = Vec::new();
         let recovered = read(file, |past| history.extend_from_slice(past)).unwrap();
         (history, recovered.screen)
+    }
+
+    #[test]
+    fn stays_stale_when_a_record_was_dropped_after_the_rewrite_that_would_have_held_it() {
+        let dir = temp_dir("writer-drop-after-rewrite");
+        let (writer, mut disk) = PausedDisk::writer(&dir);
+        writer.begin_rewrite();
+        writer.rewrite_record(record(b"old\r\n", None));
+        writer.finish_rewrite();
+        writer.append(vec![0; MAX_QUEUED_BYTES]);
+        assert!(writer.stale());
+        disk.catch_up();
+        assert!(writer.stale(), "the dropped record is in no file");
     }
 
     #[test]
@@ -410,7 +515,7 @@ mod tests {
         disk.handle(Job::BeginRewrite);
         disk.rewrite = Some(File::open(dir.join(FILE_NAME)).unwrap());
         disk.handle(Job::RewriteRecord(record(b"new\r\n", None)));
-        disk.handle(Job::FinishRewrite);
+        disk.handle(Job::FinishRewrite(0));
         assert_eq!(history_in(&dir), (b"old\r\n".to_vec(), Some(b"old screen".to_vec())));
         assert!(!dir.join(format!("{FILE_NAME}{REWRITE_SUFFIX}")).exists());
         let shared = shared.lock().unwrap();

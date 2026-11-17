@@ -486,6 +486,7 @@ describe('App: a host’s daemon (US-3.3.1 to US-3.3.3)', () => {
         await expect.element(dialog.getByRole('textbox', { name: 'Install location' })).toHaveValue('/home/me/.trc');
         await expect.element(dialog.getByRole('textbox', { name: 'Logs' })).toHaveValue('/home/me/.trc/logs');
         await expect.element(dialog.getByRole('button', { name: 'Upgrade daemon' })).not.toBeInTheDocument();
+        expect(dialog.element().textContent).toContain('Up to date');
         await noViolations();
         await dialog.getByRole('button', { name: 'Restart daemon' }).click();
         await expect.poll(() => client.requests).toContainEqual({ type: 'restartDaemon' });
@@ -509,6 +510,7 @@ describe('App: a host’s daemon (US-3.3.1 to US-3.3.3)', () => {
         await connectedHost(screen, client, { status: 'connected', daemon: { ...daemon, version: '0.3.0' } });
         await hostMenu(screen, 'Details of devbox-1…');
         const dialog = screen.getByRole('dialog', { name: 'Details of devbox-1' });
+        expect(dialog.element().textContent).not.toContain('Up to date');
         await dialog.getByRole('button', { name: 'Upgrade daemon' }).click();
         await expect.poll(() => client.calls).toContain('disconnect host-0');
         expect(client.calls.at(-1)).toBe('connect host-0 devbox-1');

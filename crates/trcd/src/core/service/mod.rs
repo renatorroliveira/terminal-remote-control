@@ -143,6 +143,8 @@ enum CoreEvent {
     HolderClosed(SessionId),
     /// A holder that was silent when the core started has introduced itself.
     HolderAdopted(Box<Adopted>),
+    /// A holder that was silent when the core started never introduced itself.
+    HolderLost(SessionId),
 }
 
 impl Core {
@@ -181,9 +183,11 @@ impl Core {
         for (path, id) in adoption.silent {
             let events = self.events_tx.clone();
             tokio::spawn(async move {
-                if let Some(found) = adopt_late(&path, &id).await {
-                    let _ = events.send(CoreEvent::HolderAdopted(Box::new(found))).await;
-                }
+                let event = match adopt_late(&path, &id).await {
+                    Some(found) => CoreEvent::HolderAdopted(Box::new(found)),
+                    None => CoreEvent::HolderLost(id),
+                };
+                let _ = events.send(event).await;
             });
         }
     }
@@ -246,17 +250,26 @@ impl Core {
             CoreEvent::HolderFailed(session, reason) => self.on_holder_failed(&session, &reason),
             CoreEvent::HolderFrame(session, frame) => self.on_holder_frame(&session, &frame),
             CoreEvent::HolderClosed(session) => self.on_holder_closed(&session),
-            CoreEvent::HolderAdopted(found) => {
-                let session = self.register_adopted(*found);
-                if let Some(meta) = self.context.store.read(&session.id) {
-                    self.settle_adopted(&meta);
-                }
-                self.persist(&session.id);
-                self.broadcast(&ServerMessage::SessionEvent {
-                    change: SessionChange::Created { session },
-                });
-            }
+            CoreEvent::HolderAdopted(found) => self.on_late_adoption(*found),
+            CoreEvent::HolderLost(session) => self.recover_lost(&session),
         }
+    }
+
+    /// Takes over a session whose holder introduced itself late, with what only its record kept, and tells every
+    /// app, unless the user had closed it.
+    fn on_late_adoption(&mut self, found: Adopted) {
+        let id = self.register_adopted(found).id;
+        if let Some(meta) = self.context.store.read(&id) {
+            self.settle_adopted(&meta);
+        }
+        let Some(record) = self.registry.get(&id).filter(|record| !record.closing) else {
+            return;
+        };
+        let session = record.info.clone();
+        self.persist(&id);
+        self.broadcast(&ServerMessage::SessionEvent {
+            change: SessionChange::Created { session },
+        });
     }
 
     /// Takes over a session from a holder a previous core started.

@@ -222,7 +222,7 @@ stays open and says which.
 ### After a restart
 
 The daemon saves each session's scrollback to disk on the host as it arrives, in a folder only you can read under
-the install location (`~/.trc/sessions`), a couple of seconds behind the screen at most. When a restart of the
+the install location (`~/.trc/sessions`), within 5 seconds of the screen (NFR-08). When a restart of the
 host, a logout that ends your processes, or a crash ends a session's processes while it was running, the daemon
 brings the session back the next time TRC connects: the same shell, name, size, place in the list and environment,
 in the folder it was last in, below its saved scrollback and a line such as "Session restored after restart on
@@ -432,12 +432,12 @@ shown. Every change applies at once and is kept; Escape or Close returns to wher
 
 On your Mac, TRC keeps its settings in the TRC home, `~/.trc`:
 
-| File               | Holds                                                                                                                                                                                                                |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config.json`      | Your [settings](#settings), the screen-reader mode, the sidebar's width (`sidebarWidth`, 300 to 800) and whether it is hidden (`sidebarCollapsed`), and whether the first-quit message was shown (`quitNoticeShown`) |
-| `hosts.json`       | The known hosts, and per host `allowClipboardWrites` (off unless `true`)                                                                                                                                             |
-| `sessions.json`    | Each host's sessions as TRC last listed them (name, title, shell, order and state), so they show at once at the next launch. TRC rewrites it; the host's own list always wins                                        |
-| `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example`              |
+| File               | Holds                                                                                                                                                                                                                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `config.json`      | Your [settings](#settings), the screen-reader mode, the sidebar's width (`sidebarWidth`, 300 to 800) and whether it is hidden (`sidebarCollapsed`), and whether the first-quit message was shown (`quitNoticeShown`)                                                                 |
+| `hosts.json`       | The known hosts, and per host `allowClipboardWrites` (off unless `true`) and `daemonRemoved` (set after Remove daemon, so TRC doesn't connect the host by itself)                                                                                                                    |
+| `sessions.json`    | Each host's sessions as TRC last listed them (name, title, shell, order and state, and the restore each was last opened after), so they show at once at the next launch. No title is kept for a session that saves nothing to disk. TRC rewrites it; the host's own list always wins |
+| `accept_urls.json` | The link prefixes you trust, as a JSON list such as `["https://github.com/myteam/"]`. A prefix matches up to a `/`, `?` or `#`, so `https://github.com` never matches `https://github.com.evil.example`                                                                              |
 
 These files are readable only by you. Edit `config.json` while the app is closed; a value TRC can't use falls back
 to its default.

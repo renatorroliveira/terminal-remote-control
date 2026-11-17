@@ -993,6 +993,12 @@
       "value": "In a way this version does not know"
     }
   ],
+  "details.upToDate": [
+    {
+      "type": 0,
+      "value": "Up to date: the host runs the daemon this app brings."
+    }
+  ],
   "details.upgrade": [
     {
       "type": 0,

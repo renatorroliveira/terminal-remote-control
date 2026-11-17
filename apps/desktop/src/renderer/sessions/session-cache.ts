@@ -109,11 +109,13 @@ export function watchSessionCache(
     };
 }
 
+/** What the cache keeps of a session: never the title its programs set when it saves nothing to disk (US-3.2.2). */
 function cachedSession(session: SessionInfo, restoreSeen: number | undefined): CachedSession {
+    const title = session.options?.saveScrollback === false ? undefined : session.title;
     return {
         id: session.id,
         ...(session.customName === undefined ? {} : { name: clipped(session.customName) }),
-        ...(session.title === undefined ? {} : { title: clipped(session.title) }),
+        ...(title === undefined ? {} : { title: clipped(title) }),
         shell: clipped(session.profile.name),
         order: session.order,
         state: session.state,
