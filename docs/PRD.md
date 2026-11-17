@@ -652,8 +652,8 @@ applies from the epic in the last column onward.
   full-screen program gets that screen, and the shell's history and screen
   when the program leaves it, as the app shows only the active screen.
   **Resolved in E3** (ST-43, ST-49): attaching during a full-screen program
-  adds nothing measurable at either scrollback limit, and the history that
-  follows the program's end adds under 2 MiB at the 100,000-line maximum
+  grows the holder by 0.0 MiB at both scrollback limits, and the history that
+  follows the program's end adds 1.8 MiB at the 100,000-line maximum
   (`docs/verification/E3-nfr.md`).
 
 ## 9. Epics
