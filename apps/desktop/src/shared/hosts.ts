@@ -1,3 +1,4 @@
+import type { ConnectTarget } from './connection';
 import type { HostAddress } from './host-address';
 
 /** Where the daemon installs on a host unless the user moves it (US-1.4.3). */
@@ -19,4 +20,14 @@ export interface KnownHost {
     readonly allowClipboardWrites?: boolean;
     /** Whether the user removed its daemon, so the app does not connect it until the user does (US-3.3.3, P-45). */
     readonly daemonRemoved?: boolean;
+    /** This computer: reached without SSH, first in the sidebar, never forgotten or moved (US-4.1, US-4.2, P-59). */
+    readonly local?: true;
+}
+
+/** This computer's host ID (US-4.2.1). */
+export const LOCAL_HOST_ID = 'local';
+
+/** Where the connection host reaches a known host: its address and install location, without SSH for This computer. */
+export function connectTarget(host: KnownHost): ConnectTarget {
+    return { ...host.address, installRoot: host.installRoot, ...(host.local === true ? { local: true } : {}) };
 }

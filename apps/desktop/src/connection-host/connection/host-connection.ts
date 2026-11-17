@@ -1,6 +1,4 @@
 import { randomBytes } from 'node:crypto';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
 import {
     type ClientMessage,
     decodeServerMessage,
@@ -25,25 +23,16 @@ import type { DaemonManifest, DaemonPlatform } from '../bootstrap/manifest';
 import { buildBootstrapScript } from '../bootstrap/script';
 import type { AppLogger } from '../logging/app-log';
 import type { ConnectionListener, HostConnectionLike } from '../port/router';
-import {
-    effectiveConfigArguments,
-    type SshHelpers,
-    sshArguments,
-    sshEnvironment,
-    type TestSeam,
-    wrapperConfig,
-} from '../ssh/arguments';
-import { classifyFailure, diagnoseAuthentication } from '../ssh/classify';
-import { type EffectiveConfig, supportsKnownHostsCommand } from '../ssh/client-checks';
+import type { SshHelpers, TestSeam } from '../ssh/arguments';
 import type { HelperLine } from '../ssh/helper-lines';
-import { appendKnownHost, fingerprintOf, knownHostsLine } from '../ssh/known-hosts';
 import { onLocalClock } from './daemon-details';
-import { fromBootstrap, fromSsh } from './failures';
+import { fromBootstrap } from './failures';
 import { writeInputFrames } from './input-frames';
 import { type LifecycleEvent, reduceConnection } from './lifecycle';
+import { LocalTransport } from './local-transport';
 import { Pinger } from './pinger';
-import { type SshProcess, startSsh } from './ssh-process';
-import { createAuthProbes, expandHome, readEffectiveConfig, readSshVersion } from './ssh-tools';
+import { SshTransport } from './ssh-transport';
+import type { Channel, Transport } from './transport';
 
 /** What every connection shares: the local ssh, the app's helpers and bundle, and the log. */
 export interface ConnectionRuntime {
@@ -61,16 +50,11 @@ export interface ConnectionRuntime {
     readonly manifest: DaemonManifest;
     readonly readBinary: (platform: DaemonPlatform) => Promise<Uint8Array>;
     readonly log: AppLogger;
+    /** The home folder This computer's daemon gets; a scratch one in test builds (P-58), the user's otherwise. */
+    readonly localHome?: string | undefined;
 }
 
 type Answer = Extract<ServerMessage, { type: 'welcome' | 'incompatible' }>;
-
-/** An ssh process running the bootstrap's remote command, with the settings and nonce it started with. */
-interface OpenedSsh {
-    readonly process: SshProcess;
-    readonly config: EffectiveConfig;
-    readonly nonce: string;
-}
 
 /** The first protocol whose cores stop every session and delete their data before a removal (US-3.3.3). */
 const REMOVING_PROTOCOL = 3;
@@ -81,22 +65,20 @@ const STOP_SESSIONS_TIMEOUT_MS = 60_000;
 
 /** How long the daemon has to answer `hello`. */
 const HANDSHAKE_TIMEOUT_MS = 15_000;
-const REMOTE_COMMAND = 'exec /bin/sh -s';
 
 /**
- * One host's connection: one ssh process and one exec channel carrying every session (US-1.5). It checks the
- * client, asks about unknown host keys, explains failures, installs and starts the daemon, and then relays
- * protocol frames with application pings for liveness (NFR-07).
+ * One host's connection: one channel carrying every session, over SSH for a remote host (US-1.5) or a local shell
+ * for This computer (P-59). It checks the client, asks about unknown host keys, explains failures, installs and
+ * starts the daemon, and then relays protocol frames with application pings for liveness (NFR-07).
  */
 export class HostConnection implements HostConnectionLike {
     readonly #runtime: ConnectionRuntime;
     readonly #hostId: string;
     readonly #target: ConnectTarget;
     readonly #listener: ConnectionListener;
+    readonly #transport: Transport;
     #state: ConnectionState = { status: 'idle' };
-    #config: EffectiveConfig | undefined;
-    #process: SshProcess | undefined;
-    #wrapper: string | undefined;
+    #process: Channel | undefined;
     #pinger: Pinger | undefined;
     #answer: ((answer: Answer | undefined) => void) | undefined;
     /** Resolves once the core answered `removeDaemon` or the channel closed. */
@@ -108,6 +90,10 @@ export class HostConnection implements HostConnectionLike {
         this.#hostId = hostId;
         this.#target = target;
         this.#listener = listener;
+        this.#transport =
+            target.local === true
+                ? new LocalTransport({ env: runtime.env, home: runtime.localHome })
+                : new SshTransport(runtime, target, (line) => this.#onHelper(line));
     }
 
     /** The current lifecycle state. */
@@ -152,12 +138,11 @@ export class HostConnection implements HostConnectionLike {
      */
     async acceptHostKey(fingerprint: string): Promise<void> {
         const state = this.#state;
-        if (state.status !== 'host-key' || state.key.fingerprint !== fingerprint || this.#config === undefined) {
+        if (state.status !== 'host-key' || state.key.fingerprint !== fingerprint) {
             this.#runtime.log.warn('host key acceptance ignored', { hostId: this.#hostId });
             return;
         }
-        const file = expandHome(this.#config.knownHostsFiles[0] ?? '~/.ssh/known_hosts');
-        await appendKnownHost(file, knownHostsLine(state.key, { hashed: this.#config.hashKnownHosts }));
+        await this.#transport.acceptHostKey(state.key);
         this.#runtime.log.info('host key accepted', { hostId: this.#hostId, fingerprint });
         await this.connect();
     }
@@ -219,7 +204,7 @@ export class HostConnection implements HostConnectionLike {
     }
 
     async #remove(): Promise<DaemonRemoval> {
-        const clientProblem = await this.#checkClient();
+        const clientProblem = await this.#transport.check();
         if (clientProblem !== undefined) {
             return { kind: 'failed', failure: clientProblem };
         }
@@ -229,7 +214,7 @@ export class HostConnection implements HostConnectionLike {
         }
         const bootNonce = randomBytes(8).toString('hex');
         const outcome = await runRemoval(
-            { input: opened.process.child.stdin, output: opened.process.child.stdout },
+            { input: opened.child.stdin, output: opened.child.stdout },
             {
                 script: buildBootstrapScript(this.#runtime.bootstrapTemplate, {
                     nonce: bootNonce,
@@ -245,51 +230,28 @@ export class HostConnection implements HostConnectionLike {
         return { kind: 'failed', failure: await this.#failureOf(outcome.failure, opened) };
     }
 
-    /** Why a removal stopped: what the host said, or, when ssh itself ended, what its errors mean. */
-    async #failureOf(failure: BootstrapFailure, { process, config, nonce }: OpenedSsh): Promise<ConnectionFailure> {
+    /** Why a removal stopped: what the host said, or, when the channel itself ended, what its errors mean. */
+    async #failureOf(failure: BootstrapFailure, channel: Channel): Promise<ConnectionFailure> {
         if (failure.kind !== 'closed') {
             return fromBootstrap(failure);
         }
-        await process.exited;
-        const classified = classifyFailure(process.stderr, nonce, config);
-        return classified.kind === 'host-key-unknown'
+        const closed = await this.#transport.closed(channel);
+        return closed.kind === 'host-key-unknown'
             ? { kind: 'other', details: 'connect to the host first to trust its key' }
-            : fromSsh(classified, undefined);
+            : closed;
     }
 
-    /** Reads the host's effective SSH settings and starts ssh with the bootstrap's remote command. */
-    async #open(): Promise<OpenedSsh | { readonly failure: ConnectionFailure }> {
-        const runtime = this.#runtime;
-        const wrapper = await this.#writeWrapper();
-        const config = await readEffectiveConfig(
-            runtime.ssh,
-            effectiveConfigArguments(wrapper, this.#target),
-            runtime.env,
-        );
-        if (config === undefined) {
-            return { failure: { kind: 'other', details: 'ssh could not read the SSH configuration for this host' } };
+    /** Starts the transport's channel. */
+    async #open(): Promise<Channel | { readonly failure: ConnectionFailure }> {
+        const opened = await this.#transport.open();
+        if (!('failure' in opened)) {
+            this.#process = opened;
         }
-        this.#config = config;
-        const nonce = randomBytes(8).toString('hex');
-        const process = startSsh({
-            program: runtime.ssh,
-            args: sshArguments({
-                wrapper,
-                helpers: runtime.helpers,
-                target: this.#target,
-                command: REMOTE_COMMAND,
-                seam: runtime.seam,
-            }),
-            env: sshEnvironment(runtime.env, runtime.helpers, nonce),
-            nonce,
-            onHelper: (line) => this.#onHelper(line),
-        });
-        this.#process = process;
-        return { process, config, nonce };
+        return opened;
     }
 
     async #attempt(): Promise<void> {
-        const clientProblem = await this.#checkClient();
+        const clientProblem = await this.#transport.check();
         if (clientProblem !== undefined) {
             return this.#fail(clientProblem);
         }
@@ -297,11 +259,10 @@ export class HostConnection implements HostConnectionLike {
         if ('failure' in opened) {
             return this.#fail(opened.failure);
         }
-        const { process, config, nonce: sshNonce } = opened;
         const runtime = this.#runtime;
         const bootNonce = randomBytes(8).toString('hex');
         const outcome = await runBootstrap(
-            { input: process.child.stdin, output: process.child.stdout },
+            { input: opened.child.stdin, output: opened.child.stdout },
             {
                 script: buildBootstrapScript(runtime.bootstrapTemplate, {
                     nonce: bootNonce,
@@ -313,35 +274,10 @@ export class HostConnection implements HostConnectionLike {
                 onStep: (step) => this.#dispatch({ type: 'step', step }),
             },
         );
-        await this.#afterBootstrap(outcome, process, config, sshNonce);
+        await this.#afterBootstrap(outcome, opened);
     }
 
-    async #checkClient(): Promise<ConnectionFailure | undefined> {
-        const version = await readSshVersion(this.#runtime.ssh, this.#runtime.env);
-        if (version === 'missing' || version === undefined) {
-            return { kind: 'ssh-missing', details: '' };
-        }
-        return supportsKnownHostsCommand(version)
-            ? undefined
-            : { kind: 'ssh-too-old', version: `${version.major}.${version.minor}`, details: '' };
-    }
-
-    async #writeWrapper(): Promise<string> {
-        await mkdir(this.#runtime.runDir, { recursive: true, mode: 0o700 });
-        const file = join(this.#runtime.runDir, `ssh-${randomBytes(8).toString('hex')}.conf`);
-        await writeFile(file, wrapperConfig({ helpers: this.#runtime.helpers, seam: this.#runtime.seam }), {
-            mode: 0o600,
-        });
-        this.#wrapper = file;
-        return file;
-    }
-
-    async #afterBootstrap(
-        outcome: BootstrapOutcome,
-        process: SshProcess,
-        config: EffectiveConfig,
-        nonce: string,
-    ): Promise<void> {
+    async #afterBootstrap(outcome: BootstrapOutcome, process: Channel): Promise<void> {
         if (outcome.kind === 'running') {
             return this.#handshake(process, outcome.remainder);
         }
@@ -349,18 +285,15 @@ export class HostConnection implements HostConnectionLike {
             process.child.kill();
             return this.#fail(fromBootstrap(outcome.failure));
         }
-        await process.exited;
-        const failure = classifyFailure(process.stderr, nonce, config);
-        if (failure.kind === 'host-key-unknown') {
-            this.#dispatch({ type: 'host-key', key: { ...failure.key, fingerprint: fingerprintOf(failure.key.key) } });
+        const closed = await this.#transport.closed(process);
+        if (closed.kind === 'host-key-unknown') {
+            this.#dispatch({ type: 'host-key', key: closed.key });
             return;
         }
-        const probes = createAuthProbes(dirname(this.#runtime.ssh), this.#runtime.env);
-        const cause = failure.kind === 'authentication' ? await diagnoseAuthentication(config, probes) : undefined;
-        this.#fail(fromSsh(failure, cause));
+        this.#fail(closed);
     }
 
-    async #handshake(process: SshProcess, remainder: Uint8Array): Promise<void> {
+    async #handshake(process: Channel, remainder: Uint8Array): Promise<void> {
         this.#dispatch({ type: 'step', step: 'handshake' });
         let deadline: ReturnType<typeof setTimeout> | undefined;
         const answered = new Promise<Answer | undefined>((resolve) => {
@@ -401,7 +334,7 @@ export class HostConnection implements HostConnectionLike {
         );
     }
 
-    #readFrames(process: SshProcess, remainder: Uint8Array): void {
+    #readFrames(process: Channel, remainder: Uint8Array): void {
         const decoder = new FrameDecoder();
         const onData = (chunk: Uint8Array): void => {
             try {
@@ -455,7 +388,7 @@ export class HostConnection implements HostConnectionLike {
         }
     }
 
-    #onChannelClosed(process: SshProcess): void {
+    #onChannelClosed(process: Channel): void {
         if (this.#process !== process) {
             return;
         }
@@ -465,7 +398,7 @@ export class HostConnection implements HostConnectionLike {
         this.#dispatch({ type: 'lost', reason: 'channel-closed' });
     }
 
-    #startPinger(process: SshProcess): void {
+    #startPinger(process: Channel): void {
         this.#pinger = new Pinger(
             (requestId) => this.#write(encodeClientMessage({ type: 'ping', requestId })),
             () => {
@@ -491,11 +424,7 @@ export class HostConnection implements HostConnectionLike {
         const process = this.#process;
         this.#process = undefined;
         process?.child.kill();
-        const wrapper = this.#wrapper;
-        this.#wrapper = undefined;
-        if (wrapper !== undefined) {
-            await rm(wrapper, { force: true });
-        }
+        await this.#transport.dispose();
     }
 
     #fail(failure: ConnectionFailure): void {

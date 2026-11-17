@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { DESTINATION_PATTERN, formatHostAddress, parseHostAddress } from '../shared/host-address';
-import { isInstallRoot, type KnownHost } from '../shared/hosts';
+import { isInstallRoot, type KnownHost, LOCAL_HOST_ID } from '../shared/hosts';
 import { JsonStore } from './json-store';
 
 interface HostsFile {
@@ -16,7 +16,7 @@ const RECENT_LIMIT = 20;
 
 const HOST_SCHEMA: z.ZodType<KnownHost> = z
     .object({
-        id: z.string().regex(/^host-[0-9a-f]{16}$/),
+        id: z.string().regex(/^(host-[0-9a-f]{16}|local)$/),
         address: z
             .object({
                 destination: z.string().regex(DESTINATION_PATTERN).max(1024),
@@ -26,6 +26,7 @@ const HOST_SCHEMA: z.ZodType<KnownHost> = z
         installRoot: z.string().min(1).max(4096),
         allowClipboardWrites: z.boolean().exactOptional(),
         daemonRemoved: z.boolean().exactOptional(),
+        local: z.literal(true).exactOptional(),
     })
     .strict();
 
@@ -36,19 +37,30 @@ const FILE_SCHEMA: z.ZodType<HostsFile> = z
     })
     .strict();
 
-/** The hosts the user added, in the order added, kept in the TRC home's `hosts.json` (US-1.1.1, P-18). */
+/** Where This computer's daemon installs, when the app has one (US-4.1, P-56). */
+export interface KnownHostsOptions {
+    readonly localRoot?: string;
+}
+
+/**
+ * The hosts the user added, in the order added, kept in the TRC home's `hosts.json` (US-1.1.1, P-18), after This
+ * computer when the app has a local daemon: its settings are kept there too, but it is never forgotten or moved, and
+ * it always installs in `localRoot` (US-4.2.1, P-56).
+ */
 export class KnownHosts {
     readonly #store: JsonStore<HostsFile>;
+    readonly #localRoot: string | undefined;
     #last: Promise<unknown> = Promise.resolve();
 
     /** The hosts kept in `home`. */
-    constructor(home: string) {
+    constructor(home: string, options: KnownHostsOptions = {}) {
         this.#store = new JsonStore(join(home, 'hosts.json'), FILE_SCHEMA, { hosts: [] });
+        this.#localRoot = options.localRoot;
     }
 
-    /** Every known host. */
+    /** Every known host: This computer first, when the app has it, then the others in the order added. */
     async list(): Promise<readonly KnownHost[]> {
-        return (await this.#store.read()).hosts;
+        return this.#withLocal((await this.#store.read()).hosts);
     }
 
     /** Addresses the user added, newest first, including forgotten hosts (US-1.1.1). */
@@ -61,8 +73,11 @@ export class KnownHosts {
         return this.#serially(() => this.#add(addressText, installRoot));
     }
 
-    /** Forgets a host; its address stays among the recent ones (A11Y-11.9). */
+    /** Forgets a host; its address stays among the recent ones (A11Y-11.9). This computer cannot be forgotten. */
     remove(id: string): Promise<void> {
+        if (id === LOCAL_HOST_ID) {
+            return Promise.reject(new Error('This computer cannot be forgotten'));
+        }
         return this.#serially(async () => {
             const file = await this.#store.read();
             await this.#store.write({ ...file, hosts: file.hosts.filter((host) => host.id !== id) });
@@ -71,6 +86,9 @@ export class KnownHosts {
 
     /** Moves a host's install location, for a home directory that cannot run programs (US-1.4.3). */
     setInstallRoot(id: string, installRoot: string): Promise<KnownHost> {
+        if (id === LOCAL_HOST_ID) {
+            return Promise.reject(new Error('This computer always installs in the TRC home'));
+        }
         if (!isInstallRoot(installRoot)) {
             return Promise.reject(new Error(`not an install location: ${JSON.stringify(installRoot)}`));
         }
@@ -94,14 +112,32 @@ export class KnownHosts {
     #change(id: string, change: (host: KnownHost) => KnownHost): Promise<KnownHost> {
         return this.#serially(async () => {
             const file = await this.#store.read();
-            const host = file.hosts.find((entry) => entry.id === id);
+            const hosts = this.#withLocal(file.hosts);
+            const host = hosts.find((entry) => entry.id === id);
             if (host === undefined) {
                 throw new Error(`no host ${id}`);
             }
             const changed = change(host);
-            await this.#store.write({ ...file, hosts: file.hosts.map((entry) => (entry.id === id ? changed : entry)) });
+            await this.#store.write({ ...file, hosts: hosts.map((entry) => (entry.id === id ? changed : entry)) });
             return changed;
         });
+    }
+
+    /** The hosts with This computer first, installing in the local root, when the app has one. */
+    #withLocal(hosts: readonly KnownHost[]): readonly KnownHost[] {
+        const others = hosts.filter((host) => host.id !== LOCAL_HOST_ID);
+        if (this.#localRoot === undefined) {
+            return others;
+        }
+        const saved = hosts.find((host) => host.id === LOCAL_HOST_ID);
+        const local: KnownHost = {
+            ...saved,
+            id: LOCAL_HOST_ID,
+            address: { destination: 'localhost' },
+            installRoot: this.#localRoot,
+            local: true,
+        };
+        return [local, ...others];
     }
 
     #serially<T>(change: () => Promise<T>): Promise<T> {

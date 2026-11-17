@@ -10,6 +10,8 @@ export interface TestSeam {
     readonly installRoot?: string;
     /** A file that receives opened links, so a test run never opens a browser. */
     readonly openedLinks?: string;
+    /** The home folder This computer's daemon runs with, so its LaunchAgent plist stays in scratch (P-58). */
+    readonly localHome?: string;
 }
 
 /** The seam of a release build: nothing. */

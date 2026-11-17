@@ -129,14 +129,17 @@ export function sessionName(session: SessionInfo): string {
     return stripControlCharacters(session.customName ?? session.title ?? session.profile.name);
 }
 
-/** Adds a known host, not connected yet; adding a host already there keeps it. */
-export function hostAdded(workspace: Workspace, host: KnownHost): Workspace {
+/**
+ * Adds a known host, not connected yet, named by its address, or This computer by `localName`; adding a host already
+ * there keeps it.
+ */
+export function hostAdded(workspace: Workspace, host: KnownHost, localName = 'This computer'): Workspace {
     if (workspace.hosts.some((entry) => entry.id === host.id)) {
         return workspace;
     }
     const entry: HostEntry = {
         ...host,
-        destination: formatHostAddress(host.address),
+        destination: host.local === true ? localName : formatHostAddress(host.address),
         state: { status: 'idle' },
         reconnecting: false,
     };

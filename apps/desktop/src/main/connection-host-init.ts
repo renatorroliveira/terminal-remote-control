@@ -10,13 +10,18 @@ export interface InitSources {
     readonly seam: TestSeam;
 }
 
-/** The connection host's init message; test builds add the P-14 seam when both of its SSH files are set. */
+/**
+ * The connection host's init message; test builds add the P-14 seam when both of its SSH files are set, and the
+ * scratch home This computer's daemon runs with (P-58).
+ */
 export function connectionHostInit(sources: InitSources): ConnectionHostInit {
+    const { localHome } = sources.seam;
     const init: ConnectionHostInit = {
         type: 'init',
         userData: sources.userData,
         resources: sources.resources,
         appVersion: sources.appVersion,
+        ...(localHome === undefined ? {} : { localHome }),
     };
     const { sshConfig, knownHosts } = sources.seam;
     if (sshConfig === undefined || knownHosts === undefined) {

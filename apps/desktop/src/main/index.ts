@@ -24,6 +24,7 @@ import { KnownHosts } from './known-hosts';
 import { tuneInputLatency } from './latency-switches';
 import { migrateLegacyState } from './legacy-state';
 import { LinkService } from './link-service';
+import { localHostRoot } from './local-host';
 import { type MenuOptions, menuTemplate, terminalContextMenu } from './menu';
 import { refuseNavigation } from './navigation-guard';
 import { disableNetworkSwitches, lockDownNetwork } from './network-guard';
@@ -90,7 +91,8 @@ async function start(): Promise<void> {
         supportEnabled: () => app.isAccessibilitySupportEnabled(),
         save: (mode) => config.update({ screenReaderMode: mode }),
     });
-    const knownHosts = new KnownHosts(home);
+    const localRoot = localHostRoot({ platform: process.platform, testBuild: __TRC_TEST_SEAM__, seam: testSeam, home });
+    const knownHosts = new KnownHosts(home, localRoot === undefined ? {} : { localRoot });
     const quitGuard = guardQuitting(config, stored.quitNoticeShown);
     registerHandlers(
         ipcMain,

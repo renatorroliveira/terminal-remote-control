@@ -24,4 +24,12 @@ describe('connectionHostInit', () => {
             ...base,
         });
     });
+
+    it('gives This computer’s daemon a test build’s scratch home (P-58)', () => {
+        expect(connectionHostInit({ ...base, seam: { background: false, localHome: '/t/home' } })).toEqual({
+            type: 'init',
+            ...base,
+            localHome: '/t/home',
+        });
+    });
 });

@@ -11,6 +11,7 @@ describe('readTestSeam (P-14, test builds only)', () => {
                 TRC_TEST_KNOWN_HOSTS: '/t/known_hosts',
                 TRC_TEST_INSTALL_ROOT: '~/.trc-e2e-1a2b',
                 TRC_TEST_OPENED_LINKS: '/t/opened.log',
+                TRC_TEST_LOCAL_HOME: '/t/home',
             }),
         ).toEqual({
             background: true,
@@ -18,6 +19,7 @@ describe('readTestSeam (P-14, test builds only)', () => {
             knownHosts: '/t/known_hosts',
             installRoot: '~/.trc-e2e-1a2b',
             openedLinks: '/t/opened.log',
+            localHome: '/t/home',
         });
     });
 

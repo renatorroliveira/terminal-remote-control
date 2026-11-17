@@ -99,6 +99,8 @@ export interface ConnectTarget {
     readonly port?: number;
     /** The per-host install location (US-1.4.3). */
     readonly installRoot: string;
+    /** This computer, reached with a local shell instead of SSH (P-59). */
+    readonly local?: true;
 }
 
 /** A message from the renderer to the connection host, over the MessagePort. */

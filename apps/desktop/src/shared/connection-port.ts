@@ -14,6 +14,8 @@ export interface ConnectionHostInit {
     readonly appVersion: string;
     /** The P-14 test seam; only test builds send it. */
     readonly seam?: { readonly sshConfig: string; readonly knownHosts: string };
+    /** The home folder This computer's daemon runs with; only test builds send it (P-58). */
+    readonly localHome?: string;
 }
 
 /** The name the connection host's utility process carries in process listings and metrics. */
