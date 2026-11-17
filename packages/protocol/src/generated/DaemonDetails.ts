@@ -18,6 +18,10 @@ installRoot: string,
  */
 logDir: string, 
 /**
- * When the core started, in milliseconds since the Unix epoch.
+ * When the core started, in milliseconds since the Unix epoch, by the host's clock.
  */
-startedAt: number, };
+startedAt: number, 
+/**
+ * How long the core had run when it sent this, which the app turns into its own clock's start time.
+ */
+uptimeMs?: number, };

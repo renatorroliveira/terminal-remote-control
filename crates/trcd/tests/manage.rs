@@ -99,6 +99,25 @@ async fn remove_daemon_stops_every_session_deletes_their_data_and_ends_the_core(
         request_id: 4,
         grace_ms: Some(200),
     });
+    client.send(&ClientMessage::Restart {
+        request_id: 5,
+        session: first.id.clone(),
+    });
+    let refused = client
+        .take(|m| {
+            matches!(
+                m,
+                ServerMessage::Error {
+                    request_id: Some(5),
+                    ..
+                }
+            )
+        })
+        .await;
+    assert!(
+        matches!(&refused, ServerMessage::Error { message, .. } if message.contains("being removed")),
+        "{refused:?}"
+    );
     done(&mut client, 4).await;
     let closed: Vec<&SessionId> = client
         .messages

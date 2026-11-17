@@ -136,6 +136,10 @@ export class ConnectionRouter {
         this.#reconnectors.get(hostId)?.disable();
         void connection
             .removeDaemon(graceMs)
+            .catch((error: unknown): DaemonRemoval => ({
+                kind: 'failed',
+                failure: { kind: 'other', details: error instanceof Error ? error.message : String(error) },
+            }))
             .then((removal) => this.#post({ type: 'daemon-removed', hostId, removal }));
     }
 

@@ -208,9 +208,10 @@ it now, with the output they wrote while you were away. They also come back afte
 On a Linux host where your user has lingering on (`loginctl enable-linger`), the host's systemd keeps the TRC
 daemon running and restarts it if it fails; elsewhere the daemon runs on its own. Either way your sessions outlive
 the connection. The exception is a host that ends your processes when your last connection closes
-(`KillUserProcesses=yes`) while lingering is off: its status says "Connected; sessions end when its last connection
-closes", and TRC warns you before the first session you create there. TRC never turns lingering on for you; the
-host's administrator can.
+(`KillUserProcesses=yes`) while lingering is off: its status says "Connected; programs end when its last connection
+closes", and TRC warns you before the first session you create there. The sessions themselves come back the next
+time TRC connects, each in a new shell below its saved scrollback (see [After a restart](#after-a-restart)), but
+whatever ran in them has ended. TRC never turns lingering on for you; the host's administrator can.
 
 The first time you quit while sessions run, TRC says that they keep running and offers Quit, Quit and Stop All
 Sessions, and Cancel; it doesn't ask again. To end every session, choose Quit and Stop All Sessions… in the TRC
@@ -238,8 +239,12 @@ or "Processes ended". Close or restart them when you're done.
 Two switches in Session settings… choose what each session keeps; both are on for new sessions:
 
 - **Restore after restart.** Off, the session stays ended after a restart, with its saved scrollback.
-- **Save scrollback to disk.** Off, none of its output is written to disk, so it comes back without scrollback.
-  Turning it off deletes what was saved. Use it for sessions that print secrets.
+- **Save scrollback to disk.** Off, none of its output is written to disk, not even the title its programs set, so
+  it comes back without scrollback. Turning it off deletes what was saved. Use it for sessions that print secrets.
+
+Either way, the daemon keeps what bringing a session back needs beside its scrollback: its name, shell, folder,
+size, place in the list and the environment variables you gave it in New Session…. Don't put secrets in those
+variables.
 
 **Clear scrollback** (Command-K, the Edit menu, the terminal's context menu or the command palette) clears the
 open session's scrollback in every app that has it open and deletes the copy on disk; TRC says "Scrollback

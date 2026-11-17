@@ -143,8 +143,18 @@ pub fn wait_child(child: &mut Child) -> std::process::ExitStatus {
     }
 }
 
-/// Stops a core started by a test.
+/// Stops a core started by a test the way the service manager does, with SIGTERM, and kills it if it lingers.
 pub fn stop(mut child: Child) {
+    if let Some(pid) = rustix::process::Pid::from_raw(child.id().cast_signed()) {
+        let _ = rustix::process::kill_process(pid, rustix::process::Signal::TERM);
+    }
+    let started = std::time::Instant::now();
+    while started.elapsed() < Duration::from_secs(5) {
+        if child.try_wait().is_ok_and(|status| status.is_some()) {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
     let _ = child.kill();
     let _ = child.wait();
 }

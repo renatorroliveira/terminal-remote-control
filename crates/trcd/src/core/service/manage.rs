@@ -9,7 +9,7 @@ use super::requests::error;
 use super::{ClientId, Core};
 use crate::holder::protocol::HolderCommand;
 
-/// How long an exiting core waits for its last replies to reach the apps.
+/// How long an exiting core waits, in all, for its last replies to reach the apps.
 const FLUSH_TIMEOUT: Duration = Duration::from_secs(2);
 
 impl Core {
@@ -45,6 +45,7 @@ impl Core {
             if let Some(record) = self.registry.get_mut(&session) {
                 record.closing = true;
             }
+            self.persist(&session);
             let stopping = self.holder_command(&session, &HolderCommand::Stop { grace_ms })
                 && self.holder_command(&session, &HolderCommand::Shutdown);
             if !stopping {
@@ -83,9 +84,11 @@ impl Core {
             .into_values()
             .map(|link| link.writer)
             .collect();
+        let deadline = tokio::time::Instant::now() + FLUSH_TIMEOUT;
         for writer in writers {
-            let _ = tokio::time::timeout(FLUSH_TIMEOUT, writer).await;
+            let _ = tokio::time::timeout_at(deadline, writer).await;
         }
+        self.context.store.flush();
         let _ = std::fs::remove_file(self.context.run.core_socket());
         tracing::info!("core stopped");
     }

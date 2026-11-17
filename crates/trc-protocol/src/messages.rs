@@ -132,8 +132,12 @@ pub struct DaemonDetails {
     pub install_root: String,
     /// The folder the daemon writes its logs to.
     pub log_dir: String,
-    /// When the core started, in milliseconds since the Unix epoch.
+    /// When the core started, in milliseconds since the Unix epoch, by the host's clock.
     pub started_at: u64,
+    /// How long the core had run when it sent this, which the app turns into its own clock's start time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub uptime_ms: Option<u64>,
 }
 
 /// Why a request failed.

@@ -2282,7 +2282,7 @@
   "host.connectedEndsAtLogout": [
     {
       "type": 0,
-      "value": "Connected; sessions end when its last connection closes"
+      "value": "Connected; programs end when its last connection closes"
     }
   ],
   "host.connecting": [
@@ -2592,7 +2592,7 @@
     },
     {
       "type": 0,
-      "value": " ends your processes when your last connection to it closes, and lingering is off for your user, so its sessions end when TRC’s connection closes. To keep them, ask the host’s administrator to enable lingering for your user (loginctl enable-linger)."
+      "value": " ends your processes when your last connection to it closes, and lingering is off for your user, so the programs in its sessions end when TRC’s connection closes. TRC brings the sessions back below their saved scrollback the next time it connects, each in a new shell. To keep programs running, ask the host’s administrator to enable lingering for your user (loginctl enable-linger)."
     }
   ],
   "logoutWarning.cancel": [
@@ -2610,7 +2610,7 @@
   "logoutWarning.title": [
     {
       "type": 0,
-      "value": "Sessions on "
+      "value": "Programs on "
     },
     {
       "type": 1,

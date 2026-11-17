@@ -10,12 +10,14 @@
 
 An accessible desktop terminal manager whose sessions outlive the app, the network and the client computer.
 
-> **Status: alpha.** Version 0.3 delivers Epics 1 and 2: a macOS app that adds Linux hosts over SSH, installs its
+> **Status: alpha.** Version 0.4 delivers Epics 1 to 3: a macOS app that adds Linux hosts over SSH, installs its
 > daemon on them, and runs and manages terminal sessions there, with VoiceOver, Zoom, Voice Control and keyboard
 > support. Sessions outlive the app, its crashes, network loss and daemon upgrades: the app reconnects by itself,
-> restores every host at launch, and several Macs can share a session. 0.x releases are experimental, ad-hoc-signed
-> builds; 1.0.0 is the first official release. The [E1](docs/plans/epic-01-implementation-plan.md) and
-> [E2 implementation plans](docs/plans/epic-02-implementation-plan.md) record how each epic was built.
+> restores every host at launch, and several Macs can share a session. Sessions come back after a host reboot with
+> their scrollback, and each host's daemon can be inspected, restarted, upgraded and removed from the app. 0.x
+> releases are experimental, ad-hoc-signed builds; 1.0.0 is the first official release. The
+> [E1](docs/plans/epic-01-implementation-plan.md), [E2](docs/plans/epic-02-implementation-plan.md) and
+> [E3 implementation plans](docs/plans/epic-03-implementation-plan.md) record how each epic was built.
 
 ## Why
 
@@ -37,7 +39,7 @@ Planned for the first full release (P0), delivered in seven epics, then a genera
   app embeds Atkinson Hyperlegible Next and Intel One Mono.
 - **Sessions that never die.** A per-user daemon on each host owns the sessions. Quitting or crashing the app,
   losing the network or rebooting the client ends no session. After a host reboot, the daemon respawns each
-  session's shell and restores its scrollback, without ever re-running commands.
+  session's shell below its saved scrollback when the app next connects, without ever re-running commands.
 - **Zero remote setup.** Any Linux or macOS host you reach with `ssh` and a key works. The app installs its daemon
   over SSH for your user: no sudo, no packages and no internet access on the host.
 - **One place.** Every session, local and remote, in one sidebar grouped by host, with live state.
@@ -99,6 +101,7 @@ the app does today.
 - [E1 implementation plan](docs/plans/epic-01-implementation-plan.md): the stories that deliver Epic 1 and their
   status.
 - [E2 implementation plan](docs/plans/epic-02-implementation-plan.md): the same for Epic 2.
+- [E3 implementation plan](docs/plans/epic-03-implementation-plan.md): the same for Epic 3.
 
 ## Development
 
@@ -124,7 +127,7 @@ the app does today.
 | `pnpm build:daemon`               | Builds the Linux daemons into `apps/desktop/resources/daemon` with their manifest                             |
 | `pnpm test:daemon`                | The daemon's musl tests in Ubuntu, Alpine and Rocky containers (part of the above)                            |
 | `pnpm test:e2e`                   | Builds a test build of the app and runs the Playwright Electron tests                                         |
-| `pnpm test:nfr`                   | Measures the NFR targets against the test hosts; see `docs/verification/E2-nfr.md`                            |
+| `pnpm test:nfr`                   | Measures the NFR targets against the test hosts; see `docs/verification/E3-nfr.md`                            |
 | `pnpm test:soak`                  | The NFR-11 soak against the test hosts: 1,000 cycles per scenario (50 for app launches and logout), for hours |
 | `pnpm test:ax`                    | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests                        |
 | `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                                                  |

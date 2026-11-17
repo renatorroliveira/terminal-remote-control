@@ -56,6 +56,7 @@ const daemonDetails: z.ZodType<DaemonDetails> = z.object({
     installRoot: z.string(),
     logDir: z.string(),
     startedAt: timestamp,
+    uptimeMs: timestamp.exactOptional(),
 });
 
 /** Validates an attach mode; unknown modes become `unspecified`. */

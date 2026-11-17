@@ -8,6 +8,7 @@ use trc_protocol::{ServerMessage, SessionChange, SessionId, SessionState};
 use super::Core;
 use crate::frame_io::{FrameReader, FrameSender};
 use crate::holder::protocol::HolderEvent;
+use crate::time::now_millis;
 
 impl Core {
     pub(super) fn on_holder_connected(&mut self, session: &SessionId, stream: UnixStream) {
@@ -34,7 +35,9 @@ impl Core {
         }
         record.info.state = SessionState::FailedToStart;
         record.info.failure = Some(format!("the session process could not start: {reason}"));
+        record.info.pid = None;
         let info = record.info.clone();
+        self.persist(session);
         self.broadcast(&ServerMessage::SessionEvent {
             change: SessionChange::Updated { session: info },
         });
@@ -58,7 +61,11 @@ impl Core {
         }
         self.drop_attachments(session);
         let _ = std::fs::remove_file(self.context.run.holder_socket(session));
-        self.recover_in_place(session);
+        if self.ended_holders.may_return(session, now_millis()) {
+            self.recover_in_place(session);
+        } else {
+            self.on_holder_failed(session, "its holder kept ending, so it was not started again");
+        }
     }
 
     fn on_holder_event(&mut self, session: &SessionId, payload: &[u8]) {

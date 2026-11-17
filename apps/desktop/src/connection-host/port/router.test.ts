@@ -160,6 +160,23 @@ describe('ConnectionRouter: removing a daemon (US-3.3.3)', () => {
         expect(posted.filter((event) => event.type === 'state' && event.state.status === 'reconnecting')).toEqual([]);
     });
 
+    it('reports a removal that threw as failed, so the app never waits for it forever', async () => {
+        const { router, created, posted } = setup();
+        router.handle({ type: 'connect', hostId: 'h3', target });
+        const connection = created[0];
+        if (connection !== undefined) {
+            connection.removeDaemon = () => Promise.reject(new Error('broken'));
+        }
+        router.handle({ type: 'remove-daemon', hostId: 'h3', target });
+        await vi.waitFor(() =>
+            expect(posted.at(-1)).toEqual({
+                type: 'daemon-removed',
+                hostId: 'h3',
+                removal: { kind: 'failed', failure: { kind: 'other', details: 'broken' } },
+            }),
+        );
+    });
+
     it('removes the daemon of a host that never connected', async () => {
         const { router, created, posted } = setup();
         router.handle({ type: 'remove-daemon', hostId: 'h2', target });

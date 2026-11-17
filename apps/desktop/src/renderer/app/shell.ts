@@ -886,7 +886,10 @@ export class Shell {
      * design: a restart reports only its return (US-3.3.2), and a removal reports its own outcome (US-3.3.3).
      */
     #daemonChanging(before: HostEntry, host: HostEntry): boolean {
-        if (before.daemonAction === 'restarting') {
+        if (host.daemonAction === 'restarting') {
+            return true;
+        }
+        if (before.daemonAction === 'restarting' && host.state.status === 'connected') {
             this.#reportRestart(host);
             return true;
         }
@@ -894,9 +897,6 @@ export class Shell {
     }
 
     #reportRestart(host: HostEntry): void {
-        if (host.state.status !== 'connected') {
-            return;
-        }
         const { intl, announcer, notifications } = this.#options;
         this.playCue('connected');
         const text = intl.formatMessage(daemonAnnouncements.restarted, { host: host.destination });

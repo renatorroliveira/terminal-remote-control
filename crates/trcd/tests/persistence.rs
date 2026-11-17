@@ -119,7 +119,14 @@ async fn saves_a_session_to_its_private_folder_within_seconds_of_its_output() {
             )
         })
         .await;
-    assert!(!dir.exists());
+    let closed = Instant::now();
+    while dir.exists() {
+        assert!(
+            closed.elapsed() < Duration::from_secs(5),
+            "the closed session's folder stayed"
+        );
+        client.pause(Duration::from_millis(20)).await;
+    }
     stop(core);
 }
 

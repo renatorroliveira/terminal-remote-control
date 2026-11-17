@@ -549,7 +549,7 @@ either way.
 | Windows calls (pipe client PID, SIDs, ACLs, jobs)               | windows-sys 0.61 (MIT/Apache-2.0)                                | —                                |
 | Control messages and metadata                                   | serde 1.0 + serde_json 1.0 (MIT/Apache-2.0)                      | —                                |
 | TypeScript types generated from Rust                            | ts-rs 12 (MIT)                                                   | —                                |
-| Checksums                                                       | sha2 0.11 (binaries), crc32fast 1.5 (log records)                | —                                |
+| Checksums                                                       | sha2 0.11 (binaries and scrollback records)                      | —                                |
 | Logging                                                         | tracing 0.1, tracing-subscriber 0.3 (JSON), tracing-appender 0.2 | —                                |
 | Errors                                                          | thiserror 2                                                      | —                                |
 
@@ -1546,7 +1546,7 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | minisign (dev only)           | 0.12    | colima (dev only)  | 0.10.3            |
 | docker CLI (dev only)         | 29.8.1  |                    |                   |
 | cargo-zigbuild                | 0.24.1  | sha2               | 0.11.1            |
-| libghostty-vt                 | 1.0.1   | crc32fast          | 1.5.5             |
+| libghostty-vt                 | 1.0.1   |                    |                   |
 | alacritty_terminal (fallback) | 0.26.0  | tracing            | 0.1.44            |
 | tokio                         | 1.54.1  | tracing-subscriber | 0.3.23            |
 | tokio-util                    | 0.7.20  | tracing-appender   | 0.2.5             |

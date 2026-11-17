@@ -4,14 +4,14 @@ import { page } from 'vitest/browser';
 import { connectedHost, installTokens, renderApp } from '../app/app-test-harness';
 
 describe('LogoutWarningDialog (US-2.4.4)', () => {
-    it('warns that the host’s sessions end when its last connection closes, and answers as the user chooses', async () => {
+    it('warns that the programs in the host’s sessions end when its last connection closes, and answers as the user chooses', async () => {
         await page.viewport(1400, 800);
         onTestFinished(installTokens());
         const { client, shell, rendered } = renderApp();
         const screen = await rendered;
         await connectedHost(screen, client);
         const created = shell.logoutWarning.ask('host-0');
-        const warning = screen.getByRole('alertdialog', { name: 'Sessions on devbox-1 end when you disconnect' });
+        const warning = screen.getByRole('alertdialog', { name: 'Programs on devbox-1 end when you disconnect' });
         await expect.element(warning).toHaveAccessibleDescription(/ends your processes when your last connection/);
         await expect.element(warning.getByRole('button', { name: 'Create Session' })).toHaveFocus();
         const results = await axe.run(document.body, {

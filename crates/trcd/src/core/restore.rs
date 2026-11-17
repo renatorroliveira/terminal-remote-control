@@ -60,6 +60,12 @@ pub fn restore_marker(after_host_restart: bool, at: u64) -> String {
     }
 }
 
+/// The line below the saved scrollback of a session started again after its holder was gone, as the holder's own
+/// restart marks it (US-1.10.3).
+pub fn restart_marker(at: u64) -> String {
+    format!("[Restarted at {}]", format_utc(at))
+}
+
 /// The line below the saved scrollback of a session that stays ended because its processes ended (P-41).
 pub fn ended_marker(cause: EndCause, at: u64) -> String {
     match cause {

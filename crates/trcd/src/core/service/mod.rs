@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use rustix::fs::Mode;
 use tokio::net::unix::OwnedReadHalf;
 use tokio::net::{UnixListener, UnixStream};
+use tokio::signal::unix::{Signal, SignalKind, signal};
 use tokio::sync::mpsc;
 use trc_protocol::frame::{self, Frame, FrameKind};
 use trc_protocol::{DaemonDetails, ServerMessage, ServiceInfo, SessionChange, SessionId, SessionInfo};
@@ -24,6 +25,7 @@ use trc_protocol::{DaemonDetails, ServerMessage, ServiceInfo, SessionChange, Ses
 use super::adopt::{Adopted, adopt_holders, adopt_late};
 use super::launch::launch_holder;
 use super::registry::Registry;
+use super::relaunch::EndedHolders;
 use super::store::{SessionMeta, SessionStore};
 use crate::accept_backoff::AcceptBackoff;
 use crate::frame_io::{FrameReader, FrameSender};
@@ -76,6 +78,8 @@ pub struct Core {
     removal: Option<(ClientId, u32)>,
     /// Set once the core should stop serving and exit, after a restart or a removal was asked for.
     exiting: bool,
+    /// When each session's holder last ended, so one that keeps ending is not brought back again.
+    ended_holders: EndedHolders,
 }
 
 type ClientId = u64;
@@ -157,6 +161,7 @@ impl Core {
             written: BTreeMap::new(),
             removal: None,
             exiting: false,
+            ended_holders: EndedHolders::default(),
         }
     }
 
@@ -183,9 +188,11 @@ impl Core {
         }
     }
 
-    /// Serves app connections on `listener` until an app asks the core to restart or the daemon to be removed, then
-    /// delivers what it queued for each app and returns, leaving every holder running (US-3.3.2).
+    /// Serves app connections on `listener` until an app asks the core to restart or the daemon to be removed, or
+    /// the core gets SIGTERM, then delivers what it queued for each app and to disk and returns, leaving every holder
+    /// running (US-3.3.2).
     pub async fn serve(mut self, listener: UnixListener) {
+        let mut terminate = signal(SignalKind::terminate()).ok();
         while !self.exiting {
             tokio::select! {
                 accepted = listener.accept(), if self.accepting.ready() => {
@@ -193,6 +200,10 @@ impl Core {
                 }
                 () = self.accepting.rested() => self.accepting.resume(),
                 Some(event) = self.events.recv() => self.on_event(event),
+                () = terminated(terminate.as_mut()) => {
+                    tracing::info!("the core got SIGTERM; it ends, and its sessions keep running");
+                    self.exiting = true;
+                }
             }
         }
         drop(listener);
@@ -237,6 +248,9 @@ impl Core {
             CoreEvent::HolderClosed(session) => self.on_holder_closed(&session),
             CoreEvent::HolderAdopted(found) => {
                 let session = self.register_adopted(*found);
+                if let Some(meta) = self.context.store.read(&session.id) {
+                    self.settle_adopted(&meta);
+                }
                 self.persist(&session.id);
                 self.broadcast(&ServerMessage::SessionEvent {
                     change: SessionChange::Created { session },
@@ -340,6 +354,16 @@ impl Core {
         for link in self.clients.values().filter(|link| link.greeted) {
             link.sender.send(frame.clone());
         }
+    }
+}
+
+/// Resolves when SIGTERM arrives, or never when the core could not listen for it.
+async fn terminated(terminate: Option<&mut Signal>) {
+    match terminate {
+        Some(terminate) => {
+            terminate.recv().await;
+        }
+        None => std::future::pending().await,
     }
 }
 

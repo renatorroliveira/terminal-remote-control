@@ -25,8 +25,9 @@ Sessions do not belong to the application. A per-user daemon on each host owns
 them. The daemon starts, monitors, stops, restarts and restores the processes
 that run in each terminal. The application only renders sessions and relays
 input. Quitting or crashing the application ends no session. Losing the
-network or rebooting the client computer ends no remote session. When a host
-reboots, its daemon respawns each session's shell and restores its scrollback.
+network or rebooting the client computer ends no remote session. After a host
+reboots, its daemon respawns each session's shell below its scrollback when
+the application next connects.
 When the application opens again, it reattaches to every session on every host
 automatically.
 
@@ -73,13 +74,13 @@ and first-class assistive-technology support.
 
 ## 3. Goals
 
-| ID  | Goal                                                                                                                                                                                                                                  |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G1  | **Accessible.** WCAG 2.2 AA plus native assistive-technology integration on macOS, Windows and Linux. Screen reader, magnifier, keyboard-only and voice-control users (where the OS provides voice control) complete every core task. |
-| G2  | **Persistent.** Sessions survive app quit, app crash, daemon crash and daemon upgrade. Remote sessions also survive network loss and client reboot. After a host reboot, sessions respawn with their scrollback.                      |
-| G3  | **Zero remote setup.** Any host the user can reach with `ssh` and a key works. No sudo, no package installs and no internet access are required on the host.                                                                          |
-| G4  | **One place.** All sessions, local and remote, in one list with live state.                                                                                                                                                           |
-| G5  | **Secure by default.** No network listeners, OS-enforced access control, and SSH as the only remote trust boundary.                                                                                                                   |
+| ID  | Goal                                                                                                                                                                                                                                         |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | **Accessible.** WCAG 2.2 AA plus native assistive-technology integration on macOS, Windows and Linux. Screen reader, magnifier, keyboard-only and voice-control users (where the OS provides voice control) complete every core task.        |
+| G2  | **Persistent.** Sessions survive app quit, app crash, daemon crash and daemon upgrade. Remote sessions also survive network loss and client reboot. After a host reboot, sessions respawn below their scrollback when the app next connects. |
+| G3  | **Zero remote setup.** Any host the user can reach with `ssh` and a key works. No sudo, no package installs and no internet access are required on the host.                                                                                 |
+| G4  | **One place.** All sessions, local and remote, in one list with live state.                                                                                                                                                                  |
+| G5  | **Secure by default.** No network listeners, OS-enforced access control, and SSH as the only remote trust boundary.                                                                                                                          |
 
 Non-goals for P0 are listed in [§12](#12-out-of-scope-for-p0).
 

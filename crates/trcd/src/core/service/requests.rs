@@ -2,16 +2,18 @@
 
 use trc_protocol::frame::{Frame, FrameKind};
 use trc_protocol::{
-    AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ServerMessage,
-    SessionChange, SessionId, SessionOptions, TerminalSize, negotiate,
+    AttachMode, ClientMessage, CreateSessionSpec, DaemonDetails, ErrorCode, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION,
+    ServerMessage, SessionChange, SessionId, SessionOptions, TerminalSize, negotiate,
 };
 
 use super::size::size_problem;
 use super::{ClientId, Core};
 use crate::core::profiles::detect_profiles;
 use crate::core::registry::SessionRecord;
-use crate::holder::protocol::{HolderCommand, HolderSpec};
+use crate::core::restore::restart_marker;
+use crate::holder::protocol::{HolderCommand, HolderRestore, HolderSpec};
 use crate::session_id::new_session_id;
+use crate::time::now_millis;
 
 /// The holder protocol that saves sessions to disk.
 const SAVING_HOLDER_PROTOCOL: u32 = 3;
@@ -86,7 +88,10 @@ impl Core {
             binary_sha256: self.context.binary_sha256.clone(),
             caps: Vec::new(),
             service: Some(self.context.service),
-            details: Some(self.context.details.clone()),
+            details: Some(DaemonDetails {
+                uptime_ms: Some(now_millis().saturating_sub(self.context.details.started_at)),
+                ..self.context.details.clone()
+            }),
         };
         self.reply(client, &welcome);
     }
@@ -184,6 +189,9 @@ impl Core {
     }
 
     fn create(&mut self, request_id: u32, spec: CreateSessionSpec) -> ServerMessage {
+        if self.removal.is_some() {
+            return being_removed(request_id);
+        }
         if let Some(problem) = size_problem(spec.size) {
             return error(Some(request_id), ErrorCode::BadRequest, problem);
         }
@@ -272,23 +280,30 @@ impl Core {
         ServerMessage::Done { request_id }
     }
 
+    /// Restarts a session's shell; one without a holder gets a new one that first shows its saved scrollback.
     fn restart(&mut self, request_id: u32, session: &SessionId) -> ServerMessage {
+        if self.removal.is_some() {
+            return being_removed(request_id);
+        }
         let Some(record) = self.registry.get(session) else {
             return unknown(request_id);
         };
         if !self.holders.contains_key(session) {
             let (spec, name) = (record.spec.clone(), record.info.custom_name.clone());
-            self.launch(session.clone(), spec, name, None);
+            self.ended_holders.forget(session);
+            self.launch(session.clone(), spec, name, Some(restarted()));
             return ServerMessage::Done { request_id };
         }
         self.command_session(request_id, session, &HolderCommand::Restart)
     }
 
+    /// Closes a session; its record says so first, so a core that ends before the holder does deletes it anyway.
     fn close(&mut self, request_id: u32, session: &SessionId) -> ServerMessage {
         let Some(record) = self.registry.get_mut(session) else {
             return unknown(request_id);
         };
         record.closing = true;
+        self.persist(session);
         if !self.holder_command(session, &HolderCommand::Shutdown) {
             self.forget(session);
         }
@@ -352,6 +367,7 @@ impl Core {
         if self.registry.remove(session).is_some() {
             let _ = std::fs::remove_file(self.context.run.holder_socket(session));
             self.written.remove(session);
+            self.ended_holders.forget(session);
             self.context.store.remove(session);
             tracing::info!(session = %session.0, "session closed");
             self.broadcast(&ServerMessage::SessionEvent {
@@ -366,6 +382,21 @@ impl Core {
 
 fn unknown(request_id: u32) -> ServerMessage {
     error(Some(request_id), ErrorCode::UnknownSession, "no such session")
+}
+
+fn being_removed(request_id: u32) -> ServerMessage {
+    error(Some(request_id), ErrorCode::BadRequest, "the daemon is being removed")
+}
+
+/// What a session started again without its holder begins with: its saved scrollback and a restart marker.
+fn restarted() -> HolderRestore {
+    HolderRestore {
+        lines: vec![restart_marker(now_millis())],
+        start_shell: true,
+        state: trc_protocol::SessionState::Starting,
+        exit: None,
+        failure: None,
+    }
 }
 
 /// An error reply.

@@ -24,7 +24,7 @@ use crate::socket::bind_private;
 use crate::upgrade::lock_contents;
 
 /// How long a starting core waits for the core lock, which a core exiting after Restart daemon holds for moments.
-const LOCK_WAIT: Duration = Duration::from_secs(3);
+const LOCK_WAIT: Duration = Duration::from_secs(5);
 
 /// Why the core did not start.
 #[derive(Debug, Error)]
@@ -63,6 +63,7 @@ pub fn run(layout: &InstallLayout, systemd: bool) -> Result<(), StartError> {
         install_root: layout.root.to_string_lossy().into_owned(),
         log_dir: layout.logs_dir().to_string_lossy().into_owned(),
         started_at: crate::time::now_millis(),
+        uptime_ms: None,
     };
     let context = CoreContext {
         binary: layout.binary.clone(),
