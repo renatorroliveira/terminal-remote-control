@@ -9,6 +9,7 @@ import { nextZoom, TERMINAL_ZOOM, type ZoomChange } from '../../shared/terminal-
 import { CommandRegistry } from '../commands/command-registry';
 import { installShortcuts } from '../commands/shortcuts';
 import { daemonAnnouncements } from '../sessions/daemon-messages';
+import { endedSession } from '../sessions/ended-session';
 import { failureMessage } from '../sessions/failure-messages';
 import {
     connectStepAnnouncement,
@@ -652,6 +653,7 @@ export class Shell {
                 this.setSessionDialog({ kind: 'new', hostId: this.#options.workspace.defaultHost() }),
             'session.next': () => this.#options.workspace.openNext(1),
             'session.previous': () => this.#options.workspace.openNext(-1),
+            'session.close': () => this.#closeOpenSession(),
             'terminal.listLinks': () => this.#listLinks(),
             'terminal.zoomIn': () => this.#zoom('in'),
             'terminal.zoomOut': () => this.#zoom('out'),
@@ -667,6 +669,16 @@ export class Shell {
         for (const [id, run] of Object.entries(actions) as [CommandId, () => void][]) {
             this.commands.register({ id, label: this.#options.intl.formatMessage(commandMessages[id]), run });
         }
+    }
+
+    /** Asks to close the open session, running or ended, through US-1.10.4's confirmation (US-1.10.8). */
+    #closeOpenSession(): void {
+        const open = this.#options.workspace.store.getState().open;
+        if (open === undefined) {
+            this.#announce(shellAnnouncements.noSession);
+            return;
+        }
+        this.setSessionDialog({ kind: 'close', key: open });
     }
 
     #newSession(): void {
@@ -844,6 +856,8 @@ export class Shell {
         const stopOpen = store.subscribe((state) => {
             if (state.open !== undefined && state.open !== before.open) {
                 this.#announceOpen(state, before.unread.has(state.open));
+            } else if (endedSession(state) !== undefined && endedSession(before) === undefined) {
+                this.#announceEnded(state);
             }
             before = state;
         });
@@ -863,6 +877,18 @@ export class Shell {
             stopOpen();
             stopHosts();
         };
+    }
+
+    /** Says that the open session ended while the user had it open, and why (US-1.10.9). */
+    #announceEnded(state: Workspace): void {
+        const { intl, announcer } = this.#options;
+        const item = hostGroups(state)
+            .flatMap((group) => group.sessions)
+            .find((entry) => entry.key === state.open);
+        if (item !== undefined) {
+            const values = { session: item.label, state: sessionStateText(intl, item) };
+            announcer.announce(intl.formatMessage(openAnnouncements.ended, values), { group: 'open-session' });
+        }
     }
 
     #announceOpen(state: Workspace, unread: boolean): void {

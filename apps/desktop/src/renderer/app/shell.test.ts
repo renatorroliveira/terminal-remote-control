@@ -176,6 +176,7 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'New session with options…',
             'Next session',
             'Previous session',
+            'Close session…',
             'List links…',
             'Bigger terminal text',
             'Smaller terminal text',
@@ -380,6 +381,33 @@ async function sessionOpen() {
     harness.spoken.length = 0;
     return harness;
 }
+
+describe('Shell: the open session ends (US-1.10.9)', () => {
+    it('says once that the open session ended, and why', async () => {
+        const { shell, client, workspace, spoken } = await sessionOpen();
+        const running = workspace.store.getState().sessions.get('host-0')?.[0];
+        if (running === undefined) {
+            throw new Error('no session');
+        }
+        const exited = { ...running, state: 'exited', exit: { code: 2 } } as const;
+        client.message('host-0', { type: 'sessionEvent', change: { kind: 'updated', session: exited } });
+        client.message('host-0', { type: 'sessionEvent', change: { kind: 'updated', session: { ...exited } } });
+        await expect.poll(() => spoken).toEqual(['bash ended: Exited with code 2.']);
+        expect(shell.state.getState().sessionDialog).toBeUndefined();
+    });
+});
+
+describe('Shell: Close session (US-1.10.4, US-1.10.8)', () => {
+    it('asks to close the open session, whatever its state, and says when none is open', async () => {
+        const plain = await setup();
+        plain.shell.run('session.close');
+        expect(plain.spoken).toEqual(['No session is open.']);
+        expect(plain.shell.state.getState().sessionDialog).toBeUndefined();
+        const { shell } = await sessionOpen();
+        shell.run('session.close');
+        expect(shell.state.getState().sessionDialog).toEqual({ kind: 'close', key: 'host-0/a' });
+    });
+});
 
 describe('Shell review mode and find (A11Y-03, US-1.13)', () => {
     it('toggles review mode for the open session, and says when there is none', async () => {

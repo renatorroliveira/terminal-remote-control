@@ -182,7 +182,7 @@ describe('menuTemplate: Edit', () => {
 });
 
 describe('menuTemplate: Session', () => {
-    it('creates and switches sessions with their shortcuts (US-1.7.1, US-1.8.2)', () => {
+    it('creates, switches and closes sessions with their shortcuts (US-1.7.1, US-1.8.2, US-1.10.8)', () => {
         const template = menuTemplate(options());
         const session = template[1]?.submenu as MenuItemConstructorOptions[];
         expect(session.map((item) => [item.label ?? item.type, item.accelerator])).toEqual([
@@ -191,6 +191,8 @@ describe('menuTemplate: Session', () => {
             ['separator', undefined],
             ['Next Session', 'Shift+Command+]'],
             ['Previous Session', 'Shift+Command+['],
+            ['separator', undefined],
+            ['Close Session…', 'Command+W'],
         ]);
     });
 });

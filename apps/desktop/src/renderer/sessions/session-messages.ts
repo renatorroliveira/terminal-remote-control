@@ -220,3 +220,27 @@ export const savingMessages = {
     cancel: defineMessage({ id: 'sessionSettings.cancel', defaultMessage: 'Cancel', description: 'Button.' }),
     confirm: defineMessage({ id: 'sessionSettings.confirm', defaultMessage: 'Save', description: 'Button.' }),
 };
+
+/** The banner over an ended session's terminal (US-1.10.9). */
+export const endedBannerMessages = {
+    region: defineMessage({
+        id: 'ended.region',
+        defaultMessage: 'Session ended',
+        description: 'Accessible name of the banner over the terminal of a session that ended.',
+    }),
+    text: defineMessage<{ state: string }>({
+        id: 'ended.text',
+        defaultMessage: 'This session ended: {state}.',
+        description: 'Banner text over an ended session’s terminal; state is, for example, “Exited with code 1”.',
+    }),
+    restart: defineMessage({
+        id: 'ended.restart',
+        defaultMessage: 'Restart Session',
+        description: 'Banner button: starts the ended session’s shell again below its scrollback.',
+    }),
+    remove: defineMessage({
+        id: 'ended.remove',
+        defaultMessage: 'Remove Session…',
+        description: 'Banner button: asks to remove the ended session and its scrollback from the list.',
+    }),
+};

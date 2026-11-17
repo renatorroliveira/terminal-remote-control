@@ -1,0 +1,23 @@
+@layer components {
+    .banner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1rem;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--trc-color-border);
+        background: var(--trc-color-surface);
+        color: var(--trc-color-text);
+    }
+
+    .text {
+        flex: 1 1 16rem;
+        margin: 0;
+    }
+
+    .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+}

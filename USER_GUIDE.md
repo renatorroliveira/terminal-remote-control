@@ -193,11 +193,14 @@ The Sessions list is a tree: each connected host, then its sessions. It is one s
 - **Session actions.** Rename (an empty name shows the title the program sets), Session settings… (the two
   switches above), Stop, Restart (same shell, folder and environment; the scrollback stays), Duplicate (same shell
   and folder), Move up, Move down, and Close, which asks first because it deletes the session and its scrollback,
-  on the host's disk too. You can also drag a session up or down its
-  host's list. The command palette lists the open session's actions too.
+  on the host's disk too. Command+W (Session > Close Session…) closes the open session the same way, whether it
+  runs or has ended. You can also drag a session up or down its host's list. The command palette lists the open
+  session's actions too.
 - **Ending a session.** Type `exit`, or end its program. A session that exits cleanly (code 0) leaves the list,
   unless you turn off "Close sessions that exit cleanly" in [Settings](#settings); one that failed stays, so you
-  can read its last output.
+  can read its last output. While an ended session is open, a banner above its terminal says why it ended, and
+  VoiceOver reads it when it ends; its Restart Session button starts the shell again below the scrollback, and
+  Remove Session… asks, then takes it out of the list.
 - **Stopping.** Stop asks the program to end, then forces it after the seconds Settings sets (5 by default).
 
 Sessions keep running on the host when you quit the app, when it crashes or is forced to quit, and when the

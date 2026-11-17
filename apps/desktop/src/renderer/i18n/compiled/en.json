@@ -329,6 +329,24 @@
       "value": "No session is open."
     }
   ],
+  "announce.openEnded": [
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": " ended: "
+    },
+    {
+      "type": 1,
+      "value": "state"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "announce.opened": [
     {
       "type": 1,
@@ -737,6 +755,12 @@
       "value": "Review mode"
     }
   ],
+  "command.sessionClose": [
+    {
+      "type": 0,
+      "value": "Close session…"
+    }
+  ],
   "command.sessionNew": [
     {
       "type": 0,
@@ -1035,6 +1059,38 @@
     {
       "type": 0,
       "value": "Daemon version"
+    }
+  ],
+  "ended.region": [
+    {
+      "type": 0,
+      "value": "Session ended"
+    }
+  ],
+  "ended.remove": [
+    {
+      "type": 0,
+      "value": "Remove Session…"
+    }
+  ],
+  "ended.restart": [
+    {
+      "type": 0,
+      "value": "Restart Session"
+    }
+  ],
+  "ended.text": [
+    {
+      "type": 0,
+      "value": "This session ended: "
+    },
+    {
+      "type": 1,
+      "value": "state"
+    },
+    {
+      "type": 0,
+      "value": "."
     }
   ],
   "failure.authenticationAgentEmpty.problem": [

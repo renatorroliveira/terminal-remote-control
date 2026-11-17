@@ -7,6 +7,7 @@ import { SIDEBAR_WIDTH } from '../../shared/layout';
 import { shellMessages } from '../i18n/messages';
 import { ConnectionFailureDialog } from '../sessions/ConnectionFailureDialog';
 import { DaemonDialogs } from '../sessions/DaemonDialogs';
+import { EndedBanner } from '../sessions/EndedBanner';
 import { ADD_HOST_ATTRIBUTE, HostDialogs } from '../sessions/HostDialogs';
 import { LogoutWarningDialog } from '../sessions/LogoutWarningDialog';
 import { sidebarMessages } from '../sessions/messages';
@@ -126,6 +127,7 @@ function TerminalRegion({ workspace, terminals, shell }: AppProps) {
                 {intl.formatMessage(sidebarMessages.toggle)}
             </Button>
             <FindBar shell={shell} />
+            <EndedBanner workspace={workspace} shell={shell} />
             <div ref={attach} className={styles['terminals'] ?? ''} />
             {open === undefined && (
                 <p className={styles['empty'] ?? ''}>
