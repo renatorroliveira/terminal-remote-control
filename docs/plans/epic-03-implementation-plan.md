@@ -359,6 +359,6 @@ What stays, and why:
 - `shares_a_session_between_two_apps` failed once in the Alpine container and not in 75 reruns. The review found no
   race that drops a second client's output; a guess, not shown, is that busybox ash's cursor query at its prompt
   swallowed early input. The panic text of another failure, which prints both clients' output, would settle it.
-- A holder keeps SIGTERM's default action, so a reboot or a logout that ends user processes ends it before it could
-  report a shell that the same signal ended as Exited; the systemd hosts' restarts, where systemd signals every
-  process at shutdown, restore their sessions.
+- A holder keeps SIGTERM's default action, so a reboot or a logout that ends user processes ends it at once, while
+  the interactive shell ignores SIGTERM and ends only on SIGHUP once the holder's PTY closes; the holder never reports
+  it Exited. The systemd hosts' restarts, where systemd signals every process at shutdown, restore their sessions.
