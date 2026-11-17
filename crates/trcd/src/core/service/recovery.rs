@@ -66,8 +66,9 @@ impl Core {
         self.persist_all();
     }
 
-    /// A holder that was silent at the core's start never introduced itself: its session comes back from its record
-    /// as one whose holder is gone does, at the end of the list, unless the user had closed it.
+    /// A holder that was silent at the core's start never introduced itself and no longer serves its socket: its
+    /// session comes back from its record as one whose holder is gone does, at the end of the list, unless the user had
+    /// closed it.
     pub(super) fn recover_lost(&mut self, session: &SessionId) {
         if self.registry.get(session).is_some() {
             return;
@@ -75,7 +76,7 @@ impl Core {
         let Some(meta) = self.context.store.read(session) else {
             return;
         };
-        if meta.closing {
+        if meta.closing || self.removal.is_some() {
             return self.context.store.remove(session);
         }
         let info = self.bring_back(meta);
@@ -143,7 +144,7 @@ impl Core {
     /// The record of a session brought back from `meta`, and what its new holder starts with.
     fn recovered(&self, meta: SessionMeta) -> Recovered {
         let now = now_millis();
-        let plan = recovery(&meta, self.context.boot_id.as_deref(), now);
+        let plan = recovery(&meta, self.context.boot_id.as_deref());
         let SessionMeta { mut info, mut spec, .. } = meta;
         spec.data_dir = Some(self.context.store.session_dir(&info.id).to_string_lossy().into_owned());
         let restore = match plan {

@@ -66,18 +66,27 @@ pub async fn adopt_holders(run: &RunDir) -> Adoption {
     gather(asked).await
 }
 
-/// Asks a holder that was silent at start again; its session, or `None` when it is gone or still does not answer, in
-/// which case the core brings the session back from its record (a holder that still holds its socket keeps a new
-/// one from starting, so the session shows as failed to start).
+/// Asks a holder that was silent at start again; its session, or `None` when it is gone or still does not answer.
+/// The core then brings the session back from its record once [`still_served`] says no process serves the socket.
 pub async fn adopt_late(path: &Path, id: &SessionId) -> Option<Adopted> {
     match introduce_at(path, id, LATE_INTRODUCTION).await {
         Introduction::Adopted(found) => Some(*found),
         Introduction::Silent => {
-            tracing::warn!("a holder did not introduce itself; its session comes back from its record");
+            tracing::warn!("a holder did not introduce itself");
             None
         }
         Introduction::Gone => None,
     }
+}
+
+/// Whether a process still serves the holder socket at `path`, as a holder that is alive but silent does; a socket
+/// nothing serves is removed, so a new holder can take its place.
+pub async fn still_served(path: &Path) -> bool {
+    if UnixStream::connect(path).await.is_ok() {
+        return true;
+    }
+    let _ = std::fs::remove_file(path);
+    false
 }
 
 /// Collects every introduction, skipping one whose task failed so the others still finish.

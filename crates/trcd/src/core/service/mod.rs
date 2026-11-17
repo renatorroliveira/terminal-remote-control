@@ -22,7 +22,7 @@ use tokio::sync::mpsc;
 use trc_protocol::frame::{self, Frame, FrameKind};
 use trc_protocol::{DaemonDetails, ServerMessage, ServiceInfo, SessionChange, SessionId, SessionInfo};
 
-use super::adopt::{Adopted, adopt_holders, adopt_late};
+use super::adopt::{Adopted, adopt_holders, adopt_late, still_served};
 use super::launch::launch_holder;
 use super::registry::Registry;
 use super::relaunch::EndedHolders;
@@ -76,6 +76,8 @@ pub struct Core {
     written: BTreeMap<SessionId, SessionMeta>,
     /// The `removeDaemon` request waiting for every session to end (US-3.3.3).
     removal: Option<(ClientId, u32)>,
+    /// The stop grace period the removal asked for.
+    removal_grace: Option<u32>,
     /// Set once the core should stop serving and exit, after a restart or a removal was asked for.
     exiting: bool,
     /// When each session's holder last ended, so one that keeps ending is not brought back again.
@@ -162,6 +164,7 @@ impl Core {
             accepting: AcceptBackoff::default(),
             written: BTreeMap::new(),
             removal: None,
+            removal_grace: None,
             exiting: false,
             ended_holders: EndedHolders::default(),
         }
@@ -185,7 +188,11 @@ impl Core {
             tokio::spawn(async move {
                 let event = match adopt_late(&path, &id).await {
                     Some(found) => CoreEvent::HolderAdopted(Box::new(found)),
-                    None => CoreEvent::HolderLost(id),
+                    None if !still_served(&path).await => CoreEvent::HolderLost(id),
+                    None => {
+                        tracing::warn!(session = %id.0, "a live holder never answered; the next core asks it again");
+                        return;
+                    }
                 };
                 let _ = events.send(event).await;
             });
@@ -261,6 +268,9 @@ impl Core {
         let id = self.register_adopted(found).id;
         if let Some(meta) = self.context.store.read(&id) {
             self.settle_adopted(&meta);
+        }
+        if self.removal.is_some() {
+            return self.stop_for_removal(&id);
         }
         let Some(record) = self.registry.get(&id).filter(|record| !record.closing) else {
             return;

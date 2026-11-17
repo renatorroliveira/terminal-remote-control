@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use trc_protocol::{ErrorCode, ServerMessage};
+use trc_protocol::{ErrorCode, ServerMessage, SessionId};
 
 use super::requests::error;
 use super::{ClientId, Core};
@@ -41,19 +41,27 @@ impl Core {
             "removing the daemon, as an app asked"
         );
         self.removal = Some((client, request_id));
+        self.removal_grace = grace_ms;
         for session in self.registry.ids() {
-            if let Some(record) = self.registry.get_mut(&session) {
-                record.closing = true;
-            }
-            self.persist(&session);
-            let stopping = self.holder_command(&session, &HolderCommand::Stop { grace_ms })
-                && self.holder_command(&session, &HolderCommand::Shutdown);
-            if !stopping {
-                self.forget(&session);
-            }
+            self.stop_for_removal(&session);
         }
         self.forgot_during_removal();
         None
+    }
+
+    /// Closes a session as removing the daemon does: stopped with the removal's grace period, then shut down, or
+    /// forgotten at once when it has no holder; a session adopted late during a removal goes the same way.
+    pub(super) fn stop_for_removal(&mut self, session: &SessionId) {
+        if let Some(record) = self.registry.get_mut(session) {
+            record.closing = true;
+        }
+        self.persist(session);
+        let grace_ms = self.removal_grace;
+        let stopping = self.holder_command(session, &HolderCommand::Stop { grace_ms })
+            && self.holder_command(session, &HolderCommand::Shutdown);
+        if !stopping {
+            self.forget(session);
+        }
     }
 
     /// Finishes a removal once no session is left: deletes the saved sessions, answers, and stops serving.

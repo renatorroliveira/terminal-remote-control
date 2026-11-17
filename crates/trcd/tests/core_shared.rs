@@ -366,22 +366,24 @@ async fn adopts_a_session_whose_holder_an_e1_core_started() {
 }
 
 #[tokio::test]
-async fn restores_a_session_an_older_holder_ran_without_scrollback_once_its_processes_ended() {
-    let installed = Installed::new();
-    let holder = plant_holder(&installed, "00000000000000e1", None);
-    let core = installed.start_core();
-    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
-    let id = SessionId("00000000000000e1".into());
-    attach(&mut client, 2, &id, None).await;
-    stop(core);
-    holder.abort();
-    let _ = holder.await;
-    assert!(installed.root.join("sessions").join(&id.0).join("meta.json").exists());
+async fn restores_a_session_an_e1_or_e2_holder_ran_without_scrollback_once_its_processes_ended() {
+    for proto in [None, Some(2)] {
+        restores_an_older_holders_session(proto).await;
+    }
+}
 
-    let core = installed.start_core();
-    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+/// Waits until the core has written the session's record.
+async fn recorded(client: &mut AppClient, installed: &Installed, id: &SessionId) {
+    let record = installed.root.join("sessions").join(&id.0).join("meta.json");
+    while !record.exists() {
+        client.pause(Duration::from_millis(20)).await;
+    }
+}
+
+/// The session as the core lists it once it runs again, within 15 s.
+async fn running_again(client: &mut AppClient, id: &SessionId) -> SessionInfo {
     let started = std::time::Instant::now();
-    let restored = loop {
+    loop {
         client.send(&ClientMessage::ListSessions { request_id: 3 });
         let ServerMessage::Sessions { sessions, .. } = client
             .take(|m| matches!(m, ServerMessage::Sessions { request_id: 3, .. }))
@@ -389,12 +391,30 @@ async fn restores_a_session_an_older_holder_ran_without_scrollback_once_its_proc
         else {
             unreachable!()
         };
-        match sessions.into_iter().find(|session| session.id == id) {
-            Some(session) if session.state == SessionState::Running => break session,
+        match sessions.into_iter().find(|session| &session.id == id) {
+            Some(session) if session.state == SessionState::Running => return session,
             listed => assert!(started.elapsed() < Duration::from_secs(15), "{listed:?}"),
         }
         client.pause(Duration::from_millis(100)).await;
-    };
+    }
+}
+
+/// An older holder, which saves nothing to disk, runs a session; once its processes end, a new core restores it below
+/// only the marker (P-49).
+async fn restores_an_older_holders_session(proto: Option<u32>) {
+    let installed = Installed::new();
+    let holder = plant_holder(&installed, "00000000000000e1", proto);
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let id = SessionId("00000000000000e1".into());
+    recorded(&mut client, &installed, &id).await;
+    stop(core);
+    holder.abort();
+    let _ = holder.await;
+
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let restored = running_again(&mut client, &id).await;
     assert!(restored.restored.is_some(), "{restored:?}");
     let (stream, _) = attach(&mut client, 4, &id, None).await;
     client

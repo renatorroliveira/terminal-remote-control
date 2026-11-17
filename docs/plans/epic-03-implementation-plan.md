@@ -73,8 +73,9 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 
 A starting core:
 
-1. adopts the live holders as in E2; a holder that is alive but silent keeps its session, which is never restored
-   twice;
+1. adopts the live holders as in E2. A holder that is silent at first is asked again for 10 s; one that still
+   does not answer keeps its session for the next core while a process serves its socket, and otherwise its session
+   is brought back from its record as in step 3, so no session is restored twice;
 2. reads every `sessions/*/meta.json`; a directory whose `meta.json` is unreadable is kept, logged and skipped;
 3. for each session without a live holder:
     - **restore**: it was running, the user had not stopped or closed it, and its restore option is on. A new holder
@@ -88,10 +89,9 @@ A starting core:
    (The plan had 4 at a time; no queue was built, as each holder only replays its own file and starts one
    shell.)
 
-A holder that ends while its session is not being closed brings the session back the same way, with two limits
-applied in turn: a session restored less than 30 s ago is not restored again unless the host restarted, but kept
-ended with its scrollback; and a session whose holder ended 3 times within 10 minutes is left Failed to start.
-Restart starts either again below its saved scrollback.
+A holder that ends while its session is not being closed brings the session back the same way, however recently it
+was last restored (US-3.1.3). A session whose holder ended 3 times within 10 minutes is left Failed to start instead,
+so a holder that cannot run never starts again and again; Restart starts it again below its saved scrollback.
 
 Every session in the registry is written to `meta.json`, so order, names and options also survive a core restart,
 which E2 lost.
@@ -119,7 +119,8 @@ which E2 lost.
   session with the stop grace period, deletes `sessions/` and exits. The app then runs the bootstrap's new `REMOVE`
   step over ssh, which stops the daemon's systemd unit, ends any process whose executable lies in the root's
   `versions/`, deletes only the entries TRC creates in `versions/`, `sessions/`, `run/` (and its `/tmp` fallback) and
-  `logs/`, and the install lock, removes each folder and the root once empty, and reports what it left. The step also works when the core cannot be reached or speaks no common protocol.
+  `logs/`, and the install lock, removes each folder and the root once empty, and reports what it left. The step
+  also works when the core cannot be reached or speaks no common protocol.
 - **Forget host** asks: Forget and leave sessions running, Stop sessions, remove the daemon and forget, or Cancel.
 
 ### 3.5 App
@@ -205,11 +206,13 @@ reset and the whole snapshot. The NFR-09 test also measures the holder while tha
 
 As built (ST-44, 2026-11-16): the core writes a session's `meta.json` whenever what it keeps changes (not its
 process ID or output time), so order, names and options also survive a core restart. A holder that dies while the
-core runs is brought back in place at once, the same way; one that dies again within 30 s of a restore stays
-ended, so a shell that cannot start never loops, and the reviews added the second limit of §3.2 (3 holder endings in
-10 minutes). The restart of every test host is `host-restart.spec.ts` on Ubuntu, Alpine and Rocky, and the restore of
-a 0.3.0 session without scrollback is `core_shared.rs`'s older-holder test, both added in review round 2. Restores start all at once rather than 4 at a time: a shell's start
-is short, and holders queued behind others could not be attached meanwhile; ST-49 measures 100 at once. In the
+core runs is brought back in place at once, the same way. It first stayed ended when it died again within 30 s of a
+restore; review round 3 dropped that rule, which left US-3.1.3 unmet when a logout followed a restore closely, for
+§3.2's limit of 3 holder endings in 10 minutes. The restart of every test host is `host-restart.spec.ts` on Ubuntu,
+Alpine, Rocky and the three systemd hosts, and the restore of an E1 or E2 holder's session without scrollback is
+`core_shared.rs`'s older-holder test, both added in the reviews. Restores start all at once rather than 4 at a time:
+a shell's start is short, and holders queued behind others could not be attached meanwhile; ST-49 measures 100 at
+once. In the
 containers a `docker restart` keeps the VM's boot ID, so those restores say the processes ended; the boot-ID rule
 that says "after restart" is unit-tested.
 
@@ -319,7 +322,8 @@ is listed below with why it stays.
 | Round | Code review (C/H/M/L) | Audit (C/H/M/L) | Fixes                     |
 | ----- | --------------------- | --------------- | ------------------------- |
 | 1     | 0 / 2 / 6 / 7         | 0 / 1 / 8 / 1   | `a08fc78`                 |
-| 2     | 0 / 2 / 2 / 3         | 0 / 2 / 4 / 3   | the review round 2 commit |
+| 2     | 0 / 2 / 2 / 3         | 0 / 2 / 4 / 3   | `84a38fe`                 |
+| 3     | 0 / 0 / 1 / 3         | 0 / 2 / 2 / 1   | the review round 3 commit |
 
 The highs:
 
@@ -335,7 +339,9 @@ The highs:
   stays stale until a rewrite finished after the last drop lands (round 2).
 - The Mac's `sessions.json` kept the program-set title of a session that saves nothing to disk (round 2).
 - ST-44 was marked Done without its restart of every test host and its restore of a 0.3.0 session; both tests now
-  exist (round 2).
+  exist (round 2), and the systemd hosts restart too (round 3).
+- A session restored less than 30 s earlier stayed ended when its processes ended again, against US-3.1.3; only the
+  limit of 3 holder endings in 10 minutes remains (round 3).
 
 What stays, and why:
 
@@ -343,7 +349,11 @@ What stays, and why:
 - P-43 has Upgrade daemon "enabled only when" the host runs an older daemon; it is hidden otherwise rather than
   disabled, as a disabled button is skipped by Tab and offers nothing to act on, and the details say "Up to date"
   when the host runs the app's daemon, as P-43 asks.
-- With "Save scrollback to disk" off, `meta.json` still keeps the session's last working folder, which may come from
-  OSC 7: restoring the shell in its folder (US-3.1.3) needs it, and it is the shell's state rather than output.
+- With "Save scrollback to disk" off, `meta.json` still keeps the session's last working folder. It may come from
+  OSC 7, which is output any program can print, but restoring the shell in its folder (US-3.1.3) needs it.
 - A session whose holder introduced itself late joins the end of the list rather than its saved place, as the user
   may have reordered the list meanwhile.
+- A holder that still serves its socket but never answers keeps its session hidden until the next core asks it
+  again, as in E2: starting a second holder beside it would claim a restore that did not happen.
+- `shares_a_session_between_two_apps` failed once in the Alpine container and not in 75 reruns; the review found no
+  race that drops a second client's output, and busybox ash's cursor query at its prompt can swallow early input.

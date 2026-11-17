@@ -28,8 +28,8 @@ cosmetic, and blocks the release (§11.6).
 
 ## 1. Sessions restored after a restart (US-3.1, P-42)
 
-1. In one session run `echo before-restart`. Quit TRC, restart the host (or run `pkill -KILL -u $USER trcd` there, which ends the daemon and every session's processes at once), wait
-   for it to come back, and open TRC. **Expect:** once the host connects, VoiceOver says "<host> restarted: 2
+1. In one session run `echo before-restart`. Quit TRC, restart the host (or run `pkill -KILL -u $USER trcd` there,
+   which ends the daemon and every session's processes at once), wait for it to come back, and open TRC. **Expect:** once the host connects, VoiceOver says "<host> restarted: 2
    sessions restored" (or "<host>: 2 sessions restored" when only the processes ended), and Notifications lists it.
 2. Move through the session list. **Expect:** each restored session reads "<name>, Running, restored".
 3. Open the first one. **Expect:** VoiceOver reads its name and state; the terminal shows "before-restart" above the

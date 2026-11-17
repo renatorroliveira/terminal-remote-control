@@ -10,7 +10,7 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel, sync_channel};
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use trc_protocol::{SessionId, SessionInfo};
@@ -86,6 +86,7 @@ impl SessionStore {
             uid,
             failed: BTreeMap::new(),
             retry_after,
+            retry_at: None,
         };
         let thread = std::thread::spawn(move || disk.run(&receiver));
         Self {
@@ -177,20 +178,24 @@ struct Disk {
     uid: u32,
     failed: BTreeMap<SessionId, SessionMeta>,
     retry_after: Duration,
+    /// When the failed records are tried again, however many other jobs arrive meanwhile.
+    retry_at: Option<Instant>,
 }
 
 impl Disk {
     fn run(&mut self, jobs: &Receiver<Job>) {
         loop {
-            let next = if self.failed.is_empty() {
-                jobs.recv().map_err(|_| RecvTimeoutError::Disconnected)
-            } else {
-                jobs.recv_timeout(self.retry_after)
+            let next = match self.retry_at {
+                None => jobs.recv().map_err(|_| RecvTimeoutError::Disconnected),
+                Some(at) => jobs.recv_timeout(at.saturating_duration_since(Instant::now())),
             };
             match next {
                 Ok(job) => self.handle(job),
-                Err(RecvTimeoutError::Timeout) => self.retry(),
+                Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => return self.retry(),
+            }
+            if self.retry_at.is_some_and(|at| Instant::now() >= at) {
+                self.retry();
             }
         }
     }
@@ -213,6 +218,7 @@ impl Disk {
     }
 
     fn retry(&mut self) {
+        self.retry_at = None;
         for meta in std::mem::take(&mut self.failed).into_values() {
             self.write(meta);
         }
@@ -230,6 +236,7 @@ impl Disk {
                     tracing::warn!(session = %session.0, %error, "the session's record could not be saved; retrying");
                 }
                 self.failed.insert(session, meta);
+                self.retry_at.get_or_insert_with(|| Instant::now() + self.retry_after);
             }
         }
     }
@@ -456,6 +463,33 @@ mod tests {
             std::thread::sleep(Duration::from_millis(10));
         }
         assert_eq!(store.read_all(), vec![meta]);
+    }
+
+    #[test]
+    fn writes_a_failed_record_again_while_other_records_keep_arriving() {
+        let dir = temp_dir("store-retry-busy");
+        let store = SessionStore::retrying_after(
+            dir.clone(),
+            rustix::process::geteuid().as_raw(),
+            Duration::from_millis(100),
+        );
+        let failed = sample("0123456789abcdef", 0);
+        let blocker = dir.join(&failed.info.id.0);
+        std::fs::write(&blocker, b"not a folder").unwrap();
+        store.write(&failed);
+        store.flush();
+        std::fs::remove_file(&blocker).unwrap();
+        let mut busy = sample("fedcba9876543210", 1);
+        let started = std::time::Instant::now();
+        while !store.session_dir(&failed.info.id).join(META_FILE).exists() {
+            assert!(
+                started.elapsed() < Duration::from_secs(5),
+                "the failed record waited behind the others"
+            );
+            busy.info.order += 1;
+            store.write(&busy);
+            std::thread::sleep(Duration::from_millis(20));
+        }
     }
 
     #[test]

@@ -142,8 +142,8 @@ export function restartTestHost(alias: string): void {
 
 /**
  * Adds `destination` as a known host, choosing its SSH config suggestion by name so a pointer resting over the list
- * cannot pick another, connects it from its badge, creates a session, and returns the session's text
- * surface once it opens.
+ * cannot pick another, connects it from its badge, creates a session, past the warning a host that ends processes at
+ * logout gives first (US-2.4.4), and returns the session's text surface once it opens.
  */
 export async function openTerminal(window: Page, destination: string): Promise<Locator> {
     await window.getByRole('combobox', { name: 'New host' }).fill(destination);
@@ -153,6 +153,11 @@ export async function openTerminal(window: Page, destination: string): Promise<L
     await window.getByRole('button', { name: `Disconnect ${destination}` }).waitFor({ timeout: 60_000 });
     await window.getByRole('button', { name: `New session on ${destination}` }).click();
     const terminal = window.getByRole('textbox', { name: new RegExp(`, ${destination}$`) });
+    const warning = window.getByRole('alertdialog', { name: `Programs on ${destination} end when you disconnect` });
+    await terminal.or(warning).first().waitFor({ timeout: 30_000 });
+    if (await warning.isVisible()) {
+        await warning.getByRole('button', { name: 'Create Session' }).click();
+    }
     await terminal.waitFor({ timeout: 30_000 });
     return terminal;
 }

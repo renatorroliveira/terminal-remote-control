@@ -17,12 +17,6 @@ import { soakCycles } from './soak';
 const CYCLES = soakCycles('TRC_SOAK_REBOOT_CYCLES', 100);
 const HOST = 'trc-ubuntu';
 const SESSIONS = 3;
-/**
- * How long the daemon waits before it restores the same session again when the host's boot ID did not change
- * (`RESTORE_AGAIN_AFTER_MS` in `crates/trcd/src/core/restore.rs`), plus a margin. A container restart keeps the VM's
- * boot ID, so each cycle waits this long after the last restore, as a real reboot takes longer anyway.
- */
-const RESTORE_AGAIN_AFTER_MS = 31_000;
 const MARKER = /Session restored (after restart )?on \d{4}-\d\d-\d\d \d\d:\d\d:\d\d UTC\. Previous processes ended\./g;
 
 afterAll(() => {
@@ -100,16 +94,12 @@ describe.skipIf(testHostsMissing() !== undefined)('soak: the host restarts (US-3
         }
         const restoredAt = new Map<string, number>();
         const back: number[] = [];
-        let lastRestore = Number.NEGATIVE_INFINITY;
         for (let cycle = 1; cycle <= CYCLES; cycle += 1) {
             await printSaved(host, ids, cycle);
-            const settled = lastRestore + RESTORE_AGAIN_AFTER_MS - performance.now();
-            await new Promise((resolve) => setTimeout(resolve, Math.max(0, settled)));
             host.connection.close();
             restartTestHost(HOST);
             const restarted = performance.now();
             host = await reconnectLive(HOST, root);
-            lastRestore = performance.now();
             await checkRestored(host, ids, cycle, restoredAt);
             back.push(performance.now() - restarted);
         }
