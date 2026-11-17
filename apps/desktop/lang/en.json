@@ -99,6 +99,10 @@
     "defaultMessage": "No session is open.",
     "description": "Announced when a command needs an open session."
   },
+  "announce.openEnded": {
+    "defaultMessage": "{session} ended: {state}.",
+    "description": "Announced politely when the open session’s shell ends; state is, for example, “Exited with code 1”."
+  },
   "announce.opened": {
     "defaultMessage": "{session} on {host}: {state}.",
     "description": "Announced politely when a session opens."
@@ -234,6 +238,10 @@
   "command.reviewToggle": {
     "defaultMessage": "Review mode",
     "description": "Command name: opens or closes review mode, a read-only text field with the whole buffer."
+  },
+  "command.sessionClose": {
+    "defaultMessage": "Close session…",
+    "description": "Command name: asks to close the open session, deleting its scrollback."
   },
   "command.sessionNew": {
     "defaultMessage": "New session",
@@ -386,6 +394,22 @@
   "details.version": {
     "defaultMessage": "Daemon version",
     "description": "Label."
+  },
+  "ended.region": {
+    "defaultMessage": "Session ended",
+    "description": "Accessible name of the banner over the terminal of a session that ended."
+  },
+  "ended.remove": {
+    "defaultMessage": "Remove Session…",
+    "description": "Banner button: asks to remove the ended session and its scrollback from the list."
+  },
+  "ended.restart": {
+    "defaultMessage": "Restart Session",
+    "description": "Banner button: starts the ended session’s shell again below its scrollback."
+  },
+  "ended.text": {
+    "defaultMessage": "This session ended: {state}.",
+    "description": "Banner text over an ended session’s terminal; state is, for example, “Exited with code 1”."
   },
   "failure.authenticationAgentEmpty.problem": {
     "defaultMessage": "Your SSH agent holds no keys, so ssh had no key to offer {name}.",

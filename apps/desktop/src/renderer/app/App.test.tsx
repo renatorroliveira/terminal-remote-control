@@ -53,6 +53,31 @@ describe('App (US-1.6.1)', () => {
     });
 });
 
+describe('App: an ended session (US-1.10.9)', () => {
+    it('shows why the open session ended, with Restart and Remove, until it runs again', async () => {
+        await page.viewport(1400, 800);
+        const exited = { ...bashSession('a'), state: 'exited', exit: { code: 1 } } as const;
+        const { client, rendered } = renderApp(400, [exited]);
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        await screen.getByRole('treeitem', { name: 'bash, Exited with code 1' }).click();
+        const banner = screen.getByRole('region', { name: 'Session ended' });
+        await expect.poll(() => banner.element().textContent).toContain('This session ended: Exited with code 1.');
+        await noViolations();
+        await banner.getByRole('button', { name: 'Restart Session' }).click();
+        await expect.poll(() => requestTypes(client.requests)).toContain('restart');
+        await banner.getByRole('button', { name: 'Remove Session…' }).click();
+        const confirm = screen.getByRole('alertdialog', { name: /^Close bash/ });
+        await expect.element(confirm).toBeVisible();
+        await userEvent.keyboard('{Escape}');
+        client.message('host-0', {
+            type: 'sessionEvent',
+            change: { kind: 'updated', session: { ...bashSession('a'), state: 'running' } },
+        });
+        await expect.element(banner).not.toBeInTheDocument();
+    });
+});
+
 describe('App: layout (US-1.6.1, A11Y-07.5)', () => {
     it('keeps the sidebar 400 px wide beside the terminal area', async () => {
         await page.viewport(1400, 800);
@@ -371,6 +396,11 @@ describe('App: host key dialog (US-1.2.1)', () => {
         expect(client.calls).toContain('reject host-0');
     });
 });
+
+/** The types of the requests a fake client received, in order. */
+function requestTypes(requests: readonly { readonly type: string }[]): readonly string[] {
+    return requests.map((request) => request.type);
+}
 
 /** Opens the host row's context menu and chooses `item`. */
 async function hostMenu(screen: AppScreen, item: string) {

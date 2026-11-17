@@ -193,10 +193,10 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 | ST-52 | Done    | b12168c |
 | ST-53 | Done    | 780625a |
 | ST-54 | Done    | 05e8518 |
-| ST-55 | Done    | —       |
+| ST-55 | Done    | caa4cb6 |
 | ST-56 | Planned | —       |
 | ST-57 | Planned | —       |
 | ST-58 | Planned | —       |
 | ST-59 | Planned | —       |
 | ST-60 | Planned | —       |
-| ST-61 | Planned | —       |
+| ST-61 | Done    | —       |

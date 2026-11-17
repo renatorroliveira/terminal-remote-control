@@ -60,6 +60,11 @@ export const commandMessages = defineMessages<CommandId>({
         defaultMessage: 'Previous session',
         description: 'Command name.',
     },
+    'session.close': {
+        id: 'command.sessionClose',
+        defaultMessage: 'Close session…',
+        description: 'Command name: asks to close the open session, deleting its scrollback.',
+    },
     'terminal.zoomIn': {
         id: 'command.terminalZoomIn',
         defaultMessage: 'Bigger terminal text',
@@ -275,6 +280,12 @@ export const openAnnouncements = {
         id: 'announce.openedUnread',
         defaultMessage: '{session} on {host}: {state}, new output.',
         description: 'Announced politely when a session with unseen output opens.',
+    }),
+    ended: defineMessage<{ session: string; state: string }>({
+        id: 'announce.openEnded',
+        defaultMessage: '{session} ended: {state}.',
+        description:
+            'Announced politely when the open session’s shell ends; state is, for example, “Exited with code 1”.',
     }),
 };
 

@@ -55,6 +55,7 @@ const TOPICS: Readonly<Record<HelpContext, readonly Topic[]>> = {
         { action: keys.openSession, keys: 'Return' },
         { action: keys.contextMenu, keys: 'Shift+F10' },
         'session.newWithOptions',
+        'session.close',
     ],
     general: [
         'region.next',

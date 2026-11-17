@@ -14,7 +14,10 @@ import type { SessionItem } from './workspace-model';
  * Disconnected while its host is not connected (US-1.14.1, US-2.2.2), or what ended the processes of one that was
  * not restored (US-3.1.8).
  */
-export function sessionStateText(intl: IntlShape, item: SessionItem): string {
+export function sessionStateText(
+    intl: IntlShape,
+    item: Pick<SessionItem, 'session' | 'disconnected' | 'reconnecting'>,
+): string {
     if (item.disconnected && item.reconnecting) {
         return intl.formatMessage(sessionReconnectingMessage);
     }

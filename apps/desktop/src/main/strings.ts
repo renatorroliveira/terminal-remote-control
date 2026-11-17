@@ -8,6 +8,7 @@ export const MAIN_STRINGS = {
     sessionMenu: 'Session',
     newSession: 'New Session',
     newSessionWithOptions: 'New Session…',
+    closeSession: 'Close Session…',
     nextSession: 'Next Session',
     previousSession: 'Previous Session',
     commandPalette: 'Command Palette…',

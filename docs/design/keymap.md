@@ -49,6 +49,7 @@ defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
 | New session with options   | Shift+Command+T   | Beside Command+T                                                                   |
 | Next session               | Shift+Command+]   | The macOS next-tab shortcut                                                        |
 | Previous session           | Shift+Command+[   | The macOS previous-tab shortcut                                                    |
+| Close session              | Command+W         | Terminal's and every browser's close-tab shortcut, through the confirmation        |
 | List links                 | Shift+Command+O   | O for open; free in the app (US-1.12.3)                                            |
 | Bigger terminal text       | Command+=         | The text-size shortcut of Terminal and every browser (A11Y-07.4)                   |
 | Smaller terminal text      | Command+-         | The same, smaller                                                                  |
@@ -57,6 +58,9 @@ defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
 | Find in the terminal       | Command+F         | Every app's find shortcut (US-1.13)                                                |
 | Clear scrollback           | Command+K         | Terminal's shortcut for it (US-3.2.3)                                              |
 | Open the settings          | Command+,         | The macOS Settings shortcut (A11Y-10.3)                                            |
+
+Windows and Linux (E6, E7) will bind Close session to Control+Shift+W, as Windows Terminal and GNOME Terminal do,
+since Control+W is the shell's delete-word and a control code (rule 3, P-65).
 
 Plain F6 (and Shift+F6) for the regions, the Windows convention, is an option in Settings (A11Y-05.2). It is off
 by default because htop and mc use F6, and a command bound to F6 keeps it.
