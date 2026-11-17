@@ -17,7 +17,7 @@ adds:
 - "This computer" first in the sidebar, whose daemon the app installs and registers as a LaunchAgent on first launch,
   with no administrator password (US-4.1);
 - local sessions with every E1–E3 capability (US-4.2), that outlive the app and the daemon (US-4.3) and come back
-  after a reboot or a logout (US-4.4);
+  after a reboot, and survive a logout (US-4.4);
 - macOS hosts over SSH, arm64 and x86_64, as a LaunchAgent where the user has a GUI login and detached otherwise
   (US-4.5, R7).
 
@@ -25,19 +25,22 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 
 ## 2. Decisions
 
-| ID   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P-54 | Story and decision numbers continue from the E3 plan (ST-51 onward, P-54 onward).                                                                                                                                                                                                                                                                                                                                                         |
-| P-55 | **Owner, 2026-11-17.** The daemon registers as a plain per-user LaunchAgent: a plist in `~/Library/LaunchAgents` that runs the installed `versions/<sha256>/trcd`, loaded with `launchctl bootstrap gui/<uid>`. No step needs an administrator, and it works on 0.x's ad-hoc signed builds. SMAppService (TECH_STACK §5.4), which Electron documents as reliable only for signed and notarized apps, waits for E8's Developer ID signing. |
-| P-56 | **Owner, 2026-11-17.** The Mac's local daemon uses `~/.trc`, the default install root, beside the app's own files (`config.json`, `hosts.json`, `sessions.json`). So one daemon per user serves both the Mac's own sessions and any other computer that adds the Mac as a host (US-4.5.3). Remove daemon deletes only the daemon's entries (P-46).                                                                                        |
-| P-57 | **Owner, 2026-11-17.** macOS hosts for the integration and e2e tests are local macOS VMs run with `tart` (Apple's Virtualization framework). Every VM is deleted after its run, and the base image at the end of E4, so the disk gets its space back; the colima profile's unused images and build cache were pruned at the same time.                                                                                                    |
-| P-58 | **Owner, 2026-11-17.** Tests on the owner's Mac that need launchd register temporary agents labelled `dev.trc.test-<random>`, each running a scratch install root, and boot them out and delete their plists afterwards. They never touch the real agent or `~/.trc`.                                                                                                                                                                     |
-| P-59 | The local connection is the remote one without `ssh`: the connection host runs the same bootstrap script with `/bin/sh` and talks to `trcd bridge` over its standard input and output. Install, upgrade on connect (D-46), Restart, Remove and every protocol path are shared, and nothing listens (SEC-01).                                                                                                                              |
-| P-60 | A LaunchAgent's label is `dev.trc.trcd-<hash8>`, the first 8 hex digits of the install root's SHA-256, as the systemd unit is `trcd-<hash8>.service`. It sets `RunAtLoad` (start at login, US-4.4.1), `KeepAlive` on a crash (US-4.3.2), `AbandonProcessGroup`, and the install root's `logs/` for its output. Holders already call `setsid()`, so stopping the agent never ends them (R4).                                               |
-| P-61 | On a remote Mac the bridge registers the LaunchAgent only when the user has a GUI login session (`gui/<uid>` exists); otherwise the core runs detached, as on Linux, and after a reboot without a GUI login its sessions come back when the app reconnects (US-4.5.2, R7). This is the one place where TRC writes outside the install root, as the PRD asks; Remove daemon boots the agent out and deletes its plist.                     |
-| P-62 | A logout on macOS ends the user's processes and is treated like a reboot (US-4.4.2): the agent starts again at the next login, and the core restores every session as D-48 has it; the boot ID tells a reboot from a logout.                                                                                                                                                                                                              |
-| P-63 | x86_64 Macs run the universal2 binary's x86_64 slice. The tests run it under Rosetta in the arm64 VMs and natively on the `macos-15-intel` CI runner; the app's x64 build bundles the same binary.                                                                                                                                                                                                                                        |
-| P-64 | Review at the end of E4 as P-51 had it: `code-reviewer` and `technical-auditor` over every commit after v0.4.0, in rounds until no critical or high finding remains. A fix that would change the PRD, behavior, a design or an owner decision waits for the owner. The release workflow then cuts `v0.5.0`.                                                                                                                               |
+| ID   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P-54 | Story and decision numbers continue from the E3 plan (ST-51 onward, P-54 onward).                                                                                                                                                                                                                                                                                                                                                                                          |
+| P-55 | **Owner, 2026-11-17.** The daemon registers as a plain per-user LaunchAgent: a plist in `~/Library/LaunchAgents` that runs the installed `versions/<sha256>/trcd`, loaded with `launchctl bootstrap gui/<uid>`. No step needs an administrator, and it works on 0.x's ad-hoc signed builds. SMAppService (TECH_STACK §5.4), which Electron documents as reliable only for signed and notarized apps, waits for E8's Developer ID signing.                                  |
+| P-56 | **Owner, 2026-11-17.** The Mac's local daemon uses `~/.trc`, the default install root, beside the app's own files (`config.json`, `hosts.json`, `sessions.json`). So one daemon per user serves both the Mac's own sessions and any other computer that adds the Mac as a host (US-4.5.3). Remove daemon deletes only the daemon's entries (P-46).                                                                                                                         |
+| P-57 | **Owner, 2026-11-17.** macOS hosts for the integration and e2e tests are local macOS VMs run with `tart` (Apple's Virtualization framework). Every VM is deleted after its run, and the base image at the end of E4, so the disk gets its space back; the colima profile's unused images and build cache were pruned at the same time.                                                                                                                                     |
+| P-58 | **Owner, 2026-11-17.** Tests on the owner's Mac that need launchd register temporary agents labelled `dev.trc.test-<random>`, each running a scratch install root, and boot them out and delete their plists afterwards. They never touch the real agent or `~/.trc`.                                                                                                                                                                                                      |
+| P-59 | The local connection is the remote one without `ssh`: the connection host runs the same bootstrap script with `/bin/sh` and talks to `trcd bridge` over its standard input and output. Install, upgrade on connect (D-46), Restart, Remove and every protocol path are shared, and nothing listens (SEC-01).                                                                                                                                                               |
+| P-60 | A LaunchAgent's label is `dev.trc.trcd-<hash8>`, the first 8 hex digits of the install root's SHA-256, as the systemd unit is `trcd-<hash8>.service`. It sets `RunAtLoad` (start at login, US-4.4.1), `KeepAlive` on a crash (US-4.3.2), `AbandonProcessGroup`, and the install root's `logs/` for its output. Holders already call `setsid()`, so stopping the agent never ends them (R4).                                                                                |
+| P-61 | On a remote Mac the bridge registers the LaunchAgent only when the user has a GUI login session (`gui/<uid>` exists); otherwise the core runs detached, as on Linux, and after a reboot without a GUI login its sessions come back when the app reconnects (US-4.5.2, R7). This is the one place where TRC writes outside the install root, as the PRD asks; Remove daemon boots the agent out and deletes its plist.                                                      |
+| P-62 | **Owner, 2026-11-17, after S8.** A logout ends the agent's core but no holder, as holders called `setsid()`: the next core, started by the agent at the next login or by a connection, adopts them, so a logout ends no session (US-4.4.2, amended in PRD v0.18). Only a reboot respawns shells, and the boot ID tells the two apart.                                                                                                                                      |
+| P-63 | x86_64 Macs run the universal2 binary's x86_64 slice. The tests run it under Rosetta in the arm64 VMs and natively on the `macos-15-intel` CI runner; the app's x64 build bundles the same binary.                                                                                                                                                                                                                                                                         |
+| P-64 | Review at the end of E4 as P-51 had it: `code-reviewer` and `technical-auditor` over every commit after v0.4.0, in rounds until no critical or high finding remains. A fix that would change the PRD, behavior, a design or an owner decision waits for the owner. The release workflow then cuts `v0.5.0`.                                                                                                                                                                |
+| P-65 | **Owner, 2026-11-17.** Two usability changes ship in 0.5.0 (ST-61). Cmd+W, Session > Close Session, closes the open session whatever its state, through US-1.10.4's confirmation, which stays; Windows and Linux will bind Ctrl+Shift+W, as Ctrl+W is the shell's delete-word and a control code (A11Y-05.5). An ended session's terminal shows a banner at its top that says why it ended, with Restart and Remove on its right; Remove opens the same confirmation.      |
+| P-66 | **Owner, 2026-11-17, after S8.** Under the LaunchAgent, macOS asks once per protected folder (Desktop, Documents, Downloads, removable and network volumes) whether `trcd` may read it, and the command waits for the answer; with 0.x's ad-hoc signatures each daemon version is likely asked again. 0.x accepts this: the user guide explains the prompt and how to grant Full Disk Access instead, and E8's Developer ID signing makes the answer last across versions. |
+| P-67 | The macOS test VM runs on lima's user-mode network (`limactl usernet`, gVisor) through `tart run --net-fd`, as tart's shared NAT gets no DHCP lease on a managed Mac whose packet filter drops the VM's frames (S8). The VM's SSH port is forwarded to `127.0.0.1` only, so nothing else reaches it; its users sign in with the run's test key, and password logins are turned off once that key is in place.                                                              |
 
 ## 3. Design
 
@@ -80,20 +83,28 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 
 ### 3.4 macOS hosts (US-4.5, P-57, P-63)
 
-- `tools/test-hosts/macos/` gets `up.sh` and `down.sh`: they clone a tart VM from a pinned macOS base image, add a
-  generated test key for two users (one with an automatic GUI login, one without), and leave its SSH port on tart's
-  private network, which only this Mac reaches; `down.sh` deletes the VM; `--purge` also deletes the image.
+- `tools/test-hosts/macos/` gets `up.sh` and `down.sh`: `up.sh` clones a tart VM from the pinned macOS base image,
+  starts it on lima's user-mode network with its SSH port on `127.0.0.1` (P-67), installs Rosetta, and signs in two
+  users with the run's test key: `admin`, whom the image logs in to the GUI at boot, and `trcnogui`, who never has a
+  GUI login. It turns password logins off and adds both to the test SSH config; `down.sh` deletes the VM; `--purge`
+  also deletes the image.
 - The integration and e2e suites gain `trc-mac-gui` (LaunchAgent) and `trc-mac-nogui` (detached) when the VM runs,
   and skip otherwise, as the Linux hosts do. A VM reboot is the macOS host restart; the x86_64 slice runs under
   Rosetta there (P-63).
 
-### 3.5 Risks the spike checks first
+### 3.5 What S8 found ([S8](../spikes/S8.md))
 
-- **Privacy prompts.** Programs that a shell under a LaunchAgent starts may raise macOS privacy prompts (Documents,
-  Desktop, removable volumes) attributed to `trcd`. With ad-hoc signing each version may be asked again. S8 measures
-  it; if it bothers users, the owner decides the remedy (for example a stable signed helper) before ST-55.
-- **launchd and `AbandonProcessGroup`.** S8 proves that `bootout`, `kickstart -k` and a killed core end no holder.
-- **Logout.** S8 logs the VM's GUI user out and back in, and checks the sessions come back once.
+- **launchd and holders.** `bootout`, `kickstart -k` and a killed core end no holder, and the next core adopts every
+  one, on this Mac and in the VM (R4).
+- **Logout** ends the agent's core, not the sessions (P-62). **Reboot** with a GUI login: the agent starts the core
+  at login, which respawns every session before the app connects; without one, the next connection does (R7).
+- **Privacy prompts** come for sessions under the agent, attributed to `trcd` (P-66); detached cores and SSH get
+  none.
+- **The universal binary** is 6.2 MiB; both slices and libghostty-vt target macOS 13.0, which covers PRD §7.2's
+  current and previous two releases; the x86_64 slice runs under Rosetta. Stock Macs have no `lipo`, so the
+  bootstrap never calls it.
+- **Under `KeepAlive`** a core that exits non-zero restarts every 10 s, so under launchd a core refused for another
+  core (75) or an untrusted install (78) must not loop (ST-54).
 
 ## 4. Stories
 
@@ -148,6 +159,11 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 - The full suites; `E4-manual-at.md` and `E4-security.md`; the P-64 reviews; the VM and its image deleted (P-57);
   release `v0.5.0`.
 
+**ST-61 Close shortcut and the ended-session banner** (US-1.10.4, US-1.10.8, US-1.10.9, A11Y-05, A11Y-11, P-65)
+
+- The `session.close` command with Cmd+W in the keymap, `docs/design/keymap.md` and the Session menu; the banner in
+  the terminal view, announced when the open session ends; the PRD's US-1.10 gains both; USER_GUIDE.
+
 ## 5. Traceability
 
 | PRD item | Stories             | PRD item       | Stories      |
@@ -157,6 +173,7 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 | US-4.3   | ST-52, ST-54, ST-56 | NFR-11         | ST-59        |
 | US-4.4   | ST-52, ST-54, ST-56 | SEC-01, SEC-02 | ST-55, ST-60 |
 | US-4.5   | ST-52, ST-53, ST-57 | R4, R5, R7     | ST-52        |
+| US-1.10  | ST-61               |                |              |
 
 ## 6. Human checkpoints
 
@@ -168,15 +185,16 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 
 ## 7. Status
 
-| Story | Status  | Commit |
-| ----- | ------- | ------ |
-| ST-51 | Done    | —      |
-| ST-52 | Planned | —      |
-| ST-53 | Planned | —      |
-| ST-54 | Planned | —      |
-| ST-55 | Planned | —      |
-| ST-56 | Planned | —      |
-| ST-57 | Planned | —      |
-| ST-58 | Planned | —      |
-| ST-59 | Planned | —      |
-| ST-60 | Planned | —      |
+| Story | Status      | Commit |
+| ----- | ----------- | ------ |
+| ST-51 | Done        | —      |
+| ST-52 | Done        | —      |
+| ST-53 | In progress | —      |
+| ST-54 | Planned     | —      |
+| ST-55 | Planned     | —      |
+| ST-56 | Planned     | —      |
+| ST-57 | Planned     | —      |
+| ST-58 | Planned     | —      |
+| ST-59 | Planned     | —      |
+| ST-60 | Planned     | —      |
+| ST-61 | Planned     | —      |
