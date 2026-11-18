@@ -174,7 +174,27 @@
 <p>Programs decide what links say, so TRC first shows the full address and asks. When the link's text differs from its address, the dialog says so. Choose &quot;Always open links that start with https://example.com&quot; to trust that site: from then on its links open without asking. TRC keeps the trusted prefixes in <code>accept_urls.json</code> (see <a href="#files-and-folders">Files and folders</a>). Links without a site, such as <code>mailto:</code> or <code>file:</code> links, always ask. TRC never opens <code>javascript:</code> or <code>data:</code> links.</p>
 <h3 id="shell-integration">Shell integration</h3>
 <p>In bash, zsh and fish, TRC marks where each prompt, command and output begins and how each command ended, so you can move between commands and hear when one fails. It works without any change to your shell's files: when a shell starts, TRC has it read a short script of TRC's first, which then runs your own startup files as the shell would (<code>.bash_profile</code> or <code>.bashrc</code>, <code>.zshrc</code>, <code>config.fish</code>), on Linux and on Macs, including the bash 3.2 that comes with macOS. fish 4 marks its commands itself, so TRC adds nothing there. A shell that already marks its commands, as iTerm2's integration makes it, works too.</p>
-<p>Other shells, such as <code>sh</code>, <code>dash</code> or busybox <code>ash</code>, get no marks; commands then can't be moved between, and TRC says why when you try. To start a host's shells without shell integration, turn off that host's switch in Settings, under Hosts, Shell integration; the change applies to each session the next time its shell starts.</p>
+<p>Other shells, such as <code>sh</code>, <code>dash</code> or busybox <code>ash</code>, get no marks; commands then can't be moved between, and TRC says why when you try. To start a host's shells without shell integration, turn off that host's switch in Settings, under Hosts, Shell integration; the change applies to each session the next time its shell starts. A session started before TRC 0.6 gets shell integration when you restart it.</p>
+<h3 id="commands">Commands</h3>
+<p>With shell integration, these work in the terminal and in review mode:</p>
+<table>
+<thead><tr><th scope="col">Action</th><th scope="col">Keys</th></tr></thead>
+<tbody>
+<tr><td>Previous command, next command</td><td>Option-Command-Up, Down</td></tr>
+<tr><td>Read the last command's output</td><td>Option-Command-R</td></tr>
+<tr><td>Select the last command's output</td><td>Option-Command-A</td></tr>
+<tr><td>Copy the last command's output</td><td>Option-Command-C</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Moving.</strong> In the terminal, the first Option-Command-Up goes to the last command you ran, scrolling it to the top; each one after goes further back, and typing starts again from the prompt. In review mode, moving starts from the line the caret is on and selects the command's line, so VoiceOver reads it. TRC says the command's line, and whether it failed or still runs; at either end it says there's no earlier or no later command.</li>
+<li><strong>Reading.</strong> Option-Command-R speaks the last command's output, up to its last 100 lines; select or copy it to read all of it. It works while a full-screen program such as <code>vim</code> runs, which moving and selecting don't.</li>
+<li><strong>Failed commands.</strong> When a command in the open session fails, TRC says &quot;Command failed, exit code 2&quot; after its output. Settings, under Commands, turns that off, and has a sound for a failed command (on) and for one that succeeds (off); both play only while sound cues are on.</li>
+<li><strong>Why it doesn't work.</strong> Without marks, TRC says why: shell integration is off for the host, the shell has none, the session's shell started without it, no command has run yet, or a full-screen program has the screen.</li>
+</ul>
+<h3 id="background-sessions">Background sessions</h3>
+<p>TRC tells you when something happens in a session that isn't open: its program rings the bell, its process ends, or a command that ran longer than 10 seconds finishes (this needs shell integration). It says so politely, such as &quot;Session build on devbox-1: command finished, exit code 1.&quot;, once per session for a burst of events, and the session's row shows &quot;bell&quot;, &quot;ended&quot; or &quot;command finished&quot;, with an icon, until you open it.</p>
+<p>In Settings, under Background sessions, each event can be announced (on by default), posted as a macOS notification (off by default), or both, and the 10 seconds can change (1 to 3,600). A notification names the session and its host, never its output; choosing it opens the session. Each notification TRC posts is also kept in the Notifications list, in case macOS doesn't show it.</p>
 <h2 id="moving-around-and-commands">Moving around and commands</h2>
 <p>The window has three regions: the sidebar (sessions and hosts), the terminal, and the status bar at the bottom.</p>
 <table>
@@ -182,6 +202,7 @@
 <tbody>
 <tr><td>Next region, previous region</td><td>Command-F6, Shift-Command-F6</td></tr>
 <tr><td>Command palette</td><td>Shift-Command-P</td></tr>
+<tr><td>Go to any session by name, host or title</td><td>Command-P</td></tr>
 <tr><td>Show or hide the sidebar</td><td>Control-Command-S, or Enter on the sidebar's edge</td></tr>
 <tr><td>Tab moves focus out of the terminal (toggle)</td><td>Shift-Command-M</td></tr>
 <tr><td>Send the next key to the terminal</td><td>Shift-Command-K</td></tr>
@@ -199,6 +220,7 @@
 <li><strong>Tab focus mode.</strong> The terminal normally sends Tab to the shell. With Tab focus mode on, Tab and Shift-Tab leave the terminal like in any other field. The status bar shows the mode, and TRC says which way Tab goes.</li>
 <li><strong>Send next key.</strong> After Shift-Command-K, the next key goes to the program even if it is an app shortcut.</li>
 <li><strong>Command palette.</strong> Type part of a name, then press Return. The palette lists every command with its shortcut, every host action (connect, disconnect, new session) and every session to open. Escape closes it.</li>
+<li><strong>Go to session.</strong> Command-P lists every session on every host. Type part of its name, its host or what runs in it; TRC says how many sessions match. Down Arrow and Return open the one you want; Escape goes back.</li>
 <li><strong>Status bar.</strong> It shows the open session's host and its connection, the daemon version on that host, the &quot;Tab moves focus&quot; and &quot;Mute output&quot; switches, and the Notifications button, a bell with the number of notifications waiting.</li>
 <li><strong>Notifications.</strong> Connection failures and lost connections stay in the list until you dismiss them, including failures while connecting at launch. TRC also says when a host connects, reconnects or loses its connection.</li>
 <li><strong>Menus.</strong> View and Terminal hold the same commands, with their Command shortcuts.</li>
@@ -213,7 +235,9 @@
 <tr><td>Sound</td><td>Sound cues, off by default: short tones for the bell, a host connecting, a lost or failed connection, and typing that was not sent, each also announced or shown; their volume</td></tr>
 <tr><td>Keyboard</td><td>Tab moves focus out of the terminal, from launch on; plain F6 and Shift-F6 move between regions; every command's shortcut (Change, then press the new shortcut; Reset gives the default back)</td></tr>
 <tr><td>Sessions</td><td>Where new sessions start (the home folder, or the open session's folder); scrollback lines for new sessions (1,000 to 100,000); the seconds Stop waits; closing sessions that exit cleanly; asking before a paste of more than one line</td></tr>
-<tr><td>Hosts</td><td>For each host, whether its programs may write the clipboard (OSC 52)</td></tr>
+<tr><td>Commands</td><td>Announcing failed commands; a sound for a failed command and for one that succeeds (see <a href="#commands">Commands</a>)</td></tr>
+<tr><td>Background sessions</td><td>For a bell, a session that ends and a long command that finishes, announcing it and posting a macOS notification; the seconds before a command counts as long (see <a href="#background-sessions">Background sessions</a>)</td></tr>
+<tr><td>Hosts</td><td>For each host, whether its programs may write the clipboard (OSC 52), and whether its shells start with shell integration</td></tr>
 </tbody>
 </table>
 <h2 id="appearance">Appearance</h2>
@@ -295,7 +319,7 @@ done</code></pre>
 <p>If the app doesn't open after you download it, see <a href="#install">Install</a>, step 3.</p>
 <p><code>ssh -G &lt;host&gt;</code> shows the settings ssh will use for a host, and <code>ssh -v &lt;host&gt;</code> shows each connection step.</p>
 <h2 id="whats-not-there-yet">What's not there yet</h2>
-<p>Later epics add command awareness (jumping between commands, hearing when one fails), and the Windows and Linux apps. <a href="https://github.com/renatorroliveira/terminal-remote-control/blob/main/docs/PRD.md">The PRD</a> has the full plan.</p>
+<p>Later epics add the Windows and Linux apps, with shell integration for PowerShell. <a href="https://github.com/renatorroliveira/terminal-remote-control/blob/main/docs/PRD.md">The PRD</a> has the full plan.</p>
 </main>
 </body>
 </html>

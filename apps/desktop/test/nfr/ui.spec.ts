@@ -258,6 +258,23 @@ async function speechDelays(window: Page, rounds: number): Promise<readonly numb
     return delays;
 }
 
+/** Times, in `rounds` rounds, from Return on a failing command to the announcement of its failure (US-5.2.2). */
+async function failureDelays(window: Page, rounds: number): Promise<readonly number[]> {
+    const delays: number[] = [];
+    for (let round = 0; round < rounds; round += 1) {
+        const code = 10 + round;
+        await window.keyboard.type(`(exit ${code})`);
+        await window.waitForTimeout(600);
+        const pressed = await window.evaluate(() => performance.now());
+        await window.keyboard.press('Enter');
+        const said = `Command failed, exit code ${code}.`;
+        await expect.poll(() => spokenAt(window, said), { timeout: 10_000 }).not.toBeUndefined();
+        delays.push(((await spokenAt(window, said)) ?? 0) - pressed);
+        await window.waitForTimeout(800);
+    }
+    return delays;
+}
+
 test.describe('UI echo latency on live hosts (NFR-02)', () => {
     test.skip(missing !== undefined, missing);
     test.setTimeout(240_000);
@@ -404,6 +421,28 @@ test.describe('Speech of new output on a live host (NFR-04)', () => {
             record({
                 id: 'NFR-04',
                 what: 'trc-ubuntu, screen-reader mode: Return to the announcement of the output, p95',
+                value: p95,
+                unit: 'ms',
+                target: '≤ 500 ms',
+            });
+            expect(p95).toBeLessThanOrEqual(500);
+        } finally {
+            await app.close();
+            removeInstall('trc-ubuntu', root);
+        }
+    });
+
+    test('announces a failed command within 500 ms of Return, p95 (NFR-04, US-5.2.2)', async () => {
+        const root = scratchInstallRoot();
+        const { app, window } = await launchWithTestHosts(root, { args: ['--screen-reader-mode=on'] });
+        try {
+            const terminal = await openTerminal(window, 'trc-ubuntu');
+            await ready(window, terminal);
+            await recordTimedSpeech(window);
+            const p95 = percentile(await failureDelays(window, 15), 95);
+            record({
+                id: 'NFR-04',
+                what: 'trc-ubuntu, shell integration: Return on a failing command to its announcement, p95',
                 value: p95,
                 unit: 'ms',
                 target: '≤ 500 ms',

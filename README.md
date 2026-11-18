@@ -10,15 +10,18 @@
 
 An accessible desktop terminal manager whose sessions outlive the app, the network and the client computer.
 
-> **Status: alpha.** Version 0.5 delivers Epics 1 to 4: a macOS app that runs terminal sessions on the Mac itself
+> **Status: alpha.** Version 0.6 delivers Epics 1 to 5: a macOS app that runs terminal sessions on the Mac itself
 > and on Linux and macOS hosts it adds over SSH, installing its daemon on each, with VoiceOver, Zoom, Voice Control
 > and keyboard support. Sessions outlive the app, its crashes, network loss and daemon upgrades: the app reconnects
 > by itself, restores every host at launch, and several Macs can share a session. Sessions come back after a reboot
 > with their scrollback, the Mac's own sessions also survive a logout, and each daemon can be inspected, restarted,
-> upgraded and removed from the app. 0.x releases are experimental, ad-hoc-signed builds; 1.0.0 is the first
-> official release. The [E1](docs/plans/epic-01-implementation-plan.md),
-> [E2](docs/plans/epic-02-implementation-plan.md), [E3](docs/plans/epic-03-implementation-plan.md) and
-> [E4 implementation plans](docs/plans/epic-04-implementation-plan.md) record how each epic was built.
+> upgraded and removed from the app. In bash, zsh and fish, with no change to their files, the terminal knows each
+> command: it moves between them, reads their output, and says when one fails or when something happens in another
+> session, and Command-P reaches any session by name. 0.x releases are experimental, ad-hoc-signed builds; 1.0.0 is
+> the first official release. The [E1](docs/plans/epic-01-implementation-plan.md),
+> [E2](docs/plans/epic-02-implementation-plan.md), [E3](docs/plans/epic-03-implementation-plan.md),
+> [E4](docs/plans/epic-04-implementation-plan.md) and
+> [E5 implementation plans](docs/plans/epic-05-implementation-plan.md) record how each epic was built.
 
 ## Why
 
@@ -104,6 +107,7 @@ the app does today.
 - [E2 implementation plan](docs/plans/epic-02-implementation-plan.md): the same for Epic 2.
 - [E3 implementation plan](docs/plans/epic-03-implementation-plan.md): the same for Epic 3.
 - [E4 implementation plan](docs/plans/epic-04-implementation-plan.md): the same for Epic 4.
+- [E5 implementation plan](docs/plans/epic-05-implementation-plan.md): the same for Epic 5.
 
 ## Development
 
