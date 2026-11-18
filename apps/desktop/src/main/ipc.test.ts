@@ -163,6 +163,14 @@ describe('registerHandlers: hosts, sidebar and trust', () => {
         );
     });
 
+    it('rejects requests from a page that is not the app', async () => {
+        const { handlers: registered, ipc } = fakeIpc();
+        registerHandlers(ipc, handlers(), () => false);
+        await expect(async () => registered.get('display:get')?.({})).rejects.toThrow(/untrusted sender/);
+    });
+});
+
+describe('registerHandlers: This computer (US-4.2.1)', () => {
     it('takes This computer for the per-host settings and clipboard, but never forgets or moves it (US-4.2.2)', async () => {
         const { handlers: registered, ipc } = fakeIpc();
         registerHandlers(ipc, handlers(), trusted);
@@ -183,11 +191,5 @@ describe('registerHandlers: hosts, sidebar and trust', () => {
         await expect(async () => registered.get('hosts:set-install-root')?.({}, 'local', '/x')).rejects.toThrow(
             /invalid arguments/,
         );
-    });
-
-    it('rejects requests from a page that is not the app', async () => {
-        const { handlers: registered, ipc } = fakeIpc();
-        registerHandlers(ipc, handlers(), () => false);
-        await expect(async () => registered.get('display:get')?.({})).rejects.toThrow(/untrusted sender/);
     });
 });

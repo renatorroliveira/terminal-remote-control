@@ -110,12 +110,30 @@ class FakeSettingsSource {
     }
 }
 
+/** The workspace a shell test drives, with This computer known first when `local` holds. */
+function workspaceFor(client: FakeWorkspaceClient, terminals: FakeTerminalHost, local: boolean): WorkspaceController {
+    const known = local ? [THIS_COMPUTER] : [];
+    const options = local ? { localName: 'This computer' } : {};
+    return new WorkspaceController(client, terminals, new FakeKnownHostStore(known), options);
+}
+
+/** A sidebar 400 px wide and expanded, recording each collapse in `saved`. */
+function fakeSidebar(saved: boolean[]) {
+    return {
+        width: () => Promise.resolve(400),
+        setWidth: () => Promise.resolve(),
+        collapsed: () => Promise.resolve(false),
+        setCollapsed: (collapsed: boolean) => {
+            saved.push(collapsed);
+            return Promise.resolve();
+        },
+    };
+}
+
 async function setup(narrow = false, stored: Partial<Settings> = {}, local = false) {
     const client = new FakeWorkspaceClient([bashSession('a')]);
     const terminals = new FakeTerminalHost([]);
-    const known = local ? [THIS_COMPUTER] : [];
-    const options = local ? { localName: 'This computer' } : {};
-    const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore(known), options);
+    const workspace = workspaceFor(client, terminals, local);
     const spoken: string[] = [];
     const saved: boolean[] = [];
     const screenReader = new FakeScreenReader();
@@ -130,15 +148,7 @@ async function setup(narrow = false, stored: Partial<Settings> = {}, local = fal
         workspace,
         terminals,
         cues: { play: (cue) => cues.push(cue) },
-        sidebar: {
-            width: () => Promise.resolve(400),
-            setWidth: () => Promise.resolve(),
-            collapsed: () => Promise.resolve(false),
-            setCollapsed: (collapsed) => {
-                saved.push(collapsed);
-                return Promise.resolve();
-            },
-        },
+        sidebar: fakeSidebar(saved),
         announcer: {
             announce: (text: string, options?: AnnounceOptions) =>
                 spoken.push(options?.politeness === 'assertive' ? `! ${text}` : text),
