@@ -27,7 +27,8 @@ impl<T> fmt::Display for Sensitive<T> {
     }
 }
 
-/// Sends `tracing` events as JSON lines to `core.<date>.log` files in `logs_dir`, keeping the last week.
+/// Sends `tracing` events as JSON lines to `core.<date>.log` files in `logs_dir`, keeping the last week. A log it
+/// cannot create fails with the OS's own error, so a full disk can be told from a refusal.
 pub fn init(logs_dir: &Path) -> io::Result<()> {
     let appender = RollingFileAppender::builder()
         .rotation(Rotation::DAILY)
@@ -35,13 +36,25 @@ pub fn init(logs_dir: &Path) -> io::Result<()> {
         .filename_suffix("log")
         .max_log_files(KEPT_LOG_FILES)
         .build(logs_dir)
-        .map_err(io::Error::other)?;
+        .map_err(|error| os_error_in(&error))?;
     tracing_subscriber::fmt()
         .json()
         .with_ansi(false)
         .with_writer(appender)
         .try_init()
         .map_err(io::Error::other)
+}
+
+/// The OS error at the root of `error`, or `error`'s text as an `Other` error when it has none.
+fn os_error_in(error: &(dyn std::error::Error + 'static)) -> io::Error {
+    let mut cause = Some(error);
+    while let Some(current) = cause {
+        if let Some(code) = current.downcast_ref::<io::Error>().and_then(io::Error::raw_os_error) {
+            return io::Error::from_raw_os_error(code);
+        }
+        cause = current.source();
+    }
+    io::Error::other(error.to_string())
 }
 
 #[cfg(test)]
@@ -52,6 +65,15 @@ mod tests {
     fn sensitive_values_print_as_redacted() {
         assert_eq!(format!("{:?}", Sensitive("hunter2")), "[redacted]");
         assert_eq!(format!("{}", Sensitive(vec![1, 2, 3])), "[redacted]");
+    }
+
+    #[test]
+    fn keeps_the_os_error_of_a_log_it_cannot_create() {
+        let dir = crate::test_support::temp_dir("logs-refused");
+        std::fs::write(dir.join("not-a-folder"), b"").unwrap();
+        let error = init(&dir.join("not-a-folder")).unwrap_err();
+        assert_ne!(error.kind(), io::ErrorKind::Other, "{error}");
+        assert!(error.raw_os_error().is_some(), "{error:?}");
     }
 
     #[test]

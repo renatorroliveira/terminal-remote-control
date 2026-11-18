@@ -54,8 +54,8 @@ impl StartError {
     }
 }
 
-/// The kinds of OS errors that pass by themselves.
-const TRANSIENT: [io::ErrorKind; 8] = [
+/// The kinds of OS errors that pass by themselves, a network home that is not up yet at login among them.
+const TRANSIENT: [io::ErrorKind; 11] = [
     io::ErrorKind::Interrupted,
     io::ErrorKind::WouldBlock,
     io::ErrorKind::TimedOut,
@@ -63,7 +63,10 @@ const TRANSIENT: [io::ErrorKind; 8] = [
     io::ErrorKind::QuotaExceeded,
     io::ErrorKind::ResourceBusy,
     io::ErrorKind::OutOfMemory,
-    io::ErrorKind::AddrInUse,
+    io::ErrorKind::NetworkDown,
+    io::ErrorKind::HostUnreachable,
+    io::ErrorKind::NotConnected,
+    io::ErrorKind::StaleNetworkFileHandle,
 ];
 
 /// Runs the core in the foreground until an app asks it to end or SIGTERM ends it, and says which. Under systemd,
@@ -201,6 +204,8 @@ mod tests {
         assert!(!io(io::Error::other("the run folder must be 700")).may_pass());
         assert!(!io(io::Error::from(io::ErrorKind::PermissionDenied)).may_pass());
         assert!(!io(io::Error::from(io::ErrorKind::NotADirectory)).may_pass());
+        assert!(io(io::Error::from(io::ErrorKind::StaleNetworkFileHandle)).may_pass());
+        assert!(!io(io::Error::from(io::ErrorKind::AddrInUse)).may_pass());
         assert!(!StartError::AlreadyRunning.may_pass());
     }
 

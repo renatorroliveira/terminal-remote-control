@@ -702,8 +702,9 @@ outside the install root.
       (`ThrottleInterval`). So under launchd a core that cannot start for a
       reason no retry fixes (another core runs, the install or a folder of it is
       not private, a path is missing or refused) exits with 0, while one the OS
-      ran short of something for (file descriptors, space, memory) exits with
-      71 and starts again. A core SIGTERM ended, by `kill`, Activity Monitor or
+      may get past (out of file descriptors, space, quota or memory; an
+      interrupted, blocked, timed-out or busy call; a network home not up yet)
+      exits with 71 and starts again. A core SIGTERM ended, by `kill`, Activity Monitor or
       `launchctl stop`, exits with 143 and starts again; at a logout or a
       `bootout` launchd unloads the job, which then never starts again. Unlike
       systemd, launchd sets no start limit; a starting core empties

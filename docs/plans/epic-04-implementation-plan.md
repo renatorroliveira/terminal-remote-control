@@ -211,38 +211,47 @@ it stays.
 | ----- | --------------------- | --------------- | --------- |
 | 1     | 0 / 1 / 3 / 7         | 0 / 0 / 9 / 8   | `9891b22` |
 | 2     | 0 / 0 / 2 / 6         | 0 / 0 / 8 / 9   | `5201f60` |
-| 3     | 0 / 0 / 1 / 4         | 0 / 1 / 6 / 5   | —         |
+| 3     | 0 / 0 / 1 / 4         | 0 / 1 / 6 / 5   | `8a8170b` |
+| 4     | 0 / 0 / 3 / 3         | 0 / 0 / 5 / 5   | —         |
 
-The high:
+Round 4 found no critical or high finding, which closed the gate. The highs:
 
 - The main process took only `host-…` IDs, so This computer's `local` broke the session cache for every host, the
   clipboard switch and the remembered Remove daemon; `local` is now a host ID wherever it belongs, and still never
   forgotten or moved (round 1).
+- Round 2's change had every start error restart the core every second, including a folder left public, which no
+  retry fixes (round 3).
 
 Fixed in round 1 besides: a core that could not start under launchd restarted every second, and `launchd.log` grew
-without bound; a plist differing only in the registering client's variables replaced a starting core; Remove daemon
-left the LaunchAgent behind once the install was deleted by hand; the connection host took a local target for any
-host or folder; This computer's daemon running without its LaunchAgent went unsaid; Restart and Remove in the
-ended-session banner lost focus; the logout of US-4.4.2 had no committed test (`mac-logout.integration.test.ts`);
-the upgrade's process check is no longer skipped on macOS; and the docs the audit named. The integration runs also explained E3's Alpine failure of `shares_a_session_between_two_apps`, which recurred twice: when busybox ash printed its prompt before a client attached, the client got the prompt inside the snapshot, after empty rows and a cursor move, and the test's prompt check missed it; the check now reads past them.
+without bound; a plist differing only in the registering client's variables replaced a starting core; Remove daemon left
+the LaunchAgent behind once the install was deleted by hand; the connection host took a local target for any host or
+folder; This computer's daemon running without its LaunchAgent went unsaid; Restart and Remove in the ended-session
+banner lost focus; the logout of US-4.4.2 had no committed test (`mac-logout.integration.test.ts`); the upgrade's
+process check is no longer skipped on macOS; and the docs the audit named. The integration runs also explained E3's
+Alpine failure of `shares_a_session_between_two_apps`, which recurred twice: when busybox ash printed its prompt before
+a client attached, the client got the prompt inside the snapshot, after empty rows and a cursor move, and the test's
+prompt check missed it; the check now reads past them.
 
-Fixed in round 2: a core that SIGTERM ended under launchd, as `kill` or Activity Monitor's Quit do, stayed down, so
-it now exits with 143 and launchd starts it again; start errors a retry may fix restart it again, while only the
-refusals no retry fixes exit 0; a core that cannot start names why in the bridge's error, from `launchd.log`; that
-log is created 0600 whatever the umask; a plist differing in the registering bridge's umask no longer replaces a
-starting core; the "session ended" announcement no longer repeats for a session already known to have ended, after a reconnect or
-at launch; the LaunchAgent
-notice names the Login Items switch and skips a daemon that reports no service; the GUI-session probe asks twice;
-the launchd tests' skip notice shows in nextest; the NFR and soak results name the build they ran on, and ran
-again after the fixes; and the guide, the plan, TECH_STACK and the verification documents say what was observed.
+Fixed in round 2: a core that SIGTERM ended under launchd, as `kill`, Activity Monitor's Quit or `launchctl stop` do,
+stayed down, so it now exits with 143 and launchd starts it again (`tests/launchd.rs` checks `kill -TERM` and `launchctl
+stop`); a core that cannot start names why in the bridge's error, from `launchd.log`; that log is created 0600 whatever
+the umask; a plist differing in the registering bridge's umask no longer replaces a starting core; the "session ended"
+announcement no longer repeats for a session already known to have ended, after a reconnect or at launch; the
+LaunchAgent notice names the Login Items switch and skips a daemon that reports no service; the GUI-session probe asks
+twice; the launchd tests' skip notice shows in nextest; and the guide, the plan, TECH_STACK and the verification
+documents say what was observed.
 
-Fixed in round 3: the round-2 change had every start error restart the core every second, including a folder left
-public, which no retry fixes; now only errors the OS may get past (out of file descriptors, space or memory) restart
-it, the others exit 0, and the log is trimmed before any folder is checked. The bridge reads only the log's tail, from
-its start after a trim, and cuts each line it passes on to 300 characters; Remove daemon confirms the agent is gone
-before it signals the core; and the notice names the Login Items & Extensions pane. The notice still cannot say why
-registration failed, which only the bridge's standard error holds once the connection works; it names the one cause
-the user can act on.
+Fixed in round 3: only start errors the OS may get past restart the core under launchd (`StartError::may_pass`: out of
+file descriptors, space, quota or memory, an interrupted, blocked, timed-out or busy call, or a network home not up
+yet), the others exit 0, and the log is trimmed right after its own folder is checked, before the others. The bridge
+reads only the log's tail, from its start after a trim, and cuts each line it passes on to 300 characters; and the
+notice names the Login Items & Extensions pane.
+
+Fixed in round 4: the log appender's errors keep the OS's error, so a full disk at the day's first log file retries
+rather than exits 0; a bind conflict no longer counts as passing; the bridge passes on whole lines only, from a bounded
+read; Remove daemon boots the agent out first, then again a second apart while launchd still lists it, for up to 5
+seconds, and says so on standard error if it stays; `launchctl stop` is tested; and the documents name the build each
+measurement ran on.
 
 What stays, and why:
 
@@ -266,3 +275,10 @@ What stays, and why:
   would need a new VM to test, and the VM is deleted at the end of E4.
 - macOS 14 and 15 hosts are supported (PRD §7.2) but were not run: the test VM and this Mac run macOS 26, and the
   binary targets macOS 13.
+- The notice cannot say why the LaunchAgent's registration failed: only the bridge's standard error holds that once
+  the connection works. It names a possible cause the user can act on, a `trcd` switched off in Login Items &
+  Extensions, which was not observed to cause it.
+- The notice names the Login Items & Extensions pane, macOS 15's name, as it is about This computer, the Mac running
+  the app, which needs macOS 15 or later; a Mac host's notice is never shown.
+- An integrity check that fails for the OS, such as too many open files, counts as a refusal and exits 0 under
+  launchd: the check reports a message, not the OS error, and the next bridge starts the core.
