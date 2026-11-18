@@ -326,6 +326,24 @@ async fn reports_each_finished_command_with_its_status_and_time_and_a_bell_a_sec
 }
 
 #[tokio::test]
+async fn reports_no_command_a_restart_cut_short_and_at_most_one_a_second_us_5_3() {
+    let mut client = started("/bin/sh").await;
+    client.input("printf '\\033]133;C\\007'\r");
+    settle(&mut client).await;
+    let first_pid = client.last().pid;
+    client.command(&HolderCommand::Restart);
+    client
+        .until(|c| c.last().state == SessionState::Running && c.last().pid != first_pid)
+        .await;
+    client.input("printf '\\033]133;D;0\\007'\r");
+    client.input("printf '\\033]133;C\\007\\033]133;D;1\\007\\033]133;C\\007\\033]133;D;2\\007'\r");
+    client.until(|c| !c.finished.is_empty()).await;
+    settle(&mut client).await;
+    let codes: Vec<Option<i32>> = client.finished.iter().map(|(code, _)| *code).collect();
+    assert_eq!(codes, [Some(1)]);
+}
+
+#[tokio::test]
 async fn resizes_the_pty_and_the_emulator() {
     let mut client = started("/bin/sh").await;
     client.command(&HolderCommand::Resize {

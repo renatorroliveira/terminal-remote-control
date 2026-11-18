@@ -470,7 +470,11 @@ impl Holder {
     }
 
     fn respawn_with_marker(&mut self) {
-        let marker = format!("\x1b[?1049l\x1b[0m\r\n[Restarted at {}]\r\n", format_utc(now_millis()));
+        self.forget_command();
+        let marker = format!(
+            "\x1b[?1049l\x1b]133;D\x07\x1b[0m\r\n[Restarted at {}]\r\n",
+            format_utc(now_millis())
+        );
         self.on_output(Some(marker.into_bytes()));
         if let (Some(spec), Some(cwd)) = (&mut self.spec, &self.status.cwd) {
             spec.cwd = Some(cwd.clone());

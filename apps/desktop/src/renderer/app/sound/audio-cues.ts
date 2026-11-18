@@ -4,7 +4,7 @@ import type { Settings } from '../../../shared/settings';
 export type AudioCue =
     'bell' | 'connected' | 'disconnected' | 'failed' | 'input-refused' | 'command-succeeded' | 'command-failed';
 
-/** One tone of a cue. */
+/** One tone of a cue; a tone of frequency 0 is a rest. */
 export interface Tone {
     readonly frequency: number;
     readonly seconds: number;
@@ -32,6 +32,7 @@ export const AUDIO_CUES: Readonly<Record<AudioCue, readonly Tone[]>> = {
     'command-succeeded': [{ frequency: 1046.5, seconds: 0.08 }],
     'command-failed': [
         { frequency: 329.63, seconds: 0.1 },
+        { frequency: 0, seconds: 0.06 },
         { frequency: 329.63, seconds: 0.1 },
     ],
 };
@@ -74,7 +75,9 @@ export class AudioCues {
         const gain = (audioVolume / 100) * MAX_GAIN;
         let start = context.currentTime;
         for (const tone of AUDIO_CUES[cue]) {
-            context.tone(tone.frequency, start, start + tone.seconds, gain);
+            if (tone.frequency > 0) {
+                context.tone(tone.frequency, start, start + tone.seconds, gain);
+            }
             start += tone.seconds;
         }
     }

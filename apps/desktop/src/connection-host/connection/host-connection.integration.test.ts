@@ -3,7 +3,7 @@ import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import type { ServerMessage } from '@trc/protocol';
+import { PROTOCOL_VERSION, type ServerMessage } from '@trc/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bootOutAgent, MAC_HOSTS } from '../../../test/mac-hosts';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
@@ -134,7 +134,7 @@ describe('HostConnection sessions over real ssh', () => {
                 status: 'connected',
                 daemon: {
                     version: manifest.version,
-                    proto: 3,
+                    proto: PROTOCOL_VERSION,
                     service: { manager: alias === 'trc-mac-gui' ? 'launchd' : 'detached', sessionsEndAtLogout: false },
                     details: {
                         home,

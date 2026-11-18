@@ -1,8 +1,9 @@
-import type { SessionInfo } from '@trc/protocol';
+import type { SessionInfo, ShellKind } from '@trc/protocol';
 import type { IntlShape, MessageDescriptor } from 'react-intl';
 import type { CommandId } from '../../shared/keymap';
 import type { Settings } from '../../shared/settings';
 import { type SessionKey, sessionKey, type Workspace } from '../sessions/workspace-model';
+import { SELECTION_CAP } from '../terminal/ats-surface';
 import type { CommandDirection, CommandMove, CommandOutput } from '../terminal/command-navigator';
 import type { Announcer } from './announcer';
 import { commandAnnouncements as messages } from './command-messages';
@@ -10,6 +11,10 @@ import type { AudioCue } from './sound/audio-cues';
 
 /** The most lines of output Read last command output speaks; select or copy it for the rest (US-5.2.1). */
 export const READ_LINES = 100;
+/** The shortest time between two cues for one session's finished commands, so forged marks can't drone (SEC-06). */
+export const CUE_INTERVAL_MS = 1_000;
+
+const INTEGRATED_KINDS: ReadonlySet<ShellKind> = new Set(['bash', 'zsh', 'fish']);
 
 /** What command navigation asks of the open terminal; undefined when no session is open. */
 export interface CommandTerminals {
@@ -33,6 +38,10 @@ export interface CommandActionsOptions {
     readonly copy: (text: string) => Promise<boolean>;
     /** Says that no session is open. */
     readonly noSession: () => void;
+    /** Shows a finished command's result, the visual equivalent of its cue (A11Y-12.4). */
+    readonly showResult?: (key: SessionKey, exitCode: number) => void;
+    /** The clock cues are paced by. */
+    readonly now?: () => number;
 }
 
 /**
@@ -42,6 +51,7 @@ export interface CommandActionsOptions {
  */
 export class CommandActions {
     readonly #options: CommandActionsOptions;
+    readonly #lastCue = new Map<SessionKey, number>();
 
     /** Command navigation over `options`. */
     constructor(options: CommandActionsOptions) {
@@ -73,9 +83,19 @@ export class CommandActions {
         if (failed && settings.announceFailedCommands) {
             this.#announce(this.#options.intl.formatMessage(messages.failed, { code: exitCode }), `failed:${key}`);
         }
-        if (failed ? settings.commandFailedCue : settings.commandSucceededCue) {
+        this.#options.showResult?.(key, exitCode);
+        if ((failed ? settings.commandFailedCue : settings.commandSucceededCue) && this.#cueDue(key)) {
             this.#options.playCue(failed ? 'command-failed' : 'command-succeeded');
         }
+    }
+
+    #cueDue(key: SessionKey): boolean {
+        const now = this.#options.now?.() ?? Date.now();
+        if (now - (this.#lastCue.get(key) ?? Number.NEGATIVE_INFINITY) < CUE_INTERVAL_MS) {
+            return false;
+        }
+        this.#lastCue.set(key, now);
+        return true;
     }
 
     #step(direction: CommandDirection): void {
@@ -105,7 +125,13 @@ export class CommandActions {
             this.#options.noSession();
             return;
         }
-        this.#announce(this.#countText(output, messages.selected), 'command');
+        const capped = output.kind === 'output' && output.lines > SELECTION_CAP;
+        this.#announce(
+            capped
+                ? this.#options.intl.formatMessage(messages.selectedCapped, { lines: output.lines, cap: SELECTION_CAP })
+                : this.#countText(output, messages.selected),
+            'command',
+        );
     }
 
     async #copy(): Promise<void> {
@@ -170,7 +196,9 @@ export class CommandActions {
             case 'off':
                 return intl.formatMessage(messages.integrationOff, { host: open.host });
             case 'unsupported':
-                return intl.formatMessage(messages.integrationUnsupported, { shell: open.session.profile.name });
+                return INTEGRATED_KINDS.has(open.session.profile.kind)
+                    ? intl.formatMessage(messages.integrationArguments, { shell: open.session.profile.name })
+                    : intl.formatMessage(messages.integrationUnsupported, { shell: open.session.profile.name });
             case 'injected':
             case 'native':
                 return intl.formatMessage(messages.noCommandYet);

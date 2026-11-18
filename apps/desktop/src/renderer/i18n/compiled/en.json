@@ -83,10 +83,24 @@
       "value": "Commands can’t be reached while a full-screen program runs."
     }
   ],
+  "announce.commandIntegrationArguments": [
+    {
+      "type": 0,
+      "value": "Moving between commands needs shell integration, which TRC adds only to a shell started without arguments; this "
+    },
+    {
+      "type": 1,
+      "value": "shell"
+    },
+    {
+      "type": 0,
+      "value": " has some."
+    }
+  ],
   "announce.commandIntegrationMissing": [
     {
       "type": 0,
-      "value": "Moving between commands needs shell integration, which this session’s shell started without. Restart the session to add it."
+      "value": "Moving between commands needs shell integration, which this session started without, before TRC 0.6. A new session has it; this one keeps working as it is."
     }
   ],
   "announce.commandIntegrationOff": [
@@ -259,6 +273,28 @@
     {
       "type": 0,
       "value": "."
+    }
+  ],
+  "announce.commandOutputSelectedCapped": [
+    {
+      "type": 0,
+      "value": "Selected the last command’s output, "
+    },
+    {
+      "type": 1,
+      "value": "lines"
+    },
+    {
+      "type": 0,
+      "value": " lines; VoiceOver sees the first "
+    },
+    {
+      "type": 1,
+      "value": "cap"
+    },
+    {
+      "type": 0,
+      "value": ". Copy it for all of it."
     }
   ],
   "announce.commandOutputTail": [
@@ -4490,6 +4526,50 @@
       "value": "Speech and announcements"
     }
   ],
+  "settings.inSection": [
+    {
+      "type": 1,
+      "value": "section"
+    },
+    {
+      "type": 0,
+      "value": ": "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " setting"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " settings"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "settings.none": [
     {
       "type": 0,
@@ -4878,6 +4958,22 @@
     {
       "type": 0,
       "value": " hosts connected"
+    }
+  ],
+  "status.lastCommandFailed": [
+    {
+      "type": 0,
+      "value": "Last command failed, exit code "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    }
+  ],
+  "status.lastCommandSucceeded": [
+    {
+      "type": 0,
+      "value": "Last command succeeded"
     }
   ],
   "status.mute": [

@@ -2,13 +2,19 @@
 //! mode with `ENV`, which keeps a login shell one; bash 3.2, which ignores `ENV` once interactive, with `--rcfile`;
 //! zsh with `ZDOTDIR`; fish with `XDG_DATA_DIRS`. Each script puts back what it borrowed before the user's files run.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+use std::io::Read;
 use std::path::Path;
+use std::process::Stdio;
+use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 
 use trc_protocol::{ShellIntegration, ShellKind};
 
 /// fish's data folders when `XDG_DATA_DIRS` is not set.
 const FISH_DATA_DIRS: &str = "/usr/local/share:/usr/share";
+/// The longest `bash --version` may take.
+const PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// A shell's start, before and after shell integration.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,7 +45,9 @@ pub fn integrated(shell: Shell<'_>, start: ShellStart) -> (ShellStart, ShellInte
         return (start, ShellIntegration::Unsupported);
     };
     let integrated = match shell.kind {
-        ShellKind::Bash if shell.bash_major.is_some_and(|major| major >= 4) => posix_bash(scripts, start),
+        ShellKind::Bash if shell.bash_major.is_some_and(|major| major >= 4) && expands_as_is(scripts) => {
+            posix_bash(scripts, start)
+        }
         ShellKind::Bash if shell.bash_major.is_some() => rcfile_bash(scripts, start),
         ShellKind::Zsh => zsh(scripts, start),
         ShellKind::Fish => fish(scripts, start),
@@ -50,20 +58,52 @@ pub fn integrated(shell: Shell<'_>, start: ShellStart) -> (ShellStart, ShellInte
 
 /// The major version of the bash at `program`, from its `--version`; `None` when it does not answer as bash does.
 pub fn probe_bash_major(program: &str) -> Option<u32> {
-    let output = std::process::Command::new(program)
-        .arg("--version")
-        .env_clear()
-        .stdin(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .output()
-        .ok()?;
-    bash_major(&String::from_utf8_lossy(&output.stdout))
+    static KNOWN: OnceLock<Mutex<HashMap<String, Option<u32>>>> = OnceLock::new();
+    let known = KNOWN.get_or_init(Mutex::default);
+    if let Some(major) = known.lock().ok().and_then(|known| known.get(program).copied()) {
+        return major;
+    }
+    let major = run_version(program);
+    if let Ok(mut known) = known.lock() {
+        known.insert(program.to_owned(), major);
+    }
+    major
 }
 
 /// The major version from bash's `--version` output, such as `GNU bash, version 5.2.21(1)-release`.
 pub fn bash_major(version_output: &str) -> Option<u32> {
     let rest = version_output.lines().next()?.split("version ").nth(1)?;
     rest.split('.').next()?.parse().ok()
+}
+
+/// Runs `program --version` for at most [`PROBE_TIMEOUT`], so a shell that hangs on it only goes without integration.
+fn run_version(program: &str) -> Option<u32> {
+    let mut child = std::process::Command::new(program)
+        .arg("--version")
+        .env_clear()
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    let deadline = std::time::Instant::now() + PROBE_TIMEOUT;
+    while child.try_wait().ok()?.is_none() {
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let mut output = String::new();
+    child.stdout.take()?.read_to_string(&mut output).ok()?;
+    bash_major(&output)
+}
+
+/// Whether bash reads `ENV`'s path as it is: bash expands `ENV`, so a `$`, a backquote or a backslash in the install
+/// location would point it elsewhere and skip the user's startup files; such a location gets the `--rcfile` start.
+fn expands_as_is(scripts: &Path) -> bool {
+    !scripts.to_string_lossy().contains(['$', '`', '\\'])
 }
 
 fn posix_bash(scripts: &Path, mut start: ShellStart) -> ShellStart {
@@ -236,5 +276,15 @@ mod tests {
             Some(3)
         );
         assert_eq!(bash_major("not bash"), None);
+    }
+
+    #[test]
+    fn gives_an_install_location_bash_would_expand_the_rcfile_start() {
+        assert!(expands_as_is(Path::new(
+            "/home/tester/.trc/shell-integration/0123456789abcdef"
+        )));
+        assert!(!expands_as_is(Path::new("/home/tester/$HOME/.trc")));
+        assert!(!expands_as_is(Path::new("/home/tester/a`b`/.trc")));
+        assert!(!expands_as_is(Path::new("/home/tester/a\\b/.trc")));
     }
 }

@@ -2,6 +2,7 @@ import type { SessionActivity, SessionInfo } from '@trc/protocol';
 import type { IntlShape } from 'react-intl';
 import type { SessionNotice } from '../../shared/contract';
 import type { Settings } from '../../shared/settings';
+import { stripControlCharacters } from '../../shared/text';
 import type { WorkspaceController } from '../sessions/workspace-controller';
 import { hostGroups, type SessionKey, sessionKey, type Workspace } from '../sessions/workspace-model';
 import type { Announcer } from './announcer';
@@ -15,6 +16,8 @@ import type { NotificationCenter } from './notifications';
 
 /** How close two bells of one session are to count as one: the daemon and the terminal may both report it. */
 export const BELL_MERGE_MS = 1_000;
+/** The shortest time between two OS notifications of one session, so a session that keeps ringing can't flood them. */
+export const NOTICE_INTERVAL_MS = 10_000;
 
 /** The settings that decide what each background event does (US-5.3.1). */
 export type BackgroundSettings = Pick<
@@ -58,6 +61,8 @@ interface BackgroundEvent {
 }
 
 const LIVE: ReadonlySet<SessionInfo['state']> = new Set(['starting', 'running']);
+/** Ends the restore report already tells of: a host restart, or processes that ended with the user's login. */
+const REPORTED_ENDS: ReadonlySet<string> = new Set(['hostRestart', 'processesEnded']);
 const ENDED: ReadonlySet<SessionInfo['state']> = new Set(['exited', 'failedToStart']);
 
 /**
@@ -69,6 +74,7 @@ const ENDED: ReadonlySet<SessionInfo['state']> = new Set(['exited', 'failedToSta
 export class BackgroundEvents {
     readonly #options: BackgroundEventsOptions;
     readonly #lastBell = new Map<SessionKey, number>();
+    readonly #lastNotice = new Map<SessionKey, number>();
 
     /** Background events over `options`; {@link BackgroundEvents.start} starts watching. */
     constructor(options: BackgroundEventsOptions) {
@@ -114,9 +120,8 @@ export class BackgroundEvents {
         for (const host of after.hosts) {
             const was = new Map((before.sessions.get(host.id) ?? []).map((session) => [session.id, session.state]));
             for (const session of after.sessions.get(host.id) ?? []) {
-                const previous = was.get(session.id);
                 const key = sessionKey(host.id, session.id);
-                if (previous !== undefined && LIVE.has(previous) && ENDED.has(session.state) && key !== after.open) {
+                if (key !== after.open && justEnded(was.get(session.id), session)) {
                     this.#options.workspace.recordEnded(key);
                     this.#report({ kind: 'end', key, exitCode: session.exit?.code });
                 }
@@ -140,12 +145,21 @@ export class BackgroundEvents {
         if (wanted.announce) {
             announcer.announce(text, { group: `bg:${event.key}` });
         }
-        if (wanted.notify) {
+        if (wanted.notify && this.#noticeDue(event.key)) {
             this.#options.notifications.add({ text, level: 'info' });
             const title = intl.formatMessage(backgroundNoticeTitle, { session: found.ownName, host: found.host });
             const body = this.#eventText(event, backgroundNoticeBodies);
             void this.#options.os?.post({ title, body, key: event.key }).catch(() => false);
         }
+    }
+
+    #noticeDue(key: SessionKey): boolean {
+        const now = this.#options.now();
+        if (now - (this.#lastNotice.get(key) ?? Number.NEGATIVE_INFINITY) < NOTICE_INTERVAL_MS) {
+            return false;
+        }
+        this.#lastNotice.set(key, now);
+        return true;
     }
 
     #eventText(event: BackgroundEvent, messages: EventMessages): string {
@@ -169,7 +183,7 @@ export class BackgroundEvents {
         for (const group of hostGroups(this.#options.workspace.store.getState())) {
             const item = group.sessions.find((entry) => entry.key === key);
             if (item !== undefined) {
-                const ownName = item.session.customName ?? item.session.profile.name;
+                const ownName = stripControlCharacters(item.session.customName ?? item.session.profile.name);
                 return { label: item.label, ownName, host: group.host.destination };
             }
         }
@@ -179,6 +193,12 @@ export class BackgroundEvents {
     #isOpen(key: SessionKey): boolean {
         return this.#options.workspace.store.getState().open === key;
     }
+}
+
+/** Whether a session last seen live has now ended, by itself and not as a restore reports. */
+function justEnded(previous: SessionInfo['state'] | undefined, session: SessionInfo): boolean {
+    const reported = REPORTED_ENDS.has(session.exit?.ended ?? '');
+    return previous !== undefined && LIVE.has(previous) && ENDED.has(session.state) && !reported;
 }
 
 function wantedFor(

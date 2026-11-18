@@ -384,7 +384,8 @@ already marks its commands, as iTerm2's integration makes it, works too.
 Other shells, such as `sh`, `dash` or busybox `ash`, get no marks; commands then can't be moved between, and TRC
 says why when you try. To start a host's shells without shell integration, turn off that host's switch in
 Settings, under Hosts, Shell integration; the change applies to each session the next time its shell starts.
-A session started before TRC 0.6 gets shell integration when you restart it.
+A session started before TRC 0.6 keeps working as it was, without shell integration, even after Restart, as its
+processes predate it; a new session has it.
 
 ### Commands
 
@@ -402,10 +403,13 @@ With shell integration, these work in the terminal and in review mode:
   from the line the caret is on and selects the command's line, so VoiceOver reads it. TRC says the command's line,
   and whether it failed or still runs; at either end it says there's no earlier or no later command.
 - **Reading.** Option-Command-R speaks the last command's output, up to its last 100 lines; select or copy it to
-  read all of it. It works while a full-screen program such as `vim` runs, which moving and selecting don't.
+  read all of it. While a command still runs, it reads what it printed so far; while a full-screen program such as
+  `vim` runs, it reads the last command that finished, which moving and selecting can't reach then. A selection of
+  more than 5,000 lines is copied whole, though VoiceOver sees its first 5,000.
 - **Failed commands.** When a command in the open session fails, TRC says "Command failed, exit code 2" after its
-  output. Settings, under Commands, turns that off, and has a sound for a failed command (on) and for one that
-  succeeds (off); both play only while sound cues are on.
+  output, and the status bar shows how the last command ended. Settings, under Commands, turns the announcement
+  off, and has a sound for a failed command (on) and for one that succeeds (off); both play only while sound cues
+  are on, at most once a second.
 - **Why it doesn't work.** Without marks, TRC says why: shell integration is off for the host, the shell has
   none, the session's shell started without it, no command has run yet, or a full-screen program has the screen.
 
@@ -418,8 +422,8 @@ session's row shows "bell", "ended" or "command finished", with an icon, until y
 
 In Settings, under Background sessions, each event can be announced (on by default), posted as a macOS
 notification (off by default), or both, and the 10 seconds can change (1 to 3,600). A notification names the
-session and its host, never its output; choosing it opens the session. Each notification TRC posts is also kept in
-the Notifications list, in case macOS doesn't show it.
+session and its host, never its output; choosing it opens the session. A session posts at most one notification
+every 10 seconds, and each one TRC posts is also kept in the Notifications list, in case macOS doesn't show it.
 
 ## Moving around and commands
 
@@ -554,8 +558,8 @@ Logs and Chromium's own data stay in `~/Library/Application Support/Terminal Rem
 terminal output, keystrokes, environment values or keys.
 
 On each host, and for This computer in the TRC home, the daemon lives in `~/.trc`: its binaries under `versions/`,
-its socket under `run/`, its logs, and each session's record and saved scrollback under `sessions/`, readable only
-by you. On a Mac where it runs as a LaunchAgent, its plist is `~/Library/LaunchAgents/dev.trc.trcd-<hash>.plist`.
+its socket under `run/`, its logs, each session's record and saved scrollback under `sessions/`, and the shell
+integration scripts under `shell-integration/`, readable only by you. On a Mac where it runs as a LaunchAgent, its plist is `~/Library/LaunchAgents/dev.trc.trcd-<hash>.plist`.
 
 ### Removing TRC by hand
 
@@ -563,7 +567,7 @@ Remove daemon from host, in a host's details, does all of this for you. Without 
 
 1. End the daemon and its sessions: `pkill -f "$HOME/.trc/versions/"` (use the host's install location if you moved
    it). If the daemon ran as a systemd user service, `systemctl --user stop 'trcd-*.service'` stops it first.
-2. Delete what TRC wrote: `rm -rf ~/.trc/versions ~/.trc/sessions ~/.trc/logs ~/.trc/run ~/.trc/install.lock`, then
+2. Delete what TRC wrote: `rm -rf ~/.trc/versions ~/.trc/sessions ~/.trc/shell-integration ~/.trc/logs ~/.trc/run ~/.trc/install.lock`, then
    `rmdir ~/.trc` if nothing else is left there. A host whose install location has a long path keeps the daemon's
    sockets in `/tmp/trc-<your user ID>` instead of `run/`; delete that folder too.
 

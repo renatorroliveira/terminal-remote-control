@@ -57,9 +57,15 @@ export const commandAnnouncements = defineMessages({
     integrationMissing: {
         id: 'announce.commandIntegrationMissing',
         defaultMessage:
-            'Moving between commands needs shell integration, which this session’s shell started without. Restart the session to add it.',
-        description: 'Command navigation refused: the shell started before integration existed (US-5.2.3).',
+            'Moving between commands needs shell integration, which this session started without, before TRC 0.6. A new session has it; this one keeps working as it is.',
+        description: 'Command navigation refused: the session’s holder predates shell integration (US-5.2.3, P-82).',
     },
+    integrationArguments: defineMessage<{ shell: string }>({
+        id: 'announce.commandIntegrationArguments',
+        defaultMessage:
+            'Moving between commands needs shell integration, which TRC adds only to a shell started without arguments; this {shell} has some.',
+        description: 'Command navigation refused: a bash, zsh or fish profile with its own arguments (US-5.2.3).',
+    }),
     output: defineMessage<{ text: string }>({
         id: 'announce.commandOutput',
         defaultMessage: '{text}',
@@ -75,6 +81,12 @@ export const commandAnnouncements = defineMessages({
         defaultMessage: 'The last command printed nothing.',
         description: 'Reading, selecting or copying the last command’s output found none.',
     },
+    selectedCapped: defineMessage<{ lines: number; cap: number }>({
+        id: 'announce.commandOutputSelectedCapped',
+        defaultMessage:
+            'Selected the last command’s output, {lines} lines; VoiceOver sees the first {cap}. Copy it for all of it.',
+        description: 'Select last command output selected more lines than the OS-visible selection holds (A11Y-04).',
+    }),
     selected: defineMessage<{ lines: number }>({
         id: 'announce.commandOutputSelected',
         defaultMessage: 'Selected the last command’s output, {lines, plural, one {# line} other {# lines}}.',

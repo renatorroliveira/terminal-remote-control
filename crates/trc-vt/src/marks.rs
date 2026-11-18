@@ -34,20 +34,25 @@ impl Marks {
     }
 
     /// Takes a step reported at `row` ([`SCREEN`] coordinates) of `terminal`, and says whether it is a new step of a
-    /// command rather than a repeat. The prompt, output and end are kept with their row; the input start is not, as
-    /// it shares the prompt's.
+    /// command rather than a repeat. The prompt, output, end and bookmarks are kept with their row; the input start is
+    /// not, as it shares the prompt's. A prompt after a prompt where no command ran, as an empty Return or Ctrl+C
+    /// leaves, takes that one's place, so empty prompts never push commands out of the log.
     pub(crate) fn accept(&mut self, terminal: sys::GhosttyTerminal, step: CommandStep, row: u32) -> bool {
         let last = self.log.back().map(|mark| (mark.step, mark.row.y()));
         let accepted = match step {
             CommandStep::Prompt => last != Some((CommandStep::Prompt, Some(row))),
+            CommandStep::Bookmark => last != Some((CommandStep::Bookmark, Some(row))),
             CommandStep::Input => matches!(last, Some((CommandStep::Prompt, _))),
             CommandStep::Output => !matches!(last, Some((CommandStep::Output, _))),
             CommandStep::End { .. } => matches!(last, Some((CommandStep::Output, _))),
         };
-        if accepted && step != CommandStep::Input {
-            self.keep(terminal, step, row);
+        if !accepted || step == CommandStep::Input {
+            return accepted;
         }
-        accepted
+        if step == CommandStep::Prompt && matches!(last, Some((CommandStep::Prompt, _))) {
+            self.log.pop_back();
+        }
+        self.keep(terminal, step, row)
     }
 
     /// The steps marked on rows `first..=last`, by row and then in the order they came. Marks come in row order and
@@ -57,26 +62,30 @@ impl Marks {
         let mut marked: Vec<(u32, CommandStep)> = self
             .log
             .range(start..)
-            .map_while(|mark| mark.row.y().filter(|y| *y <= last).map(|y| (y, mark.step)))
+            .filter_map(|mark| mark.row.y().map(|y| (y, mark.step)))
+            .take_while(|(y, _)| *y <= last)
             .collect();
         marked.sort_by_key(|(y, _)| *y);
         marked
     }
 
-    fn keep(&mut self, terminal: sys::GhosttyTerminal, step: CommandStep, row: u32) {
+    /// Keeps `step` on `row`; false when the row can't be tracked, so the step is not reported either.
+    fn keep(&mut self, terminal: sys::GhosttyTerminal, step: CommandStep, row: u32) -> bool {
         let Ok(tracked) = TrackedRow::new(terminal, row) else {
-            return;
+            return false;
         };
         if self.log.len() == MAX_MARKS {
             self.log.pop_front();
         }
         self.log.push_back(Mark { step, row: tracked });
+        true
     }
 }
 
-/// The OSC 133 sequence that marks `step`.
+/// The OSC 133 sequence that marks `step`, or iTerm2's `SetMark` for a bookmark.
 pub(crate) fn sequence(step: CommandStep) -> Vec<u8> {
     let mark = match step {
+        CommandStep::Bookmark => return b"\x1b]1337;SetMark\x07".to_vec(),
         CommandStep::Prompt => "A".to_owned(),
         CommandStep::Input => "B".to_owned(),
         CommandStep::Output => "C".to_owned(),
@@ -198,6 +207,50 @@ pub(crate) mod tests {
                 CommandStep::Output,
                 CommandStep::End { exit_code: Some(0) },
             ]
+        );
+    }
+
+    #[test]
+    fn lets_a_prompt_take_the_place_of_one_where_no_command_ran() {
+        let mut term = terminal(10_000);
+        term.feed(&command("build", 1, 0));
+        term.feed(&"\x1b]133;A\x07$ \r\n".repeat(super::MAX_MARKS + 500).into_bytes());
+        term.feed(b"\x1b]133;A\x07$ ");
+        let marked = term.marks().in_rows(0, u32::MAX);
+        assert_eq!(marked.len(), 4, "{marked:?}");
+        assert_eq!(marked[0].1, CommandStep::Prompt);
+        assert_eq!(marked[2].1, CommandStep::End { exit_code: Some(0) });
+    }
+
+    #[test]
+    fn marks_nothing_on_the_alternate_screen_and_keeps_a_bookmark_as_one() {
+        let mut term = terminal(1_000);
+        term.feed(b"\x1b[?1049h\x1b]133;A\x07$ vim\r\n\x1b]133;C\x07\x1b[?1049l");
+        assert_eq!(term.marks().in_rows(0, u32::MAX), []);
+        term.feed(b"\x1b]1337;SetMark\x07\x1b]1337;SetMark\x07note\r\n");
+        assert_eq!(term.marks().in_rows(0, u32::MAX).len(), 1);
+    }
+
+    #[test]
+    fn takes_each_marks_row_before_later_output_in_the_same_chunk_moves_it() {
+        let mut term = terminal(100);
+        term.feed(&"filler\r\n".repeat(300).into_bytes());
+        let mut chunk = b"\x1b]133;A\x07$ make\r\n\x1b]133;C\x07".to_vec();
+        chunk.extend("out\r\n".repeat(200).into_bytes());
+        chunk.extend(b"\x1b]133;D;0\x07\x1b]133;A\x07$ ");
+        term.feed(&chunk);
+        let rows: Vec<u32> = term.marks().in_rows(0, u32::MAX).iter().map(|(row, _)| *row).collect();
+        let text = term.plain_text().unwrap();
+        let prompt_rows: Vec<usize> = text
+            .lines()
+            .enumerate()
+            .filter(|(_, line)| line.starts_with('$'))
+            .map(|(index, _)| index)
+            .collect();
+        assert_eq!(
+            rows.last().copied(),
+            prompt_rows.last().and_then(|row| u32::try_from(*row).ok()),
+            "{rows:?}"
         );
     }
 

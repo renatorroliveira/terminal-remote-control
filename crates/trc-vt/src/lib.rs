@@ -72,9 +72,11 @@ pub enum TerminalEvent {
     },
 }
 
-/// A step of a command, as shell integration reports it (OSC 133 A, B, C and D).
+/// A step of a command, as shell integration reports it (OSC 133 A, B, C and D), or an iTerm2 `SetMark`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandStep {
+    /// A row iTerm2's `SetMark` marked, with no command (OQ-6).
+    Bookmark,
     /// The shell started drawing its prompt.
     Prompt,
     /// The prompt is drawn and the user types the command.

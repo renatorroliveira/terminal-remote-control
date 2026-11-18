@@ -390,6 +390,7 @@ describe('Shell: commands shell integration marks (US-5.2)', () => {
         shell.terminalNotice('host-0/a', { kind: 'command-finished', exitCode: 0 });
         expect(spoken).toEqual(['Command failed, exit code 127.']);
         expect(cues).toEqual(['command-failed']);
+        expect(shell.state.getState().lastCommand).toEqual({ key: 'host-0/a', exitCode: 0 });
     });
 });
 

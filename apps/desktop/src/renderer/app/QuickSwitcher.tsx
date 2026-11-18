@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
     Autocomplete,
     Dialog,
@@ -74,7 +74,7 @@ function SwitcherContent({ shell, workspace }: QuickSwitcherProps) {
     const intl = useIntl();
     const { contains } = useFilter({ sensitivity: 'base' });
     const [query, setQuery] = useState('');
-    const entries = useRef(switcherEntries(intl, workspace.store.getState())).current;
+    const [entries] = useState(() => switcherEntries(intl, workspace.store.getState()));
     const shown = entries.filter((entry) => contains(entry.searchText, query)).length;
     return (
         <Dialog aria-label={intl.formatMessage(switcherMessages.title)} className={styles['dialog'] ?? ''}>

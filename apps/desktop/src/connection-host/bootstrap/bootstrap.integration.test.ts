@@ -331,9 +331,13 @@ describe.each(['trc-ubuntu', 'trc-alpine'])('removing the daemon from %s (US-3.3
         await handshake(await bootstrap(alias, root));
         remote(
             alias,
-            `echo mine > "${root}/logs/notes.txt"; mkdir "${root}/sessions/mine"; echo mine > "${root}/run/x"`,
+            `echo mine > "${root}/logs/notes.txt"; mkdir "${root}/sessions/mine"; echo mine > "${root}/run/x"; ` +
+                `echo mine > "${root}/shell-integration/notes.txt"`,
         );
-        expect(await remove(alias, root)).toEqual({ kind: 'removed', kept: ['logs', 'run', 'sessions'] });
+        expect(await remove(alias, root)).toEqual({
+            kind: 'removed',
+            kept: ['logs', 'run', 'sessions', 'shell-integration'],
+        });
         const left = remote(alias, `cd "${root}" && find . -mindepth 1 | sort`).trim().split('\n');
         expect(left.slice(left.indexOf('./logs'))).toEqual([
             './logs',
@@ -342,6 +346,8 @@ describe.each(['trc-ubuntu', 'trc-alpine'])('removing the daemon from %s (US-3.3
             './run/x',
             './sessions',
             './sessions/mine',
+            './shell-integration',
+            './shell-integration/notes.txt',
         ]);
     });
 

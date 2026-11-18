@@ -9,7 +9,7 @@ import type { AudioCue } from './sound/audio-cues';
 
 const intl = createIntl({ locale: 'en', defaultLocale: 'en', messages: {} });
 
-function session(integration: SessionInfo['integration']): SessionInfo {
+function session(integration: SessionInfo['integration'], kind: SessionInfo['profile']['kind'] = 'sh'): SessionInfo {
     return {
         id: 's1',
         order: 0,
@@ -18,7 +18,7 @@ function session(integration: SessionInfo['integration']): SessionInfo {
             id: 'sh',
             name: 'sh',
             origin: 'detected',
-            kind: 'sh',
+            kind,
             path: '/bin/sh',
             args: [],
             login: false,
@@ -30,26 +30,37 @@ function session(integration: SessionInfo['integration']): SessionInfo {
     };
 }
 
-function workspaceWith(integration: SessionInfo['integration']): Workspace {
+function workspaceWith(
+    integration: SessionInfo['integration'],
+    kind: SessionInfo['profile']['kind'] = 'sh',
+): Workspace {
     const host = {
         id: 'h1',
         destination: 'devbox-1',
         state: { kind: 'connected' },
         reconnecting: false,
     } as unknown as Workspace['hosts'][number];
-    return { ...EMPTY_WORKSPACE, hosts: [host], sessions: new Map([['h1', [session(integration)]]]), open: 'h1/s1' };
+    return {
+        ...EMPTY_WORKSPACE,
+        hosts: [host],
+        sessions: new Map([['h1', [session(integration, kind)]]]),
+        open: 'h1/s1',
+    };
 }
 
 function setUp(options: {
     readonly move?: CommandMove;
     readonly output?: CommandOutput;
     readonly integration?: SessionInfo['integration'];
+    readonly kind?: SessionInfo['profile']['kind'];
     readonly settings?: Partial<CommandSettings>;
     readonly copies?: boolean;
 }) {
     const said: string[] = [];
     const cues: AudioCue[] = [];
     const copied: string[] = [];
+    const shown: [string, number][] = [];
+    let now = 0;
     let noSession = 0;
     const actions = new CommandActions({
         terminals: {
@@ -57,7 +68,7 @@ function setUp(options: {
             lastCommandOutput: () => options.output,
             selectLastCommandOutput: () => options.output,
         },
-        workspace: () => workspaceWith(options.integration),
+        workspace: () => workspaceWith(options.integration, options.kind),
         intl,
         announcer: { announce: (text) => said.push(text) },
         playCue: (cue) => cues.push(cue),
@@ -69,8 +80,13 @@ function setUp(options: {
         noSession: () => {
             noSession += 1;
         },
+        showResult: (key, exitCode) => shown.push([key, exitCode]),
+        now: () => now,
     });
-    return { actions, said, cues, copied, noSessions: () => noSession };
+    const advance = (ms: number): void => {
+        now += ms;
+    };
+    return { actions, said, cues, copied, shown, advance, noSessions: () => noSession };
 }
 
 describe('CommandActions: moving and reading (US-5.2.1)', () => {
@@ -99,6 +115,14 @@ describe('CommandActions: moving and reading (US-5.2.1)', () => {
         expect(short.said).toEqual(['one\ntwo']);
         expect(long.said[0]).toBe(`Last ${READ_LINES} of ${lines.length} lines: ${lines.slice(20).join('\n')}`);
         expect(empty.said).toEqual(['The last command printed nothing.']);
+    });
+
+    it('says when a selection is longer than what VoiceOver sees', () => {
+        const { actions, said } = setUp({ output: { kind: 'output', text: 'x', lines: 6_000 } });
+        actions.actions()['command.selectOutput']?.();
+        expect(said).toEqual([
+            'Selected the last command’s output, 6000 lines; VoiceOver sees the first 5000. Copy it for all of it.',
+        ]);
     });
 
     it('selects and copies the output, and says how many lines', async () => {
@@ -136,7 +160,12 @@ describe('CommandActions: why commands can’t be reached (US-5.2.3)', () => {
             'Moving between commands needs shell integration, which is off for devbox-1. Turn it on in Settings, under Hosts; it applies when a shell next starts.',
             'Moving between commands needs shell integration, which bash, zsh and fish have and sh doesn’t.',
             'No command has run in this session yet.',
-            'Moving between commands needs shell integration, which this session’s shell started without. Restart the session to add it.',
+            'Moving between commands needs shell integration, which this session started without, before TRC 0.6. A new session has it; this one keeps working as it is.',
+        ]);
+        const withArguments = setUp({ move: unavailable, integration: 'unsupported', kind: 'zsh' });
+        withArguments.actions.actions()['command.next']?.();
+        expect(withArguments.said).toEqual([
+            'Moving between commands needs shell integration, which TRC adds only to a shell started without arguments; this sh has some.',
         ]);
         const fullScreen = setUp({ move: { kind: 'unavailable', reason: 'full-screen' } });
         fullScreen.actions.actions()['command.previous']?.();
@@ -146,13 +175,26 @@ describe('CommandActions: why commands can’t be reached (US-5.2.3)', () => {
 
 describe('CommandActions: a command finished in the open session (US-5.2.2)', () => {
     it('announces a failure and plays its cue, plays the success cue only when on, and ignores other sessions', () => {
-        const { actions, said, cues } = setUp({ settings: { commandSucceededCue: true } });
+        const { actions, said, cues, shown, advance } = setUp({ settings: { commandSucceededCue: true } });
         actions.finished('h1/s1', 2);
+        advance(1_000);
         actions.finished('h1/s1', 0);
         actions.finished('h1/s1', undefined);
         actions.finished('h1/other', 1);
         expect(said).toEqual(['Command failed, exit code 2.']);
         expect(cues).toEqual(['command-failed', 'command-succeeded']);
+        expect(shown).toEqual([
+            ['h1/s1', 2],
+            ['h1/s1', 0],
+        ]);
+    });
+
+    it('plays at most one cue a second for a session, however fast its marks come (SEC-06)', () => {
+        const { actions, cues } = setUp({});
+        for (let index = 0; index < 50; index += 1) {
+            actions.finished('h1/s1', 1);
+        }
+        expect(cues).toEqual(['command-failed']);
     });
 
     it('stays quiet when the announcement and the cues are off', () => {

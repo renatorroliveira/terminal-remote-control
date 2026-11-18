@@ -100,7 +100,9 @@ if [[ $- == *i* && -z "${__trc_hooked-}" ]]; then
     else
         PROMPT_COMMAND=$'__trc_prompt_start\n'"${PROMPT_COMMAND-}"$'\n__trc_prompt_end'
     fi
-    if ((BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4))); then
+    # A nested shell gets the hooks' names but not the hooks, so they are not exported.
+    builtin export -n PROMPT_COMMAND
+    if ((BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4))) && builtin shopt -q promptvars; then
         PS0=${PS0-}'$(__trc_ready=; printf "\033]133;C\007")'
     else
         __trc_trap=$(builtin trap -p DEBUG)

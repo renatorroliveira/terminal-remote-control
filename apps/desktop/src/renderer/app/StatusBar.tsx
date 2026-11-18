@@ -19,14 +19,15 @@ export interface StatusBarProps {
 }
 
 /**
- * The status bar (US-1.6.1): the open session's host and its connection, the daemon it reached, the Tab focus mode
- * and output mute toggles, and the notification list with its count. It is the last region (A11Y-05.2) and wraps in
+ * The status bar (US-1.6.1): the open session's host and its connection, the daemon it reached, how its last command
+ * ended (the visual equivalent of the command cues, A11Y-12.4), the Tab focus mode and output mute toggles, and the
+ * notification list with its count. It is the last region (A11Y-05.2) and wraps in
  * a narrow window (A11Y-07.5).
  */
 export function StatusBar({ workspace, shell }: StatusBarProps) {
     const intl = useIntl();
     const state = useStore(workspace.store);
-    const { tabFocusMode, muted, bell, sizeSetElsewhere } = useStore(shell.state);
+    const { tabFocusMode, muted, bell, sizeSetElsewhere, lastCommand } = useStore(shell.state);
     const count = useStore(shell.notifications.store, (notifications) => notifications.items.length);
     return (
         <section
@@ -37,6 +38,13 @@ export function StatusBar({ workspace, shell }: StatusBarProps) {
             <span className={styles['item']}>{connectionText(intl, state)}</span>
             <span className={styles['item']}>{daemonText(intl, state)}</span>
             {bell && <span className={styles['item']}>{intl.formatMessage(statusMessages.bell)}</span>}
+            {lastCommand !== undefined && lastCommand.key === state.open && (
+                <span className={styles['item']}>
+                    {lastCommand.exitCode === 0
+                        ? intl.formatMessage(statusMessages.lastCommandSucceeded)
+                        : intl.formatMessage(statusMessages.lastCommandFailed, { code: lastCommand.exitCode })}
+                </span>
+            )}
             {state.open !== undefined && sizeSetElsewhere.has(state.open) && (
                 <span className={styles['item']}>{intl.formatMessage(statusMessages.sizeSetElsewhere)}</span>
             )}
