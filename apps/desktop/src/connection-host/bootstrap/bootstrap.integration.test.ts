@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { decodeServerMessage, encodeClientMessage, FrameDecoder, FrameKind, type ServerMessage } from '@trc/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
+import { bootOutAgent, MAC_HOSTS } from '../../../test/mac-hosts';
 import {
     type BootstrapOptions,
     type BootstrapOutcome,
@@ -80,7 +81,7 @@ function freshRoot(alias: string, base = '$HOME'): string {
     const name = `.trct-${randomBytes(4).toString('hex')}`;
     const root = `${base}/${name}`;
     const stop = `kill $(head -n 1 "${root}/run/core.lock" 2>/dev/null) 2>/dev/null; pkill -f "[/]${name}/versions"`;
-    cleanups.push(() => remote(alias, `${stop}; rm -rf "${root}"`));
+    cleanups.push(() => remote(alias, `${bootOutAgent(root)}; ${stop}; rm -rf "${root}"`));
     return root;
 }
 
@@ -125,7 +126,7 @@ async function handshake(bootstrapped: Bootstrapped): Promise<ServerMessage> {
     throw new Error('the bridge closed before answering');
 }
 
-describe.each(['trc-ubuntu', 'trc-alpine', 'trc-rocky', 'trc-ubuntu-nss'])('bootstrap on %s', (alias) => {
+describe.each(['trc-ubuntu', 'trc-alpine', 'trc-rocky', 'trc-ubuntu-nss', ...MAC_HOSTS])('bootstrap on %s', (alias) => {
     it('installs the daemon, runs the bridge, and reuses the install on the next connection', async () => {
         const root = freshRoot(alias);
         const first = await bootstrap(alias, root);

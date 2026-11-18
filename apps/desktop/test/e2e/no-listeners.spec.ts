@@ -99,7 +99,7 @@ test.describe('no listening sockets after connect, create and reconnect (SEC-01.
             await terminal.focus();
             await expect
                 .poll(async () => (await rowTexts(terminal)).join('\n'), { timeout: 30_000 })
-                .toMatch(/[$#] *$/m);
+                .toMatch(/[$#%] *$/m);
             await window.keyboard.type('echo trc-listeners');
             await window.keyboard.press('Enter');
             await expect.poll(() => rowTexts(terminal)).toContain('trc-listeners');

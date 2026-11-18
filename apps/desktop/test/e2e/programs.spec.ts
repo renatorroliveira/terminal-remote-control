@@ -67,7 +67,7 @@ test.beforeAll(async () => {
     shared.launched = await launchWithTestHosts(shared.root);
     shared.terminal = await openTerminal(shared.launched.window, 'trc-ubuntu');
     await shared.terminal.focus();
-    await shows(/[$#] *$/m, 30_000);
+    await shows(/[$#%] *$/m, 30_000);
     await run(`PS1='${PROMPT} '`);
     await freshPrompt();
 });

@@ -4,11 +4,18 @@ import { copyFileSync, existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { ElectronApplication, Locator, Page } from '@playwright/test';
+import { bootOutAgent } from '../../mac-hosts';
 import { launchApp, skipFirstQuitNotice } from './launch';
 
 const repository = resolve(import.meta.dirname, '../../../../..');
 const run = join(repository, 'tools/test-hosts/.run');
 const manifest = join(repository, 'apps/desktop/resources/daemon/manifest.json');
+
+/**
+ * The host the single-host specs run on: `trc-ubuntu` unless `TRC_E2E_HOST` names another, such as `trc-mac-gui` or
+ * `trc-mac-nogui` while the macOS test host runs (US-4.5.1).
+ */
+export const E2E_HOST = process.env['TRC_E2E_HOST'] ?? 'trc-ubuntu';
 
 /** Why the test hosts cannot be used, or `undefined` when they can. */
 export function testHostsMissing(): string | undefined {
@@ -79,7 +86,7 @@ export function scratchInstallRoot(): string {
 /** Stops the daemon a test installed under `root` on `alias`, and removes the install. */
 export function removeInstall(alias: string, root: string): void {
     const path = root.replace('~', '$HOME');
-    const script = `kill $(head -n 1 "${path}/run/core.lock" 2>/dev/null) 2>/dev/null; pkill -f "${path}/" ; rm -rf "${path}"`;
+    const script = `${bootOutAgent(root)}; kill $(head -n 1 "${path}/run/core.lock" 2>/dev/null) 2>/dev/null; pkill -f "${path}/" ; rm -rf "${path}"`;
     try {
         execFileSync(
             'ssh',
@@ -102,6 +109,19 @@ export function removeInstall(alias: string, root: string): void {
     }
 }
 
+/** Runs a shell command on a test host over SSH; returns its output, or `''`. */
+function overSsh(alias: string, script: string): string {
+    const known = `UserKnownHostsFile=${join(run, 'known_hosts.smoke')}`;
+    try {
+        return execFileSync('ssh', ['-F', join(run, 'ssh_config'), '-o', 'BatchMode=yes', '-o', known, alias, script], {
+            encoding: 'utf8',
+            timeout: 30_000,
+        });
+    } catch {
+        return '';
+    }
+}
+
 /** The docker container of a test host, such as `trc-test-hosts-ubuntu-1` for `trc-ubuntu`. */
 function container(alias: string): readonly string[] {
     return [
@@ -111,8 +131,14 @@ function container(alias: string): readonly string[] {
     ];
 }
 
-/** Runs a shell command on a test host as its test user, from outside its sshd; returns its output, or `''`. */
+/**
+ * Runs a shell command on a test host as its test user, from outside its sshd for a container, or over SSH for the
+ * macOS test host; returns its output, or `''`.
+ */
 export function onTestHost(alias: string, script: string): string {
+    if (alias.startsWith('trc-mac-')) {
+        return overSsh(alias, script);
+    }
     const [flag, context, name] = container(alias);
     try {
         return execFileSync(
@@ -130,9 +156,21 @@ export function onTestHost(alias: string, script: string): string {
 
 /**
  * Restarts a test host's container, which ends every process in it as a reboot does but keeps its files and its
- * boot ID (P-50).
+ * boot ID (P-50); the macOS test host's VM reboots instead, and this returns once its sshd answers again.
  */
 export function restartTestHost(alias: string): void {
+    if (alias.startsWith('trc-mac-')) {
+        overSsh('trc-mac-gui', '(sleep 1; sudo shutdown -r now) >/dev/null 2>&1 &');
+        execFileSync('sh', ['-c', 'sleep 15'], { stdio: 'ignore' });
+        const started = Date.now();
+        while (overSsh(alias, 'echo up').trim() !== 'up') {
+            if (Date.now() - started > 180_000) {
+                throw new Error(`${alias} did not come back`);
+            }
+            execFileSync('sh', ['-c', 'sleep 2'], { stdio: 'ignore' });
+        }
+        return;
+    }
     const [flag, context, name] = container(alias);
     execFileSync('docker', [flag ?? '', context ?? '', 'restart', '--time', '1', name ?? ''], {
         stdio: 'ignore',

@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
+    E2E_HOST,
     launchWithTestHosts,
     onTestHost,
     openTerminal,
@@ -11,13 +12,13 @@ import {
     testHostsMissing,
 } from './support/test-host';
 
-const HOST = 'trc-ubuntu';
+const HOST = E2E_HOST;
 const missing = testHostsMissing();
 
 async function run(window: Page, terminal: Locator, command: string, output: string): Promise<void> {
     await expect
         .poll(() => rowTexts(terminal).then((rows) => rows.join('\n')), { timeout: 30_000 })
-        .toMatch(/[$#] *$/m);
+        .toMatch(/[$#%] *$/m);
     await terminal.focus();
     await window.keyboard.type(command);
     await window.keyboard.press('Enter');

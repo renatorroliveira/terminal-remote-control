@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { ServerMessage } from '@trc/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
+import { bootOutAgent, MAC_HOSTS } from '../../../test/mac-hosts';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import { parseDaemonManifest } from '../bootstrap/manifest';
 import { createAppLogger } from '../logging/app-log';
@@ -63,6 +64,8 @@ interface Observed {
     readonly states: ConnectionState[];
     readonly messages: ServerMessage[];
     readonly output: Map<number, string>;
+    /** The install root under the test user's home. */
+    readonly root: string;
 }
 
 function open(alias: string, known: string, env?: Readonly<Record<string, string | undefined>>): Observed {
@@ -78,7 +81,7 @@ function open(alias: string, known: string, env?: Readonly<Record<string, string
         output: (stream, data) => output.set(stream, (output.get(stream) ?? '') + Buffer.from(data).toString('utf8')),
     });
     opened.push(connection);
-    return { connection, states, messages, output };
+    return { connection, states, messages, output, root };
 }
 
 async function until(condition: () => boolean, timeoutMs = 30_000): Promise<void> {
@@ -117,36 +120,43 @@ function received(observed: Observed, stream: number): string {
     return observed.output.get(stream) ?? '';
 }
 
+/** The test users' home folders on the hosts whose user is not `tester`. */
+const HOMES: Readonly<Record<string, string>> = { 'trc-mac-gui': '/Users/admin', 'trc-mac-nogui': '/Users/trcnogui' };
+
 describe('HostConnection sessions over real ssh', () => {
-    it('installs, connects and runs a session over one channel (US-1.4, US-1.5)', async () => {
-        const observed = open('trc-ubuntu', knownHosts('trusted'));
-        await observed.connection.connect();
-        expect(await settled(observed)).toMatchObject({
-            status: 'connected',
-            daemon: {
-                version: manifest.version,
-                proto: 3,
-                service: { manager: 'detached', sessionsEndAtLogout: false },
-                details: {
-                    home: '/home/tester',
-                    installRoot: expect.stringMatching(/^\/home\/tester\/\.trct-[0-9a-f]+$/),
-                    logDir: expect.stringMatching(/^\/home\/tester\/\.trct-[0-9a-f]+\/logs$/),
-                    startedAt: expect.any(Number),
+    it.each(['trc-ubuntu', ...MAC_HOSTS])(
+        'installs, connects and runs a session over one channel on %s (US-1.4, US-1.5, US-4.5.1)',
+        async (alias) => {
+            const observed = open(alias, knownHosts('trusted'));
+            const home = HOMES[alias] ?? '/home/tester';
+            await observed.connection.connect();
+            expect(await settled(observed)).toMatchObject({
+                status: 'connected',
+                daemon: {
+                    version: manifest.version,
+                    proto: 3,
+                    service: { manager: alias === 'trc-mac-gui' ? 'launchd' : 'detached', sessionsEndAtLogout: false },
+                    details: {
+                        home,
+                        installRoot: `${home}/${observed.root}`,
+                        logDir: `${home}/${observed.root}/logs`,
+                        startedAt: expect.any(Number),
+                    },
+                    bundled: manifest.version,
                 },
-                bundled: manifest.version,
-            },
-        });
-        const steps = observed.states.flatMap((state) => (state.status === 'connecting' ? [state.step] : []));
-        expect(steps).toEqual(['connecting', 'checking', 'uploading', 'verifying', 'starting', 'handshake']);
-        const { connection } = observed;
-        connection.send({ type: 'create', requestId: 1, spec: { env: {}, size: { cols: 80, rows: 24 } } });
-        const created = await awaitMessage(observed, 'created');
-        connection.send({ type: 'attach', requestId: 2, session: created.session.id, mode: 'full' });
-        const { stream } = await awaitMessage(observed, 'attached');
-        await until(() => received(observed, stream).length > 0);
-        connection.input(stream, Buffer.from('echo trc-$((6*7))\r'));
-        await until(() => received(observed, stream).includes('trc-42'));
-    });
+            });
+            const steps = observed.states.flatMap((state) => (state.status === 'connecting' ? [state.step] : []));
+            expect(steps).toEqual(['connecting', 'checking', 'uploading', 'verifying', 'starting', 'handshake']);
+            const { connection } = observed;
+            connection.send({ type: 'create', requestId: 1, spec: { env: {}, size: { cols: 80, rows: 24 } } });
+            const created = await awaitMessage(observed, 'created');
+            connection.send({ type: 'attach', requestId: 2, session: created.session.id, mode: 'full' });
+            const { stream } = await awaitMessage(observed, 'attached');
+            await until(() => received(observed, stream).length > 0);
+            connection.input(stream, Buffer.from('echo trc-$((6*7))\r'));
+            await until(() => received(observed, stream).includes('trc-42'));
+        },
+    );
 });
 
 describe('HostConnection: removing the daemon (US-3.3.3)', () => {
@@ -267,7 +277,7 @@ function agentAnswers(socket: string): boolean {
  */
 function removeInstall(alias: string, root: string): void {
     const known = `UserKnownHostsFile=${join(run, 'known_hosts.smoke')}`;
-    const command = `kill $(head -n 1 ${root}/run/core.lock 2>/dev/null) 2>/dev/null; pkill -f "[/]${root}/versions"; rm -rf ${root}`;
+    const command = `${bootOutAgent(root)}; kill $(head -n 1 ${root}/run/core.lock 2>/dev/null) 2>/dev/null; pkill -f "[/]${root}/versions"; rm -rf ${root}`;
     try {
         execFileSync('ssh', ['-F', join(run, 'ssh_config'), '-o', known, '-o', 'ConnectTimeout=3', alias, command], {
             stdio: 'ignore',

@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { MAC_HOSTS } from '../mac-hosts';
 import {
     launchWithTestHosts,
     onTestHost,
@@ -15,6 +16,7 @@ import {
 /**
  * Every Linux test host: those that run the daemon on its own, the systemd host whose lingering keeps the daemon in
  * its user unit (P-32), and the one that ends the user's processes at logout. Each restart ends every process (P-50).
+ * With the macOS test host up, its two users too, whose restart is a reboot of the VM (US-4.5.2).
  */
 const HOSTS = [
     'trc-ubuntu',
@@ -23,6 +25,7 @@ const HOSTS = [
     'trc-systemd',
     'trc-systemd-linger',
     'trc-systemd-kill',
+    ...MAC_HOSTS,
 ] as const;
 const missing = testHostsMissing();
 
@@ -31,17 +34,17 @@ async function run(window: Page, host: string, command: string, output: string):
     const terminal = window.getByRole('textbox', { name: new RegExp(`, ${host}$`) });
     await expect
         .poll(() => rowTexts(terminal).then((rows) => rows.join('\n')), { timeout: 30_000 })
-        .toMatch(/[$#] *$/m);
+        .toMatch(/[$#%] *$/m);
     await terminal.focus();
     await window.keyboard.type(command);
     await window.keyboard.press('Enter');
     await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain(output);
 }
 
-/** Whether a row of the terminal, without its padding, matches `pattern`. */
-async function hasRow(terminal: Locator, pattern: RegExp): Promise<boolean> {
+/** Whether the terminal's text, its rows joined as a line that wraps joins them, matches `pattern`. */
+async function hasText(terminal: Locator, pattern: RegExp): Promise<boolean> {
     const rows = await rowTexts(terminal);
-    return rows.some((row) => pattern.test(row.trim()));
+    return pattern.test(rows.join(''));
 }
 
 for (const HOST of HOSTS) {
@@ -70,12 +73,13 @@ for (const HOST of HOSTS) {
             await expect(restored).toBeVisible({ timeout: 120_000 });
             await expect
                 .poll(() => spokenTexts(window), { timeout: 30_000 })
-                .toContain(`${HOST}: 2 sessions restored.`);
+                .toContainEqual(expect.stringMatching(new RegExp(`^${HOST}( restarted)?: 2 sessions restored\\.$`)));
             await restored.click();
             const terminal = window.getByRole('textbox', { name: new RegExp(`, ${HOST}$`) });
             await expect.poll(() => rowTexts(terminal), { timeout: 30_000 }).toContain('before-restart-42');
-            const marker = /^Session restored on \d{4}-\d\d-\d\d \d\d:\d\d:\d\d UTC\. Previous processes ended\.$/;
-            await expect.poll(() => hasRow(terminal, marker)).toBe(true);
+            const marker =
+                /Session restored (after restart )?on \d{4}-\d\d-\d\d \d\d:\d\d:\d\d UTC\. Previous processes ended\./;
+            await expect.poll(() => hasText(terminal, marker)).toBe(true);
             await expect(window.getByRole('treeitem', { name: /, restored/ })).toHaveCount(0);
             await run(window, HOST, 'echo after-restart-$((40+2))', 'after-restart-42');
             await app.close();

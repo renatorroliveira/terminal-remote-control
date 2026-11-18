@@ -39,7 +39,7 @@ test.describe('a host that ends sessions at logout (US-2.4.4)', () => {
         const warning = window.getByRole('alertdialog', { name: `Programs on ${HOST} end when you disconnect` });
         await warning.getByRole('button', { name: 'Create Session' }).click();
         const terminal = window.getByRole('textbox', { name: new RegExp(`, ${HOST}$`) });
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         await create.click();
         await expect(window.getByRole('treeitem', { name: /, Running$/ })).toHaveCount(2, { timeout: 30_000 });
         await expect(warning).toHaveCount(0);
