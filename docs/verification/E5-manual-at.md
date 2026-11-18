@@ -5,6 +5,9 @@ of `E1-manual-at.md` to `E4-manual-at.md` still apply to everything else. Each p
 happen; mark it **Pass** or **Fail** with a note. A failure is a high-severity accessibility defect unless it is
 cosmetic, and blocks the release (§11.6).
 
+**Owner, 2026-11-18 (P-83):** skipped for 0.6.0, an alpha build; the passes run at a later gate, pass 8 with
+E8's signed build.
+
 ## Setup
 
 1. Install the release candidate from the dry run's dmg and open it once.
