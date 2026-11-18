@@ -82,31 +82,23 @@ describe('HostsPanel (US-1.1.1, US-1.2, US-1.5)', () => {
         await expect.element(screen.getByRole('combobox', { name: 'New host' })).toHaveValue('');
     });
 
-    it('puts Add host to the right of the field, on its row, with an optional user field below (US-1.1.6)', async () => {
+    it('puts Add host to the right of the field, on its row, with no user field of its own (US-1.1.6)', async () => {
         const { screen } = await renderPanel();
         const field = screen.getByRole('combobox', { name: 'New host' }).element().getBoundingClientRect();
         const button = screen.getByRole('button', { name: 'Add host' }).element().getBoundingClientRect();
         expect(button.left).toBeGreaterThanOrEqual(field.right);
         expect(Math.abs(button.top + button.height / 2 - (field.top + field.height / 2))).toBeLessThan(2);
-        const user = screen.getByRole('textbox', { name: 'User (optional)' });
-        await expect.element(user).toHaveAttribute('autocomplete', 'username');
-        expect(user.element().getBoundingClientRect().top).toBeGreaterThan(field.bottom);
+        await expect.element(screen.getByRole('textbox', { name: 'User (optional)' })).not.toBeInTheDocument();
     });
 });
 
 describe('HostsPanel: the add-host form (US-1.1.1, US-1.1.6)', () => {
-    it('joins the user field and the host, and refuses a user given twice', async () => {
+    it('takes the user in the host field, as user@host (US-1.1.1, US-1.1.6)', async () => {
         const { screen } = await renderPanel();
-        await screen.getByRole('combobox', { name: 'New host' }).fill('me@build');
-        await screen.getByRole('textbox', { name: 'User (optional)' }).fill('ops');
-        await screen.getByRole('button', { name: 'Add host' }).click();
-        await expect
-            .element(screen.getByText('Give the user either in the host field or here, not both.'))
-            .toBeVisible();
-        await screen.getByRole('combobox', { name: 'New host' }).fill('build:2222');
+        await screen.getByRole('combobox', { name: 'New host' }).fill('ops@build:2222');
         await screen.getByRole('button', { name: 'Add host' }).click();
         await expect.element(screen.getByRole('button', { name: 'Connect ops@build:2222' })).toBeVisible();
-        await expect.element(screen.getByRole('textbox', { name: 'User (optional)' })).toHaveValue('');
+        await expect.element(screen.getByRole('combobox', { name: 'New host' })).toHaveValue('');
     });
 
     it('offers recent hosts and SSH config hosts as the user types (US-1.1.1)', async () => {

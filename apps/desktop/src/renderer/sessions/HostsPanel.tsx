@@ -9,7 +9,6 @@ import {
     ListBoxItem,
     Popover,
     Text,
-    TextField,
     useFilter,
 } from 'react-aria-components';
 import { type IntlShape, useIntl } from 'react-intl';
@@ -22,7 +21,6 @@ import { useContextMenu } from '../ui/context-menu';
 import { BusyIcon, ConnectedIcon, DisconnectedIcon } from '../ui/icons';
 import { ADD_HOST_ATTRIBUTE } from './HostDialogs';
 import styles from './HostsPanel.module.css';
-import { addHostMessages } from './host-messages';
 import { hostStateText } from './host-state-text';
 import { connectionActionMessage, hostFailureMessage, hostReconnectingMessage, sidebarMessages } from './messages';
 import type { WorkspaceController } from './workspace-controller';
@@ -101,26 +99,18 @@ function HostRow({ host, workspace }: { readonly host: HostEntry; readonly works
 function AddHostForm({ workspace }: HostsPanelProps) {
     const intl = useIntl();
     const [address, setAddress] = useState('');
-    const [user, setUser] = useState('');
-    const [problem, setProblem] = useState<'address' | 'two-users' | undefined>();
+    const [problem, setProblem] = useState<'address' | undefined>();
     const suggestions = useSuggestions(workspace);
     const { contains } = useFilter({ sensitivity: 'base' });
     const shown = useRef(address);
     shown.current = address;
     const submit = (event: FormEvent): void => {
         event.preventDefault();
-        const typed = address.trim();
-        if (user.trim() !== '' && typed.includes('@')) {
-            setProblem('two-users');
-            return;
-        }
-        const submitted = user.trim() === '' ? typed : `${user.trim()}@${typed}`;
         const stillShown = (): boolean => shown.current === address;
-        workspace.addHost(submitted).then(
+        workspace.addHost(address.trim()).then(
             () => {
                 if (stillShown()) {
                     setAddress('');
-                    setUser('');
                 }
             },
             () => stillShown() && setProblem('address'),
@@ -164,21 +154,6 @@ function AddHostForm({ workspace }: HostsPanelProps) {
                     </ListBox>
                 </Popover>
             </ComboBox>
-            <TextField
-                value={user}
-                onChange={(value) => {
-                    setUser(value);
-                    edited();
-                }}
-                isInvalid={problem === 'two-users'}
-                className={styles['user'] ?? ''}
-            >
-                <Label>{intl.formatMessage(addHostMessages.user)}</Label>
-                <Input autoComplete="username" className={styles['input'] ?? ''} />
-                <FieldError className={styles['error'] ?? ''}>
-                    {intl.formatMessage(addHostMessages.twoUsers)}
-                </FieldError>
-            </TextField>
         </form>
     );
 }

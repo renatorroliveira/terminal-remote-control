@@ -118,7 +118,7 @@ test('Command+, opens the searchable settings page, and a theme change applies a
     const window = await app.firstWindow();
     await window.getByRole('combobox', { name: 'New host' }).focus();
     await window.keyboard.press('Meta+Comma');
-    const settings = window.getByRole('dialog', { name: 'Settings' });
+    const settings = window.getByRole('main').getByRole('region', { name: 'Settings' });
     await expect(settings.getByRole('searchbox', { name: 'Search settings' })).toBeFocused();
     expect(await axeViolations(window)).toEqual([]);
     await window.keyboard.type('theme');
@@ -137,7 +137,11 @@ test('rebinds a command from the settings page, and the menus and the keyboard f
     const window = await app.firstWindow();
     await window.getByRole('combobox', { name: 'New host' }).focus();
     await window.keyboard.press('Meta+Comma');
-    const settings = window.getByRole('dialog', { name: 'Settings' });
+    const settings = window.getByRole('main').getByRole('region', { name: 'Settings' });
+    await settings
+        .getByRole('navigation', { name: 'Settings sections' })
+        .getByRole('button', { name: 'Keyboard' })
+        .click();
     await settings.getByRole('button', { name: 'Change Show command palette' }).click();
     await expect(settings.getByRole('button', { name: /^Press the new shortcut/ })).toBeFocused();
     await window.keyboard.press('Control+Meta+Y');

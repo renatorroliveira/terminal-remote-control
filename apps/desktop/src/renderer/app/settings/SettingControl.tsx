@@ -8,7 +8,7 @@ import { TERMINAL_APPEARANCE_LIMITS, type TerminalAppearance } from '../../../sh
 import { TERMINAL_ZOOM } from '../../../shared/terminal-zoom';
 import type { WorkspaceController } from '../../sessions/workspace-controller';
 import type { Shell } from '../shell';
-import styles from './SettingsDialog.module.css';
+import styles from './SettingsView.module.css';
 import { ShortcutsSetting } from './ShortcutsSetting';
 import { ChoiceSetting, NumberSetting, SwitchSetting } from './setting-fields';
 import { SETTING_ENTRIES, type SettingId } from './settings-catalog';

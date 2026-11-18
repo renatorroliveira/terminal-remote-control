@@ -1,8 +1,11 @@
 import type { IntlShape, MessageDescriptor } from 'react-intl';
 import { settingDescriptionMessages, settingGroupMessages, settingLabelMessages } from './settings-messages';
 
+/** Marks the settings search field, which the shell focuses when Settings is asked for again (A11Y-10.3). */
+export const SETTINGS_SEARCH_ATTRIBUTE = 'data-settings-search';
+
 /** The settings page's sections, in order. */
-export const SETTING_GROUPS = ['speech', 'sound', 'display', 'keyboard', 'sessions', 'hosts'] as const;
+export const SETTING_GROUPS = ['appearance', 'speech', 'sound', 'keyboard', 'sessions', 'hosts'] as const;
 
 /** One section of the settings page. */
 export type SettingGroup = (typeof SETTING_GROUPS)[number];
@@ -25,14 +28,14 @@ const GROUP_OF: Readonly<Record<SettingId, SettingGroup>> = {
     floodThreshold: 'speech',
     audioCues: 'sound',
     audioVolume: 'sound',
-    theme: 'display',
-    minimumContrast: 'display',
-    terminalZoom: 'display',
-    lineHeight: 'display',
-    letterSpacing: 'display',
-    cursorStyle: 'display',
-    cursorWidth: 'display',
-    cursorBlink: 'display',
+    theme: 'appearance',
+    minimumContrast: 'appearance',
+    terminalZoom: 'appearance',
+    lineHeight: 'appearance',
+    letterSpacing: 'appearance',
+    cursorStyle: 'appearance',
+    cursorWidth: 'appearance',
+    cursorBlink: 'appearance',
     tabFocusMode: 'keyboard',
     plainF6: 'keyboard',
     shortcuts: 'keyboard',

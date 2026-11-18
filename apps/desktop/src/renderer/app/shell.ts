@@ -36,6 +36,7 @@ import { clipboardWrittenMessage, copyCappedMessage } from './paste-messages';
 import { QuitFlow, type QuitFlowOptions } from './quit-flow';
 import { RegionCycler } from './regions';
 import { reportPersistenceFailures, reportRestores } from './session-reporter';
+import { SETTINGS_SEARCH_ATTRIBUTE } from './settings/settings-catalog';
 import type { SettingsStore } from './settings/settings-store';
 import {
     commandMessages,
@@ -300,6 +301,7 @@ export class Shell {
             (() => undefined);
         void this.#options.sidebar.collapsed().then((sidebarCollapsed) => this.state.setState({ sidebarCollapsed }));
         const stopSettings = this.#followSettings();
+        const stopLeaving = this.#options.workspace.whenOpened(() => this.#leaveSettings());
         return () => {
             stopShortcuts();
             stopRegions();
@@ -310,6 +312,7 @@ export class Shell {
             stopSettingsFailures();
             stopScreenReader();
             stopSettings();
+            stopLeaving();
         };
     }
 
@@ -468,14 +471,21 @@ export class Shell {
         return this.#options.settings;
     }
 
-    /** Opens the settings page once it has read what `config.json` holds now (A11Y-10.3). */
+    /**
+     * Shows the settings in the terminal's place once they hold what `config.json` holds now (A11Y-10.3, US-1.6.7);
+     * asked again while they show, it moves focus to their search field.
+     */
     async openSettings(): Promise<void> {
+        if (this.state.getState().settingsOpen) {
+            this.#options.document.querySelector<HTMLElement>(`[${SETTINGS_SEARCH_ATTRIBUTE}]`)?.focus();
+            return;
+        }
         this.#rememberFocus();
         await this.#options.settings?.load();
         this.state.setState({ settingsOpen: true });
     }
 
-    /** Closes the settings page and returns focus to where it was. */
+    /** Hides the settings and returns focus to where it was. */
     closeSettings(): void {
         this.state.setState({ settingsOpen: false });
         this.#returnFocus();
@@ -760,6 +770,14 @@ export class Shell {
     #applyZoom(terminalZoom: number): void {
         this.state.setState({ terminalZoom });
         this.#options.terminals.setZoom(terminalZoom);
+    }
+
+    /** A session opened while the settings showed: the terminal, which has focus now, takes their place. */
+    #leaveSettings(): void {
+        if (this.state.getState().settingsOpen) {
+            this.#focusReturn = undefined;
+            this.state.setState({ settingsOpen: false });
+        }
     }
 
     #rememberFocus(): void {

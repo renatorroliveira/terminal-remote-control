@@ -15,6 +15,7 @@ export type TreeAction =
     | { readonly kind: 'focus'; readonly index: number }
     | { readonly kind: 'toggle'; readonly key: string }
     | { readonly kind: 'open'; readonly key: string }
+    | { readonly kind: 'rename'; readonly key: string }
     | { readonly kind: 'none' };
 
 const NONE: TreeAction = { kind: 'none' };
@@ -22,7 +23,8 @@ const NONE: TreeAction = { kind: 'none' };
 /**
  * The APG tree keys (US-1.6.4): Up and Down move, Home and End jump, Right expands a host or enters it, Left
  * collapses it or returns from a session to its host, and Enter or Space opens a session or toggles a host. Moving
- * never opens (US-1.8.1).
+ * never opens (US-1.8.1). F2 renames a session (US-1.10.10); bound to the tree alone, it never takes F2 from a
+ * program in the terminal.
  */
 export function treeAction(rows: readonly TreeRow[], index: number, key: string): TreeAction {
     const row = rows[index];
@@ -45,6 +47,8 @@ export function treeAction(rows: readonly TreeRow[], index: number, key: string)
         case 'Enter':
         case ' ':
             return row.kind === 'host' ? { kind: 'toggle', key: row.key } : { kind: 'open', key: row.key };
+        case 'F2':
+            return row.kind === 'session' ? { kind: 'rename', key: row.key } : NONE;
         default:
             return NONE;
     }

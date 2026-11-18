@@ -50,6 +50,27 @@ describe('SessionTree: the session list is a tree (US-1.6.4)', () => {
     });
 });
 
+describe('SessionTree: layout (P-72)', () => {
+    it('leaves 10 px more between a host’s last session and the next host than between rows', async () => {
+        const client = new FakeWorkspaceClient(TWO_SESSIONS);
+        const workspace = new WorkspaceController(client, new FakeTerminalHost(), new FakeKnownHostStore());
+        await workspace.addHost('devbox-1');
+        await workspace.addHost('devbox-2');
+        client.push('host-0', CONNECTED);
+        client.push('host-1', CONNECTED);
+        await expect.poll(() => workspace.store.getState().sessions.get('host-1')?.length).toBe(2);
+        const screen = await render(
+            <AppProviders locale="en">
+                <SessionTree workspace={workspace} onOpened={() => undefined} />
+            </AppProviders>,
+        );
+        const rows = screen.getByRole('treeitem').elements();
+        const box = (index: number) => (rows[index] as HTMLElement).getBoundingClientRect();
+        const rowGap = box(2).top - box(1).bottom;
+        expect(box(3).top - box(2).bottom).toBeCloseTo(rowGap + 8 + 10, 0);
+    });
+});
+
 describe('SessionTree: keys, badges and dragging (US-1.8, US-1.10.6)', () => {
     it('moves with the arrows and type-ahead without opening, and opens on Enter (US-1.8.1)', async () => {
         const { screen, terminals } = await renderTree();

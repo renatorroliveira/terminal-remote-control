@@ -61,6 +61,8 @@ export function SessionTree({ workspace, onOpened }: SessionTreeProps) {
         } else if (action.kind === 'open') {
             workspace.open(action.key);
             onOpened();
+        } else if (action.kind === 'rename') {
+            shell?.setSessionDialog({ kind: 'rename', key: action.key });
         }
         return action.kind !== 'none';
     };

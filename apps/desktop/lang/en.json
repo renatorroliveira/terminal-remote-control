@@ -1,12 +1,4 @@
 {
-  "addHost.twoUsers": {
-    "defaultMessage": "Give the user either in the host field or here, not both.",
-    "description": "Error when the host field has user@ and the user field is filled too."
-  },
-  "addHost.user": {
-    "defaultMessage": "User (optional)",
-    "description": "Field label."
-  },
   "announce.actionFailed": {
     "defaultMessage": "{action} {reason}",
     "description": "Announced and listed when a session or host action fails."
@@ -1711,8 +1703,8 @@
     "defaultMessage": "Close",
     "description": "Button that closes the settings page."
   },
-  "settings.group.display": {
-    "defaultMessage": "Terminal display",
+  "settings.group.appearance": {
+    "defaultMessage": "Appearance",
     "description": "Section."
   },
   "settings.group.hosts": {
@@ -1742,6 +1734,10 @@
   "settings.search": {
     "defaultMessage": "Search settings",
     "description": "Label of the field that filters the settings."
+  },
+  "settings.sections": {
+    "defaultMessage": "Settings sections",
+    "description": "Name of the list of settings sections."
   },
   "settings.shown": {
     "defaultMessage": "{shown} of {total} settings shown.",
@@ -1878,6 +1874,10 @@
   "sidebar.sessionsOn": {
     "defaultMessage": "Sessions on {host}",
     "description": "Accessible name of the list of a host’s sessions."
+  },
+  "sidebar.settings": {
+    "defaultMessage": "Settings",
+    "description": "The link at the bottom of the sidebar that shows the settings (US-1.6.7)."
   },
   "sidebar.splitter": {
     "defaultMessage": "Sidebar width",

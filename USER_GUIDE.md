@@ -102,7 +102,9 @@ any host's, from New session (your login shell) to restore and sharing.
   saved scrollback, as on any host [after a restart](#after-a-restart).
 - **Files and folders macOS protects.** The first time a command in a local session reads your Desktop, Documents
   or Downloads folder, or a removable or network volume, macOS asks whether "trcd" may; the command waits until you
-  answer. In 0.x releases, which are ad-hoc signed, an update of TRC may ask again. To stop the questions, give the
+  answer. TRC itself opens none of them: macOS names `trcd` because it started the programs you run in your
+  sessions, as it names Terminal for a command run in Terminal, so a tool that looks through your home folder asks
+  for each. In 0.x releases, which are ad-hoc signed, an update of TRC may ask again. To stop the questions, give the
   running `trcd` Full Disk Access: in Terminal, run
   `plutil -extract ProgramArguments.0 raw ~/Library/LaunchAgents/dev.trc.trcd-*.plist`, which prints its path when
   TRC's LaunchAgent is the only one; then in System Settings, Privacy & Security, Full Disk Access, choose the +
@@ -116,12 +118,12 @@ its daemon and LaunchAgent; Connect installs them again.
 
 ## Add a host
 
-The sidebar's Hosts section has the New host field, with Add host to its right, and an optional User field below.
+The sidebar's Hosts section has the New host field, with Add host to its right.
 
 1. Type the host as you would after `ssh`: an alias from your SSH config (`devbox`), or `user@host`,
    `host:port` or `user@host:port`. As you type, TRC offers hosts you added before and the `Host` entries of your
    `~/.ssh/config` and the files it includes; press Down Arrow to pick one.
-2. To log in as another user, type it in User, or put it in the host as `user@host` (not both).
+2. To log in as another user than your SSH config names, put it in the host, as `user@host`.
 3. Press Return or choose Add host.
 
 TRC connects to the new host at once. The first time, it installs the daemon under `~/.trc` on the host, which
@@ -225,7 +227,8 @@ The Sessions list is a tree: each connected host, then its sessions. It is one s
 - **New session with options.** Choose the host, the shell, the working folder, a name, and environment variables
   (one `NAME=value` per line; `NAME=` removes a variable). On a host whose daemon is 0.4.0 or later, two switches
   also choose whether the session is restored after a restart and whether its scrollback is saved to disk.
-- **Session actions.** Rename (an empty name shows the title the program sets), Session settings… (the two
+- **Session actions.** Rename (F2 on the session's row, too; an empty name shows the title the program sets),
+  Session settings… (the two
   switches above), Stop, Restart (same shell, folder and environment; the scrollback stays), Duplicate (same shell
   and folder), Move up, Move down, and Close, which asks first because it deletes the session and its scrollback,
   on the host's disk too. Command+W (Session > Close session…) closes the open session the same way, whether it
@@ -403,28 +406,31 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 
 ## Settings
 
-Command-, (or Terminal Remote Control, then Settings…) opens the settings page. Type in Search settings to show
-only the settings whose name or description holds what you type; the line under the field says how many are
-shown. Every change applies at once and is kept; Escape or Close returns to where you were.
+Settings, at the bottom of the sidebar, shows the settings in the terminal's place; Command-, (or Terminal Remote
+Control, then Settings…) and the command palette do the same. On the left are the sections, with Search settings
+above them: choose a section to see its settings, or type in Search settings to show the settings of every section
+whose name or description holds what you type; the line under the field says how many are shown. Every change
+applies at once and is kept; Escape or Close returns to where you were, and opening a session shows its terminal
+again.
 
 | Section                  | Settings                                                                                                                                                                                                                                           |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Appearance               | Theme; minimum text contrast (4.5 to 1, or 7 to 1); text size; line height; letter spacing; cursor shape, bar width and blinking                                                                                                                   |
 | Speech and announcements | Screen-reader mode (automatic, on or off); Announcements (Detailed, or Brief, which leaves out the steps of connecting); the shortcut hint VoiceOver reads after the terminal's name; the flood threshold (5 to 100 lines a second, 20 by default) |
 | Sound                    | Sound cues, off by default: short tones for the bell, a host connecting, a lost or failed connection, and typing that was not sent, each also announced or shown; their volume                                                                     |
-| Terminal display         | Theme; minimum text contrast (4.5 to 1, or 7 to 1); text size; line height; letter spacing; cursor shape, bar width and blinking                                                                                                                   |
 | Keyboard                 | Tab moves focus out of the terminal, from launch on; plain F6 and Shift-F6 move between regions; every command's shortcut (Change, then press the new shortcut; Reset gives the default back)                                                      |
 | Sessions                 | Where new sessions start (the home folder, or the open session's folder); scrollback lines for new sessions (1,000 to 100,000); the seconds Stop waits; closing sessions that exit cleanly; asking before a paste of more than one line            |
 | Hosts                    | For each host, whether its programs may write the clipboard (OSC 52)                                                                                                                                                                               |
 
 ## Appearance
 
-- **Theme.** View, then Theme: Midnight (the default, black with green, high contrast), System (follows macOS
+- **Theme.** Settings, under Appearance, or View, then Theme: Midnight (the default, black with green, high contrast), System (follows macOS
   light or dark), Light, Dark, High contrast light and High contrast dark. TRC also follows the macOS Increase
   contrast and Reduce motion settings.
 - **Terminal text size.** Command-= makes the terminal text bigger, Command-- smaller and Command-0 returns it to
   the default, in steps of 10% from 50% to 200% (also in the Terminal menu). Every session follows, resizes to fit,
   and TRC says the new size and remembers it.
-- **Cursor and spacing.** The cursor is a block that doesn't blink. Settings, under Terminal display, changes its
+- **Cursor and spacing.** The cursor is a block that doesn't blink. Settings, under Appearance, changes its
   shape (block, bar or underline), the bar's width (1 to 6 pixels), blinking, the line height (1 to 2) and the
   letter spacing (0 to 4 pixels). A blinking cursor stops after 5 seconds without typing, and never blinks while
   macOS Reduce motion is on.

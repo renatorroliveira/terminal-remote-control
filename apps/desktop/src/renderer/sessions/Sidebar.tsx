@@ -1,6 +1,8 @@
+import { Button } from 'react-aria-components';
 import { useIntl } from 'react-intl';
 import { useStore } from 'zustand';
 import { REGION_ATTRIBUTE } from '../app/regions';
+import { BUTTON } from '../ui/buttons';
 import { HostsPanel } from './HostsPanel';
 import { sidebarMessages } from './messages';
 import { SessionTree } from './SessionTree';
@@ -15,13 +17,17 @@ export interface SidebarProps {
     readonly workspace: WorkspaceController;
     /** Called after a session opens, so a narrow layout can hide the panel. */
     readonly onOpened: () => void;
+    /** Whether the settings show in the terminal's place, which marks the Settings link current. */
+    readonly settingsShown: boolean;
+    /** Shows the settings (US-1.6.7). */
+    readonly onSettings: () => void;
 }
 
 /**
- * The sidebar (US-1.6.1): at the top, the session tree, each host with its + button; at the bottom, the known
- * hosts and the field that adds one.
+ * The sidebar (US-1.6.1): at the top, the session tree, each host with its + button; below it, the known hosts and
+ * the field that adds one; last, above the status bar, the Settings link (US-1.6.7).
  */
-export function Sidebar({ id, className, workspace, onOpened }: SidebarProps) {
+export function Sidebar({ id, className, workspace, onOpened, settingsShown, onSettings }: SidebarProps) {
     const intl = useIntl();
     return (
         <nav
@@ -35,6 +41,13 @@ export function Sidebar({ id, className, workspace, onOpened }: SidebarProps) {
                 <div className={styles['hosts']}>
                     <HostsPanel workspace={workspace} />
                 </div>
+                <Button
+                    className={`${BUTTON} ${styles['settings'] ?? ''}`}
+                    aria-current={settingsShown ? 'page' : false}
+                    onPress={onSettings}
+                >
+                    {intl.formatMessage(sidebarMessages.settings)}
+                </Button>
             </div>
         </nav>
     );

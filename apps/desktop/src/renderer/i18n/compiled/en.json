@@ -1,16 +1,4 @@
 {
-  "addHost.twoUsers": [
-    {
-      "type": 0,
-      "value": "Give the user either in the host field or here, not both."
-    }
-  ],
-  "addHost.user": [
-    {
-      "type": 0,
-      "value": "User (optional)"
-    }
-  ],
   "announce.actionFailed": [
     {
       "type": 1,
@@ -3950,10 +3938,10 @@
       "value": "Close"
     }
   ],
-  "settings.group.display": [
+  "settings.group.appearance": [
     {
       "type": 0,
-      "value": "Terminal display"
+      "value": "Appearance"
     }
   ],
   "settings.group.hosts": [
@@ -3996,6 +3984,12 @@
     {
       "type": 0,
       "value": "Search settings"
+    }
+  ],
+  "settings.sections": [
+    {
+      "type": 0,
+      "value": "Settings sections"
     }
   ],
   "settings.shown": [
@@ -4280,6 +4274,12 @@
     {
       "type": 1,
       "value": "host"
+    }
+  ],
+  "sidebar.settings": [
+    {
+      "type": 0,
+      "value": "Settings"
     }
   ],
   "sidebar.splitter": [

@@ -59,6 +59,11 @@ export const sidebarMessages = defineMessages({
         defaultMessage: 'Reject',
         description: 'Button that refuses a presented host key.',
     },
+    settings: {
+        id: 'sidebar.settings',
+        defaultMessage: 'Settings',
+        description: 'The link at the bottom of the sidebar that shows the settings (US-1.6.7).',
+    },
     toggle: {
         id: 'sidebar.toggle',
         defaultMessage: 'Sessions and hosts',
