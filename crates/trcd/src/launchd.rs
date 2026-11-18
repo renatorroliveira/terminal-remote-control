@@ -268,7 +268,8 @@ fn shortened(line: &str) -> String {
     format!("{kept}…")
 }
 
-/// The text of `log` from `from`, or from its start when it is shorter, and at most its last [`SAID_BYTES`].
+/// The whole lines of `log` from `from`, or from its start when it is shorter, within its last [`SAID_BYTES`]: a
+/// line the start falls inside is left out.
 fn read_tail(log: &Path, from: u64) -> io::Result<String> {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
@@ -276,10 +277,19 @@ fn read_tail(log: &Path, from: u64) -> io::Result<String> {
         .open(log)?;
     let length = file.metadata()?.len();
     let start = if from <= length { from } else { 0 }.max(length.saturating_sub(SAID_BYTES));
-    io::Seek::seek(&mut file, io::SeekFrom::Start(start))?;
+    let before = start.saturating_sub(1);
+    io::Seek::seek(&mut file, io::SeekFrom::Start(before))?;
     let mut bytes = Vec::new();
-    io::Read::read_to_end(&mut file, &mut bytes)?;
-    Ok(String::from_utf8_lossy(&bytes).into_owned())
+    io::Read::read_to_end(&mut io::Read::take(&mut file, SAID_BYTES + 1), &mut bytes)?;
+    let skip = if start == 0 {
+        0
+    } else {
+        bytes
+            .iter()
+            .position(|byte| *byte == b'\n')
+            .map_or(bytes.len(), |end| end + 1)
+    };
+    Ok(String::from_utf8_lossy(&bytes[skip..]).into_owned())
 }
 
 /// Creates the agent's standard error log, or takes the one there, 0600, so it is the user's alone whatever umask the
@@ -472,6 +482,12 @@ mod tests {
         assert_eq!(
             core_said_since(&logs, mark).as_deref(),
             Some("trcd: two; trcd: three; trcd: the install can be changed by other users")
+        );
+        std::fs::write(&log, "trcd: cut\ntrcd: whole\n").unwrap();
+        assert_eq!(
+            core_said_since(&logs, 3).as_deref(),
+            Some("trcd: whole"),
+            "a line cut at its start"
         );
         std::fs::write(&log, &long).unwrap();
         let said = core_said_since(&logs, 0).unwrap_or_default();

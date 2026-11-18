@@ -43,8 +43,20 @@ async fn registers_the_core_as_a_launch_agent_that_keeps_every_session() {
     assert_eq!(session(&installed).await.pid, Some(shell), "a crash ended the session");
 
     terminate(crashed);
-    let second = core_pid(&installed, Some(crashed), "after SIGTERM").await;
+    let terminated = core_pid(&installed, Some(crashed), "after SIGTERM").await;
     assert_eq!(session(&installed).await.pid, Some(shell), "SIGTERM ended the session");
+
+    let stopped = std::process::Command::new("/bin/launchctl")
+        .args(["stop", &agent_label(&root)])
+        .status()
+        .unwrap();
+    assert!(stopped.success());
+    let second = core_pid(&installed, Some(terminated), "after launchctl stop").await;
+    assert_eq!(
+        session(&installed).await.pid,
+        Some(shell),
+        "launchctl stop ended the session"
+    );
 
     restart_daemon(&installed, second).await;
     run_bridge(&installed);

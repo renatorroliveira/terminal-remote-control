@@ -79,9 +79,33 @@ async fn print_saved(client: &mut AppClient, installed: &Installed, stream: u32,
     }
 }
 
-/// Kills every holder of this install at once, as a reboot or a logout that ends user processes does.
+/// Kills every holder of this install at once, as a reboot or a logout that ends user processes does, and waits until
+/// each is gone, so the next core never meets one that is still dying.
 fn kill_holders(installed: &Installed) {
-    kill_matching(&format!("{} holder", installed.binary.display()));
+    let pattern = format!("{} holder", installed.binary.display());
+    let holders = pids_matching(&pattern);
+    kill_matching(&pattern);
+    let started = Instant::now();
+    while holders
+        .iter()
+        .any(|pid| rustix::process::test_kill_process(*pid).is_ok())
+    {
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "a killed holder kept running"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+/// The processes whose command line contains `pattern`, from `pgrep`.
+fn pids_matching(pattern: &str) -> Vec<rustix::process::Pid> {
+    let output = std::process::Command::new("pgrep").args(["-f", pattern]).output();
+    String::from_utf8_lossy(&output.map(|output| output.stdout).unwrap_or_default())
+        .lines()
+        .filter_map(|line| line.trim().parse::<i32>().ok())
+        .filter_map(rustix::process::Pid::from_raw)
+        .collect()
 }
 
 async fn until_updated(client: &mut AppClient, wanted: impl Fn(&SessionInfo) -> bool) -> SessionInfo {

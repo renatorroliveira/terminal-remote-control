@@ -130,7 +130,7 @@ the app does today.
 | `pnpm test:daemon`                | The daemon's musl tests in Ubuntu, Alpine and Rocky containers (part of the above)                                                         |
 | `pnpm test:e2e`                   | Builds a test build of the app and runs the Playwright Electron tests                                                                      |
 | `pnpm test:nfr`                   | Measures the NFR targets against the test hosts; see `docs/verification/E4-nfr.md`                                                         |
-| `pnpm test:soak`                  | The NFR-11 soak against the test hosts: 1,000 cycles per scenario (50 for app launches), for hours                                         |
+| `pnpm test:soak`                  | The NFR-11 soak against the test hosts: 1,000 cycles per scenario (50 for app launches, 100 for host restarts), for hours                  |
 | `pnpm test:ax`                    | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests                                                     |
 | `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                                                                               |
 | `pnpm icons`                      | Renders the app icons in `apps/desktop/resources/icons` from `tools/icons`                                                                 |
