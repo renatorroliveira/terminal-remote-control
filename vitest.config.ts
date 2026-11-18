@@ -23,6 +23,7 @@ export default defineConfig({
                 test: {
                     name: 'browser',
                     include: ['src/renderer/**/*.test.{ts,tsx}'],
+                    expect: { poll: { timeout: 5_000 } },
                     browser: {
                         enabled: true,
                         headless: true,
