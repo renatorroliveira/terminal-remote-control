@@ -1,7 +1,9 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
-/** The most notifications the list keeps; past it, the oldest informational one leaves, and no error ever does. */
+/** The most notifications the list keeps; past it, the oldest informational one leaves before any error. */
 export const MAX_NOTIFICATIONS = 200;
+/** The most errors the list keeps, so even a flood of failures stays bounded. */
+const MAX_ERRORS = 1_000;
 
 /** How serious a notification is. */
 export type NotificationLevel = 'info' | 'error';
@@ -60,5 +62,8 @@ function withinLimit(items: readonly AppNotification[]): readonly AppNotificatio
         return items;
     }
     const oldestInfo = items.findLastIndex((item) => item.level === 'info');
-    return oldestInfo === -1 ? items : items.filter((_, index) => index !== oldestInfo);
+    if (oldestInfo !== -1) {
+        return items.filter((_, index) => index !== oldestInfo);
+    }
+    return items.length > MAX_ERRORS ? items.slice(0, MAX_ERRORS) : items;
 }

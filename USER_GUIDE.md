@@ -383,7 +383,8 @@ already marks its commands, as iTerm2's integration makes it, works too.
 
 Other shells, such as `sh`, `dash` or busybox `ash`, get no marks; commands then can't be moved between, and TRC
 says why when you try. To start a host's shells without shell integration, turn off that host's switch in
-Settings, under Hosts, Shell integration; the change applies to each session the next time its shell starts.
+Settings, under Hosts, Shell integration; the change applies to new sessions, and to each session of a connected
+host the next time its shell starts; a session of a host that isn't connected keeps its setting.
 A session started before TRC 0.6 keeps working as it was, without shell integration, even after Restart, as its
 processes predate it; a new session has it.
 
@@ -423,7 +424,7 @@ session's row shows "bell", "ended" or "command finished", with an icon, until y
 In Settings, under Background sessions, each event can be announced (on by default), posted as a macOS
 notification (off by default), or both, and the 10 seconds can change (1 to 3,600). A notification names the
 session and its host, never its output; choosing it opens the session. A session posts at most one notification
-every 10 seconds, and each one TRC posts is also kept in the Notifications list, in case macOS doesn't show it.
+of each kind every 10 seconds, and each one TRC posts is also kept in the Notifications list, in case macOS doesn't show it.
 
 ## Moving around and commands
 
