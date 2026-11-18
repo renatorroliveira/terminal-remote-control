@@ -330,7 +330,7 @@
     },
     {
       "type": 0,
-      "value": "’s daemon runs without its LaunchAgent, so it won’t start at login or restart after a crash. If trcd is turned off in System Settings, General, Login Items, turn it on. Then choose Restart daemon in the details of "
+      "value": "’s daemon runs without its LaunchAgent, so it won’t start at login or restart after a crash. If trcd is turned off in System Settings, General, Login Items & Extensions, turn it on. Then choose Restart daemon in the details of "
     },
     {
       "type": 1,

@@ -273,13 +273,19 @@ stop_root_service() {
 }
 
 # Stops the core's systemd unit, or boots out its LaunchAgent and deletes the
-# agent's plist; $1 is the install root's short hash.
+# agent's plist; $1 is the install root's short hash. A bootout launchd
+# refuses while it starts the core is tried again for a few seconds, as a
+# core still loaded would start again once the next step signals it.
 stop_service() {
     if command -v systemctl >/dev/null 2>&1; then
         systemctl --user stop "trcd-$1.service" >/dev/null 2>&1
     fi
     if command -v launchctl >/dev/null 2>&1; then
-        launchctl bootout "gui/$uid/dev.trc.trcd-$1" >/dev/null 2>&1
+        tries=0
+        while launchctl print "gui/$uid/dev.trc.trcd-$1" >/dev/null 2>&1 && [ "$tries" -lt 5 ]; do
+            launchctl bootout "gui/$uid/dev.trc.trcd-$1" >/dev/null 2>&1 || sleep 1
+            tries=$((tries + 1))
+        done
         agent=$HOME/Library/LaunchAgents/dev.trc.trcd-$1.plist
         if [ -f "$agent" ] && [ ! -L "$agent" ]; then
             rm -f "$agent"

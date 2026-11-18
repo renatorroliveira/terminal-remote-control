@@ -21,7 +21,8 @@ export function endedSession(workspace: Workspace): EndedSession | undefined {
 
 /**
  * Whether the open session ended between `before` and `after`: it was starting or running, and has now ended on its
- * connected host. A session that had ended before its host reconnected, or before the app started, did not just end.
+ * connected host. A session the workspace already knew had ended, when its host reconnects or the app starts, did
+ * not just end; one last known running that ended while the app was away did.
  */
 export function justEnded(before: Workspace, after: Workspace): boolean {
     const ended = endedSession(after);

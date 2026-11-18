@@ -4,7 +4,8 @@ Measured on 2026-11-17 on This computer, the owner's Mac, and on the macOS test 
 `TRC_NFR_HOST=local`, `ui.spec.ts` and the soak scenarios `launchd.soak.test.ts` and `app.spec.ts`.
 `node tools/nfr-report/nfr-report.ts` prints a run's table from `apps/desktop/nfr-results/results.jsonl`. E1's to
 E3's results (`E1-nfr.md` to `E3-nfr.md`) describe the Linux hosts before E4, which changed code they run too (the
-bridge, upgrades and the bootstrap); the Linux measurements and soaks below ran again on E4's build.
+bridge, upgrades and the bootstrap); the Linux measurements and soaks ran again on E4's final build, as the last
+section says.
 
 ## Conditions
 

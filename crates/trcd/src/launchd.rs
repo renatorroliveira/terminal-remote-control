@@ -27,6 +27,10 @@ pub const LOG_LIMIT: u64 = 1 << 20;
 const ENVIRONMENT_KEY: &str = "\t<key>EnvironmentVariables</key>\n";
 /// How many of the core's last log lines a bridge passes on.
 const SAID_LINES: usize = 3;
+/// How much of the end of the log a bridge reads for them.
+const SAID_BYTES: u64 = 64 * 1024;
+/// How many characters of each such line it passes on, the rest replaced with `…`, as a panic's text may be long.
+const SAID_LINE_CHARS: usize = 300;
 /// The plist's key whose value is the umask holders get.
 const UMASK_KEY: &str = "\t<key>Umask</key>\n";
 
@@ -133,12 +137,15 @@ pub fn log_length(logs: &Path) -> u64 {
 }
 
 /// The last lines the agent's core wrote to its standard error log in `logs` after `from` bytes, joined with `; `,
-/// so a bridge whose core never came up can say why; none when it wrote nothing since.
+/// so a bridge whose core never came up can say why; none when it wrote nothing since. A log shorter than `from` was
+/// emptied since, so all of it is new; only its last [`SAID_BYTES`] are read.
 pub fn core_said_since(logs: &Path, from: u64) -> Option<String> {
-    let text = std::fs::read(logs.join(LOG_FILE)).ok()?;
-    let start = usize::try_from(from).ok().filter(|start| *start <= text.len())?;
-    let said = String::from_utf8_lossy(&text[start..]).into_owned();
-    let lines: Vec<&str> = said.lines().filter(|line| !line.trim().is_empty()).collect();
+    let said = read_tail(&logs.join(LOG_FILE), from).ok()?;
+    let lines: Vec<String> = said
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(shortened)
+        .collect();
     let last = lines.get(lines.len().saturating_sub(SAID_LINES)..)?;
     (!last.is_empty()).then(|| last.join("; "))
 }
@@ -250,6 +257,29 @@ fn bootstrap(uid: u32, file: &Path, text: &str) -> io::Result<()> {
         }
     }
     Err(io::Error::other("launchctl bootstrap did not load the core's agent"))
+}
+
+/// A log line cut to [`SAID_LINE_CHARS`] characters, with `…` where it was cut.
+fn shortened(line: &str) -> String {
+    if line.chars().count() <= SAID_LINE_CHARS {
+        return line.to_owned();
+    }
+    let kept: String = line.chars().take(SAID_LINE_CHARS).collect();
+    format!("{kept}…")
+}
+
+/// The text of `log` from `from`, or from its start when it is shorter, and at most its last [`SAID_BYTES`].
+fn read_tail(log: &Path, from: u64) -> io::Result<String> {
+    let mut file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits().cast_signed())
+        .open(log)?;
+    let length = file.metadata()?.len();
+    let start = if from <= length { from } else { 0 }.max(length.saturating_sub(SAID_BYTES));
+    io::Seek::seek(&mut file, io::SeekFrom::Start(start))?;
+    let mut bytes = Vec::new();
+    io::Read::read_to_end(&mut file, &mut bytes)?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 /// Creates the agent's standard error log, or takes the one there, 0600, so it is the user's alone whatever umask the
@@ -437,12 +467,21 @@ mod tests {
         let mark = log_length(&logs);
         assert_eq!(core_said_since(&logs, mark), None);
         let more = "trcd: one\ntrcd: two\ntrcd: three\ntrcd: the install can be changed by other users\n";
+        let long = format!("trcd: {}\n", "x".repeat(SAID_LINE_CHARS * 2));
         std::fs::write(&log, format!("trcd: an old refusal\n{more}")).unwrap();
         assert_eq!(
             core_said_since(&logs, mark).as_deref(),
             Some("trcd: two; trcd: three; trcd: the install can be changed by other users")
         );
-        assert_eq!(core_said_since(&logs, mark + 1_000), None);
+        std::fs::write(&log, &long).unwrap();
+        let said = core_said_since(&logs, 0).unwrap_or_default();
+        assert_eq!(said.chars().count(), SAID_LINE_CHARS + 1, "{said}");
+        std::fs::write(&log, "trcd: after a trim\n").unwrap();
+        assert_eq!(
+            core_said_since(&logs, mark + 1_000).as_deref(),
+            Some("trcd: after a trim"),
+            "a log shorter than the mark was emptied since, so all of it is new"
+        );
     }
 
     #[test]
