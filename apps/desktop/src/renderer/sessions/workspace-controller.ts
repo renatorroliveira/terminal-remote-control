@@ -353,6 +353,22 @@ export class WorkspaceController {
     }
 
     /**
+     * Starts a host's new shells with TRC's shell integration, or without it (US-5.1.3), and tells each of its
+     * sessions, whose next shell follows; a refused save is reported.
+     */
+    async setShellIntegration(hostId: string, on: boolean): Promise<void> {
+        await this.#attempt('shellIntegration', hostId, async () => {
+            const changed = await this.#hosts.setShellIntegration(hostId, on);
+            this.#update((workspace) => hostUpdated(workspace, changed));
+        });
+        for (const session of this.store.getState().sessions.get(hostId) ?? []) {
+            if (session.options !== undefined) {
+                await this.setSessionOptions(sessionKey(hostId, session.id), { ...session.options, integration: on });
+            }
+        }
+    }
+
+    /**
      * Tests a host's connection (US-1.1.5): true at once when it is connected; otherwise it connects, and resolves
      * true and disconnects again once connected, or false when the connection fails, which the failure dialog
      * explains.
@@ -446,7 +462,7 @@ export class WorkspaceController {
             return;
         }
         await this.#attempt('create', host.id, async () => {
-            const session = await this.#terminals.create(host.id, options);
+            const session = await this.#terminals.create(host.id, withHostIntegration(host, options));
             this.#update((workspace) => sessionChanged(workspace, host.id, { kind: 'created', session }));
             this.open(sessionKey(host.id, session.id));
         });
@@ -830,6 +846,15 @@ function isRunning(session: SessionInfo): boolean {
 
 function exitedCleanly(session: SessionInfo): boolean {
     return session.state === 'exited' && session.exit?.code === 0;
+}
+
+/** The session options a new session on `host` starts with: shell integration off when the host turned it off. */
+function withHostIntegration(host: HostEntry, options: NewSessionOptions | undefined): NewSessionOptions | undefined {
+    if (host.shellIntegrationOff !== true) {
+        return options;
+    }
+    const kept = options?.options ?? { restore: true, saveScrollback: true };
+    return { ...options, options: { ...kept, integration: false } };
 }
 
 function hostIdOf(key: SessionKey): string {

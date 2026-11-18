@@ -68,6 +68,15 @@ describe('KnownHosts: forgetting, install locations and recent hosts (US-1.1.1, 
         expect((await hosts.list())[0]).toEqual(host);
     });
 
+    it('turns a host’s shell integration off and on again, keeping only the off (US-5.1.3)', async () => {
+        const hosts = new KnownHosts(directory());
+        const host = await hosts.add('devbox-1', '~/.trc');
+        expect(await hosts.setShellIntegration(host.id, false)).toEqual({ ...host, shellIntegrationOff: true });
+        expect((await hosts.list())[0]).toEqual({ ...host, shellIntegrationOff: true });
+        expect(await hosts.setShellIntegration(host.id, true)).toEqual(host);
+        await expect(hosts.setShellIntegration('host-0000000000000000', false)).rejects.toThrow(/no host/);
+    });
+
     it('marks a host whose daemon the user removed, and clears the mark when it connects again (P-45)', async () => {
         const hosts = new KnownHosts(directory());
         const host = await hosts.add('devbox-1', '~/.trc');
@@ -105,6 +114,7 @@ describe('KnownHosts: This computer (US-4.1, US-4.2.1, P-56)', () => {
         const hosts = new KnownHosts(home, { localRoot: home });
         await hosts.setClipboardWrites('local', true);
         await hosts.setDaemonRemoved('local', true);
+        await hosts.setShellIntegration('local', false);
         await expect(hosts.remove('local')).rejects.toThrow(/This computer/);
         await expect(hosts.setInstallRoot('local', '/opt/trc')).rejects.toThrow(/This computer/);
         const [local] = await new KnownHosts(home, { localRoot: home }).list();
@@ -115,6 +125,7 @@ describe('KnownHosts: This computer (US-4.1, US-4.2.1, P-56)', () => {
             local: true,
             allowClipboardWrites: true,
             daemonRemoved: true,
+            shellIntegrationOff: true,
         });
     });
 

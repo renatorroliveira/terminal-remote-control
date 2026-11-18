@@ -28,9 +28,20 @@ binaries=$(cargo zigbuild --quiet --release --target "$target" -p trcd --tests -
             }
         });')
 
+# The shells TRC integrates (US-5.1), added to each image once; docker keeps the layer for later runs.
+shells_for() {
+    case "$1" in
+    ubuntu*) echo 'RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zsh fish && rm -rf /var/lib/apt/lists/*' ;;
+    alpine*) echo 'RUN apk add --no-cache bash zsh fish' ;;
+    rockylinux*) echo 'RUN dnf install -y --setopt=install_weak_deps=False zsh && dnf clean all' ;;
+    esac
+}
+
 for image in $images; do
     echo "rust-tests: $image"
-    docker run --rm -v "$root/target:$root/target:ro" "$image" sh -c '
+    tag="trc-rust-tests-$(echo "$image" | tr ':/' '--')"
+    printf 'FROM %s\n%s\n' "$image" "$(shells_for "$image")" | docker build -q -t "$tag" - >/dev/null
+    docker run --rm -v "$root/target:$root/target:ro" "$tag" sh -c '
         cd /tmp
         for binary in '"$(echo "$binaries" | tr '\n' ' ')"'; do
             "$binary" --test-threads=8 "$@" >/tmp/out 2>&1 || { cat /tmp/out; exit 1; }

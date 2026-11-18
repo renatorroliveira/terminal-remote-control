@@ -120,6 +120,7 @@ pub fn run(layout: &InstallLayout, supervisor: Supervisor) -> Result<Ending, Sta
         details,
         store: SessionStore::new(sessions_dir, uid),
         boot_id: boot_id(),
+        integration_dir: shell_integration_dir(&layout.root, uid),
     };
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),
@@ -189,6 +190,18 @@ fn remove_stale(socket: &Path) -> io::Result<()> {
     match std::fs::remove_file(socket) {
         Err(error) if error.kind() != io::ErrorKind::NotFound => Err(error),
         _ => Ok(()),
+    }
+}
+
+/// Writes the shell-integration scripts into the install root; a failure is logged, and shells then start without
+/// integration (US-5.1) rather than the core failing to start.
+fn shell_integration_dir(root: &std::path::Path, uid: u32) -> Option<String> {
+    match crate::shell_integration::install::install(root, uid) {
+        Ok(folder) => Some(folder.to_string_lossy().into_owned()),
+        Err(error) => {
+            tracing::warn!(%error, "the shell-integration scripts could not be written; shells start without them");
+            None
+        }
     }
 }
 

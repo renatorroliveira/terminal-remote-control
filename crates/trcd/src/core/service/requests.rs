@@ -230,6 +230,7 @@ impl Core {
             user: self.context.account.user.clone(),
             options: spec.options.unwrap_or_default(),
             data_dir: self.session_data_dir(&id),
+            integration_dir: None,
         };
         let info = self
             .registry

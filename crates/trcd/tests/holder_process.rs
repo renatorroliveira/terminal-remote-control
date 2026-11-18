@@ -166,6 +166,7 @@ fn umask_spec() -> HolderSpec {
         user: "tester".into(),
         options: Default::default(),
         data_dir: None,
+        integration_dir: None,
     }
 }
 

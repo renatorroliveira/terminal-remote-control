@@ -95,6 +95,11 @@ export const settingLabelMessages = defineMessages({
         defaultMessage: 'Programs may write the clipboard (OSC 52)',
         description: 'Setting: one switch per host.',
     },
+    shellIntegration: {
+        id: 'setting.shellIntegration',
+        defaultMessage: 'Shell integration',
+        description: 'Setting: one switch per host.',
+    },
 });
 
 /** Settings' descriptions, which the search also reads. */
@@ -158,6 +163,12 @@ export const settingDescriptionMessages = defineMessages({
     clipboardWrites: {
         id: 'setting.clipboardWrites.description',
         defaultMessage: 'TRC says each time a program puts text on the clipboard. Programs can never read it.',
+        description: 'Setting description.',
+    },
+    shellIntegration: {
+        id: 'setting.shellIntegration.description',
+        defaultMessage:
+            'Bash, zsh and fish mark each prompt and command, so you can move between commands and hear when one fails. TRC changes none of your shell’s files. A change applies when a shell next starts.',
         description: 'Setting description.',
     },
 });

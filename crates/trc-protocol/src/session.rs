@@ -82,16 +82,47 @@ pub struct SessionOptions {
     pub restore: bool,
     /// Whether its scrollback and screen are saved to disk (US-3.2.2, SEC-05).
     pub save_scrollback: bool,
+    /// Whether its shell starts with TRC's shell integration (US-5.1.3, protocol 4); absent means on, as older apps
+    /// and daemons know nothing of it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub integration: Option<bool>,
+}
+
+impl SessionOptions {
+    /// Whether the shell starts with TRC's shell integration: unless it was turned off.
+    pub fn integration_on(&self) -> bool {
+        self.integration != Some(false)
+    }
 }
 
 impl Default for SessionOptions {
-    /// Both on, as US-3.2 has them by default.
+    /// Restore and saving on, as US-3.2 has them by default, and shell integration on (US-5.1.1).
     fn default() -> Self {
         Self {
             restore: true,
             save_scrollback: true,
+            integration: None,
         }
     }
+}
+
+/// Whether a session's shell runs with shell integration, and why not (US-5.1, US-5.2.3, protocol 4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum ShellIntegration {
+    /// TRC's scripts were injected.
+    Injected,
+    /// The shell marks its commands itself.
+    Native,
+    /// Turned off for the session, its profile or its host.
+    Off,
+    /// The shell is one TRC has no integration for, such as sh, or was started with arguments of its own.
+    Unsupported,
+    /// A state this version does not know.
+    #[serde(other)]
+    Unspecified,
 }
 
 /// When and why a session came back in a new shell (US-3.1.6, protocol 3).
@@ -182,4 +213,30 @@ pub struct SessionInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub persistence_failure: Option<PersistenceFailure>,
+    /// Whether its shell runs with shell integration (US-5.1, protocol 4); absent from older daemons.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub integration: Option<ShellIntegration>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_options_without_integration_as_on_and_keeps_it_off_us_5_1_3() {
+        let older: SessionOptions = serde_json::from_str(r#"{ "restore": true, "saveScrollback": false }"#).unwrap();
+        assert!(older.integration_on());
+        let off = SessionOptions {
+            integration: Some(false),
+            ..SessionOptions::default()
+        };
+        let json = serde_json::to_string(&off).unwrap();
+        assert_eq!(json, r#"{"restore":true,"saveScrollback":true,"integration":false}"#);
+        assert!(!serde_json::from_str::<SessionOptions>(&json).unwrap().integration_on());
+        assert_eq!(
+            serde_json::to_string(&SessionOptions::default()).unwrap(),
+            r#"{"restore":true,"saveScrollback":true}"#
+        );
+    }
 }

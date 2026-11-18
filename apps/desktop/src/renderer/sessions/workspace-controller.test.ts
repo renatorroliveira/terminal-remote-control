@@ -647,6 +647,44 @@ describe('WorkspaceController: clipboard writes (SEC-06.1)', () => {
     });
 });
 
+describe('WorkspaceController: shell integration per host (US-5.1.3)', () => {
+    it('starts a host’s new sessions without it once it is off, and tells its sessions for their next shell', async () => {
+        const { client, host, terminals, workspace } = await connectedSetup();
+        client.listed = [];
+        const current = workspace.store.getState().sessions.get(host.id) ?? [];
+        workspace.store.setState({
+            sessions: new Map([
+                [
+                    host.id,
+                    current.map((session) => ({ ...session, options: { restore: true, saveScrollback: false } })),
+                ],
+            ]),
+        });
+        await workspace.setShellIntegration(host.id, false);
+        expect(workspace.store.getState().hosts[0]?.shellIntegrationOff).toBe(true);
+        expect(client.requests).toEqual([
+            {
+                type: 'setSessionOptions',
+                session: 'a',
+                options: { restore: true, saveScrollback: false, integration: false },
+            },
+            {
+                type: 'setSessionOptions',
+                session: 'b',
+                options: { restore: true, saveScrollback: false, integration: false },
+            },
+        ]);
+        await workspace.newSession(host.id);
+        expect(terminals.specs.at(-1)).toEqual({
+            options: { restore: true, saveScrollback: true, integration: false },
+        });
+        await workspace.setShellIntegration(host.id, true);
+        expect(workspace.store.getState().hosts[0]?.shellIntegrationOff).toBeUndefined();
+        await workspace.newSession(host.id, { cwd: '/srv' });
+        expect(terminals.specs.at(-1)).toEqual({ cwd: '/srv' });
+    });
+});
+
 async function connectedSetup(preferences?: SessionPreferences) {
     const context = setup(preferences);
     const host = await context.workspace.addHost('devbox-1');

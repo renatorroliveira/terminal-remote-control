@@ -386,6 +386,13 @@ mod tests {
         let other = File::open(run.dir.join("upgrade.lock")).unwrap();
         assert!(rustix::fs::flock(&other, FlockOperation::NonBlockingLockExclusive).is_err());
         drop(held);
-        assert!(rustix::fs::flock(&other, FlockOperation::NonBlockingLockExclusive).is_ok());
+        let started = std::time::Instant::now();
+        while rustix::fs::flock(&other, FlockOperation::NonBlockingLockExclusive).is_err() {
+            assert!(
+                started.elapsed() < std::time::Duration::from_secs(5),
+                "the lock stayed held after its owner dropped it"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
     }
 }

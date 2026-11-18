@@ -6,7 +6,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use trc_protocol::{
-    ExitStatus, PersistenceFailure, Replay, ResyncKind, SessionOptions, SessionState, ShellProfile, TerminalSize,
+    ExitStatus, PersistenceFailure, Replay, ResyncKind, SessionOptions, SessionState, ShellIntegration, ShellProfile,
+    TerminalSize,
 };
 
 /// The stream of holder protocol 1's one attachment, and of an attachment a protocol 1 core makes.
@@ -40,6 +41,10 @@ pub struct HolderSpec {
     /// The session's data folder, where it saves its scrollback (TECH_STACK §5.5); none from older cores.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_dir: Option<String>,
+    /// The shell-integration scripts' folder, which the core wrote (US-5.1, P-73); none from older cores, or when the
+    /// core could not write it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub integration_dir: Option<String>,
 }
 
 /// How a holder brings back a session whose processes ended (US-3.1): its saved scrollback, lines below it, and then
@@ -160,6 +165,9 @@ pub struct HolderStatus {
     /// Why the scrollback is not being saved, while it is not (holder protocol 3).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub persistence_failure: Option<PersistenceFailure>,
+    /// Whether the shell runs with shell integration (US-5.1, holder protocol 4).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub integration: Option<ShellIntegration>,
 }
 
 /// A message from the holder.

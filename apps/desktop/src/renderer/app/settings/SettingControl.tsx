@@ -7,6 +7,7 @@ import { SETTINGS_LIMITS, type Settings } from '../../../shared/settings';
 import { TERMINAL_APPEARANCE_LIMITS, type TerminalAppearance } from '../../../shared/terminal-appearance';
 import { TERMINAL_ZOOM } from '../../../shared/terminal-zoom';
 import type { WorkspaceController } from '../../sessions/workspace-controller';
+import type { HostEntry } from '../../sessions/workspace-model';
 import type { Shell } from '../shell';
 import styles from './SettingsView.module.css';
 import { ShortcutsSetting } from './ShortcutsSetting';
@@ -40,7 +41,24 @@ export function SettingControl({ id, shell, settings, workspace }: SettingContro
         return <ScreenReaderModeSetting shell={shell} />;
     }
     if (id === 'clipboardWrites') {
-        return <ClipboardWritesSetting workspace={workspace} />;
+        return (
+            <HostSwitches
+                id={id}
+                workspace={workspace}
+                selected={(host) => host.allowClipboardWrites === true}
+                change={(host, on) => workspace.setClipboardWrites(host, on)}
+            />
+        );
+    }
+    if (id === 'shellIntegration') {
+        return (
+            <HostSwitches
+                id={id}
+                workspace={workspace}
+                selected={(host) => host.shellIntegrationOff !== true}
+                change={(host, on) => workspace.setShellIntegration(host, on)}
+            />
+        );
     }
     if (id === 'shortcuts') {
         return <ShortcutsSetting shell={shell} settings={settings} />;
@@ -60,188 +78,185 @@ type Renderer = (context: Context) => ReactNode;
 
 const APPEARANCE = TERMINAL_APPEARANCE_LIMITS;
 
-const RENDERERS: Readonly<Record<Exclude<SettingId, 'screenReaderMode' | 'clipboardWrites' | 'shortcuts'>, Renderer>> =
-    {
-        audioCues: ({ intl, settings, update, preview }) => (
-            <SwitchSetting
-                {...text(intl, 'audioCues')}
-                isSelected={settings.audioCues}
-                onChange={(audioCues) => {
-                    update({ audioCues });
-                    preview();
-                }}
-            />
-        ),
-        audioVolume: ({ intl, settings, update, preview }) => (
-            <NumberSetting
-                {...text(intl, 'audioVolume')}
-                value={settings.audioVolume}
-                {...range(SETTINGS_LIMITS.audioVolume, 10)}
-                onChange={(audioVolume) => {
-                    update({ audioVolume });
-                    preview();
-                }}
-            />
-        ),
-        plainF6: ({ intl, settings, update }) => (
-            <SwitchSetting
-                {...text(intl, 'plainF6')}
-                isSelected={settings.plainF6}
-                onChange={(plainF6) => update({ plainF6 })}
-            />
-        ),
-        verbosity: ({ intl, settings, update }) => (
-            <ChoiceSetting
-                {...text(intl, 'verbosity')}
-                value={settings.verbosity}
-                choices={[
-                    { value: 'detailed', label: intl.formatMessage(choice.detailed) },
-                    { value: 'brief', label: intl.formatMessage(choice.brief) },
-                ]}
-                onChange={(verbosity) => update({ verbosity })}
-            />
-        ),
-        hints: ({ intl, settings, update }) => (
-            <SwitchSetting
-                {...text(intl, 'hints')}
-                isSelected={settings.hints}
-                onChange={(hints) => update({ hints })}
-            />
-        ),
-        floodThreshold: ({ intl, settings, update }) => (
-            <NumberSetting
-                {...text(intl, 'floodThreshold')}
-                value={settings.floodThreshold}
-                {...range(SETTINGS_LIMITS.floodThreshold, 1)}
-                onChange={(floodThreshold) => update({ floodThreshold })}
-            />
-        ),
-        theme: ({ intl, settings, update }) => (
-            <ChoiceSetting<ThemePreference>
-                {...text(intl, 'theme')}
-                value={settings.theme}
-                choices={[
-                    { value: 'midnight', label: intl.formatMessage(choice.midnight) },
-                    { value: 'system', label: intl.formatMessage(choice.system) },
-                    { value: 'light', label: intl.formatMessage(choice.light) },
-                    { value: 'dark', label: intl.formatMessage(choice.dark) },
-                    { value: 'hc-light', label: intl.formatMessage(choice.hcLight) },
-                    { value: 'hc-dark', label: intl.formatMessage(choice.hcDark) },
-                ]}
-                onChange={(theme) => update({ theme })}
-            />
-        ),
-        minimumContrast: ({ intl, settings, update }) => (
-            <ChoiceSetting
-                {...text(intl, 'minimumContrast')}
-                value={settings.minimumContrast}
-                choices={[
-                    { value: 4.5, label: intl.formatMessage(choice.contrastAa) },
-                    { value: 7, label: intl.formatMessage(choice.contrastAaa) },
-                ]}
-                onChange={(minimumContrast) => update({ minimumContrast })}
-            />
-        ),
-        terminalZoom: ({ intl, settings, update }) => (
-            <NumberSetting
-                {...text(intl, 'terminalZoom')}
-                value={settings.terminalZoom}
-                {...range(TERMINAL_ZOOM, TERMINAL_ZOOM.step)}
-                onChange={(terminalZoom) => update({ terminalZoom })}
-            />
-        ),
-        lineHeight: ({ intl, settings, appearance }) => (
-            <NumberSetting
-                {...text(intl, 'lineHeight')}
-                value={settings.terminalAppearance.lineHeight}
-                {...range(APPEARANCE.lineHeight, 0.1)}
-                onChange={(lineHeight) => appearance({ lineHeight })}
-            />
-        ),
-        letterSpacing: ({ intl, settings, appearance }) => (
-            <NumberSetting
-                {...text(intl, 'letterSpacing')}
-                value={settings.terminalAppearance.letterSpacing}
-                {...range(APPEARANCE.letterSpacing, 1)}
-                onChange={(letterSpacing) => appearance({ letterSpacing })}
-            />
-        ),
-        cursorStyle: ({ intl, settings, appearance }) => (
-            <ChoiceSetting
-                {...text(intl, 'cursorStyle')}
-                value={settings.terminalAppearance.cursorStyle}
-                choices={[
-                    { value: 'block', label: intl.formatMessage(choice.block) },
-                    { value: 'bar', label: intl.formatMessage(choice.bar) },
-                    { value: 'underline', label: intl.formatMessage(choice.underline) },
-                ]}
-                onChange={(cursorStyle) => appearance({ cursorStyle })}
-            />
-        ),
-        cursorWidth: ({ intl, settings, appearance }) => (
-            <NumberSetting
-                {...text(intl, 'cursorWidth')}
-                value={settings.terminalAppearance.cursorWidth}
-                {...range(APPEARANCE.cursorWidth, 1)}
-                onChange={(cursorWidth) => appearance({ cursorWidth })}
-            />
-        ),
-        cursorBlink: ({ intl, settings, appearance }) => (
-            <SwitchSetting
-                {...text(intl, 'cursorBlink')}
-                isSelected={settings.terminalAppearance.cursorBlink}
-                onChange={(cursorBlink) => appearance({ cursorBlink })}
-            />
-        ),
-        tabFocusMode: ({ intl, settings, update }) => (
-            <SwitchSetting
-                {...text(intl, 'tabFocusMode')}
-                isSelected={settings.tabFocusMode}
-                onChange={(tabFocusMode) => update({ tabFocusMode })}
-            />
-        ),
-        newSessionFolder: ({ intl, settings, update }) => (
-            <ChoiceSetting
-                {...text(intl, 'newSessionFolder')}
-                value={settings.newSessionFolder}
-                choices={[
-                    { value: 'home', label: intl.formatMessage(choice.home) },
-                    { value: 'open-session', label: intl.formatMessage(choice.openSession) },
-                ]}
-                onChange={(newSessionFolder) => update({ newSessionFolder })}
-            />
-        ),
-        scrollbackLines: ({ intl, settings, update }) => (
-            <NumberSetting
-                {...text(intl, 'scrollbackLines')}
-                value={settings.scrollbackLines}
-                {...range(SETTINGS_LIMITS.scrollbackLines, 1_000)}
-                onChange={(scrollbackLines) => update({ scrollbackLines })}
-            />
-        ),
-        stopGraceSeconds: ({ intl, settings, update }) => (
-            <NumberSetting
-                {...text(intl, 'stopGraceSeconds')}
-                value={settings.stopGraceSeconds}
-                {...range(SETTINGS_LIMITS.stopGraceSeconds, 1)}
-                onChange={(stopGraceSeconds) => update({ stopGraceSeconds })}
-            />
-        ),
-        autoClose: ({ intl, settings, update }) => (
-            <SwitchSetting
-                {...text(intl, 'autoClose')}
-                isSelected={settings.autoClose}
-                onChange={(autoClose) => update({ autoClose })}
-            />
-        ),
-        pasteConfirmation: ({ intl, settings, update }) => (
-            <SwitchSetting
-                {...text(intl, 'pasteConfirmation')}
-                isSelected={settings.pasteConfirmation}
-                onChange={(pasteConfirmation) => update({ pasteConfirmation })}
-            />
-        ),
-    };
+const RENDERERS: Readonly<
+    Record<Exclude<SettingId, 'screenReaderMode' | 'clipboardWrites' | 'shellIntegration' | 'shortcuts'>, Renderer>
+> = {
+    audioCues: ({ intl, settings, update, preview }) => (
+        <SwitchSetting
+            {...text(intl, 'audioCues')}
+            isSelected={settings.audioCues}
+            onChange={(audioCues) => {
+                update({ audioCues });
+                preview();
+            }}
+        />
+    ),
+    audioVolume: ({ intl, settings, update, preview }) => (
+        <NumberSetting
+            {...text(intl, 'audioVolume')}
+            value={settings.audioVolume}
+            {...range(SETTINGS_LIMITS.audioVolume, 10)}
+            onChange={(audioVolume) => {
+                update({ audioVolume });
+                preview();
+            }}
+        />
+    ),
+    plainF6: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'plainF6')}
+            isSelected={settings.plainF6}
+            onChange={(plainF6) => update({ plainF6 })}
+        />
+    ),
+    verbosity: ({ intl, settings, update }) => (
+        <ChoiceSetting
+            {...text(intl, 'verbosity')}
+            value={settings.verbosity}
+            choices={[
+                { value: 'detailed', label: intl.formatMessage(choice.detailed) },
+                { value: 'brief', label: intl.formatMessage(choice.brief) },
+            ]}
+            onChange={(verbosity) => update({ verbosity })}
+        />
+    ),
+    hints: ({ intl, settings, update }) => (
+        <SwitchSetting {...text(intl, 'hints')} isSelected={settings.hints} onChange={(hints) => update({ hints })} />
+    ),
+    floodThreshold: ({ intl, settings, update }) => (
+        <NumberSetting
+            {...text(intl, 'floodThreshold')}
+            value={settings.floodThreshold}
+            {...range(SETTINGS_LIMITS.floodThreshold, 1)}
+            onChange={(floodThreshold) => update({ floodThreshold })}
+        />
+    ),
+    theme: ({ intl, settings, update }) => (
+        <ChoiceSetting<ThemePreference>
+            {...text(intl, 'theme')}
+            value={settings.theme}
+            choices={[
+                { value: 'midnight', label: intl.formatMessage(choice.midnight) },
+                { value: 'system', label: intl.formatMessage(choice.system) },
+                { value: 'light', label: intl.formatMessage(choice.light) },
+                { value: 'dark', label: intl.formatMessage(choice.dark) },
+                { value: 'hc-light', label: intl.formatMessage(choice.hcLight) },
+                { value: 'hc-dark', label: intl.formatMessage(choice.hcDark) },
+            ]}
+            onChange={(theme) => update({ theme })}
+        />
+    ),
+    minimumContrast: ({ intl, settings, update }) => (
+        <ChoiceSetting
+            {...text(intl, 'minimumContrast')}
+            value={settings.minimumContrast}
+            choices={[
+                { value: 4.5, label: intl.formatMessage(choice.contrastAa) },
+                { value: 7, label: intl.formatMessage(choice.contrastAaa) },
+            ]}
+            onChange={(minimumContrast) => update({ minimumContrast })}
+        />
+    ),
+    terminalZoom: ({ intl, settings, update }) => (
+        <NumberSetting
+            {...text(intl, 'terminalZoom')}
+            value={settings.terminalZoom}
+            {...range(TERMINAL_ZOOM, TERMINAL_ZOOM.step)}
+            onChange={(terminalZoom) => update({ terminalZoom })}
+        />
+    ),
+    lineHeight: ({ intl, settings, appearance }) => (
+        <NumberSetting
+            {...text(intl, 'lineHeight')}
+            value={settings.terminalAppearance.lineHeight}
+            {...range(APPEARANCE.lineHeight, 0.1)}
+            onChange={(lineHeight) => appearance({ lineHeight })}
+        />
+    ),
+    letterSpacing: ({ intl, settings, appearance }) => (
+        <NumberSetting
+            {...text(intl, 'letterSpacing')}
+            value={settings.terminalAppearance.letterSpacing}
+            {...range(APPEARANCE.letterSpacing, 1)}
+            onChange={(letterSpacing) => appearance({ letterSpacing })}
+        />
+    ),
+    cursorStyle: ({ intl, settings, appearance }) => (
+        <ChoiceSetting
+            {...text(intl, 'cursorStyle')}
+            value={settings.terminalAppearance.cursorStyle}
+            choices={[
+                { value: 'block', label: intl.formatMessage(choice.block) },
+                { value: 'bar', label: intl.formatMessage(choice.bar) },
+                { value: 'underline', label: intl.formatMessage(choice.underline) },
+            ]}
+            onChange={(cursorStyle) => appearance({ cursorStyle })}
+        />
+    ),
+    cursorWidth: ({ intl, settings, appearance }) => (
+        <NumberSetting
+            {...text(intl, 'cursorWidth')}
+            value={settings.terminalAppearance.cursorWidth}
+            {...range(APPEARANCE.cursorWidth, 1)}
+            onChange={(cursorWidth) => appearance({ cursorWidth })}
+        />
+    ),
+    cursorBlink: ({ intl, settings, appearance }) => (
+        <SwitchSetting
+            {...text(intl, 'cursorBlink')}
+            isSelected={settings.terminalAppearance.cursorBlink}
+            onChange={(cursorBlink) => appearance({ cursorBlink })}
+        />
+    ),
+    tabFocusMode: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'tabFocusMode')}
+            isSelected={settings.tabFocusMode}
+            onChange={(tabFocusMode) => update({ tabFocusMode })}
+        />
+    ),
+    newSessionFolder: ({ intl, settings, update }) => (
+        <ChoiceSetting
+            {...text(intl, 'newSessionFolder')}
+            value={settings.newSessionFolder}
+            choices={[
+                { value: 'home', label: intl.formatMessage(choice.home) },
+                { value: 'open-session', label: intl.formatMessage(choice.openSession) },
+            ]}
+            onChange={(newSessionFolder) => update({ newSessionFolder })}
+        />
+    ),
+    scrollbackLines: ({ intl, settings, update }) => (
+        <NumberSetting
+            {...text(intl, 'scrollbackLines')}
+            value={settings.scrollbackLines}
+            {...range(SETTINGS_LIMITS.scrollbackLines, 1_000)}
+            onChange={(scrollbackLines) => update({ scrollbackLines })}
+        />
+    ),
+    stopGraceSeconds: ({ intl, settings, update }) => (
+        <NumberSetting
+            {...text(intl, 'stopGraceSeconds')}
+            value={settings.stopGraceSeconds}
+            {...range(SETTINGS_LIMITS.stopGraceSeconds, 1)}
+            onChange={(stopGraceSeconds) => update({ stopGraceSeconds })}
+        />
+    ),
+    autoClose: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'autoClose')}
+            isSelected={settings.autoClose}
+            onChange={(autoClose) => update({ autoClose })}
+        />
+    ),
+    pasteConfirmation: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'pasteConfirmation')}
+            isSelected={settings.pasteConfirmation}
+            onChange={(pasteConfirmation) => update({ pasteConfirmation })}
+        />
+    ),
+};
 
 function ScreenReaderModeSetting({ shell }: { readonly shell: Shell }) {
     const intl = useIntl();
@@ -263,11 +278,17 @@ function ScreenReaderModeSetting({ shell }: { readonly shell: Shell }) {
     );
 }
 
-function ClipboardWritesSetting({ workspace }: { readonly workspace: WorkspaceController }) {
+/** A per-host setting: one switch for each host, under the setting's name and description. */
+function HostSwitches(props: {
+    readonly id: SettingId;
+    readonly workspace: WorkspaceController;
+    readonly selected: (host: HostEntry) => boolean;
+    readonly change: (hostId: string, on: boolean) => Promise<void>;
+}) {
     const intl = useIntl();
-    const hosts = useStore(workspace.store, (state) => state.hosts);
+    const hosts = useStore(props.workspace.store, (state) => state.hosts);
     const descriptionId = useId();
-    const { label, description } = text(intl, 'clipboardWrites');
+    const { label, description } = text(intl, props.id);
     return (
         <fieldset className={styles['hosts']} aria-describedby={descriptionId}>
             <legend className={styles['label']}>{label}</legend>
@@ -275,8 +296,8 @@ function ClipboardWritesSetting({ workspace }: { readonly workspace: WorkspaceCo
                 <SwitchSetting
                     key={host.id}
                     label={host.destination}
-                    isSelected={host.allowClipboardWrites === true}
-                    onChange={(allowed) => void workspace.setClipboardWrites(host.id, allowed)}
+                    isSelected={props.selected(host)}
+                    onChange={(on) => void props.change(host.id, on)}
                 />
             ))}
             <p id={descriptionId} className={styles['description']}>

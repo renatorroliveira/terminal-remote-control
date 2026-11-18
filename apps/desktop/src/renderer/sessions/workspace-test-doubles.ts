@@ -381,6 +381,19 @@ export class FakeKnownHostStore implements KnownHostStore {
         return Promise.resolve(changed);
     }
 
+    /** Starts a host's new shells with shell integration, or without it. */
+    setShellIntegration(id: string, on: boolean): Promise<KnownHost> {
+        const index = this.#hosts.findIndex((host) => host.id === id);
+        const found = this.#hosts[index];
+        if (found === undefined) {
+            return Promise.reject(new Error(`no host ${id}`));
+        }
+        const { shellIntegrationOff: _previous, ...host } = found;
+        const changed = on ? host : { ...host, shellIntegrationOff: true };
+        this.#hosts[index] = changed;
+        return Promise.resolve(changed);
+    }
+
     setInstallRoot(id: string, installRoot: string): Promise<KnownHost> {
         const index = this.#hosts.findIndex((host) => host.id === id);
         const host = this.#hosts[index];

@@ -138,6 +138,7 @@ fn spec(program: &str) -> HolderSpec {
         user: "tester".into(),
         options: Default::default(),
         data_dir: None,
+        integration_dir: None,
     }
 }
 

@@ -45,6 +45,7 @@ const GROUP_OF: Readonly<Record<SettingId, SettingGroup>> = {
     autoClose: 'sessions',
     pasteConfirmation: 'sessions',
     clipboardWrites: 'hosts',
+    shellIntegration: 'hosts',
 };
 
 const DESCRIPTIONS: Readonly<Partial<Record<SettingId, MessageDescriptor>>> = settingDescriptionMessages;
