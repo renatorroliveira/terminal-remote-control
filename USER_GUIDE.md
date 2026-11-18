@@ -1,17 +1,18 @@
 # Terminal Remote Control user guide
 
-Terminal Remote Control (TRC) runs terminal sessions on your Linux hosts and shows them in one accessible macOS
-window. The sessions belong to a small daemon, `trcd`, that the app installs on each host for your user, so a
-session keeps running when you quit the app or lose the network.
+Terminal Remote Control (TRC) runs terminal sessions on your Mac and on your Linux and macOS hosts, and shows them
+in one accessible macOS window. The sessions belong to a small daemon, `trcd`, that the app installs for your user
+on each computer, so a session keeps running when you quit the app or lose the network.
 
-This guide covers Epic 1, which version 0.2 completes. [What's not there yet](#whats-not-there-yet) lists
-what later releases add.
+This guide covers version 0.5, which completes Epic 4. [What's not there yet](#whats-not-there-yet) lists what
+later releases add.
 
 ## Contents
 
 - [Requirements](#requirements)
 - [Install](#install)
 - [Quick start with VoiceOver](#quick-start-with-voiceover)
+- [This computer](#this-computer)
 - [Add a host](#add-a-host)
 - [Connect](#connect)
 - [Sessions](#sessions)
@@ -35,7 +36,7 @@ On your Mac:
 
 On each host:
 
-- Linux on x86_64 or arm64.
+- Linux on x86_64 or arm64, or macOS 13 or later on Apple silicon or Intel, with Remote Login on.
 - `sshd` that accepts your key, and a POSIX shell.
 - A few megabytes free in your home folder, or in another folder you choose, that allows running programs (not
   mounted `noexec`), and `sha256sum` or `shasum`. The host needs no internet access, no root or sudo, and no packages.
@@ -82,6 +83,30 @@ VO below means the VoiceOver keys: Control-Option, or Caps Lock if you set Voice
 8. Option-F1 lists the shortcuts for where you are. Help, then Terminal Remote Control Help, opens this guide
    in its own window.
 
+## This computer
+
+This computer, first in the sidebar, is your Mac itself: its sessions run on the Mac, with no SSH, and work like
+any host's, from New session (your login shell) to restore and sharing.
+
+- **Setup.** At first launch, and whenever its daemon is missing, TRC installs the daemon in the TRC home, `~/.trc`,
+  and registers it as a LaunchAgent, `~/Library/LaunchAgents/dev.trc.trcd-<8 letters and digits>.plist`, which
+  starts it at login and again if it crashes. No step asks for an administrator password. Each step shows and is
+  announced, as for any host.
+- **What survives.** Local sessions keep running when you quit the app, when it crashes or is forced to quit, and
+  when the daemon is killed or updated. Logging out of macOS ends no session either: the daemon starts again at
+  your next login and takes them back. After the Mac restarts, your sessions come back when you log in, below their
+  saved scrollback, as on any host [after a restart](#after-a-restart).
+- **Files and folders macOS protects.** The first time a command in a local session reads your Desktop, Documents
+  or Downloads folder, or a removable or network volume, macOS asks whether "trcd" may; the command waits until you
+  answer. In 0.x releases, which are ad-hoc signed, an update of TRC may ask again. To stop the questions, add
+  `trcd` to Full Disk Access in System Settings, Privacy & Security: choose the + button, press Shift+Command+G and
+  type `~/.trc/versions/`, then pick `trcd` in the newest folder.
+- **Another Mac.** A computer that adds this Mac as a host, with the default install location, reaches the same
+  daemon and the same sessions.
+
+This computer can't be forgotten, and its install location can't be moved. Remove daemon, in its details, removes
+its daemon and LaunchAgent; Connect installs them again.
+
 ## Add a host
 
 The sidebar's Hosts section has the New host field, with Add host to its right, and an optional User field below.
@@ -94,6 +119,9 @@ The sidebar's Hosts section has the New host field, with Add host to its right, 
 
 TRC connects to the new host at once. The first time, it installs the daemon under `~/.trc` on the host, which
 takes a few seconds; each step shows in the host's state and is announced.
+
+On a Mac host, the daemon is a LaunchAgent while you're logged in to that Mac's desktop, so it starts at login
+there; otherwise it runs on its own, and after that Mac restarts, its sessions come back when you connect again.
 
 ### Trust a host key
 
@@ -457,8 +485,9 @@ TRC_HOME=~/work/trc open -n "/Applications/Terminal Remote Control.app"
 Logs and Chromium's own data stay in `~/Library/Application Support/Terminal Remote Control`. Logs never hold
 terminal output, keystrokes, environment values or keys.
 
-On each host, the daemon lives in `~/.trc`: its binaries under `versions/`, its socket under `run/`, its logs, and
-each session's record and saved scrollback under `sessions/`, readable only by you.
+On each host, and for This computer in the TRC home, the daemon lives in `~/.trc`: its binaries under `versions/`,
+its socket under `run/`, its logs, and each session's record and saved scrollback under `sessions/`, readable only
+by you. On a Mac where it runs as a LaunchAgent, its plist is `~/Library/LaunchAgents/dev.trc.trcd-<hash>.plist`.
 
 ### Removing TRC by hand
 
@@ -470,8 +499,17 @@ Remove daemon from host, in a host's details, does all of this for you. Without 
    `rmdir ~/.trc` if nothing else is left there. A host whose install location has a long path keeps the daemon's
    sockets in `/tmp/trc-<your user ID>` instead of `run/`; delete that folder too.
 
-TRC registers nothing outside the install location on a host: no service file, no shell startup line and nothing
-that starts at boot.
+On a Mac, This computer or a Mac host, first boot the LaunchAgent out and delete its plist:
+
+```sh
+for plist in ~/Library/LaunchAgents/dev.trc.trcd-*.plist; do
+    launchctl bootout "gui/$(id -u)/$(basename "$plist" .plist)"
+    rm "$plist"
+done
+```
+
+Then end the daemon and delete its folders as on Linux. Apart from that plist, TRC registers nothing outside the
+install location: no service file, no shell startup line and nothing that starts at boot.
 
 On the Mac, quit TRC, then delete the app from Applications, the TRC home (`~/.trc`, or the folder `TRC_HOME` names)
 and `~/Library/Application Support/Terminal Remote Control`. The keys TRC accepted at a first connection stay in
@@ -501,5 +539,5 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 
 ## What's not there yet
 
-Later epics add local sessions on the Mac, macOS hosts, and the Windows and Linux apps. [The PRD](docs/PRD.md) has
-the full plan.
+Later epics add command awareness (jumping between commands, hearing when one fails), and the Windows and Linux
+apps. [The PRD](docs/PRD.md) has the full plan.

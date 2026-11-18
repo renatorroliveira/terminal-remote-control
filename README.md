@@ -10,14 +10,15 @@
 
 An accessible desktop terminal manager whose sessions outlive the app, the network and the client computer.
 
-> **Status: alpha.** Version 0.4 delivers Epics 1 to 3: a macOS app that adds Linux hosts over SSH, installs its
-> daemon on them, and runs and manages terminal sessions there, with VoiceOver, Zoom, Voice Control and keyboard
-> support. Sessions outlive the app, its crashes, network loss and daemon upgrades: the app reconnects by itself,
-> restores every host at launch, and several Macs can share a session. Sessions come back after a host reboot with
-> their scrollback, and each host's daemon can be inspected, restarted, upgraded and removed from the app. 0.x
-> releases are experimental, ad-hoc-signed builds; 1.0.0 is the first official release. The
-> [E1](docs/plans/epic-01-implementation-plan.md), [E2](docs/plans/epic-02-implementation-plan.md) and
-> [E3 implementation plans](docs/plans/epic-03-implementation-plan.md) record how each epic was built.
+> **Status: alpha.** Version 0.5 delivers Epics 1 to 4: a macOS app that runs terminal sessions on the Mac itself
+> and on Linux and macOS hosts it adds over SSH, installing its daemon on each, with VoiceOver, Zoom, Voice Control
+> and keyboard support. Sessions outlive the app, its crashes, network loss and daemon upgrades: the app reconnects
+> by itself, restores every host at launch, and several Macs can share a session. Sessions come back after a reboot
+> with their scrollback, the Mac's own sessions also survive a logout, and each daemon can be inspected, restarted,
+> upgraded and removed from the app. 0.x releases are experimental, ad-hoc-signed builds; 1.0.0 is the first
+> official release. The [E1](docs/plans/epic-01-implementation-plan.md),
+> [E2](docs/plans/epic-02-implementation-plan.md), [E3](docs/plans/epic-03-implementation-plan.md) and
+> [E4 implementation plans](docs/plans/epic-04-implementation-plan.md) record how each epic was built.
 
 ## Why
 
@@ -102,6 +103,7 @@ the app does today.
   status.
 - [E2 implementation plan](docs/plans/epic-02-implementation-plan.md): the same for Epic 2.
 - [E3 implementation plan](docs/plans/epic-03-implementation-plan.md): the same for Epic 3.
+- [E4 implementation plan](docs/plans/epic-04-implementation-plan.md): the same for Epic 4.
 
 ## Development
 
@@ -117,25 +119,25 @@ the app does today.
 
 ### Commands
 
-| Command                           | What it does                                                                                                                |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm install`                    | Installs dependencies and the git hooks                                                                                     |
-| `pnpm check`                      | The full local gate: Prettier, Biome, document IDs, `tsc`, Vitest, Rust fmt/clippy/nextest                                  |
-| `pnpm --filter @trc/desktop i18n` | Extracts and precompiles the UI messages after a string changes                                                             |
-| `pnpm test`                       | Vitest unit tests (Node) and component tests (Chromium, with axe)                                                           |
-| `pnpm test:integration`           | Tests against the Linux test hosts (start them with `tools/test-hosts/up.sh`)                                               |
-| `pnpm build:daemon`               | Builds the Linux daemons and the universal macOS one into `apps/desktop/resources/daemon`, with their manifest (macOS only) |
-| `pnpm test:daemon`                | The daemon's musl tests in Ubuntu, Alpine and Rocky containers (part of the above)                                          |
-| `pnpm test:e2e`                   | Builds a test build of the app and runs the Playwright Electron tests                                                       |
-| `pnpm test:nfr`                   | Measures the NFR targets against the test hosts; see `docs/verification/E3-nfr.md`                                          |
-| `pnpm test:soak`                  | The NFR-11 soak against the test hosts: 1,000 cycles per scenario (50 for app launches and logout), for hours               |
-| `pnpm test:ax`                    | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests                                      |
-| `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                                                                |
-| `pnpm icons`                      | Renders the app icons in `apps/desktop/resources/icons` from `tools/icons`                                                  |
-| `pnpm dist`                       | Builds the ad-hoc signed arm64 and x64 dmg and zip into `apps/desktop/dist`                                                 |
-| `pnpm verify:artifact <app>`      | Checks a packaged app before it ships (launches it in the background)                                                       |
-| `pnpm release <level>`            | Starts the release workflow on GitHub; see below                                                                            |
-| `cargo nextest run`               | Rust tests                                                                                                                  |
+| Command                           | What it does                                                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm install`                    | Installs dependencies and the git hooks                                                                                                    |
+| `pnpm check`                      | The full local gate: Prettier, Biome, document IDs, `tsc`, Vitest, Rust fmt/clippy/nextest                                                 |
+| `pnpm --filter @trc/desktop i18n` | Extracts and precompiles the UI messages after a string changes                                                                            |
+| `pnpm test`                       | Vitest unit tests (Node) and component tests (Chromium, with axe)                                                                          |
+| `pnpm test:integration`           | Tests against the Linux test hosts (start them with `tools/test-hosts/up.sh`), and the macOS one if `tools/test-hosts/macos/up.sh` runs it |
+| `pnpm build:daemon`               | Builds the Linux daemons and the universal macOS one into `apps/desktop/resources/daemon`, with their manifest (macOS only)                |
+| `pnpm test:daemon`                | The daemon's musl tests in Ubuntu, Alpine and Rocky containers (part of the above)                                                         |
+| `pnpm test:e2e`                   | Builds a test build of the app and runs the Playwright Electron tests                                                                      |
+| `pnpm test:nfr`                   | Measures the NFR targets against the test hosts; see `docs/verification/E3-nfr.md`                                                         |
+| `pnpm test:soak`                  | The NFR-11 soak against the test hosts: 1,000 cycles per scenario (50 for app launches and logout), for hours                              |
+| `pnpm test:ax`                    | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests                                                     |
+| `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                                                                               |
+| `pnpm icons`                      | Renders the app icons in `apps/desktop/resources/icons` from `tools/icons`                                                                 |
+| `pnpm dist`                       | Builds the ad-hoc signed arm64 and x64 dmg and zip into `apps/desktop/dist`                                                                |
+| `pnpm verify:artifact <app>`      | Checks a packaged app before it ships (launches it in the background)                                                                      |
+| `pnpm release <level>`            | Starts the release workflow on GitHub; see below                                                                                           |
+| `cargo nextest run`               | Rust tests                                                                                                                                 |
 
 Single tests: `pnpm exec vitest run <file> -t <name>` and `cargo nextest run <name>`.
 

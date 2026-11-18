@@ -36,7 +36,7 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 | P-60 | A LaunchAgent's label is `dev.trc.trcd-<hash8>`, the first 8 hex digits of the install root's SHA-256, as the systemd unit is `trcd-<hash8>.service`. It sets `RunAtLoad` (start at login, US-4.4.1), `KeepAlive` on a crash (US-4.3.2), `AbandonProcessGroup`, and the install root's `logs/` for its output. Holders already call `setsid()`, so stopping the agent never ends them (R4).                                                                                |
 | P-61 | On a remote Mac the bridge registers the LaunchAgent only when the user has a GUI login session (`gui/<uid>` exists); otherwise the core runs detached, as on Linux, and after a reboot without a GUI login its sessions come back when the app reconnects (US-4.5.2, R7). This is the one place where TRC writes outside the install root, as the PRD asks; Remove daemon boots the agent out and deletes its plist.                                                      |
 | P-62 | **Owner, 2026-11-17, after S8.** A logout ends the agent's core but no holder, as holders called `setsid()`: the next core, started by the agent at the next login or by a connection, adopts them, so a logout ends no session (US-4.4.2, amended in PRD v0.18). Only a reboot respawns shells, and the boot ID tells the two apart.                                                                                                                                      |
-| P-63 | x86_64 Macs run the universal2 binary's x86_64 slice. The tests run it under Rosetta in the arm64 VMs and natively on the `macos-15-intel` CI runner; the app's x64 build bundles the same binary.                                                                                                                                                                                                                                                                         |
+| P-63 | x86_64 Macs run the universal2 binary's x86_64 slice. The tests run it under Rosetta on this Mac (every Rust test, `--target x86_64-apple-darwin`) and in the VM (`arch -x86_64`), and natively on the `macos-15-intel` CI runner; the app's x64 build bundles the same binary.                                                                                                                                                                                            |
 | P-64 | Review at the end of E4 as P-51 had it: `code-reviewer` and `technical-auditor` over every commit after v0.4.0, in rounds until no critical or high finding remains. A fix that would change the PRD, behavior, a design or an owner decision waits for the owner. The release workflow then cuts `v0.5.0`.                                                                                                                                                                |
 | P-65 | **Owner, 2026-11-17.** Two usability changes ship in 0.5.0 (ST-61). Cmd+W, Session > Close Session, closes the open session whatever its state, through US-1.10.4's confirmation, which stays; Windows and Linux will bind Ctrl+Shift+W, as Ctrl+W is the shell's delete-word and a control code (A11Y-05.5). An ended session's terminal shows a banner at its top that says why it ended, with Restart and Remove on its right; Remove opens the same confirmation.      |
 | P-66 | **Owner, 2026-11-17, after S8.** Under the LaunchAgent, macOS asks once per protected folder (Desktop, Documents, Downloads, removable and network volumes) whether `trcd` may read it, and the command waits for the answer; with 0.x's ad-hoc signatures each daemon version is likely asked again. 0.x accepts this: the user guide explains the prompt and how to grant Full Disk Access instead, and E8's Developer ID signing makes the answer last across versions. |
@@ -194,9 +194,9 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 | ST-53 | Done    | ba2bb09 |
 | ST-54 | Done    | 64cccdd |
 | ST-55 | Done    | d39645d |
-| ST-56 | Planned | —       |
-| ST-57 | Planned | —       |
-| ST-58 | Planned | —       |
+| ST-56 | Done    | 1a0267f |
+| ST-57 | Done    | 1a0267f |
+| ST-58 | Done    | —       |
 | ST-59 | Planned | —       |
 | ST-60 | Planned | —       |
-| ST-61 | Done    | —       |
+| ST-61 | Done    | 6cfe477 |

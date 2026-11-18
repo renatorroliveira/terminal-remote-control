@@ -29,6 +29,14 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
 - Integration (needs `tools/test-hosts/up.sh`): `pnpm test:integration`. It
   builds the daemon bundle (`pnpm build:daemon`), then runs `pnpm test:daemon`, which runs the musl daemon tests as root in
   Ubuntu, Alpine and Rocky containers (Linux-only and other-user checks).
+- macOS test host (E4, P-57): `tools/test-hosts/macos/up.sh`, after
+  `tools/test-hosts/up.sh`, starts a tart VM on lima's user-mode network with
+  SSH on `127.0.0.1:2230` only, and adds `trc-mac-gui` (LaunchAgent) and
+  `trc-mac-nogui` (detached) to the test SSH config; the integration suites and
+  `host-restart.spec.ts` then include them, and `TRC_E2E_HOST=trc-mac-gui` runs
+  the single-host e2e specs on one. `tools/test-hosts/macos/down.sh` deletes the
+  VM (`--purge` also the base image). The x86_64 slice runs under Rosetta with
+  `cargo nextest run --target x86_64-apple-darwin --workspace` (P-63).
 - NFR measurements: `pnpm test:nfr` (needs the test hosts and the daemons;
   launches the app in the background); `node tools/nfr-report/nfr-report.ts`
   prints the run's table for `docs/verification/E3-nfr.md`.

@@ -1246,7 +1246,9 @@ docs/plans/               one implementation plan per epic
   runs on lima's user-mode network (`limactl usernet`, from the lima that
   colima already installs) through `tart run --net-fd`, with its SSH port
   forwarded to `127.0.0.1` only, as a managed Mac may drop the frames of
-  tart's shared NAT (D-53, S8).
+  tart's shared NAT (D-53, S8). A 30-line Python script (`net-fd.py`, run with
+  the `python3` of the Xcode command line tools) passes the VM's socket to
+  usernet, as Node cannot send a descriptor.
 
 ### 9.2 TypeScript 7
 
