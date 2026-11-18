@@ -8,7 +8,7 @@ mod support;
 
 use std::collections::BTreeMap;
 use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use support::{AppClient, Installed};
@@ -29,17 +29,22 @@ async fn registers_the_core_as_a_launch_agent_that_keeps_every_session() {
     let root = std::fs::canonicalize(&installed.root).unwrap();
     run_bridge(&installed);
     let plist = plist_path(&installed.home, &agent_label(&root));
-    let mode = std::fs::metadata(&plist).unwrap().permissions().mode() & 0o777;
-    assert_eq!(mode, 0o600);
+    let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode(&plist), 0o600);
     let first = core_pid(&installed, None, "registered").await;
+    assert_eq!(mode(&root.join("logs/launchd.log")), 0o600, "SEC-08.2");
     let (mut client, manager) = greeted(&installed).await;
     assert_eq!(manager, Some(ServiceManager::Launchd));
     let shell = create_session(&mut client).await;
     drop(client);
 
     kill(first);
-    let second = core_pid(&installed, Some(first), "after the crash").await;
+    let crashed = core_pid(&installed, Some(first), "after the crash").await;
     assert_eq!(session(&installed).await.pid, Some(shell), "a crash ended the session");
+
+    terminate(crashed);
+    let second = core_pid(&installed, Some(crashed), "after SIGTERM").await;
+    assert_eq!(session(&installed).await.pid, Some(shell), "SIGTERM ended the session");
 
     restart_daemon(&installed, second).await;
     run_bridge(&installed);
@@ -230,6 +235,12 @@ fn kill(pid: u32) {
     rustix::process::kill_process(pid, rustix::process::Signal::KILL).unwrap();
 }
 
+/// Sends SIGTERM, as `kill` and Activity Monitor's Quit do, which launchd answers by starting the core again.
+fn terminate(pid: u32) {
+    let pid = rustix::process::Pid::from_raw(pid.cast_signed()).unwrap();
+    rustix::process::kill_process(pid, rustix::process::Signal::TERM).unwrap();
+}
+
 fn alive(pid: u32) -> bool {
     rustix::process::Pid::from_raw(pid.cast_signed()).is_some_and(|pid| rustix::process::test_kill_process(pid).is_ok())
 }
@@ -265,8 +276,8 @@ fn agent_state(installed: &Installed) -> String {
     format!("{state}\nlock: {lock:?}, socket: {socket}\nlog: {log}")
 }
 
-/// Whether the user has no GUI login session, which a LaunchAgent needs: the test then says it checked nothing, as
-/// on a CI runner without one, rather than passing in silence.
+/// Whether the user has no GUI login session, which a LaunchAgent needs: the test then prints that it checked
+/// nothing, as on a CI runner without one, and `.config/nextest.toml` shows that output though the test passes.
 fn no_gui_session() -> bool {
     let missing = !has_gui_session(rustix::process::geteuid().as_raw());
     if missing {

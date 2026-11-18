@@ -1,3 +1,4 @@
+import type { SessionInfo } from '@trc/protocol';
 import { createIntl } from 'react-intl';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { ScreenReaderMode } from '../../shared/accessibility';
@@ -130,10 +131,16 @@ function fakeSidebar(saved: boolean[]) {
     };
 }
 
-async function setup(narrow = false, stored: Partial<Settings> = {}, local = false) {
-    const client = new FakeWorkspaceClient([bashSession('a')]);
+/** What a shell test starts with besides its settings: This computer known first, and the sessions hosts list. */
+interface SetupOptions {
+    readonly local?: boolean;
+    readonly sessions?: readonly SessionInfo[];
+}
+
+async function setup(narrow = false, stored: Partial<Settings> = {}, options: SetupOptions = {}) {
+    const client = new FakeWorkspaceClient(options.sessions ?? [bashSession('a')]);
     const terminals = new FakeTerminalHost([]);
-    const workspace = workspaceFor(client, terminals, local);
+    const workspace = workspaceFor(client, terminals, options.local === true);
     const spoken: string[] = [];
     const saved: boolean[] = [];
     const screenReader = new FakeScreenReader();
@@ -418,6 +425,20 @@ describe('Shell: the open session ends (US-1.10.9)', () => {
         client.message('host-0', { type: 'sessionEvent', change: { kind: 'updated', session: { ...exited } } });
         await expect.poll(() => spoken).toEqual(['bash ended: Exited with code 2.']);
         expect(shell.state.getState().sessionDialog).toBeUndefined();
+    });
+
+    it('says nothing of a session that had ended before its host reconnected or the app started', async () => {
+        const exited = { ...bashSession('a'), state: 'exited', exit: { code: 2 } } as const;
+        const { client, workspace, spoken } = await setup(false, {}, { sessions: [exited] });
+        client.push('host-0', CONNECTED);
+        await expect.poll(() => workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
+        workspace.open('host-0/a');
+        spoken.length = 0;
+        client.push('host-0', { status: 'disconnected', reason: 'ping-timeout' });
+        client.push('host-0', { status: 'reconnecting', attempt: 1, nextAttemptAt: 0, failure: undefined });
+        client.push('host-0', CONNECTED);
+        await expect.poll(() => spoken).toContain('Reconnected to devbox-1.');
+        expect(spoken.filter((text) => text.includes('ended'))).toEqual([]);
     });
 });
 
@@ -745,7 +766,7 @@ describe('Shell host reports (A11Y-12.1, A11Y-12.2)', () => {
     });
 
     it('says once, with what to do, that This computer’s daemon runs without its LaunchAgent (US-4.1.3)', async () => {
-        const { shell, client, spoken, workspace } = await setup(false, {}, true);
+        const { shell, client, spoken, workspace } = await setup(false, {}, { local: true });
         const lost = { status: 'disconnected', reason: 'ping-timeout' } as const;
         const devbox = workspace.store.getState().hosts.find((host) => host.destination === 'devbox-1');
         client.push(devbox?.id ?? '', runBy('detached'));
@@ -754,7 +775,8 @@ describe('Shell host reports (A11Y-12.1, A11Y-12.2)', () => {
         client.push('local', runBy('detached'));
         const warning =
             'This computer’s daemon runs without its LaunchAgent, so it won’t start at login or restart after a ' +
-            'crash. To register it, choose Restart daemon in the details of This computer.';
+            'crash. If trcd is turned off in System Settings, General, Login Items, turn it on. Then choose ' +
+            'Restart daemon in the details of This computer.';
         expect(spoken.filter((text) => text.includes('LaunchAgent'))).toEqual([warning]);
         client.push('local', lost);
         client.push('local', runBy('launchd'));

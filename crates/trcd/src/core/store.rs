@@ -278,6 +278,7 @@ pub fn boot_id() -> Option<String> {
         .map(|id| id.trim().to_owned())
         .filter(|id| !id.is_empty())
 }
+
 /// Linux's boot ID, which every boot changes.
 #[cfg(target_os = "linux")]
 fn read_boot_id() -> Option<String> {

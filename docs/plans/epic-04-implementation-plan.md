@@ -204,11 +204,12 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 ## 8. Reviews (P-64)
 
 `code-reviewer` and `technical-auditor` review every commit after v0.4.0, in rounds until no critical or high finding
-remains. Each finding is fixed, test-first, or listed below with why it stays.
+remains. Each finding is fixed with a test, or listed below with why it stays.
 
-| Round | Code review (C/H/M/L) | Audit (C/H/M/L) | Fixes |
-| ----- | --------------------- | --------------- | ----- |
-| 1     | 0 / 1 / 3 / 7         | 0 / 0 / 9 / 8   | —     |
+| Round | Code review (C/H/M/L) | Audit (C/H/M/L) | Fixes     |
+| ----- | --------------------- | --------------- | --------- |
+| 1     | 0 / 1 / 3 / 7         | 0 / 0 / 9 / 8   | `9891b22` |
+| 2     | 0 / 0 / 2 / 6         | 0 / 0 / 8 / 9   | —         |
 
 The high:
 
@@ -222,6 +223,15 @@ left the LaunchAgent behind once the install was deleted by hand; the connection
 host or folder; This computer's daemon running without its LaunchAgent went unsaid; Restart and Remove in the
 ended-session banner lost focus; the logout of US-4.4.2 had no committed test (`mac-logout.integration.test.ts`);
 the upgrade's process check is no longer skipped on macOS; and the docs the audit named. The integration runs also explained E3's Alpine failure of `shares_a_session_between_two_apps`, which recurred twice: when busybox ash printed its prompt before a client attached, the client got the prompt inside the snapshot, after empty rows and a cursor move, and the test's prompt check missed it; the check now reads past them.
+
+Fixed in round 2: a core that SIGTERM ended under launchd, as `kill` or Activity Monitor's Quit do, stayed down, so
+it now exits with 143 and launchd starts it again; start errors a retry may fix restart it again, while only the
+refusals no retry fixes exit 0; a core that cannot start names why in the bridge's error, from `launchd.log`; that
+log is created 0600 whatever the umask; a plist differing in the registering bridge's umask no longer replaces a
+starting core; the "session ended" announcement no longer repeats after a reconnect or at launch; the LaunchAgent
+notice names the Login Items switch and skips a daemon that reports no service; the GUI-session probe asks twice;
+the launchd tests' skip notice shows in nextest; the NFR and soak results name the build they ran on, and ran
+again after the fixes; and the guide, the plan, TECH_STACK and the verification documents say what was observed.
 
 What stays, and why:
 
@@ -237,3 +247,11 @@ What stays, and why:
   computer says so (US-4.1.3), and Restart daemon registers the LaunchAgent.
 - On macOS, Electron's `windowMenu` role has no Close item, so Command-W has one menu item, Session > Close
   session…; Windows and Linux bind Control-Shift-W (E6, E7).
+- The daemon runs `launchctl` through `PATH`, as the bootstrap runs its tools; `PATH` is the user's own, the core
+  runs as the user, and the tests' stub relies on it.
+- `up.sh` and `down.sh` stop lima's usernet by the PID in its file, which a reused PID could name; the VM and its
+  files exist only during E4's tests and are deleted at its end (P-57).
+- The test VM's well-known password opens SSH from loopback until `up.sh` ends its provisioning; moving that step
+  would need a new VM to test, and the VM is deleted at the end of E4.
+- macOS 14 and 15 hosts are supported (PRD §7.2) but were not run: the test VM and this Mac run macOS 26, and the
+  binary targets macOS 13.

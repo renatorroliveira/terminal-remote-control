@@ -29,14 +29,15 @@ later releases add.
 
 On your Mac:
 
-- macOS on Apple silicon or Intel.
+- macOS 15 or later, on Apple silicon or Intel.
 - OpenSSH 8.5 or later. The one that ships with macOS works.
 - An SSH key that reaches each host, loaded in your SSH agent (`ssh-add -l` lists it). TRC never asks for
   passwords or passphrases.
 
 On each host:
 
-- Linux on x86_64 or arm64, or macOS 14 or later on Apple silicon or Intel, with Remote Login on.
+- Linux on x86_64 or arm64, or macOS 14 or later on Apple silicon or Intel, with Remote Login on. Version 0.5 was
+  tested on macOS 26.
 - `sshd` that accepts your key, and a POSIX shell.
 - A few megabytes free in your home folder, or in another folder you choose, that allows running programs (not
   mounted `noexec`), and `sha256sum` or `shasum`. The host needs no internet access, no root or sudo, and no packages.
@@ -91,8 +92,8 @@ any host's, from New session (your login shell) to restore and sharing.
 - **Setup.** At first launch, and whenever its daemon is missing, TRC installs the daemon in the TRC home, `~/.trc`,
   and registers it as a LaunchAgent, `~/Library/LaunchAgents/dev.trc.trcd-<8 hexadecimal digits>.plist`, which
   starts it at login and again if it crashes. No step asks for an administrator password. Each step shows and is
-  announced, as for any host. macOS then says "Background Items Added" and lists `trcd` in System Settings,
-  General, Login Items & Extensions; leave it on there. When the daemon runs without its LaunchAgent, so it would
+  announced, as for any host. macOS may then say that a background item was added, and lists `trcd` in System
+  Settings, General, Login Items (Login Items & Extensions from macOS 15); leave it allowed there. When the daemon runs without its LaunchAgent, so it would
   neither start at login nor restart after a crash, TRC says so and lists it in Notifications; choose Restart daemon
   in This computer's details to register it again.
 - **What survives.** Local sessions keep running when you quit the app, when it crashes or is forced to quit, and
@@ -101,9 +102,10 @@ any host's, from New session (your login shell) to restore and sharing.
   saved scrollback, as on any host [after a restart](#after-a-restart).
 - **Files and folders macOS protects.** The first time a command in a local session reads your Desktop, Documents
   or Downloads folder, or a removable or network volume, macOS asks whether "trcd" may; the command waits until you
-  answer. In 0.x releases, which are ad-hoc signed, an update of TRC may ask again. To stop the questions, add
-  `trcd` to Full Disk Access in System Settings, Privacy & Security: choose the + button, press Shift+Command+G and
-  type `~/.trc/versions/`, then pick `trcd` in the newest folder.
+  answer. In 0.x releases, which are ad-hoc signed, an update of TRC may ask again. To stop the questions, add the
+  running `trcd` to Full Disk Access in System Settings, Privacy & Security: choose the + button, press
+  Shift+Command+G and paste the path that
+  `plutil -extract ProgramArguments.0 raw ~/Library/LaunchAgents/dev.trc.trcd-*.plist` prints in Terminal.
 - **Another Mac.** A computer that adds this Mac as a host, with the default install location, reaches the same
   daemon and the same sessions.
 
@@ -288,8 +290,9 @@ cleared". Closing a session deletes everything saved for it. If the host can't s
 example because its disk is full, TRC says so once, the session shows "scrollback not saved", and it keeps running;
 saving resumes by itself once it can.
 
-Nothing starts the daemon when the host boots: TRC registers nothing outside the install location. The sessions
-come back when TRC next connects and starts the daemon.
+On a Linux host, or a Mac without a GUI login, nothing starts the daemon when the host boots: TRC registers nothing
+outside the install location there. The sessions come back when TRC next connects and starts the daemon. On This
+computer, and on a Mac host you are logged in to, the LaunchAgent starts it when you log in.
 
 ### Sharing a session with another computer
 

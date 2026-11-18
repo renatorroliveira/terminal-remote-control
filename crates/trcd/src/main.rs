@@ -3,7 +3,7 @@
 use std::process::ExitCode;
 
 use trcd::command::Command;
-use trcd::core::process::StartError;
+use trcd::core::process::{Ending, StartError};
 use trcd::install::InstallLayout;
 
 /// Exit status for a malformed command line (`EX_USAGE`).
@@ -34,9 +34,10 @@ fn main() -> ExitCode {
             detach: false,
             supervisor,
         } => match trcd::core::process::run(&layout, supervisor) {
-            Ok(()) => ExitCode::SUCCESS,
+            Ok(Ending::Asked) => ExitCode::SUCCESS,
+            Ok(Ending::Terminated) => ExitCode::from(supervisor.terminated_status()),
             Err(StartError::AlreadyRunning) => fail(refusal(EXIT_ALREADY_RUNNING), "another core is already running"),
-            Err(StartError::Io(error)) => fail(refusal(EXIT_OS_ERROR), &error.to_string()),
+            Err(StartError::Io(error)) => fail(EXIT_OS_ERROR, &error.to_string()),
         },
         Command::Core { detach: true, .. } => finish(trcd::core::process::launch_detached(&layout)),
         Command::Holder { socket } => finish(trcd::holder::process::serve(&socket)),

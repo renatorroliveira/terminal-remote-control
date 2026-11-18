@@ -38,6 +38,15 @@ use crate::service::ScopeLauncher;
 /// How many events may wait for the loop before readers pause.
 const EVENT_QUEUE: usize = 256;
 
+/// Why a core stopped serving.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Ending {
+    /// An app asked it to restart, or the daemon to be removed.
+    Asked,
+    /// It got SIGTERM.
+    Terminated,
+}
+
 /// What the core needs to know about its host and install.
 pub struct CoreContext {
     /// The running binary, which holders are started from.
@@ -200,10 +209,11 @@ impl Core {
     }
 
     /// Serves app connections on `listener` until an app asks the core to restart or the daemon to be removed, or
-    /// the core gets SIGTERM, then delivers what it queued for each app and to disk and returns, leaving every holder
-    /// running (US-3.3.2).
-    pub async fn serve(mut self, listener: UnixListener) {
+    /// the core gets SIGTERM, then delivers what it queued for each app and to disk and returns why it ended, leaving
+    /// every holder running (US-3.3.2).
+    pub async fn serve(mut self, listener: UnixListener) -> Ending {
         let mut terminate = signal(SignalKind::terminate()).ok();
+        let mut ending = Ending::Asked;
         while !self.exiting {
             tokio::select! {
                 accepted = listener.accept(), if self.accepting.ready() => {
@@ -214,11 +224,13 @@ impl Core {
                 () = terminated(terminate.as_mut()) => {
                     tracing::info!("the core got SIGTERM; it ends, and its sessions keep running");
                     self.exiting = true;
+                    ending = Ending::Terminated;
                 }
             }
         }
         drop(listener);
         self.finish().await;
+        ending
     }
 
     fn on_accept(&mut self, accepted: io::Result<UnixStream>) {

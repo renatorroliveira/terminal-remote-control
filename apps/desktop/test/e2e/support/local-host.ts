@@ -25,12 +25,18 @@ export function scratchLocal(): ScratchLocal {
     return { trcHome: join(base, 'home'), localHome };
 }
 
-/** Boots out the scratch daemon's temporary LaunchAgent, ends its processes and deletes the scratch folders (P-58). */
+/**
+ * Boots out the scratch daemon's temporary LaunchAgent, ends its processes and deletes the scratch folders (P-58);
+ * refuses any TRC home that {@link scratchLocal} did not make, so it never touches a real one.
+ */
 export function removeLocalDaemon(trcHome: string): void {
     if (!existsSync(trcHome)) {
         return;
     }
     const root = realpathSync(trcHome);
+    if (!/^\/private\/tmp\/trce-[^/]+\/home$/.test(root)) {
+        throw new Error(`not a scratch TRC home: ${root}`);
+    }
     const label = `dev.trc.trcd-${createHash('sha256').update(root).digest('hex').slice(0, 8)}`;
     spawnSync('launchctl', ['bootout', `gui/${uid}/${label}`]);
     spawnSync('pkill', ['-KILL', '-f', `${root}/versions/`]);

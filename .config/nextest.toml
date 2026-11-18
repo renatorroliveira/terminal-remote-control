@@ -1,0 +1,5 @@
+# Shows the output of the LaunchAgent tests even when they pass, so a run
+# without a GUI login session says that they checked nothing (P-63).
+[[profile.default.overrides]]
+filter = 'binary_id(trcd::launchd)'
+success-output = "final"

@@ -32,13 +32,13 @@
 <h2 id="requirements">Requirements</h2>
 <p>On your Mac:</p>
 <ul>
-<li>macOS on Apple silicon or Intel.</li>
+<li>macOS 15 or later, on Apple silicon or Intel.</li>
 <li>OpenSSH 8.5 or later. The one that ships with macOS works.</li>
 <li>An SSH key that reaches each host, loaded in your SSH agent (<code>ssh-add -l</code> lists it). TRC never asks for passwords or passphrases.</li>
 </ul>
 <p>On each host:</p>
 <ul>
-<li>Linux on x86_64 or arm64, or macOS 14 or later on Apple silicon or Intel, with Remote Login on.</li>
+<li>Linux on x86_64 or arm64, or macOS 14 or later on Apple silicon or Intel, with Remote Login on. Version 0.5 was tested on macOS 26.</li>
 <li><code>sshd</code> that accepts your key, and a POSIX shell.</li>
 <li>A few megabytes free in your home folder, or in another folder you choose, that allows running programs (not mounted <code>noexec</code>), and <code>sha256sum</code> or <code>shasum</code>. The host needs no internet access, no root or sudo, and no packages.</li>
 </ul>
@@ -65,9 +65,9 @@
 <h2 id="this-computer">This computer</h2>
 <p>This computer, first in the sidebar, is your Mac itself: its sessions run on the Mac, with no SSH, and work like any host's, from New session (your login shell) to restore and sharing.</p>
 <ul>
-<li><strong>Setup.</strong> At first launch, and whenever its daemon is missing, TRC installs the daemon in the TRC home, <code>~/.trc</code>, and registers it as a LaunchAgent, <code>~/Library/LaunchAgents/dev.trc.trcd-&lt;8 hexadecimal digits&gt;.plist</code>, which starts it at login and again if it crashes. No step asks for an administrator password. Each step shows and is announced, as for any host. macOS then says &quot;Background Items Added&quot; and lists <code>trcd</code> in System Settings, General, Login Items &amp; Extensions; leave it on there. When the daemon runs without its LaunchAgent, so it would neither start at login nor restart after a crash, TRC says so and lists it in Notifications; choose Restart daemon in This computer's details to register it again.</li>
+<li><strong>Setup.</strong> At first launch, and whenever its daemon is missing, TRC installs the daemon in the TRC home, <code>~/.trc</code>, and registers it as a LaunchAgent, <code>~/Library/LaunchAgents/dev.trc.trcd-&lt;8 hexadecimal digits&gt;.plist</code>, which starts it at login and again if it crashes. No step asks for an administrator password. Each step shows and is announced, as for any host. macOS may then say that a background item was added, and lists <code>trcd</code> in System Settings, General, Login Items (Login Items &amp; Extensions from macOS 15); leave it allowed there. When the daemon runs without its LaunchAgent, so it would neither start at login nor restart after a crash, TRC says so and lists it in Notifications; choose Restart daemon in This computer's details to register it again.</li>
 <li><strong>What survives.</strong> Local sessions keep running when you quit the app, when it crashes or is forced to quit, and when the daemon is killed or updated. Logging out of macOS ends no session either: the daemon starts again at your next login and takes them back. After the Mac restarts, your sessions come back when you log in, below their saved scrollback, as on any host <a href="#after-a-restart">after a restart</a>.</li>
-<li><strong>Files and folders macOS protects.</strong> The first time a command in a local session reads your Desktop, Documents or Downloads folder, or a removable or network volume, macOS asks whether &quot;trcd&quot; may; the command waits until you answer. In 0.x releases, which are ad-hoc signed, an update of TRC may ask again. To stop the questions, add <code>trcd</code> to Full Disk Access in System Settings, Privacy &amp; Security: choose the + button, press Shift+Command+G and type <code>~/.trc/versions/</code>, then pick <code>trcd</code> in the newest folder.</li>
+<li><strong>Files and folders macOS protects.</strong> The first time a command in a local session reads your Desktop, Documents or Downloads folder, or a removable or network volume, macOS asks whether &quot;trcd&quot; may; the command waits until you answer. In 0.x releases, which are ad-hoc signed, an update of TRC may ask again. To stop the questions, add the running <code>trcd</code> to Full Disk Access in System Settings, Privacy &amp; Security: choose the + button, press Shift+Command+G and paste the path that <code>plutil -extract ProgramArguments.0 raw ~/Library/LaunchAgents/dev.trc.trcd-*.plist</code> prints in Terminal.</li>
 <li><strong>Another Mac.</strong> A computer that adds this Mac as a host, with the default install location, reaches the same daemon and the same sessions.</li>
 </ul>
 <p>This computer can't be forgotten, and its install location can't be moved. Remove daemon, in its details, removes its daemon and LaunchAgent; Connect installs them again.</p>
@@ -141,7 +141,7 @@
 </ul>
 <p>Either way, the daemon keeps what bringing a session back needs beside its scrollback: its name, shell, folder, size, place in the list and the environment variables you gave it in New Session…. Don't put secrets in those variables.</p>
 <p><strong>Clear scrollback</strong> (Command-K, the Edit menu, the terminal's context menu or the command palette) clears the open session's scrollback in every app that has it open and deletes the copy on disk; TRC says &quot;Scrollback cleared&quot;. Closing a session deletes everything saved for it. If the host can't save a session's scrollback, for example because its disk is full, TRC says so once, the session shows &quot;scrollback not saved&quot;, and it keeps running; saving resumes by itself once it can.</p>
-<p>Nothing starts the daemon when the host boots: TRC registers nothing outside the install location. The sessions come back when TRC next connects and starts the daemon.</p>
+<p>On a Linux host, or a Mac without a GUI login, nothing starts the daemon when the host boots: TRC registers nothing outside the install location there. The sessions come back when TRC next connects and starts the daemon. On This computer, and on a Mac host you are logged in to, the LaunchAgent starts it when you log in.</p>
 <h3 id="sharing-a-session-with-another-computer">Sharing a session with another computer</h3>
 <p>The app on another computer can open the same session at the same time: both see its output as it comes and both can type. The session's size follows the computer you used last. When the other computer sets it, your terminal shows the session at that size, and the status bar and the terminal's description say &quot;Size set by another client&quot;; focus the terminal or type to take the size back. When the other computer types into the session you have open, TRC says &quot;Input from another client&quot; once, until it stops typing for a few seconds.</p>
 <p>A session started before you updated the host's daemon from 0.2.0 serves one computer at a time until you close it. When another computer opens it, your terminal says &quot;Opened on another client — input not sent&quot;; open the session again to take it back.</p>
