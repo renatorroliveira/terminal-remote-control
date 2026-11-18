@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-E1 shipped as v0.2.0 (M1 was v0.1.0), E2 as v0.3.0, E3 as v0.4.0 and E4 as
-v0.5.0; 0.x releases are alpha builds, and 1.0.0 is the first official release
-(D-43). E5 is in progress for v0.6.0: `docs/plans/epic-05-implementation-plan.md`
-records its stories, and the E1 to E4 plans sit beside it. Usage is in `USER_GUIDE.md`. The monorepo holds
+E1 shipped as v0.2.0 (M1 was v0.1.0), E2 as v0.3.0, E3 as v0.4.0, E4 as v0.5.0
+and E5 as v0.6.0; 0.x releases are alpha builds, and 1.0.0 is the first official
+release (D-43). E6 is next. `docs/plans/epic-05-implementation-plan.md` records
+E5's stories, and the E1 to E4 plans sit beside it. Usage is in `USER_GUIDE.md`. The monorepo holds
 the Electron app (`apps/desktop`), the protocol package (`packages/protocol`),
 the Rust crates (`crates/*`) and tooling (`tools/*`).
 
