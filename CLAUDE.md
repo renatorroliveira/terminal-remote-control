@@ -42,7 +42,7 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
   launches the app in the background); `TRC_NFR_HOST=local` runs the
   connection-host measurements on This computer instead of `trc-ubuntu`, and
   `node tools/nfr-report/nfr-report.ts` prints the run's table for
-  `docs/verification/E4-nfr.md`.
+  `docs/verification/E5-nfr.md`.
 - Soak (NFR-11, P-25): `pnpm test:soak` (needs the test hosts, the daemons and
   `tools/test-hosts/fetch-old-daemon.sh`); `TRC_SOAK_CYCLES` (1,000),
   `TRC_SOAK_APP_CYCLES` (50) and `TRC_SOAK_LOGOUT_CYCLES` (1,000) set the
