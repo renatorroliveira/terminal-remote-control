@@ -205,6 +205,21 @@ describe('SettingsView: shortcuts (A11Y-05.7)', () => {
         await expect.element(view.getByRole('button', { name: 'Change Find…' })).toHaveFocus();
     });
 
+    it('starts each host’s shells with shell integration until its switch is off (US-5.1.3)', async () => {
+        const { client, workspace, shell, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        shell.run('settings.show');
+        await openSection(screen, 'Hosts');
+        const view = settingsView(screen);
+        const group = view.getByRole('group', { name: 'Shell integration' });
+        const integration = group.getByRole('switch', { name: 'devbox-1' });
+        await expect.element(integration).toBeChecked();
+        await group.getByText('devbox-1', { exact: true }).click();
+        await expect.poll(() => workspace.store.getState().hosts[0]?.shellIntegrationOff).toBe(true);
+        await expect.element(integration).not.toBeChecked();
+    });
+
     it('lets each host’s programs write the clipboard (SEC-06.1)', async () => {
         const { client, workspace, shell, rendered } = renderApp();
         const screen = await rendered;
@@ -212,9 +227,10 @@ describe('SettingsView: shortcuts (A11Y-05.7)', () => {
         shell.run('settings.show');
         await openSection(screen, 'Hosts');
         const view = settingsView(screen);
-        const allow = view.getByRole('switch', { name: 'devbox-1' });
+        const clipboard = view.getByRole('group', { name: 'Programs may write the clipboard (OSC 52)' });
+        const allow = clipboard.getByRole('switch', { name: 'devbox-1' });
         await expect.element(allow).not.toBeChecked();
-        await view.getByText('devbox-1', { exact: true }).click();
+        await clipboard.getByText('devbox-1', { exact: true }).click();
         await expect.poll(() => workspace.store.getState().hosts[0]?.allowClipboardWrites).toBe(true);
         await expect.element(allow).toBeChecked();
     });

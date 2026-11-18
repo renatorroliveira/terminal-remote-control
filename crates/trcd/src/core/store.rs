@@ -375,6 +375,7 @@ pub(crate) fn sample_meta(id: &str, order: u32, state: trc_protocol::SessionStat
     let options = SessionOptions {
         restore,
         save_scrollback: true,
+        integration: None,
     };
     let spec = HolderSpec {
         profile: profile.clone(),
@@ -386,6 +387,7 @@ pub(crate) fn sample_meta(id: &str, order: u32, state: trc_protocol::SessionStat
         user: "u".into(),
         options,
         data_dir: None,
+        integration_dir: None,
     };
     let info = SessionInfo {
         id: SessionId(id.into()),
@@ -404,6 +406,7 @@ pub(crate) fn sample_meta(id: &str, order: u32, state: trc_protocol::SessionStat
         options: Some(options),
         restored: None,
         persistence_failure: None,
+        integration: None,
     };
     let mut meta = SessionMeta::of(&info, &spec, Some("boot-1"), false);
     meta.info.state = state;

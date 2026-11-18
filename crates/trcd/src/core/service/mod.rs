@@ -69,6 +69,9 @@ pub struct CoreContext {
     pub store: SessionStore,
     /// The host's boot ID, which tells a host restart from processes that only ended (P-40).
     pub boot_id: Option<String>,
+    /// The shell-integration scripts' folder every holder it starts reads (US-5.1, P-73); none when it could not be
+    /// written, and shells then start without integration.
+    pub integration_dir: Option<String>,
 }
 
 /// The core's state and event loop.
@@ -335,6 +338,10 @@ impl Core {
     /// Starts a holder for `session`, bringing it back from its saved scrollback when `restore` says how;
     /// `start` and the other queued commands reach it once it is connected.
     fn launch(&mut self, session: SessionId, spec: HolderSpec, name: Option<String>, restore: Option<HolderRestore>) {
+        let spec = HolderSpec {
+            integration_dir: self.context.integration_dir.clone(),
+            ..spec
+        };
         let mut link = HolderLink::new(None, HOLDER_PROTOCOL);
         link.pending.extend(control_frame(&HolderCommand::Start {
             spec: Box::new(spec),

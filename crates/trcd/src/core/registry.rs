@@ -37,6 +37,7 @@ impl SessionRecord {
             options: Some(spec.options),
             restored: None,
             persistence_failure: None,
+            integration: None,
         };
         Self {
             info,
@@ -57,6 +58,7 @@ impl SessionRecord {
         info.failure.clone_from(&status.failure);
         info.title.clone_from(&status.title);
         info.persistence_failure = status.persistence_failure;
+        info.integration = status.integration;
         if status.cwd.is_some() {
             info.cwd.clone_from(&status.cwd);
         }
@@ -200,6 +202,7 @@ mod tests {
                 options: None,
                 restored: None,
                 persistence_failure: None,
+                integration: None,
             },
             spec: HolderSpec {
                 profile,
@@ -211,6 +214,7 @@ mod tests {
                 user: "u".into(),
                 options: SessionOptions::default(),
                 data_dir: None,
+                integration_dir: None,
             },
             closing: false,
         }
@@ -283,6 +287,7 @@ mod tests {
             cwd: Some("/tmp".into()),
             size: TerminalSize { cols: 100, rows: 30 },
             persistence_failure: None,
+            integration: None,
         };
         let info = registry.apply_status(&id("b"), &status).unwrap();
         assert_eq!(

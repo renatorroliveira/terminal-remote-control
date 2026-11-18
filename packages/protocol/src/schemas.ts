@@ -20,6 +20,7 @@ import type { SessionChange } from './generated/SessionChange';
 import type { SessionInfo } from './generated/SessionInfo';
 import type { SessionOptions } from './generated/SessionOptions';
 import type { SessionState } from './generated/SessionState';
+import type { ShellIntegration } from './generated/ShellIntegration';
 import type { ShellKind } from './generated/ShellKind';
 import type { ShellProfile } from './generated/ShellProfile';
 import type { TerminalSize } from './generated/TerminalSize';
@@ -96,7 +97,12 @@ const exitStatus: z.ZodType<ExitStatus> = z.object({
 export const SessionOptionsSchema: z.ZodType<SessionOptions> = z.object({
     restore: z.boolean(),
     saveScrollback: z.boolean(),
+    integration: z.boolean().exactOptional(),
 });
+
+const shellIntegration: z.ZodType<ShellIntegration> = z
+    .enum(['injected', 'native', 'off', 'unsupported', 'unspecified'])
+    .catch('unspecified');
 
 const restoreInfo: z.ZodType<RestoreInfo> = z.object({ at: timestamp, afterHostRestart: z.boolean() });
 
@@ -118,6 +124,7 @@ export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
     options: SessionOptionsSchema.exactOptional(),
     restored: restoreInfo.exactOptional(),
     persistenceFailure: persistenceFailure.exactOptional(),
+    integration: shellIntegration.exactOptional(),
 });
 
 const sessionChange: z.ZodType<SessionChange> = z.discriminatedUnion('kind', [
@@ -169,7 +176,9 @@ const createSessionSpec: z.ZodType<CreateSessionSpec> = z.strictObject({
     env: z.record(z.string(), z.string().nullable()),
     size: strictSize,
     scrollbackLines: u32.exactOptional(),
-    options: z.strictObject({ restore: z.boolean(), saveScrollback: z.boolean() }).exactOptional(),
+    options: z
+        .strictObject({ restore: z.boolean(), saveScrollback: z.boolean(), integration: z.boolean().exactOptional() })
+        .exactOptional(),
 });
 
 /**
@@ -207,7 +216,11 @@ export const ClientMessageSchema: z.ZodType<ClientMessage> = z.discriminatedUnio
         type: z.literal('setSessionOptions'),
         requestId: u32,
         session: sessionId,
-        options: z.strictObject({ restore: z.boolean(), saveScrollback: z.boolean() }),
+        options: z.strictObject({
+            restore: z.boolean(),
+            saveScrollback: z.boolean(),
+            integration: z.boolean().exactOptional(),
+        }),
     }),
     z.strictObject({ type: z.literal('clearScrollback'), requestId: u32, session: sessionId }),
     z.strictObject({ type: z.literal('restartDaemon'), requestId: u32 }),

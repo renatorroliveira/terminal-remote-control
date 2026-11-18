@@ -42,6 +42,10 @@ export interface InvokeContract {
         readonly args: readonly [id: string, removed: boolean];
         readonly result: KnownHost;
     };
+    readonly 'hosts:set-shell-integration': {
+        readonly args: readonly [id: string, on: boolean];
+        readonly result: KnownHost;
+    };
     readonly 'help:open-guide': {
         readonly args: readonly [section: GuideSection | undefined];
         readonly result: undefined;
@@ -102,6 +106,8 @@ export interface TrcBridge {
         setClipboardWrites(id: string, allowed: boolean): Promise<KnownHost>;
         /** Marks a host whose daemon the user removed, or clears the mark (US-3.3.3, P-45). */
         setDaemonRemoved(id: string, removed: boolean): Promise<KnownHost>;
+        /** Starts a host's new shells with TRC's shell integration, or without it (US-5.1.3). */
+        setShellIntegration(id: string, on: boolean): Promise<KnownHost>;
     };
     readonly app: {
         /** Quits now: no session runs, or the user chose to quit (US-2.1). */

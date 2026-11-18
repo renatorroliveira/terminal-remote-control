@@ -54,6 +54,10 @@ class SlowKnownHostStore implements KnownHostStore {
         return this.#hosts.setDaemonRemoved(id, removed);
     }
 
+    setShellIntegration(id: string, on: boolean): Promise<KnownHost> {
+        return this.#hosts.setShellIntegration(id, on);
+    }
+
     finish(): void {
         for (const done of this.#waiting.splice(0)) {
             done();

@@ -11,4 +11,9 @@ restore: boolean,
 /**
  * Whether its scrollback and screen are saved to disk (US-3.2.2, SEC-05).
  */
-saveScrollback: boolean, };
+saveScrollback: boolean, 
+/**
+ * Whether its shell starts with TRC's shell integration (US-5.1.3, protocol 4); absent means on, as older apps
+ * and daemons know nothing of it.
+ */
+integration?: boolean, };

@@ -57,6 +57,7 @@ export type FailedAction =
     | 'move'
     | 'forget'
     | 'clipboard'
+    | 'shellIntegration'
     | 'reattach'
     | 'options'
     | 'clearScrollback'

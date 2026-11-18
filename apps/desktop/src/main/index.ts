@@ -166,6 +166,7 @@ type HostHandlers = Pick<
     | 'hosts:set-install-root'
     | 'hosts:set-clipboard-writes'
     | 'hosts:set-daemon-removed'
+    | 'hosts:set-shell-integration'
 >;
 
 /** Checks and opens links (US-1.12.3, US-1.12.4), and opens the user guide in its own window (A11Y-10.4). */
@@ -234,6 +235,7 @@ function hostHandlers(knownHosts: KnownHosts): HostHandlers {
         'hosts:set-install-root': (id, root) => knownHosts.setInstallRoot(id, root),
         'hosts:set-clipboard-writes': (id, allowed) => knownHosts.setClipboardWrites(id, allowed),
         'hosts:set-daemon-removed': (id, removed) => knownHosts.setDaemonRemoved(id, removed),
+        'hosts:set-shell-integration': (id, on) => knownHosts.setShellIntegration(id, on),
     };
 }
 

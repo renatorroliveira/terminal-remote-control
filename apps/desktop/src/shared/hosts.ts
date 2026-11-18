@@ -20,6 +20,8 @@ export interface KnownHost {
     readonly allowClipboardWrites?: boolean;
     /** Whether the user removed its daemon, so the app does not connect it until the user does (US-3.3.3, P-45). */
     readonly daemonRemoved?: boolean;
+    /** Whether its new shells start without TRC's shell integration; on unless set (US-5.1.3). */
+    readonly shellIntegrationOff?: boolean;
     /** This computer: reached without SSH, first in the sidebar, never forgotten or moved (US-4.1, US-4.2, P-59). */
     readonly local?: true;
 }

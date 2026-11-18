@@ -1747,6 +1747,20 @@
       "value": "; otherwise choose an install location that only you can change from its actions (Shift+F10). Then connect again."
     }
   ],
+  "failure.shellIntegration": [
+    {
+      "type": 0,
+      "value": "Couldn’t change whether "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": " starts shells with shell integration."
+    }
+  ],
   "failure.sshMissing.problem": [
     {
       "type": 0,
@@ -3882,6 +3896,18 @@
     {
       "type": 0,
       "value": "For sessions created from now on, from 1,000 to 100,000."
+    }
+  ],
+  "setting.shellIntegration": [
+    {
+      "type": 0,
+      "value": "Shell integration"
+    }
+  ],
+  "setting.shellIntegration.description": [
+    {
+      "type": 0,
+      "value": "Bash, zsh and fish mark each prompt and command, so you can move between commands and hear when one fails. TRC changes none of your shell’s files. A change applies when a shell next starts."
     }
   ],
   "setting.shortcuts": [

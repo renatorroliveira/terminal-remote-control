@@ -4,6 +4,7 @@
 //! emulator and the output log, so every client gets an up-to-date snapshot or the output it missed (US-2.1.2, D-04).
 
 use std::io;
+use std::path::Path;
 use std::time::{Duration, Instant as StdInstant};
 
 use tokio::net::unix::OwnedReadHalf;
@@ -12,7 +13,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, Interval, MissedTickBehavior, interval, sleep_until};
 use trc_protocol::frame::{self, Frame, FrameKind};
-use trc_protocol::{ExitStatus, SessionState, TerminalSize};
+use trc_protocol::{ExitStatus, Integration, SessionState, ShellIntegration, ShellKind, TerminalSize};
 use trc_vt::{GhosttyTerminal, Rgb, TerminalConfig, TerminalEvent, TerminalState};
 
 mod saving;
@@ -31,6 +32,7 @@ use super::stop_plan::{DEFAULT_GRACE, StopSignal, stop_plan};
 use crate::accept_backoff::AcceptBackoff;
 use crate::frame_io::{FrameReader, FrameSender};
 use crate::peer::is_same_user;
+use crate::shell_integration::start::{Shell, ShellStart, integrated, probe_bash_major};
 use crate::time::{format_utc, now_millis};
 
 /// How often throttled status changes, such as the last-output time, are reported.
@@ -135,6 +137,7 @@ impl Holder {
                 cwd: None,
                 size: TerminalSize { cols: 80, rows: 24 },
                 persistence_failure: None,
+                integration: None,
             },
             stopping: None,
             after_exit: AfterExit::Report,
@@ -318,7 +321,9 @@ impl Holder {
         let Some(spec) = &self.spec else {
             return;
         };
-        match Pty::spawn(&spawn_spec(spec, self.status.size)) {
+        let (start, integration) = spawn_spec(spec, self.status.size);
+        self.status.integration = Some(integration);
+        match Pty::spawn(&start) {
             Ok((pty, output)) => {
                 self.status.state = SessionState::Running;
                 self.status.pid = Some(pty.pid());
@@ -585,20 +590,44 @@ impl Holder {
     }
 }
 
-fn spawn_spec(spec: &HolderSpec, size: TerminalSize) -> SpawnSpec {
+/// How the session's shell starts, with shell integration unless it is off (US-5.1, P-73), and whether it has it.
+fn spawn_spec(spec: &HolderSpec, size: TerminalSize) -> (SpawnSpec, ShellIntegration) {
     let account = Account {
         home: spec.home.clone(),
         user: spec.user.clone(),
         shell: spec.profile.path.clone(),
     };
-    SpawnSpec {
-        program: spec.profile.path.clone(),
+    let start = ShellStart {
         args: spec.profile.args.clone(),
         login: spec.profile.login,
-        cwd: spec.cwd.clone().or_else(|| spec.profile.cwd.clone()),
         env: session_environment(&account, env!("CARGO_PKG_VERSION"), &[&spec.profile.env, &spec.env]),
+    };
+    let (start, integration) = integrated_start(spec, start);
+    let spawn = SpawnSpec {
+        program: spec.profile.path.clone(),
+        args: start.args,
+        login: start.login,
+        cwd: spec.cwd.clone().or_else(|| spec.profile.cwd.clone()),
+        env: start.env,
         size,
+    };
+    (spawn, integration)
+}
+
+/// The shell's start with TRC's integration, unless the session, its profile or its host turned it off.
+fn integrated_start(spec: &HolderSpec, start: ShellStart) -> (ShellStart, ShellIntegration) {
+    if !spec.options.integration_on() || spec.profile.integration == Integration::Off {
+        return (start, ShellIntegration::Off);
     }
+    let kind = spec.profile.kind;
+    let shell = Shell {
+        kind,
+        bash_major: (kind == ShellKind::Bash)
+            .then(|| probe_bash_major(&spec.profile.path))
+            .flatten(),
+        scripts: spec.integration_dir.as_deref().map(Path::new),
+    };
+    integrated(shell, start)
 }
 
 async fn next_frame(reader: &mut Option<FrameReader<OwnedReadHalf>>) -> io::Result<Option<Frame>> {

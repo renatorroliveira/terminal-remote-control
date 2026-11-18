@@ -647,6 +647,10 @@
     "defaultMessage": "The details name the folder. If it is yours, such as your home folder, stop others writing to it with chmod go-w on {name}; otherwise choose an install location that only you can change from its actions (Shift+F10). Then connect again.",
     "description": "How to fix a failed connection."
   },
+  "failure.shellIntegration": {
+    "defaultMessage": "Couldn’t change whether {host} starts shells with shell integration.",
+    "description": "Reported when saving a host’s shell-integration setting fails."
+  },
   "failure.sshMissing.problem": {
     "defaultMessage": "This Mac has no OpenSSH client.",
     "description": "What went wrong when a connection failed."
@@ -1665,6 +1669,14 @@
   },
   "setting.scrollbackLines.description": {
     "defaultMessage": "For sessions created from now on, from 1,000 to 100,000.",
+    "description": "Setting description."
+  },
+  "setting.shellIntegration": {
+    "defaultMessage": "Shell integration",
+    "description": "Setting: one switch per host."
+  },
+  "setting.shellIntegration.description": {
+    "defaultMessage": "Bash, zsh and fish mark each prompt and command, so you can move between commands and hear when one fails. TRC changes none of your shell’s files. A change applies when a shell next starts.",
     "description": "Setting description."
   },
   "setting.shortcuts": {

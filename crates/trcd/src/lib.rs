@@ -15,6 +15,7 @@ pub mod private_dir;
 pub mod run_dir;
 pub mod service;
 pub mod session_id;
+pub mod shell_integration;
 pub mod socket;
 pub mod time;
 pub mod upgrade;

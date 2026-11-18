@@ -57,6 +57,7 @@ fn session(id: &str, state: SessionState) -> SessionInfo {
         options: None,
         restored: None,
         persistence_failure: None,
+        integration: None,
     }
 }
 
@@ -398,6 +399,7 @@ fn client_messages_v3() -> Vec<(&'static str, ClientMessage)> {
                 spec.options = Some(SessionOptions {
                     restore: true,
                     save_scrollback: false,
+                    integration: None,
                 });
                 (name, ClientMessage::Create { request_id, spec })
             }
@@ -413,6 +415,7 @@ fn client_messages_v3() -> Vec<(&'static str, ClientMessage)> {
                 options: SessionOptions {
                     restore: false,
                     save_scrollback: true,
+                    integration: None,
                 },
             },
         ),
@@ -450,6 +453,7 @@ fn server_messages_v3() -> Vec<(&'static str, ServerMessage)> {
     ended.options = Some(SessionOptions {
         restore: false,
         save_scrollback: true,
+        integration: None,
     });
     ended.exit = Some(ExitStatus {
         code: None,

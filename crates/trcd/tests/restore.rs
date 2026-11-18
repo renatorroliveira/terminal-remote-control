@@ -20,6 +20,7 @@ const MAX_ENDINGS: usize = 3;
 const OFF: SessionOptions = SessionOptions {
     restore: false,
     save_scrollback: true,
+    integration: None,
 };
 
 fn spec(name: &str, cwd: Option<&Path>, options: Option<SessionOptions>) -> CreateSessionSpec {
@@ -385,6 +386,7 @@ async fn restores_a_session_that_saves_nothing_to_disk_in_a_new_shell_below_only
     let unsaved = SessionOptions {
         restore: true,
         save_scrollback: false,
+        integration: None,
     };
     let session = create(&mut client, 1, spec("private", None, Some(unsaved))).await;
     let stream = attach(&mut client, 2, &session.id).await;

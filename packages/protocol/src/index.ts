@@ -35,6 +35,7 @@ export type { SessionId } from './generated/SessionId';
 export type { SessionInfo } from './generated/SessionInfo';
 export type { SessionOptions } from './generated/SessionOptions';
 export type { SessionState } from './generated/SessionState';
+export type { ShellIntegration } from './generated/ShellIntegration';
 export type { ShellKind } from './generated/ShellKind';
 export type { ShellProfile } from './generated/ShellProfile';
 export type { TerminalSize } from './generated/TerminalSize';

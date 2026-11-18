@@ -25,6 +25,7 @@ const HOST_SCHEMA: z.ZodType<KnownHost> = z
             .strict(),
         installRoot: z.string().min(1).max(4096),
         allowClipboardWrites: z.boolean().exactOptional(),
+        shellIntegrationOff: z.boolean().exactOptional(),
         daemonRemoved: z.boolean().exactOptional(),
         local: z.literal(true).exactOptional(),
     })
@@ -102,6 +103,13 @@ export class KnownHosts {
         );
     }
 
+    /** Starts a host's new shells with shell integration, or without it (US-5.1.3); on drops the field. */
+    setShellIntegration(id: string, on: boolean): Promise<KnownHost> {
+        return this.#change(id, ({ shellIntegrationOff: _previous, ...host }) =>
+            on ? host : { ...host, shellIntegrationOff: true },
+        );
+    }
+
     /** Marks a host whose daemon the user removed, so it is not connected at launch (P-45); false drops the mark. */
     setDaemonRemoved(id: string, removed: boolean): Promise<KnownHost> {
         return this.#change(id, ({ daemonRemoved: _previous, ...host }) =>
@@ -166,5 +174,10 @@ export class KnownHosts {
 
 /** Whether `hosts.json` keeps a host: every host the user added, and This computer only for a setting of its own. */
 function isSaved(host: KnownHost): boolean {
-    return host.id !== LOCAL_HOST_ID || host.allowClipboardWrites === true || host.daemonRemoved === true;
+    return (
+        host.id !== LOCAL_HOST_ID ||
+        host.allowClipboardWrites === true ||
+        host.daemonRemoved === true ||
+        host.shellIntegrationOff === true
+    );
 }

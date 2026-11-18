@@ -5,6 +5,7 @@ import type { RestoreInfo } from "./RestoreInfo";
 import type { SessionId } from "./SessionId";
 import type { SessionOptions } from "./SessionOptions";
 import type { SessionState } from "./SessionState";
+import type { ShellIntegration } from "./ShellIntegration";
 import type { ShellProfile } from "./ShellProfile";
 import type { TerminalSize } from "./TerminalSize";
 
@@ -75,4 +76,8 @@ restored?: RestoreInfo,
 /**
  * Why its scrollback is not being saved, while it is not (US-3.1.2).
  */
-persistenceFailure?: PersistenceFailure, };
+persistenceFailure?: PersistenceFailure, 
+/**
+ * Whether its shell runs with shell integration (US-5.1, protocol 4); absent from older daemons.
+ */
+integration?: ShellIntegration, };

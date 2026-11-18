@@ -372,6 +372,19 @@ site: from then on its links open without asking. TRC keeps the trusted prefixes
 [Files and folders](#files-and-folders)). Links without a site, such as `mailto:` or `file:` links, always ask.
 TRC never opens `javascript:` or `data:` links.
 
+### Shell integration
+
+In bash, zsh and fish, TRC marks where each prompt, command and output begins and how each command ended, so you
+can move between commands and hear when one fails. It works without any change to your
+shell's files: when a shell starts, TRC has it read a short script of TRC's first, which then runs your own startup
+files as the shell would (`.bash_profile` or `.bashrc`, `.zshrc`, `config.fish`), on Linux and on Macs, including
+the bash 3.2 that comes with macOS. fish 4 marks its commands itself, so TRC adds nothing there. A shell that
+already marks its commands, as iTerm2's integration makes it, works too.
+
+Other shells, such as `sh`, `dash` or busybox `ash`, get no marks; commands then can't be moved between, and TRC
+says why when you try. To start a host's shells without shell integration, turn off that host's switch in
+Settings, under Hosts, Shell integration; the change applies to each session the next time its shell starts.
+
 ## Moving around and commands
 
 The window has three regions: the sidebar (sessions and hosts), the terminal, and the status bar at the bottom.

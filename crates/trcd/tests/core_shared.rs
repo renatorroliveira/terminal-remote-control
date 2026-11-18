@@ -236,6 +236,7 @@ fn fake_spec(home: &str) -> HolderSpec {
         user: "tester".into(),
         options: Default::default(),
         data_dir: None,
+        integration_dir: None,
     }
 }
 
@@ -271,6 +272,7 @@ async fn serve_fake_holder(listener: UnixListener, home: String, proto: Option<u
                 cwd: None,
                 size: SIZE,
                 persistence_failure: None,
+                integration: None,
             },
         }));
         while let Ok(Some(frame)) = reader.next().await {

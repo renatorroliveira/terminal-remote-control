@@ -57,6 +57,12 @@ function handlers(display: unknown = {}): InvokeHandlers {
             installRoot: '~/.trc',
             ...(removed ? { daemonRemoved: true } : {}),
         }),
+        'hosts:set-shell-integration': async (id, on) => ({
+            id,
+            address: { destination: 'x' },
+            installRoot: '~/.trc',
+            ...(on ? {} : { shellIntegrationOff: true }),
+        }),
     };
 }
 

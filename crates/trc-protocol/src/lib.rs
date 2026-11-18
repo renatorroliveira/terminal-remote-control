@@ -13,6 +13,6 @@ pub use messages::{
 pub use profile::{Integration, ProfileOrigin, ShellKind, ShellProfile};
 pub use session::{
     EndCause, ExitStatus, PersistenceFailure, RestoreInfo, SessionId, SessionInfo, SessionOptions, SessionState,
-    TerminalSize,
+    ShellIntegration, TerminalSize,
 };
 pub use version::{MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, negotiate};

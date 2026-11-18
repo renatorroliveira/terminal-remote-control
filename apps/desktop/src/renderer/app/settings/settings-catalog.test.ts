@@ -21,7 +21,7 @@ describe('settingsMatching: the settings page’s search (A11Y-10.3)', () => {
     });
 
     it('shows a whole section when its title matches', () => {
-        expect(ids('hosts')).toEqual(['clipboardWrites']);
+        expect(ids('hosts')).toEqual(['clipboardWrites', 'shellIntegration']);
         expect(ids('keyboard')).toEqual(['tabFocusMode', 'plainF6', 'shortcuts']);
     });
 });

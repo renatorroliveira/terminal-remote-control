@@ -151,6 +151,7 @@ async fn clears_the_saved_scrollback_and_deletes_it_when_saving_stops() {
     let off = SessionOptions {
         restore: true,
         save_scrollback: false,
+        integration: None,
     };
     client.send(&ClientMessage::SetSessionOptions {
         request_id: 5,
@@ -180,6 +181,7 @@ async fn saves_nothing_for_a_session_created_with_saving_off() {
     let off = SessionOptions {
         restore: true,
         save_scrollback: false,
+        integration: None,
     };
     let (session, stream) = running(&mut client, Some(off)).await;
     client.input(stream, "echo secret-$((1+1))\r");

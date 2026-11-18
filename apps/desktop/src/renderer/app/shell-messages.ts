@@ -366,6 +366,11 @@ export const failedActionMessages = defineMessages<FailedAction>({
         defaultMessage: 'Couldn’t change whether {host} may write the clipboard.',
         description: 'Reported when saving a host’s clipboard-write setting fails.',
     },
+    shellIntegration: {
+        id: 'failure.shellIntegration',
+        defaultMessage: 'Couldn’t change whether {host} starts shells with shell integration.',
+        description: 'Reported when saving a host’s shell-integration setting fails.',
+    },
     reattach: {
         id: 'failure.reattach',
         defaultMessage: 'Couldn’t reattach every session on {host}; their terminals were closed.',
