@@ -467,6 +467,10 @@ either way.
           `com.apple.security.cs.disable-library-validation` while builds are
           ad-hoc signed: the hardened runtime otherwise refuses to load the
           Electron framework, whose ad-hoc signature has no team ID.
+        - `signIgnore` keeps the app's signing off `Resources/daemon/`: the
+          macOS daemon keeps the signature its build gave it (D-54), so its
+          bytes stay those `manifest.json`'s SHA-256 names, which the bootstrap
+          checks before it installs the daemon (SEC-04.3).
         - Outputs a dmg for installs and a zip as the update payload.
         - Electron fuses, set in `electron-builder.yml` and checked on every
           release package by `pnpm verify:artifact`: `runAsNode`,
