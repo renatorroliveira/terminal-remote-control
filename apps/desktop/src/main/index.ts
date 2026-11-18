@@ -110,6 +110,10 @@ async function start(): Promise<void> {
                     hostId,
                     text,
                 ),
+            'clipboard:copy': async (text) => {
+                clipboard.writeText(text);
+                return true;
+            },
             ...linkHandlers(home),
             ...hostHandlers(knownHosts),
             ...sidebarHandlers(config),

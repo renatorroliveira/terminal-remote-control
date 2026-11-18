@@ -20,6 +20,9 @@ const SETTINGS_DEFAULTS = {
     plainF6: false,
     audioCues: false,
     audioVolume: 50,
+    announceFailedCommands: true,
+    commandSucceededCue: false,
+    commandFailedCue: true,
 };
 
 function home(): string {

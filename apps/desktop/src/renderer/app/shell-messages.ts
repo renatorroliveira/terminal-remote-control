@@ -102,6 +102,31 @@ export const commandMessages = defineMessages<CommandId>({
         defaultMessage: 'List links…',
         description: 'Command name: lists the links on the terminal screen to open one (US-1.12.3).',
     },
+    'command.previous': {
+        id: 'command.commandPrevious',
+        defaultMessage: 'Previous command',
+        description: 'Command name: goes to the command before, as shell integration marked it (US-5.2).',
+    },
+    'command.next': {
+        id: 'command.commandNext',
+        defaultMessage: 'Next command',
+        description: 'Command name: goes to the command after, as shell integration marked it (US-5.2).',
+    },
+    'command.readOutput': {
+        id: 'command.commandReadOutput',
+        defaultMessage: 'Read last command output',
+        description: 'Command name: speaks the output of the last command that ran (US-5.2).',
+    },
+    'command.selectOutput': {
+        id: 'command.commandSelectOutput',
+        defaultMessage: 'Select last command output',
+        description: 'Command name (US-5.2).',
+    },
+    'command.copyOutput': {
+        id: 'command.commandCopyOutput',
+        defaultMessage: 'Copy last command output',
+        description: 'Command name (US-5.2).',
+    },
 });
 
 /** What the shell announces when a command changes something (A11Y-05.4, A11Y-12.1). */

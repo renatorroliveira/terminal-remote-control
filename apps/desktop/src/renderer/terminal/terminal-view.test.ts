@@ -894,6 +894,36 @@ describe('TerminalView: reconnecting and replays (US-2.2.2, D-04, D-45)', () => 
     });
 });
 
+describe('TerminalView: commands shell integration marks (US-5.2)', () => {
+    const A = '\u001b]133;A\u0007';
+    const C = '\u001b]133;C\u0007';
+    const ended = (code: number): string => `\u001b]133;D;${code}\u0007`;
+
+    it('reports a live command’s end, not one a replay rebuilds, and keeps the replayed commands for moves', async () => {
+        const notices: unknown[] = [];
+        const { view } = mount({ onNotice: (notice) => notices.push(notice) });
+        view.beginReplay('replace');
+        await written(view, `${A}$ make\r\n${C}x\r\n${ended(1)}${A}$ `);
+        view.endReplay();
+        await view.parsed();
+        await frames();
+        await written(view, `ls\r\n${C}y\r\n${ended(0)}${A}$ `);
+        expect(notices.filter((notice) => (notice as { kind: string }).kind === 'command-finished')).toEqual([
+            { kind: 'command-finished', exitCode: 0 },
+        ]);
+        expect(view.commandStep('previous')).toMatchObject({ kind: 'moved', line: '$ ls' });
+        expect(view.commandStep('previous')).toMatchObject({ kind: 'moved', line: '$ make', exitCode: 1 });
+        expect(view.lastCommandOutput()).toEqual({ kind: 'output', text: 'y', lines: 1 });
+    });
+
+    it('forgets the commands when the session restarts its screen', async () => {
+        const { view } = mount();
+        await written(view, `${A}$ make\r\n${C}x\r\n${ended(1)}${A}$ `);
+        view.restart();
+        expect(view.commandStep('previous')).toEqual({ kind: 'unavailable', reason: 'none' });
+    });
+});
+
 describe('TerminalView: another client took the session (P-27)', () => {
     it('says typing is not sent while another client has the session, until it attaches again (P-27)', async () => {
         const notices: unknown[] = [];

@@ -103,6 +103,7 @@ if (container !== null) {
             guide: { open: (section) => void window.trc.help.openGuide(section) },
             menus: { ignoreShortcuts: (ignore) => void window.trc.menus.ignoreShortcuts(ignore) },
             cues,
+            clipboard: window.trc.clipboard,
             quitControls: window.trc.app,
         });
         followQuitRequests(shell);

@@ -3,6 +3,7 @@ import { DEFAULT_TERMINAL_APPEARANCE, type TerminalAppearance } from '../../shar
 import { HostRequestError } from '../connection/host-client';
 import type { AttachFailure, NewSessionOptions, SessionKey, TerminalHost } from '../sessions/workspace-controller';
 import type { TerminalPalette } from '../ui/themes';
+import type { CommandDirection, CommandMove, CommandOutput } from './command-navigator';
 import type { FindOptions, FindResult } from './find';
 import type { TerminalLink } from './hyperlinks';
 import type { TerminalNotice } from './notices';
@@ -186,6 +187,21 @@ export class TerminalRegistry implements TerminalHost {
             }
         });
         return true;
+    }
+
+    /** Goes to the open terminal's previous or next command; undefined when no session is open (US-5.2.1). */
+    commandStep(direction: CommandDirection): CommandMove | undefined {
+        return this.#openEntry()?.view.commandStep(direction);
+    }
+
+    /** The open terminal's last command output; undefined when no session is open (US-5.2.1). */
+    lastCommandOutput(): CommandOutput | undefined {
+        return this.#openEntry()?.view.lastCommandOutput();
+    }
+
+    /** Selects the open terminal's last command output; undefined when no session is open (US-5.2.1). */
+    selectLastCommandOutput(): CommandOutput | undefined {
+        return this.#openEntry()?.view.selectLastCommandOutput();
     }
 
     /** Whether the open terminal lacks rows a resync skipped (D-45). */

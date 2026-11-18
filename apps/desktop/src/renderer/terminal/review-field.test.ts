@@ -103,3 +103,15 @@ describe('ReviewField: the whole buffer as a read-only text field (A11Y-03)', ()
         expect(field.element.value.slice(field.element.selectionStart, field.element.selectionEnd)).toBe(String(line));
     });
 });
+
+describe('ReviewField: ranges and the caret’s line (US-5.2.1)', () => {
+    it('selects from one line to another, loading the first one’s page, and says which line the caret is on', () => {
+        const { field } = setUp(2_000, 1_999);
+        field.open('Review');
+        expect(field.caretLine()).toBe(1_999);
+        field.selectLines({ line: 700, column: 2 }, { line: 702, column: 4 });
+        const { value, selectionStart, selectionEnd } = field.element;
+        expect(value.slice(selectionStart, selectionEnd)).toBe('ne 700\nline 701\nline');
+        expect(field.caretLine()).toBe(700);
+    });
+});

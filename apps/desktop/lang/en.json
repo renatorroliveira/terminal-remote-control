@@ -7,6 +7,74 @@
     "defaultMessage": "Bell in {session}.",
     "description": "Announced when the open session rings its bell."
   },
+  "announce.commandFailed": {
+    "defaultMessage": "Command failed, exit code {code}.",
+    "description": "A command in the open session ended with a non-zero exit status (US-5.2.2)."
+  },
+  "announce.commandFirst": {
+    "defaultMessage": "No earlier command.",
+    "description": "Previous command found none before the current one."
+  },
+  "announce.commandFullScreen": {
+    "defaultMessage": "Commands can’t be reached while a full-screen program runs.",
+    "description": "Command navigation refused on the alternate screen (US-5.2.3)."
+  },
+  "announce.commandIntegrationMissing": {
+    "defaultMessage": "Moving between commands needs shell integration, which this session’s shell started without. Restart the session to add it.",
+    "description": "Command navigation refused: the shell started before integration existed (US-5.2.3)."
+  },
+  "announce.commandIntegrationOff": {
+    "defaultMessage": "Moving between commands needs shell integration, which is off for {host}. Turn it on in Settings, under Hosts; it applies when a shell next starts.",
+    "description": "Command navigation refused: the user turned shell integration off for the host (US-5.2.3)."
+  },
+  "announce.commandIntegrationUnsupported": {
+    "defaultMessage": "Moving between commands needs shell integration, which bash, zsh and fish have and {shell} doesn’t.",
+    "description": "Command navigation refused: the session’s shell has no integration (US-5.2.3)."
+  },
+  "announce.commandLast": {
+    "defaultMessage": "No later command.",
+    "description": "Next command found none after the current one."
+  },
+  "announce.commandMoved": {
+    "defaultMessage": "{line}",
+    "description": "The command line moved to: its prompt and what was typed (US-5.2.1)."
+  },
+  "announce.commandMovedFailed": {
+    "defaultMessage": "{line}. Failed, exit code {code}.",
+    "description": "The command line moved to, which ended with a non-zero exit status."
+  },
+  "announce.commandMovedRunning": {
+    "defaultMessage": "{line}. Still running.",
+    "description": "The command line moved to, which has not ended yet."
+  },
+  "announce.commandNoneYet": {
+    "defaultMessage": "No command has run in this session yet.",
+    "description": "Command navigation found no command, though shell integration is on (US-5.2.3)."
+  },
+  "announce.commandOutput": {
+    "defaultMessage": "{text}",
+    "description": "The last command’s output, read aloud (US-5.2.1)."
+  },
+  "announce.commandOutputCopied": {
+    "defaultMessage": "Copied the last command’s output, {lines, plural, one {# line} other {# lines}}.",
+    "description": "Copy last command output put it on the clipboard."
+  },
+  "announce.commandOutputCopyFailed": {
+    "defaultMessage": "The last command’s output couldn’t be copied.",
+    "description": "Copy last command output failed to write the clipboard."
+  },
+  "announce.commandOutputEmpty": {
+    "defaultMessage": "The last command printed nothing.",
+    "description": "Reading, selecting or copying the last command’s output found none."
+  },
+  "announce.commandOutputSelected": {
+    "defaultMessage": "Selected the last command’s output, {lines, plural, one {# line} other {# lines}}.",
+    "description": "Select last command output selected it."
+  },
+  "announce.commandOutputTail": {
+    "defaultMessage": "Last {shown} of {lines} lines: {text}",
+    "description": "The end of a long output, read aloud; select or copy it for all of it."
+  },
   "announce.connectStep": {
     "defaultMessage": "{host}: {step}.",
     "description": "Announced politely at each step of connecting."
@@ -202,6 +270,26 @@
   "command.announcementsToggleMute": {
     "defaultMessage": "Mute output announcements",
     "description": "Command name: toggles spoken output for the open session."
+  },
+  "command.commandCopyOutput": {
+    "defaultMessage": "Copy last command output",
+    "description": "Command name (US-5.2)."
+  },
+  "command.commandNext": {
+    "defaultMessage": "Next command",
+    "description": "Command name: goes to the command after, as shell integration marked it (US-5.2)."
+  },
+  "command.commandPrevious": {
+    "defaultMessage": "Previous command",
+    "description": "Command name: goes to the command before, as shell integration marked it (US-5.2)."
+  },
+  "command.commandReadOutput": {
+    "defaultMessage": "Read last command output",
+    "description": "Command name: speaks the output of the last command that ran (US-5.2)."
+  },
+  "command.commandSelectOutput": {
+    "defaultMessage": "Select last command output",
+    "description": "Command name (US-5.2)."
   },
   "command.helpAccessibility": {
     "defaultMessage": "Accessibility help",
@@ -1491,6 +1579,10 @@
     "defaultMessage": "Settings for {session}",
     "description": "Title of the dialog that sets what a session restores and saves."
   },
+  "setting.announceFailedCommands": {
+    "defaultMessage": "Announce failed commands",
+    "description": "Setting (US-5.2.2)."
+  },
   "setting.audioCues": {
     "defaultMessage": "Sound cues",
     "description": "Setting."
@@ -1593,6 +1685,22 @@
   },
   "setting.clipboardWrites.description": {
     "defaultMessage": "TRC says each time a program puts text on the clipboard. Programs can never read it.",
+    "description": "Setting description."
+  },
+  "setting.commandFailedCue": {
+    "defaultMessage": "Sound when a command fails",
+    "description": "Setting (US-5.2.2)."
+  },
+  "setting.commandFailedCue.description": {
+    "defaultMessage": "Plays while sound cues are on, for the open session.",
+    "description": "Setting description."
+  },
+  "setting.commandSucceededCue": {
+    "defaultMessage": "Sound when a command succeeds",
+    "description": "Setting (US-5.2.2)."
+  },
+  "setting.commandSucceededCue.description": {
+    "defaultMessage": "Plays while sound cues are on, for the open session.",
     "description": "Setting description."
   },
   "setting.cursorBlink": {
@@ -1718,6 +1826,10 @@
   "settings.group.appearance": {
     "defaultMessage": "Appearance",
     "description": "Section."
+  },
+  "settings.group.commands": {
+    "defaultMessage": "Commands",
+    "description": "Section (US-5.2)."
   },
   "settings.group.hosts": {
     "defaultMessage": "Hosts",

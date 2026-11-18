@@ -27,6 +27,236 @@
       "value": "."
     }
   ],
+  "announce.commandFailed": [
+    {
+      "type": 0,
+      "value": "Command failed, exit code "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.commandFirst": [
+    {
+      "type": 0,
+      "value": "No earlier command."
+    }
+  ],
+  "announce.commandFullScreen": [
+    {
+      "type": 0,
+      "value": "Commands can’t be reached while a full-screen program runs."
+    }
+  ],
+  "announce.commandIntegrationMissing": [
+    {
+      "type": 0,
+      "value": "Moving between commands needs shell integration, which this session’s shell started without. Restart the session to add it."
+    }
+  ],
+  "announce.commandIntegrationOff": [
+    {
+      "type": 0,
+      "value": "Moving between commands needs shell integration, which is off for "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ". Turn it on in Settings, under Hosts; it applies when a shell next starts."
+    }
+  ],
+  "announce.commandIntegrationUnsupported": [
+    {
+      "type": 0,
+      "value": "Moving between commands needs shell integration, which bash, zsh and fish have and "
+    },
+    {
+      "type": 1,
+      "value": "shell"
+    },
+    {
+      "type": 0,
+      "value": " doesn’t."
+    }
+  ],
+  "announce.commandLast": [
+    {
+      "type": 0,
+      "value": "No later command."
+    }
+  ],
+  "announce.commandMoved": [
+    {
+      "type": 1,
+      "value": "line"
+    }
+  ],
+  "announce.commandMovedFailed": [
+    {
+      "type": 1,
+      "value": "line"
+    },
+    {
+      "type": 0,
+      "value": ". Failed, exit code "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.commandMovedRunning": [
+    {
+      "type": 1,
+      "value": "line"
+    },
+    {
+      "type": 0,
+      "value": ". Still running."
+    }
+  ],
+  "announce.commandNoneYet": [
+    {
+      "type": 0,
+      "value": "No command has run in this session yet."
+    }
+  ],
+  "announce.commandOutput": [
+    {
+      "type": 1,
+      "value": "text"
+    }
+  ],
+  "announce.commandOutputCopied": [
+    {
+      "type": 0,
+      "value": "Copied the last command’s output, "
+    },
+    {
+      "type": 6,
+      "value": "lines",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " line"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " lines"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.commandOutputCopyFailed": [
+    {
+      "type": 0,
+      "value": "The last command’s output couldn’t be copied."
+    }
+  ],
+  "announce.commandOutputEmpty": [
+    {
+      "type": 0,
+      "value": "The last command printed nothing."
+    }
+  ],
+  "announce.commandOutputSelected": [
+    {
+      "type": 0,
+      "value": "Selected the last command’s output, "
+    },
+    {
+      "type": 6,
+      "value": "lines",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " line"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " lines"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "announce.commandOutputTail": [
+    {
+      "type": 0,
+      "value": "Last "
+    },
+    {
+      "type": 1,
+      "value": "shown"
+    },
+    {
+      "type": 0,
+      "value": " of "
+    },
+    {
+      "type": 1,
+      "value": "lines"
+    },
+    {
+      "type": 0,
+      "value": " lines: "
+    },
+    {
+      "type": 1,
+      "value": "text"
+    }
+  ],
   "announce.connectStep": [
     {
       "type": 1,
@@ -711,6 +941,36 @@
     {
       "type": 0,
       "value": "Mute output announcements"
+    }
+  ],
+  "command.commandCopyOutput": [
+    {
+      "type": 0,
+      "value": "Copy last command output"
+    }
+  ],
+  "command.commandNext": [
+    {
+      "type": 0,
+      "value": "Next command"
+    }
+  ],
+  "command.commandPrevious": [
+    {
+      "type": 0,
+      "value": "Previous command"
+    }
+  ],
+  "command.commandReadOutput": [
+    {
+      "type": 0,
+      "value": "Read last command output"
+    }
+  ],
+  "command.commandSelectOutput": [
+    {
+      "type": 0,
+      "value": "Select last command output"
     }
   ],
   "command.helpAccessibility": [
@@ -3628,6 +3888,12 @@
       "value": "session"
     }
   ],
+  "setting.announceFailedCommands": [
+    {
+      "type": 0,
+      "value": "Announce failed commands"
+    }
+  ],
   "setting.audioCues": [
     {
       "type": 0,
@@ -3782,6 +4048,30 @@
     {
       "type": 0,
       "value": "TRC says each time a program puts text on the clipboard. Programs can never read it."
+    }
+  ],
+  "setting.commandFailedCue": [
+    {
+      "type": 0,
+      "value": "Sound when a command fails"
+    }
+  ],
+  "setting.commandFailedCue.description": [
+    {
+      "type": 0,
+      "value": "Plays while sound cues are on, for the open session."
+    }
+  ],
+  "setting.commandSucceededCue": [
+    {
+      "type": 0,
+      "value": "Sound when a command succeeds"
+    }
+  ],
+  "setting.commandSucceededCue.description": [
+    {
+      "type": 0,
+      "value": "Plays while sound cues are on, for the open session."
     }
   ],
   "setting.cursorBlink": [
@@ -3968,6 +4258,12 @@
     {
       "type": 0,
       "value": "Appearance"
+    }
+  ],
+  "settings.group.commands": [
+    {
+      "type": 0,
+      "value": "Commands"
     }
   ],
   "settings.group.hosts": [

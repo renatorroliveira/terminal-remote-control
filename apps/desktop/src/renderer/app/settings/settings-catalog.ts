@@ -5,7 +5,7 @@ import { settingDescriptionMessages, settingGroupMessages, settingLabelMessages 
 export const SETTINGS_SEARCH_ATTRIBUTE = 'data-settings-search';
 
 /** The settings page's sections, in order. */
-export const SETTING_GROUPS = ['appearance', 'speech', 'sound', 'keyboard', 'sessions', 'hosts'] as const;
+export const SETTING_GROUPS = ['appearance', 'speech', 'sound', 'keyboard', 'sessions', 'commands', 'hosts'] as const;
 
 /** One section of the settings page. */
 export type SettingGroup = (typeof SETTING_GROUPS)[number];
@@ -44,6 +44,9 @@ const GROUP_OF: Readonly<Record<SettingId, SettingGroup>> = {
     stopGraceSeconds: 'sessions',
     autoClose: 'sessions',
     pasteConfirmation: 'sessions',
+    announceFailedCommands: 'commands',
+    commandSucceededCue: 'commands',
+    commandFailedCue: 'commands',
     clipboardWrites: 'hosts',
     shellIntegration: 'hosts',
 };

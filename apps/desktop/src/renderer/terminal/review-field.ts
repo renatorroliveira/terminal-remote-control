@@ -14,10 +14,13 @@ export interface ReviewFieldOptions {
     readonly onNewOutput: () => void;
 }
 
-interface Position {
+/** A place in review mode's text: a logical line, counted from the buffer's first, and a column in it. */
+export interface ReviewPosition {
     readonly line: number;
     readonly column: number;
 }
+
+type Position = ReviewPosition;
 
 /**
  * Review mode (A11Y-03): the scrollback and screen as a read-only, multi-line text field that screen readers, braille
@@ -85,8 +88,21 @@ export class ReviewField {
 
     /** Selects columns `start` to `end` of a line, loading its page, as find does (A11Y-03.6). */
     select(line: number, start: number, end: number): void {
+        this.selectLines({ line, column: start }, { line, column: end });
+    }
+
+    /**
+     * Selects from `anchor` to `focus`, each a line and a column, loading the anchor's page (US-5.2.1); a range longer
+     * than a page ends at the page's end.
+     */
+    selectLines(anchor: ReviewPosition, focus: ReviewPosition): void {
         this.#lines = this.#read().lines;
-        this.#showAround({ line, column: start }, { line, column: end });
+        this.#showAround(anchor, focus);
+    }
+
+    /** The line the caret is on, counted from the buffer's first line. */
+    caretLine(): number {
+        return this.#position(this.element.selectionStart).line;
     }
 
     #listen(): void {
@@ -106,8 +122,9 @@ export class ReviewField {
     }
 
     #key(event: KeyboardEvent): void {
-        const toStart = (event.metaKey && event.key === 'ArrowUp') || (event.ctrlKey && event.key === 'Home');
-        const toEnd = (event.metaKey && event.key === 'ArrowDown') || (event.ctrlKey && event.key === 'End');
+        const command = event.metaKey && !event.altKey;
+        const toStart = (command && event.key === 'ArrowUp') || (event.ctrlKey && event.key === 'Home');
+        const toEnd = (command && event.key === 'ArrowDown') || (event.ctrlKey && event.key === 'End');
         if (event.key === 'Escape') {
             event.preventDefault();
             this.#options.onClose();

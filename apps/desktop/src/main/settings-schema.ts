@@ -53,6 +53,9 @@ export const SETTINGS_FIELDS = {
     plainF6: z.boolean(),
     audioCues: z.boolean(),
     audioVolume: z.number().int().min(LIMITS.audioVolume.min).max(LIMITS.audioVolume.max),
+    announceFailedCommands: z.boolean(),
+    commandSucceededCue: z.boolean(),
+    commandFailedCue: z.boolean(),
 } as const;
 
 const CHANGE = z.object(SETTINGS_FIELDS).partial().strict();

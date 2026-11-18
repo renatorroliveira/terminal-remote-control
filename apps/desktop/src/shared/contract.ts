@@ -28,6 +28,7 @@ export interface InvokeContract {
     readonly 'menus:terminal': { readonly args: readonly [canCopy: boolean]; readonly result: undefined };
     readonly 'menus:ignore-shortcuts': { readonly args: readonly [ignore: boolean]; readonly result: undefined };
     readonly 'clipboard:write': { readonly args: readonly [hostId: string, text: string]; readonly result: boolean };
+    readonly 'clipboard:copy': { readonly args: readonly [text: string]; readonly result: boolean };
     readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
     readonly 'sidebar:get-collapsed': { readonly args: readonly []; readonly result: boolean };
@@ -135,6 +136,8 @@ export interface TrcBridge {
          * process checks too; true when it wrote the clipboard (SEC-06.1).
          */
         write(hostId: string, text: string): Promise<boolean>;
+        /** Puts text the user asked to copy, such as a command's output, on the clipboard (US-5.2.1). */
+        copy(text: string): Promise<boolean>;
     };
     readonly menus: {
         /** Shows the terminal's context menu: Copy when `canCopy`, Paste, List Links and Look Up (A11Y-11.11). */

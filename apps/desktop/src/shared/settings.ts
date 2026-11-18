@@ -56,6 +56,12 @@ export interface Settings {
     readonly audioCues: boolean;
     /** The sound cues' volume, in percent. */
     readonly audioVolume: number;
+    /** Whether a command that fails in the open session is announced (US-5.2.2). */
+    readonly announceFailedCommands: boolean;
+    /** Whether a cue plays when a command in the open session succeeds, while sound cues are on (US-5.2.2). */
+    readonly commandSucceededCue: boolean;
+    /** Whether a cue plays when a command in the open session fails, while sound cues are on (US-5.2.2). */
+    readonly commandFailedCue: boolean;
 }
 
 /** The ranges the numeric settings accept. */
@@ -85,6 +91,9 @@ export const DEFAULT_SETTINGS: Settings = {
     plainF6: false,
     audioCues: false,
     audioVolume: 50,
+    announceFailedCommands: true,
+    commandSucceededCue: false,
+    commandFailedCue: true,
 };
 
 /** The keymap the settings put in force: the user's shortcuts, and plain F6 when on (A11Y-05.2, A11Y-05.7). */

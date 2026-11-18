@@ -33,6 +33,7 @@ function handlers(display: unknown = {}): InvokeHandlers {
         'links:open': async () => undefined,
         'menus:terminal': async () => undefined,
         'clipboard:write': async () => true,
+        'clipboard:copy': async () => true,
         'sidebar:get-width': async () => 400,
         'sidebar:set-width': async () => undefined,
         'sidebar:get-collapsed': async () => false,
@@ -91,6 +92,9 @@ describe('registerHandlers (zod at the renderer boundary)', () => {
         await expect(async () =>
             registered.get('clipboard:write')?.({}, 'host-0000000000000000', 'x'.repeat(1_048_577)),
         ).rejects.toThrow(/invalid arguments/);
+        await expect(async () => registered.get('clipboard:copy')?.({}, 'x'.repeat(16_777_217))).rejects.toThrow(
+            /invalid arguments/,
+        );
         await expect(async () => registered.get('links:check')?.({}, 'x'.repeat(9_000))).rejects.toThrow(
             /invalid arguments/,
         );

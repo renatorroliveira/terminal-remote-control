@@ -22,6 +22,11 @@ export const COMMAND_IDS = [
     'review.toggle',
     'terminal.find',
     'terminal.clearScrollback',
+    'command.previous',
+    'command.next',
+    'command.readOutput',
+    'command.selectOutput',
+    'command.copyOutput',
     'settings.show',
     'app.quitAndStopAll',
 ] as const;
@@ -91,6 +96,11 @@ export const DEFAULT_KEYMAP: Readonly<Partial<Record<CommandId, string>>> = {
     'review.toggle': 'Option+F2',
     'terminal.find': 'Cmd+F',
     'terminal.clearScrollback': 'Cmd+K',
+    'command.previous': 'Option+Cmd+Up',
+    'command.next': 'Option+Cmd+Down',
+    'command.readOutput': 'Option+Cmd+R',
+    'command.selectOutput': 'Option+Cmd+A',
+    'command.copyOutput': 'Option+Cmd+C',
     'settings.show': 'Cmd+,',
 };
 

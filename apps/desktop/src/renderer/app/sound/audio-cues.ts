@@ -1,7 +1,8 @@
 import type { Settings } from '../../../shared/settings';
 
 /** Something that has a sound cue beside its announcement (A11Y-12.4). */
-export type AudioCue = 'bell' | 'connected' | 'disconnected' | 'failed' | 'input-refused';
+export type AudioCue =
+    'bell' | 'connected' | 'disconnected' | 'failed' | 'input-refused' | 'command-succeeded' | 'command-failed';
 
 /** One tone of a cue. */
 export interface Tone {
@@ -9,7 +10,10 @@ export interface Tone {
     readonly seconds: number;
 }
 
-/** Each cue's tones: rising for a connection, falling for a loss, low for a refusal, all under 3 seconds. */
+/**
+ * Each cue's tones, all under 3 seconds: rising for a connection, falling for a loss, low for a refusal, one short high
+ * tone for a command that succeeded and two low ones for a command that failed.
+ */
 export const AUDIO_CUES: Readonly<Record<AudioCue, readonly Tone[]>> = {
     bell: [{ frequency: 880, seconds: 0.15 }],
     connected: [
@@ -25,6 +29,11 @@ export const AUDIO_CUES: Readonly<Record<AudioCue, readonly Tone[]>> = {
         { frequency: 261.63, seconds: 0.25 },
     ],
     'input-refused': [{ frequency: 220, seconds: 0.2 }],
+    'command-succeeded': [{ frequency: 1046.5, seconds: 0.08 }],
+    'command-failed': [
+        { frequency: 329.63, seconds: 0.1 },
+        { frequency: 329.63, seconds: 0.1 },
+    ],
 };
 
 /** What a cue plays through: a clock and a tone generator, Web Audio in the app. */
