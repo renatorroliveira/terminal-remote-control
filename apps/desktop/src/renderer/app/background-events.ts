@@ -16,7 +16,10 @@ import type { NotificationCenter } from './notifications';
 
 /** How close two bells of one session are to count as one: the daemon and the terminal may both report it. */
 export const BELL_MERGE_MS = 1_000;
-/** The shortest time between two OS notifications of one session, so a session that keeps ringing can't flood them. */
+/**
+ * The shortest time between two OS notifications of one kind for one session, so a session that keeps ringing can't
+ * flood them; the in-app list keeps every one.
+ */
 export const NOTICE_INTERVAL_MS = 10_000;
 
 /** The settings that decide what each background event does (US-5.3.1). */
@@ -74,7 +77,7 @@ const ENDED: ReadonlySet<SessionInfo['state']> = new Set(['exited', 'failedToSta
 export class BackgroundEvents {
     readonly #options: BackgroundEventsOptions;
     readonly #lastBell = new Map<SessionKey, number>();
-    readonly #lastNotice = new Map<SessionKey, number>();
+    readonly #lastNotice = new Map<string, number>();
 
     /** Background events over `options`; {@link BackgroundEvents.start} starts watching. */
     constructor(options: BackgroundEventsOptions) {
@@ -145,20 +148,23 @@ export class BackgroundEvents {
         if (wanted.announce) {
             announcer.announce(text, { group: `bg:${event.key}` });
         }
-        if (wanted.notify && this.#noticeDue(event.key)) {
+        if (wanted.notify) {
             this.#options.notifications.add({ text, level: 'info' });
+        }
+        if (wanted.notify && this.#noticeDue(event)) {
             const title = intl.formatMessage(backgroundNoticeTitle, { session: found.ownName, host: found.host });
             const body = this.#eventText(event, backgroundNoticeBodies);
             void this.#options.os?.post({ title, body, key: event.key }).catch(() => false);
         }
     }
 
-    #noticeDue(key: SessionKey): boolean {
+    #noticeDue(event: BackgroundEvent): boolean {
         const now = this.#options.now();
-        if (now - (this.#lastNotice.get(key) ?? Number.NEGATIVE_INFINITY) < NOTICE_INTERVAL_MS) {
+        const kind = `${event.key}\n${event.kind}`;
+        if (now - (this.#lastNotice.get(kind) ?? Number.NEGATIVE_INFINITY) < NOTICE_INTERVAL_MS) {
             return false;
         }
-        this.#lastNotice.set(key, now);
+        this.#lastNotice.set(kind, now);
         return true;
     }
 

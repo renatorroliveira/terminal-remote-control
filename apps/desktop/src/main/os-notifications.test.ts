@@ -68,7 +68,7 @@ describe('OsNotifications: background events as OS notifications (US-5.3.1, P-76
         expect(unsupported.created).toEqual([]);
     });
 
-    it('posts one notification a session every 10 s at most, and keeps only the newest for their clicks', () => {
+    it('posts one notification a session every 2 s at most, and keeps only the newest for their clicks', () => {
         const { notifications, clock } = setUp();
         expect(notifications.post(NOTICE)).toBe(true);
         expect(notifications.post(NOTICE)).toBe(false);

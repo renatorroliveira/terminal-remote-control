@@ -152,8 +152,11 @@ describe('BackgroundEvents: events in sessions that are not open (US-5.3)', () =
         expect(posted).toEqual([{ title: 'build on devbox-1', body: 'Ended, exit code 0.', key: 'h1/build' }]);
     });
 
-    it('posts at most one OS notification a session every 10 s, and none for an end a restore reports', async () => {
-        const { store, posted, report, advance } = setUp({ notifyBackgroundBell: true, notifyBackgroundEnd: true });
+    it('posts one OS notification of a kind a session every 10 s, lists them all, and none for a restore’s end', async () => {
+        const { store, posted, listed, report, advance } = setUp({
+            notifyBackgroundBell: true,
+            notifyBackgroundEnd: true,
+        });
         report('h1/build', { type: 'bell' });
         advance(BELL_MERGE_MS);
         report('h1/build', { type: 'bell' });
@@ -164,6 +167,7 @@ describe('BackgroundEvents: events in sessions that are not open (US-5.3)', () =
             sessions: new Map([['h1', [restarted, ...(store.getState().sessions.get('h1') ?? []).slice(1)]]]),
         });
         expect(posted.map((notice) => notice.body)).toEqual(['Bell.', 'Bell.']);
+        expect(listed).toHaveLength(3);
         expect(store.getState().ended).toEqual(new Set());
     });
 

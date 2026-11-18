@@ -14,8 +14,9 @@ use ghostty_vt_sys as sys;
 use crate::grid::{SCREEN, TrackedRow, format_rows, wraps};
 use crate::{CommandStep, VtError};
 
-/// The most marks kept, three per command (its prompt, its output and its end); the oldest go first.
-const MAX_MARKS: usize = 3_000;
+/// The most marks kept, four per command (its prompt, input start, output and end), so 1,000 commands (P-79); the
+/// oldest go first.
+const MAX_MARKS: usize = 4_000;
 
 /// The marks of a terminal's commands, oldest first.
 pub(crate) struct Marks {
@@ -34,25 +35,19 @@ impl Marks {
     }
 
     /// Takes a step reported at `row` ([`SCREEN`] coordinates) of `terminal`, and says whether it is a new step of a
-    /// command rather than a repeat. The prompt, output, end and bookmarks are kept with their row; the input start is
-    /// not, as it shares the prompt's. A prompt after a prompt where no command ran, as an empty Return or Ctrl+C
-    /// leaves, takes that one's place, so empty prompts never push commands out of the log.
+    /// command rather than a repeat. Every step is kept with its row, the input start too, so a prompt of several
+    /// lines still says where the command was typed after a snapshot. A prompt after one where no command ran, as an
+    /// empty Return or Ctrl+C leaves, takes that one's place, so empty prompts never push commands out of the log.
     pub(crate) fn accept(&mut self, terminal: sys::GhosttyTerminal, step: CommandStep, row: u32) -> bool {
         let last = self.log.back().map(|mark| (mark.step, mark.row.y()));
         let accepted = match step {
-            CommandStep::Prompt => last != Some((CommandStep::Prompt, Some(row))),
+            CommandStep::Prompt => return self.accept_prompt(terminal, row),
             CommandStep::Bookmark => last != Some((CommandStep::Bookmark, Some(row))),
             CommandStep::Input => matches!(last, Some((CommandStep::Prompt, _))),
             CommandStep::Output => !matches!(last, Some((CommandStep::Output, _))),
             CommandStep::End { .. } => matches!(last, Some((CommandStep::Output, _))),
         };
-        if !accepted || step == CommandStep::Input {
-            return accepted;
-        }
-        if step == CommandStep::Prompt && matches!(last, Some((CommandStep::Prompt, _))) {
-            self.log.pop_back();
-        }
-        self.keep(terminal, step, row)
+        accepted && self.keep(terminal, step, row, 0)
     }
 
     /// The steps marked on rows `first..=last`, by row and then in the order they came. Marks come in row order and
@@ -69,11 +64,31 @@ impl Marks {
         marked
     }
 
-    /// Keeps `step` on `row`; false when the row can't be tracked, so the step is not reported either.
-    fn keep(&mut self, terminal: sys::GhosttyTerminal, step: CommandStep, row: u32) -> bool {
+    /// Takes a prompt: one redrawn on the row of a prompt where no command ran counts once, and one on another row takes
+    /// its place, with that prompt's input start.
+    fn accept_prompt(&mut self, terminal: sys::GhosttyTerminal, row: u32) -> bool {
+        let idle = self.idle_marks();
+        let redrawn = idle > 0 && self.log[self.log.len() - idle].row.y() == Some(row);
+        !redrawn && self.keep(terminal, CommandStep::Prompt, row, idle)
+    }
+
+    /// How many marks at the end belong to a prompt where no command ran: the prompt, and its input start if any.
+    fn idle_marks(&self) -> usize {
+        let mut steps = self.log.iter().rev().map(|mark| mark.step);
+        match (steps.next(), steps.next()) {
+            (Some(CommandStep::Prompt), _) => 1,
+            (Some(CommandStep::Input), Some(CommandStep::Prompt)) => 2,
+            _ => 0,
+        }
+    }
+
+    /// Keeps `step` on `row` in place of the last `replaced` marks; false when the row can't be tracked, which then
+    /// changes nothing and reports nothing.
+    fn keep(&mut self, terminal: sys::GhosttyTerminal, step: CommandStep, row: u32, replaced: usize) -> bool {
         let Ok(tracked) = TrackedRow::new(terminal, row) else {
             return false;
         };
+        self.log.truncate(self.log.len() - replaced);
         if self.log.len() == MAX_MARKS {
             self.log.pop_front();
         }
@@ -183,9 +198,11 @@ pub(crate) mod tests {
             marked,
             [
                 (0, CommandStep::Prompt),
+                (0, CommandStep::Input),
                 (1, CommandStep::Output),
                 (4, CommandStep::End { exit_code: Some(0) }),
                 (4, CommandStep::Prompt),
+                (4, CommandStep::Input),
                 (5, CommandStep::Output),
                 (25, CommandStep::End { exit_code: Some(2) }),
                 (25, CommandStep::Prompt),
@@ -217,9 +234,10 @@ pub(crate) mod tests {
         term.feed(&"\x1b]133;A\x07$ \r\n".repeat(super::MAX_MARKS + 500).into_bytes());
         term.feed(b"\x1b]133;A\x07$ ");
         let marked = term.marks().in_rows(0, u32::MAX);
-        assert_eq!(marked.len(), 4, "{marked:?}");
+        assert_eq!(marked.len(), 5, "{marked:?}");
         assert_eq!(marked[0].1, CommandStep::Prompt);
-        assert_eq!(marked[2].1, CommandStep::End { exit_code: Some(0) });
+        assert_eq!(marked[3].1, CommandStep::End { exit_code: Some(0) });
+        assert_eq!(marked[4].1, CommandStep::Prompt);
     }
 
     #[test]
@@ -261,8 +279,8 @@ pub(crate) mod tests {
         term.feed(&"filler\r\n".repeat(3_000).into_bytes());
         term.feed(&command("new", 1, 4));
         let marked = term.marks().in_rows(0, u32::MAX);
-        assert_eq!(marked.len(), 3, "{marked:?}");
-        assert_eq!(marked[2].1, CommandStep::End { exit_code: Some(4) });
+        assert_eq!(marked.len(), 4, "{marked:?}");
+        assert_eq!(marked[3].1, CommandStep::End { exit_code: Some(4) });
     }
 
     #[test]

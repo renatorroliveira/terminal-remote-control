@@ -30,6 +30,7 @@ import { refuseNavigation } from './navigation-guard';
 import { disableNetworkSwitches, lockDownNetwork } from './network-guard';
 import { openExternalFor } from './open-external';
 import { OsNotifications } from './os-notifications';
+import { Pacer } from './pacer';
 import { QuitGuard } from './quit-guard';
 import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, GUIDE_CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
@@ -39,7 +40,6 @@ import { NO_TEST_SEAM } from './test-seam';
 import { readTestSeam } from './test-seam-reader';
 import { trcHome } from './trc-home';
 import { isAppPage } from './trusted-sender';
-import { UserActionClock } from './user-action';
 
 refuseRemoteDebugging(app.commandLine, { testBuild: __TRC_TEST_SEAM__ });
 disableNetworkSwitches(app.commandLine);
@@ -53,7 +53,8 @@ let mainWindow: BrowserWindow | undefined;
 let keymap: Keymap = keymapFor({ shortcuts: {}, plainF6: false });
 /** Whether the settings page records a shortcut, so the menus give up theirs (A11Y-05.7). */
 let recordingShortcut = false;
-const userActions = new UserActionClock();
+/** Copy last command output is a user's command; a page asking faster than this is refused (SEC-06). */
+const copies = new Pacer(500);
 const testSeam = __TRC_TEST_SEAM__ ? readTestSeam(process.env) : NO_TEST_SEAM;
 const background = testSeam.background;
 
@@ -123,7 +124,7 @@ async function start(): Promise<void> {
                 ),
             'notifications:post': async (notice) => osNotifications.post(notice),
             'clipboard:copy': async (text) => {
-                if (!userActions.recent()) {
+                if (!copies.allow()) {
                     return false;
                 }
                 clipboard.writeText(text);
@@ -141,11 +142,6 @@ async function start(): Promise<void> {
     installMenu(display, config, theme);
     mainWindow = createWindow(display, screenReader, localRoot);
     mainWindow.on('close', (event) => quitGuard.beforeQuit(event));
-    mainWindow.webContents.on('before-input-event', (_event, input) => {
-        if (input.type === 'keyDown') {
-            userActions.note();
-        }
-    });
 }
 
 /**
@@ -339,10 +335,7 @@ function installMenu(display: DisplayRelay, config: AppConfigFile, theme: ThemeP
 function menuActions(): Pick<MenuOptions, 'keymap' | 'onCommand' | 'onLookUp'> {
     return {
         keymap: recordingShortcut ? UNBOUND_KEYMAP : keymap,
-        onCommand: (command) => {
-            userActions.note();
-            mainWindow?.webContents.send(APP_COMMAND_CHANNEL, command);
-        },
+        onCommand: (command) => mainWindow?.webContents.send(APP_COMMAND_CHANNEL, command),
         onLookUp: () => mainWindow?.webContents.showDefinitionForSelection(),
     };
 }
