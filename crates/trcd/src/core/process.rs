@@ -13,6 +13,7 @@ use tokio::net::UnixListener;
 use trc_protocol::{DaemonDetails, ServiceInfo, ServiceManager};
 
 use super::account::current_account;
+pub use super::service::Ending;
 use super::service::{Core, CoreContext};
 use super::store::{SessionStore, boot_id};
 use crate::command::Supervisor;
@@ -38,11 +39,12 @@ pub enum StartError {
     Io(#[from] io::Error),
 }
 
-/// Runs the core in the foreground until it is killed. Under systemd, holders start in their own transient scopes,
-/// outside the unit's control group (US-2.5.2); under launchd they already run in sessions of their own (D-50).
+/// Runs the core in the foreground until an app asks it to end or SIGTERM ends it, and says which. Under systemd,
+/// holders start in their own transient scopes, outside the unit's control group (US-2.5.2); under launchd they
+/// already run in sessions of their own (D-50).
 ///
 /// The core creates its files with umask 077; holders get back the umask the core inherited.
-pub fn run(layout: &InstallLayout, supervisor: Supervisor) -> Result<(), StartError> {
+pub fn run(layout: &InstallLayout, supervisor: Supervisor) -> Result<Ending, StartError> {
     let uid = rustix::process::geteuid().as_raw();
     let login_umask = rustix::process::umask(Mode::from_raw_mode(0o077));
     let run = RunDir::for_root(&layout.root, uid);
@@ -98,8 +100,7 @@ pub fn run(layout: &InstallLayout, supervisor: Supervisor) -> Result<(), StartEr
     runtime.block_on(async {
         let mut core = Core::new(context);
         core.adopt().await;
-        core.serve(UnixListener::from_std(listener)?).await;
-        Ok(())
+        Ok(core.serve(UnixListener::from_std(listener)?).await)
     })
 }
 

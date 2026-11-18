@@ -25,6 +25,10 @@ pub const LOG_FILE: &str = "launchd.log";
 pub const LOG_LIMIT: u64 = 1 << 20;
 /// The plist's key whose block holds the variables the core starts with.
 const ENVIRONMENT_KEY: &str = "\t<key>EnvironmentVariables</key>\n";
+/// How many of the core's last log lines a bridge passes on.
+const SAID_LINES: usize = 3;
+/// The plist's key whose value is the umask holders get.
+const UMASK_KEY: &str = "\t<key>Umask</key>\n";
 
 /// What a LaunchAgent for the core holds.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,14 +116,31 @@ pub fn agent_plist(spec: &AgentSpec) -> String {
 }
 
 /// The step that brings launchd to the agent wanted, from whether one is loaded and the plist written last. A plist
-/// that differs only in the variables of the bridge that wrote it, such as another client's `PATH`, is the agent
-/// wanted: replacing it would end a core that may be starting up.
+/// that differs only in what the bridge that wrote it passed on, its variables and umask, such as another client's
+/// `PATH`, is the agent wanted: replacing it would end a core that may be starting up.
 pub fn next_step(loaded: bool, written: Option<&str>, wanted: &str) -> AgentStep {
     match (loaded, written) {
         (false, _) => AgentStep::Bootstrap,
-        (true, Some(text)) if without_environment(text) == without_environment(wanted) => AgentStep::Kickstart,
+        (true, Some(text)) if without_bridge_settings(text) == without_bridge_settings(wanted) => AgentStep::Kickstart,
         (true, _) => AgentStep::Replace,
     }
+}
+
+/// How long the agent's standard error log in `logs` is now, 0 when there is none: the mark
+/// [`core_said_since`] reads from.
+pub fn log_length(logs: &Path) -> u64 {
+    std::fs::symlink_metadata(logs.join(LOG_FILE)).map_or(0, |meta| meta.len())
+}
+
+/// The last lines the agent's core wrote to its standard error log in `logs` after `from` bytes, joined with `; `,
+/// so a bridge whose core never came up can say why; none when it wrote nothing since.
+pub fn core_said_since(logs: &Path, from: u64) -> Option<String> {
+    let text = std::fs::read(logs.join(LOG_FILE)).ok()?;
+    let start = usize::try_from(from).ok().filter(|start| *start <= text.len())?;
+    let said = String::from_utf8_lossy(&text[start..]).into_owned();
+    let lines: Vec<&str> = said.lines().filter(|line| !line.trim().is_empty()).collect();
+    let last = lines.get(lines.len().saturating_sub(SAID_LINES)..)?;
+    (!last.is_empty()).then(|| last.join("; "))
 }
 
 /// Empties the agent's standard error log in `logs` once it outgrew [`LOG_LIMIT`], as a starting core does: launchd
@@ -135,9 +156,12 @@ pub fn trim_log(logs: &Path) {
     }
 }
 
-/// Whether the user has a GUI login session, the `gui/<uid>` domain a LaunchAgent needs (P-61).
+/// Whether the user has a GUI login session, the `gui/<uid>` domain a LaunchAgent needs (P-61), asked twice as a
+/// loaded Mac may let the first ask time out.
 pub fn has_gui_session(uid: u32) -> bool {
-    cfg!(target_os = "macos") && succeeds("launchctl", &["print", &format!("gui/{uid}")])
+    let domain = format!("gui/{uid}");
+    cfg!(target_os = "macos")
+        && (succeeds("launchctl", &["print", &domain]) || succeeds("launchctl", &["print", &domain]))
 }
 
 /// Registers the core for `root` as a LaunchAgent running `binary` and starts it (P-60), with its standard error in
@@ -146,6 +170,7 @@ pub fn start_agent(binary: &Path, root: &Path, umask: Mode, home: &Path) -> io::
     let uid = rustix::process::geteuid().as_raw();
     let logs = root.join("logs");
     ensure_private_dir(&logs, uid)?;
+    create_private_log(&logs.join(LOG_FILE))?;
     let spec = AgentSpec {
         label: agent_label(root),
         binary: binary.to_owned(),
@@ -227,6 +252,18 @@ fn bootstrap(uid: u32, file: &Path, text: &str) -> io::Result<()> {
     Err(io::Error::other("launchctl bootstrap did not load the core's agent"))
 }
 
+/// Creates the agent's standard error log, or takes the one there, 0600, so it is the user's alone whatever umask the
+/// plist carries: launchd appends to a file that exists and keeps its mode (SEC-08.2).
+fn create_private_log(log: &Path) -> io::Result<()> {
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .mode(0o600)
+        .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits().cast_signed())
+        .open(log)?;
+    file.set_permissions(std::os::unix::fs::PermissionsExt::from_mode(0o600))
+}
+
 /// Whether launchd runs `service` or is about to start it, so a kickstart that failed while it started needs no retry.
 fn service_starts_or_runs(service: &str) -> bool {
     probe("launchctl", &["print", service]).is_some_and(|text| starts_or_runs(&text))
@@ -238,19 +275,30 @@ fn write_private(file: &Path, text: &str) -> io::Result<()> {
     let temporary = file.with_extension(format!("plist.{}.new", std::process::id()));
     let mut options = std::fs::OpenOptions::new();
     options.create(true).write(true).truncate(true).mode(0o600);
-    io::Write::write_all(&mut options.open(&temporary)?, text.as_bytes())?;
-    std::fs::rename(&temporary, file)
+    let written = options
+        .open(&temporary)
+        .and_then(|mut handle| io::Write::write_all(&mut handle, text.as_bytes()))
+        .and_then(|()| std::fs::rename(&temporary, file));
+    if written.is_err() {
+        let _ = std::fs::remove_file(&temporary);
+    }
+    written
 }
 
-/// A plist's text without its environment block.
-fn without_environment(text: &str) -> String {
-    let Some(start) = text.find(ENVIRONMENT_KEY) else {
+/// A plist's text without what the registering bridge passed on: its environment block and its umask.
+fn without_bridge_settings(text: &str) -> String {
+    let text = without_entry(text, ENVIRONMENT_KEY, "\n\t</dict>\n");
+    without_entry(&text, UMASK_KEY, "</integer>\n")
+}
+
+/// A plist's text without the entry from `key` through the first `end` after it, or as it is without both.
+fn without_entry(text: &str, key: &str, end: &str) -> String {
+    let Some(start) = text.find(key) else {
         return text.to_owned();
     };
-    let block_end = "\n\t</dict>\n";
-    text[start..].find(block_end).map_or_else(
+    text[start..].find(end).map_or_else(
         || text.to_owned(),
-        |length| format!("{}{}", &text[..start], &text[start + length + block_end.len()..]),
+        |length| format!("{}{}", &text[..start], &text[start + length + end.len()..]),
     )
 }
 
@@ -342,6 +390,7 @@ mod tests {
     fn starts_a_loaded_agent_whose_plist_differs_only_in_the_environment() {
         let mut other = spec();
         other.env = vec![("PATH".into(), "/opt/homebrew/bin:/usr/bin".into())];
+        other.umask = 0o077;
         let loaded = agent_plist(&other);
         assert_eq!(
             next_step(true, Some(&loaded), &agent_plist(&spec())),
@@ -367,6 +416,44 @@ mod tests {
         trim_log(&logs);
         assert_eq!(std::fs::metadata(&log).unwrap().len(), 0);
         trim_log(&logs.join("missing"));
+        let elsewhere = logs.join("elsewhere.log");
+        std::fs::write(&elsewhere, vec![b'x'; full]).unwrap();
+        std::fs::remove_file(&log).unwrap();
+        std::os::unix::fs::symlink(&elsewhere, &log).unwrap();
+        trim_log(&logs);
+        assert_eq!(
+            std::fs::metadata(&elsewhere).unwrap().len(),
+            LOG_LIMIT + 1,
+            "followed a symbolic link"
+        );
+    }
+
+    #[test]
+    fn says_what_the_core_logged_since_a_mark_and_nothing_older() {
+        let logs = crate::test_support::temp_dir("launchd-said");
+        assert_eq!((log_length(&logs), core_said_since(&logs, 0)), (0, None));
+        let log = logs.join(LOG_FILE);
+        std::fs::write(&log, "trcd: an old refusal\n").unwrap();
+        let mark = log_length(&logs);
+        assert_eq!(core_said_since(&logs, mark), None);
+        let more = "trcd: one\ntrcd: two\ntrcd: three\ntrcd: the install can be changed by other users\n";
+        std::fs::write(&log, format!("trcd: an old refusal\n{more}")).unwrap();
+        assert_eq!(
+            core_said_since(&logs, mark).as_deref(),
+            Some("trcd: two; trcd: three; trcd: the install can be changed by other users")
+        );
+        assert_eq!(core_said_since(&logs, mark + 1_000), None);
+    }
+
+    #[test]
+    fn creates_the_agent_s_log_for_the_user_alone_whatever_the_umask() {
+        let logs = crate::test_support::temp_dir("launchd-log-mode");
+        let log = logs.join(LOG_FILE);
+        std::fs::write(&log, b"").unwrap();
+        std::fs::set_permissions(&log, std::os::unix::fs::PermissionsExt::from_mode(0o644)).unwrap();
+        create_private_log(&log).unwrap();
+        let mode = std::os::unix::fs::PermissionsExt::mode(&std::fs::metadata(&log).unwrap().permissions());
+        assert_eq!(mode & 0o777, 0o600);
     }
 
     #[test]

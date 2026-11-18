@@ -694,11 +694,17 @@ outside the install root.
       `USER`, `LOGNAME`, `SHELL`, `PATH` and umask, `ProcessType` Interactive
       and its standard error in the install's private `logs/launchd.log`.
     - A bridge that finds the agent loaded but its core stopped (after Restart
-      daemon) runs `launchctl kickstart`; a plist that changed is booted out,
-      rewritten and bootstrapped; an upgrade boots the old agent out first. No
-      step ends a holder, and a logout ends only the core (S8, P-62).
-    - `KeepAlive` restarts a core after any unsuccessful exit, so under launchd
-      a core refused for another core or an untrusted install exits with 0.
+      daemon) runs `launchctl kickstart`; a plist that changed, other than in
+      the registering bridge's variables, is booted out, rewritten and
+      bootstrapped; an upgrade boots the old agent out first. No step ends a
+      holder, and a logout ends only the core (S8, P-62).
+    - `KeepAlive` restarts a core after any unsuccessful exit, within a second
+      (`ThrottleInterval`), so under launchd a core refused for another core or
+      an untrusted install, which a retry cannot fix, exits with 0, and one
+      ended by SIGTERM from anyone but launchd exits with 143 and starts again.
+      Unlike systemd, launchd sets no start limit, so a core that keeps failing
+      starts again every second; a starting core empties `launchd.log` once it
+      passes 1 MiB, and the bridge creates that file 0600.
     - Remove daemon boots the agent out and deletes its plist before deleting
       the install.
 - **Windows (E6).**
@@ -1393,6 +1399,8 @@ max_line_length = 120
 - `rustfmt.toml`: `edition = "2024"`, `max_width = 120`, `tab_spaces = 4`,
   `hard_tabs = false`, `newline_style = "Unix"`.
 - `clippy.toml`: `cognitive-complexity-threshold = 10`.
+- `.config/nextest.toml`: shows the output of the LaunchAgent tests even when they
+  pass, so a run without a GUI login says that they checked nothing.
 - `Cargo.toml`, under `[workspace.lints.clippy]`:
   `all = { level = "deny", priority = -1 }` and `cognitive_complexity = "deny"`.
   A justified exception uses

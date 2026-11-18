@@ -3,13 +3,14 @@
 Measured on 2026-11-17 on This computer, the owner's Mac, and on the macOS test host (P-57), by the NFR tests with
 `TRC_NFR_HOST=local`, `ui.spec.ts` and the soak scenarios `launchd.soak.test.ts` and `app.spec.ts`.
 `node tools/nfr-report/nfr-report.ts` prints a run's table from `apps/desktop/nfr-results/results.jsonl`. E1's to
-E3's results (`E1-nfr.md` to `E3-nfr.md`) still describe the Linux hosts, which E4 did not change.
+E3's results (`E1-nfr.md` to `E3-nfr.md`) describe the Linux hosts before E4, which changed code they run too (the
+bridge, upgrades and the bootstrap); the Linux measurements and soaks below ran again on E4's build.
 
 ## Conditions
 
 | Item          | Value                                                                                                                                                                                    |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Client        | Apple M3 Pro, 36 GiB, macOS 26.7.3, display at 100 Hz                                                                                                                                    |
+| Client        | Apple M3 Pro, 36 GiB, macOS 26.7.3, display at 85 Hz                                                                                                                                     |
 | This computer | The same Mac: the universal daemon from `pnpm build:daemon` installed in a scratch home, its core a temporary LaunchAgent in the user's GUI domain (P-58)                                |
 | macOS host    | A tart VM of macOS 26.6.2, arm64, 4 CPUs, 8 GiB, on lima's user-mode network with SSH on `127.0.0.1:2230` (D-53); `trc-mac-gui` logs in to the GUI at boot, so its core is a LaunchAgent |
 | Builds        | The app's test build (P-14), opened unseen in the screen's corner (D-27), for the UI half; the connection host in Node for the rest                                                      |
@@ -58,6 +59,21 @@ local session. The local and VM scenarios ran at the same time; every scenario l
 | NFR-07 | daemon upgrade, LaunchAgent on local: connect again, p95 of 1000         | 527 ms   | ≤ 5,000 ms |
 | NFR-11 | daemon upgrade, LaunchAgent on trc-mac-gui: sessions lost in 1000 cycles | 0.0      | 0          |
 | NFR-07 | daemon upgrade, LaunchAgent on trc-mac-gui: connect again, p95 of 1000   | 414 ms   | ≤ 5,000 ms |
+
+The first review round (`00491c0`) changed how a core that cannot start exits under launchd, when a plist is replaced,
+and how an upgrade checks the old core; the same scenarios then ran 100 cycles each on its daemon, again at the same
+time on both hosts:
+
+| ID     | Measurement                                                             | Value    | Target     |
+| ------ | ----------------------------------------------------------------------- | -------- | ---------- |
+| NFR-11 | daemon kill, LaunchAgent on local: sessions lost in 100 cycles          | 0.0      | 0          |
+| NFR-07 | daemon kill, LaunchAgent on local: connect again, p95 of 100            | 1,036 ms | ≤ 5,000 ms |
+| NFR-11 | daemon kill, LaunchAgent on trc-mac-gui: sessions lost in 100 cycles    | 0.0      | 0          |
+| NFR-07 | daemon kill, LaunchAgent on trc-mac-gui: connect again, p95 of 100      | 934 ms   | ≤ 5,000 ms |
+| NFR-11 | daemon upgrade, LaunchAgent on local: sessions lost in 100 cycles       | 0.0      | 0          |
+| NFR-07 | daemon upgrade, LaunchAgent on local: connect again, p95 of 100         | 481 ms   | ≤ 5,000 ms |
+| NFR-11 | daemon upgrade, LaunchAgent on trc-mac-gui: sessions lost in 100 cycles | 0.0      | 0          |
+| NFR-07 | daemon upgrade, LaunchAgent on trc-mac-gui: connect again, p95 of 100   | 397 ms   | ≤ 5,000 ms |
 
 - **Found by the soak.** launchd respawns a `KeepAlive` job at most every 10 s by default, so a core killed within
   10 s of its start left the next connection waiting: the first short run measured 10.3 s at p95 on This computer and

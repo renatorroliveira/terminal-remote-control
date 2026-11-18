@@ -32,7 +32,7 @@ a high-severity accessibility defect unless it is cosmetic, and blocks the relea
    candidate, VoiceOver announces each step of installing or upgrading its daemon and then that This computer
    connected; no step asks for an administrator password.
 2. On This computer's row, press Shift-F10 and choose its details. **Expect:** the dialog reads the daemon's
-   version and "As a LaunchAgent, which starts at login"; Install location reads `~/.trc` and cannot be changed;
+   version and "As a LaunchAgent, which starts at login"; Install location reads the path of your `.trc` folder and cannot be changed;
    the context menu offers no Forget.
 
 ## 2. A local session works as a remote one (US-4.2)
@@ -62,7 +62,8 @@ a high-severity accessibility defect unless it is cosmetic, and blocks the relea
 ## 5. macOS asks about a protected folder (P-66)
 
 1. In a local session run `ls ~/Desktop`. **Expect:** macOS asks whether "trcd" may access the Desktop folder;
-   VoiceOver reads the question and its buttons. Choose Allow. **Expect:** the listing appears in the session.
+   VoiceOver reads the question and its buttons. Choose the button that allows it. **Expect:** the listing appears
+   in the session. If macOS asks nothing, as once access was granted, mark the pass **Skipped**.
 
 ## 6. A Mac as a remote host (US-4.5)
 
@@ -79,7 +80,8 @@ a high-severity accessibility defect unless it is cosmetic, and blocks the relea
    row reads it); a region "Session ended" above the terminal reads "This session ended: Exited with code 3." with
    the buttons Restart Session and Remove Session…; focus stays where it was.
 3. Turn on Tab moves focus (Shift-Command-M), press Shift-Tab from the terminal to reach the banner's buttons,
-   and choose Restart Session. **Expect:** the shell starts again below the scrollback, and the banner is gone.
+   and choose Restart Session. **Expect:** focus moves to the terminal, the shell starts again below the scrollback,
+   and the banner is gone.
 4. End it again with `exit 3`, and choose Remove Session…. **Expect:** the close alert, focus on Cancel; choosing
    Close session removes the session from the list and moves focus to the list.
 5. End another session and press Command-W in it. **Expect:** the same alert, and the same outcome.

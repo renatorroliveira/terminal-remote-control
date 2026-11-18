@@ -23,6 +23,9 @@ pub enum Command {
     Version,
 }
 
+/// The status of a process SIGTERM ended, 128 plus the signal's number.
+const EXIT_TERMINATED: u8 = 143;
+
 /// The service manager a core runs under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Supervisor {
@@ -35,11 +38,17 @@ pub enum Supervisor {
 }
 
 impl Supervisor {
-    /// The exit status for a core that may not or cannot start, refused for another running core or an untrusted
-    /// install, or failing for the OS: under launchd a non-zero status would have `KeepAlive` start it again every
-    /// second, so it exits with 0 (S8), and the next bridge starts it. A crash still restarts it.
+    /// The exit status for a core refused for another running core or an untrusted install, which no retry fixes:
+    /// under launchd a non-zero status would have `KeepAlive` start it again every second, so it exits with 0 (S8).
     pub fn refusal_status(self, status: u8) -> u8 {
         if self == Self::Launchd { 0 } else { status }
+    }
+
+    /// The exit status for a core that SIGTERM ended: 143 under launchd, so `KeepAlive` starts it again after a
+    /// `kill` or Activity Monitor's Quit, as launchd sends SIGTERM itself only to a job it unloads, which it never
+    /// restarts (US-4.3.2); 0 elsewhere, where the service manager or the next bridge starts it.
+    pub fn terminated_status(self) -> u8 {
+        if self == Self::Launchd { EXIT_TERMINATED } else { 0 }
     }
 }
 
@@ -147,5 +156,12 @@ mod tests {
         assert_eq!(Supervisor::Launchd.refusal_status(75), 0);
         assert_eq!(Supervisor::Systemd.refusal_status(75), 75);
         assert_eq!(Supervisor::None.refusal_status(78), 78);
+    }
+
+    #[test]
+    fn a_core_ended_by_sigterm_under_launchd_exits_so_launchd_starts_it_again() {
+        assert_eq!(Supervisor::Launchd.terminated_status(), 143);
+        assert_eq!(Supervisor::Systemd.terminated_status(), 0);
+        assert_eq!(Supervisor::None.terminated_status(), 0);
     }
 }

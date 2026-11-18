@@ -9,7 +9,7 @@ import { nextZoom, TERMINAL_ZOOM, type ZoomChange } from '../../shared/terminal-
 import { CommandRegistry } from '../commands/command-registry';
 import { installShortcuts } from '../commands/shortcuts';
 import { daemonAnnouncements } from '../sessions/daemon-messages';
-import { endedSession } from '../sessions/ended-session';
+import { justEnded } from '../sessions/ended-session';
 import { failureMessage } from '../sessions/failure-messages';
 import {
     connectStepAnnouncement,
@@ -863,7 +863,7 @@ export class Shell {
         const stopOpen = store.subscribe((state) => {
             if (state.open !== undefined && state.open !== before.open) {
                 this.#announceOpen(state, before.unread.has(state.open));
-            } else if (endedSession(state) !== undefined && endedSession(before) === undefined) {
+            } else if (justEnded(before, state)) {
                 this.#announceEnded(state);
             }
             before = state;
@@ -968,7 +968,8 @@ export class Shell {
         if (host.local !== true || state.status !== 'connected') {
             return;
         }
-        if (state.daemon.service?.manager === 'launchd') {
+        const manager = state.daemon.service?.manager;
+        if (manager === undefined || manager === 'launchd') {
             this.#withoutAgent.delete(host.id);
             return;
         }

@@ -12,7 +12,7 @@ use tokio::net::UnixStream;
 
 use crate::core::account::current_account;
 use crate::install::InstallLayout;
-use crate::launchd::{agent_is_running, has_gui_session, start_agent};
+use crate::launchd::{agent_is_running, core_said_since, has_gui_session, log_length, start_agent};
 use crate::peer::is_same_user;
 use crate::private_dir::verify_private_dir;
 use crate::run_dir::RunDir;
@@ -46,10 +46,22 @@ async fn connect_or_start(layout: &InstallLayout) -> io::Result<UnixStream> {
             return trusted(stream);
         }
     }
+    let mark = log_length(&layout.logs_dir());
     start_core(layout)?;
-    let stream = connect_with_retry(&run.core_socket(), CORE_START_TIMEOUT).await?;
+    let stream = connect_with_retry(&run.core_socket(), CORE_START_TIMEOUT)
+        .await
+        .map_err(|error| with_what_the_core_said(error, layout, mark))?;
     verify_private_dir(&run.dir, uid)?;
     trusted(stream)
+}
+
+/// A connect error with what a LaunchAgent's core wrote to its log since `mark`, such as why it refused to start,
+/// which reaches the app's failure details (US-4.1.3).
+fn with_what_the_core_said(error: io::Error, layout: &InstallLayout, mark: u64) -> io::Error {
+    match core_said_since(&layout.logs_dir(), mark) {
+        Some(said) => io::Error::new(error.kind(), format!("{error}; the core said: {said}")),
+        None => error,
+    }
 }
 
 /// Stops a running core older than this bridge, so the core started next is this version. One bridge at a time
