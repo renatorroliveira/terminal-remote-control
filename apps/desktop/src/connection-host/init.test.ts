@@ -7,7 +7,7 @@ describe('parseInit', () => {
         expect(parseInit(init)).toEqual(init);
         const seamed = { ...init, seam: { sshConfig: '/t/ssh_config', knownHosts: '/t/known_hosts' } };
         expect(parseInit(seamed)).toEqual(seamed);
-        const local = { ...init, localHome: '/t/home' };
+        const local = { ...init, localHome: '/t/home', localRoot: '/t/home/.trc' };
         expect(parseInit(local)).toEqual(local);
     });
 

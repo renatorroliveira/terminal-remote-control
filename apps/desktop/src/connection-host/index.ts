@@ -30,6 +30,7 @@ process.parentPort.on('message', (event) => {
             post,
             (hostId, target, listener) => new HostConnection(runtime, hostId, target, listener),
             runtime.log,
+            init.localRoot,
         );
         const created = router;
         new NetworkWatch(() => created.retryAll()).start();

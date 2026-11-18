@@ -4,7 +4,7 @@
 | ------------ | ------------------------------------------------------------------- |
 | Status       | Decisions accepted (v1.9). S1–S8, S11–S13 done (§11); S9–S10 later. |
 | Owner        | Renato Oliveira                                                     |
-| Last updated | 2026-11-16                                                          |
+| Last updated | 2026-11-17                                                          |
 | Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.    |
 
 This document records the technology choices for P0 and why each one was made.

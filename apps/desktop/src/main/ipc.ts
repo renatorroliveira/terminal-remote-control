@@ -3,6 +3,7 @@ import { SCREEN_READER_MODES } from '../shared/accessibility';
 import { MAX_CLIPBOARD_WRITE } from '../shared/clipboard';
 import type { InvokeChannel, InvokeContract } from '../shared/contract';
 import { GUIDE_SECTION_NAMES } from '../shared/guide';
+import { ADDED_HOST_ID_PATTERN, HOST_ID_PATTERN } from '../shared/hosts';
 import { SIDEBAR_WIDTH } from '../shared/layout';
 import { MAX_LINK_LENGTH } from '../shared/links';
 import { SESSION_CACHE_SCHEMA } from './session-cache';
@@ -18,7 +19,10 @@ export type InvokeHandlers = {
     readonly [C in InvokeChannel]: (...args: InvokeContract[C]['args']) => Promise<InvokeContract[C]['result']>;
 };
 
-const HOST_ID = z.string().regex(/^host-[0-9a-f]{16}$/);
+/** Any known host, This computer included. */
+const HOST_ID = z.string().regex(HOST_ID_PATTERN);
+/** A host the user added, which they can forget or move, unlike This computer (US-4.2.1). */
+const ADDED_HOST_ID = z.string().regex(ADDED_HOST_ID_PATTERN);
 const LINK = z.string().min(1).max(MAX_LINK_LENGTH);
 
 const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['args']> } = {
@@ -28,8 +32,8 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'hosts:list': z.tuple([]),
     'hosts:add': z.tuple([z.string().min(1).max(1024)]),
     'hosts:suggestions': z.tuple([]),
-    'hosts:remove': z.tuple([HOST_ID]),
-    'hosts:set-install-root': z.tuple([HOST_ID, z.string().min(1).max(4096)]),
+    'hosts:remove': z.tuple([ADDED_HOST_ID]),
+    'hosts:set-install-root': z.tuple([ADDED_HOST_ID, z.string().min(1).max(4096)]),
     'links:check': z.tuple([LINK]),
     'links:open': z.tuple([LINK, z.boolean()]),
     'menus:terminal': z.tuple([z.boolean()]),

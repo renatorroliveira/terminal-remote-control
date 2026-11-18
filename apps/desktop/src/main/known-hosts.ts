@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { DESTINATION_PATTERN, formatHostAddress, parseHostAddress } from '../shared/host-address';
-import { isInstallRoot, type KnownHost, LOCAL_HOST_ID } from '../shared/hosts';
+import { HOST_ID_PATTERN, isInstallRoot, type KnownHost, LOCAL_HOST_ID } from '../shared/hosts';
 import { JsonStore } from './json-store';
 
 interface HostsFile {
@@ -16,7 +16,7 @@ const RECENT_LIMIT = 20;
 
 const HOST_SCHEMA: z.ZodType<KnownHost> = z
     .object({
-        id: z.string().regex(/^(host-[0-9a-f]{16}|local)$/),
+        id: z.string().regex(HOST_ID_PATTERN),
         address: z
             .object({
                 destination: z.string().regex(DESTINATION_PATTERN).max(1024),
@@ -118,7 +118,8 @@ export class KnownHosts {
                 throw new Error(`no host ${id}`);
             }
             const changed = change(host);
-            await this.#store.write({ ...file, hosts: hosts.map((entry) => (entry.id === id ? changed : entry)) });
+            const kept = hosts.map((entry) => (entry.id === id ? changed : entry)).filter(isSaved);
+            await this.#store.write({ ...file, hosts: kept });
             return changed;
         });
     }
@@ -161,4 +162,9 @@ export class KnownHosts {
         await this.#store.write({ hosts: known === undefined ? [...file.hosts, host] : file.hosts, recent });
         return host;
     }
+}
+
+/** Whether `hosts.json` keeps a host: every host the user added, and This computer only for a setting of its own. */
+function isSaved(host: KnownHost): boolean {
+    return host.id !== LOCAL_HOST_ID || host.allowClipboardWrites === true || host.daemonRemoved === true;
 }

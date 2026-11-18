@@ -89,10 +89,13 @@ pub fn lock_upgrades(run: &RunDir) -> io::Result<File> {
 }
 
 /// Stops the running core so a newer one can take over. Refuses a process whose executable lies outside this
-/// install's `versions/`, so a stale PID never gets another program killed, and stops nothing once another process
+/// install's `versions/`, as given or with every symbolic link resolved, as the OS reports it, so a stale PID never
+/// gets another program killed, and stops nothing once another process
 /// holds the core's lock: a newer core already took over. Holders keep running.
 pub fn stop_core(core: &RunningCore, layout: &InstallLayout, run: &RunDir) -> io::Result<()> {
+    let versions = std::fs::canonicalize(&layout.versions).unwrap_or_else(|_| layout.versions.clone());
     if let Some(executable) = &core.executable
+        && !executable.starts_with(&versions)
         && !executable.starts_with(&layout.versions)
     {
         return Err(io::Error::other(format!(
@@ -170,11 +173,28 @@ fn wait_unlocked(run: &RunDir, timeout: Duration) -> bool {
 }
 
 /// The executable of a process, from `/proc` on Linux.
+#[cfg(target_os = "linux")]
 fn executable_of(pid: i32) -> Option<PathBuf> {
-    if !cfg!(target_os = "linux") {
-        return None;
-    }
     std::fs::read_link(format!("/proc/{pid}/exe")).ok()
+}
+
+/// The executable of a process, from `proc_pidpath` on macOS.
+#[cfg(target_os = "macos")]
+fn executable_of(pid: i32) -> Option<PathBuf> {
+    use std::os::unix::ffi::OsStrExt;
+
+    let mut buffer = vec![0_u8; 4 * 1024];
+    let size = u32::try_from(buffer.len()).ok()?;
+    // SAFETY: `buffer` is writable for `size` bytes, the most `proc_pidpath` writes; it returns the length written.
+    let written = unsafe { libc::proc_pidpath(pid, buffer.as_mut_ptr().cast(), size) };
+    let length = usize::try_from(written).ok().filter(|length| *length > 0)?;
+    let path = std::ffi::OsStr::from_bytes(buffer.get(..length)?);
+    Some(PathBuf::from(path))
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn executable_of(_pid: i32) -> Option<PathBuf> {
+    None
 }
 
 /// The version an installed binary reports through `trcd --version`: `trcd <version> <sha256>`.
@@ -213,6 +233,15 @@ mod tests {
 
     use super::*;
     use crate::test_support::temp_dir;
+
+    #[test]
+    fn finds_the_executable_of_a_running_process() {
+        let pid = i32::try_from(std::process::id()).unwrap();
+        let found = executable_of(pid).and_then(|path| path.canonicalize().ok());
+        let expected = std::env::current_exe().unwrap().canonicalize().unwrap();
+        assert_eq!(found, Some(expected));
+        assert_eq!(executable_of(i32::MAX), None);
+    }
 
     #[test]
     fn replaces_only_a_strictly_older_core_d_46() {

@@ -4,8 +4,11 @@ import type { Channel, ClosedChannel, Transport } from './transport';
 
 /** The shell that runs the bootstrap on This computer, as `exec /bin/sh -s` runs it over SSH. */
 const LOCAL_SHELL = '/bin/sh';
-/** The variables the local bootstrap, and so the daemon it starts, gets from the app (TECH_STACK §5.4). */
-const PASSED_VARIABLES = ['HOME', 'USER', 'LOGNAME', 'SHELL', 'PATH', 'TMPDIR', 'LANG', 'SSH_AUTH_SOCK'] as const;
+/**
+ * The variables the local bootstrap, and so the daemon it starts, gets from the app: those the LaunchAgent's plist
+ * keeps (P-60); sessions start with a cleared environment of their own.
+ */
+const PASSED_VARIABLES = ['HOME', 'USER', 'LOGNAME', 'SHELL', 'PATH'] as const;
 /** How many of the shell's last error lines a failure keeps. */
 const DETAIL_LINES = 20;
 
@@ -64,9 +67,9 @@ export class LocalTransport implements Transport {
         return { kind: 'other', details: details.join('\n') };
     }
 
-    /** This computer has no host key. */
-    acceptHostKey(): Promise<void> {
-        return Promise.resolve();
+    /** This computer has no host key, so it records none. */
+    acceptHostKey(): Promise<boolean> {
+        return Promise.resolve(false);
     }
 
     /** Nothing to release. */

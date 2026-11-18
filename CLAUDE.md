@@ -33,8 +33,9 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
   `tools/test-hosts/up.sh`, starts a tart VM on lima's user-mode network with
   SSH on `127.0.0.1:2230` only, and adds `trc-mac-gui` (LaunchAgent) and
   `trc-mac-nogui` (detached) to the test SSH config; the integration suites and
-  `host-restart.spec.ts` then include them, and `TRC_E2E_HOST=trc-mac-gui` runs
-  the single-host e2e specs on one. `tools/test-hosts/macos/down.sh` deletes the
+  `host-restart.spec.ts` then include them (`mac-logout.integration.test.ts`
+  logs `trc-mac-gui` out, then reboots the VM), and `TRC_E2E_HOST=trc-mac-gui`
+  runs the single-host e2e specs on one. `tools/test-hosts/macos/down.sh` deletes the
   VM (`--purge` also the base image). The x86_64 slice runs under Rosetta with
   `cargo nextest run --target x86_64-apple-darwin --workspace` (P-63).
 - NFR measurements: `pnpm test:nfr` (needs the test hosts and the daemons;

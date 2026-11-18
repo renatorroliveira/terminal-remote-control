@@ -18,8 +18,8 @@ export interface Transport {
     open(): Promise<Channel | { readonly failure: ConnectionFailure }>;
     /** Why `channel` closed during the bootstrap, once it has exited. */
     closed(channel: Channel): Promise<ClosedChannel>;
-    /** Records a host key the user accepted, before the connection tries again. */
-    acceptHostKey(key: PresentedHostKey): Promise<void>;
+    /** Records a host key the user accepted, before the connection tries again; false when it recorded nothing. */
+    acceptHostKey(key: PresentedHostKey): Promise<boolean>;
     /** Releases what the last `open` made. */
     dispose(): Promise<void>;
 }

@@ -174,13 +174,17 @@ pub fn wait_child(child: &mut Child) -> std::process::ExitStatus {
     }
 }
 
+/// How long [`stop`] lets a core end on SIGTERM, writing every record, before it kills it: long enough for a core
+/// whose VM the host starves of CPU.
+const STOP_GRACE: Duration = Duration::from_secs(15);
+
 /// Stops a core started by a test the way the service manager does, with SIGTERM, and kills it if it lingers.
 pub fn stop(mut child: Child) {
     if let Some(pid) = rustix::process::Pid::from_raw(child.id().cast_signed()) {
         let _ = rustix::process::kill_process(pid, rustix::process::Signal::TERM);
     }
     let started = std::time::Instant::now();
-    while started.elapsed() < Duration::from_secs(5) {
+    while started.elapsed() < STOP_GRACE {
         if child.try_wait().is_ok_and(|status| status.is_some()) {
             return;
         }

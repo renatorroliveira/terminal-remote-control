@@ -142,7 +142,10 @@ export class HostConnection implements HostConnectionLike {
             this.#runtime.log.warn('host key acceptance ignored', { hostId: this.#hostId });
             return;
         }
-        await this.#transport.acceptHostKey(state.key);
+        if (!(await this.#transport.acceptHostKey(state.key))) {
+            this.#runtime.log.warn('host key acceptance ignored', { hostId: this.#hostId });
+            return;
+        }
         this.#runtime.log.info('host key accepted', { hostId: this.#hostId, fingerprint });
         await this.connect();
     }

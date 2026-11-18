@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import type { ServerMessage } from '@trc/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ConnectionState } from '../../shared/connection';
@@ -29,9 +29,12 @@ afterEach(() => {
     }
 });
 
-/** The LaunchAgent label the daemon gives an install root: its real path's SHA-256, first 8 hex digits (P-60). */
+/**
+ * The LaunchAgent label the daemon gives an install root: its real path's SHA-256, first 8 hex digits (P-60); its
+ * parent's real path and its name once the root is gone.
+ */
 function agentLabel(root: string): string {
-    const real = existsSync(root) ? realpathSync(root) : root;
+    const real = existsSync(root) ? realpathSync(root) : join(realpathSync(dirname(root)), basename(root));
     return `dev.trc.trcd-${createHash('sha256').update(real).digest('hex').slice(0, 8)}`;
 }
 
@@ -104,4 +107,35 @@ describe.skipIf(!ready)('This computer (US-4.1, US-4.2, P-59)', () => {
         expect(spawnSync('launchctl', ['print', `gui/${uid}/${agentLabel(root)}`]).status).not.toBe(0);
         expect(execFileSync('ps', ['-axo', 'comm='], { encoding: 'utf8' })).not.toContain(join(base, 'root'));
     });
+
+    it.skipIf(!guiSession)(
+        'boots its LaunchAgent out and deletes the plist when the install was deleted by hand',
+        async () => {
+            const base = mkdtempSync('/tmp/trcl-');
+            bases.push(base);
+            const home = join(base, 'home');
+            mkdirSync(home, { mode: 0o700 });
+            const root = join(base, 'root');
+            const states: ConnectionState[] = [];
+            const target = { destination: 'localhost', installRoot: root, local: true } as const;
+            const listener = {
+                state: (state: ConnectionState) => states.push(state),
+                message: () => {},
+                output: () => {},
+            };
+            const connection = new HostConnection(runtime(home), 'local', target, listener);
+            await connection.connect();
+            await until(() => ['connected', 'failed'].includes(states.at(-1)?.status ?? ''));
+            const label = agentLabel(root);
+            const plist = join(home, 'Library/LaunchAgents', `${label}.plist`);
+            expect(existsSync(plist)).toBe(true);
+            const versions = join(realpathSync(root), 'versions/');
+            connection.close();
+            rmSync(root, { recursive: true, force: true });
+            spawnSync('pkill', ['-KILL', '-f', versions]);
+            expect(await connection.removeDaemon(500)).toEqual({ kind: 'removed', kept: [] });
+            expect(existsSync(plist)).toBe(false);
+            expect(spawnSync('launchctl', ['print', `gui/${uid}/${label}`]).status).not.toBe(0);
+        },
+    );
 });

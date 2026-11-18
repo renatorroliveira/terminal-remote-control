@@ -251,10 +251,7 @@ hash_text() {
 # core's systemd unit or removing its LaunchAgent (D-50), so neither restarts
 # a core it is removing.
 stop_processes() {
-    if [ "$tool" != none ]; then
-        canonical=$(cd "$root" 2>/dev/null && pwd -P) || canonical=$root
-        stop_service "$(hash_text "$canonical" | cut -c1-8)"
-    fi
+    stop_root_service
     for signal in TERM KILL; do
         found=
         for pid in $(install_processes); do
@@ -264,6 +261,15 @@ stop_processes() {
         [ -n "$found" ] || return 0
         sleep 1
     done
+}
+
+# Stops the service named after the install root's real path, or after the
+# root as check_parents rewrote it when the root itself is gone, as after the
+# user deleted it, so its LaunchAgent never outlives it.
+stop_root_service() {
+    [ "$tool" != none ] || return 0
+    canonical=$(cd "$root" 2>/dev/null && pwd -P) || canonical=$root
+    stop_service "$(hash_text "$canonical" | cut -c1-8)"
 }
 
 # Stops the core's systemd unit, or boots out its LaunchAgent and deletes the
@@ -343,6 +349,7 @@ remove_owned() {
 # what it left.
 remove_install() {
     [ -d "$root" ] || {
+        stop_root_service
         say "REMOVED"
         return
     }

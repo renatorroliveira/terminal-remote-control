@@ -16,6 +16,8 @@ export interface ConnectionHostInit {
     readonly seam?: { readonly sshConfig: string; readonly knownHosts: string };
     /** The home folder This computer's daemon runs with; only test builds send it (P-58). */
     readonly localHome?: string;
+    /** This computer's install location, the only one a local connection may use; absent without This computer. */
+    readonly localRoot?: string;
 }
 
 /** The name the connection host's utility process carries in process listings and metrics. */

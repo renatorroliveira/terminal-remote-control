@@ -27,6 +27,12 @@ export interface KnownHost {
 /** This computer's host ID (US-4.2.1). */
 export const LOCAL_HOST_ID = 'local';
 
+/** The ID of a host the user added: `host-` and 16 hexadecimal digits. */
+export const ADDED_HOST_ID_PATTERN = /^host-[0-9a-f]{16}$/;
+
+/** The ID of any known host: one the user added, or This computer's. */
+export const HOST_ID_PATTERN = /^(host-[0-9a-f]{16}|local)$/;
+
 /** Where the connection host reaches a known host: its address and install location, without SSH for This computer. */
 export function connectTarget(host: KnownHost): ConnectTarget {
     return { ...host.address, installRoot: host.installRoot, ...(host.local === true ? { local: true } : {}) };

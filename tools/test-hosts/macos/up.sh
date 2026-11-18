@@ -70,7 +70,7 @@ start_vm
 curl -fsS --unix-socket "$run/api.sock" -X POST http://usernet/services/forwarder/expose \
     -d "{\"local\":\"127.0.0.1:$port\",\"remote\":\"$address:22\",\"protocol\":\"tcp\"}" >/dev/null
 wait_for 'ssh-keyscan -T 2 -p "$port" 127.0.0.1 2>/dev/null | grep -q ssh-ed25519' 120
-ssh-keyscan -T 5 -p "$port" 127.0.0.1 2>/dev/null | grep -v '^#' | sed 's/^\[127\.0\.0\.1\]:2230/trc-mac/' >"$run/known_hosts"
+ssh-keyscan -T 5 -p "$port" 127.0.0.1 2>/dev/null | grep -v '^#' | sed "s/^\[127\.0\.0\.1\]:$port/trc-mac/" >"$run/known_hosts"
 
 printf '#!/bin/sh\necho admin\n' >"$run/askpass"
 chmod 0700 "$run/askpass"

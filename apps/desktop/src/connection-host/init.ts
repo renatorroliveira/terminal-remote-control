@@ -8,6 +8,7 @@ const initSchema: z.ZodType<ConnectionHostInit> = z.strictObject({
     appVersion: z.string().min(1),
     seam: z.strictObject({ sshConfig: z.string().min(1), knownHosts: z.string().min(1) }).exactOptional(),
     localHome: z.string().min(1).exactOptional(),
+    localRoot: z.string().min(1).exactOptional(),
 });
 
 /** Validates the main process's init message. */

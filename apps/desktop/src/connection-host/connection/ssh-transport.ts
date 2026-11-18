@@ -90,11 +90,18 @@ export class SshTransport implements Transport {
         return fromSsh(failure, cause);
     }
 
-    /** Appends the key to the user's first known_hosts file, hashed when ssh hashes (US-1.2.2). */
-    async acceptHostKey(key: PresentedHostKey): Promise<void> {
+    /**
+     * Appends the key to the user's first known_hosts file, hashed when ssh hashes (US-1.2.2); records nothing before
+     * ssh has said which files it reads and whether it hashes.
+     */
+    async acceptHostKey(key: PresentedHostKey): Promise<boolean> {
         const config = this.#config;
-        const file = expandHome(config?.knownHostsFiles[0] ?? '~/.ssh/known_hosts');
-        await appendKnownHost(file, knownHostsLine(key, { hashed: config?.hashKnownHosts ?? false }));
+        if (config === undefined) {
+            return false;
+        }
+        const file = expandHome(config.knownHostsFiles[0] ?? '~/.ssh/known_hosts');
+        await appendKnownHost(file, knownHostsLine(key, { hashed: config.hashKnownHosts }));
+        return true;
     }
 
     /** Deletes the connection's wrapper config. */

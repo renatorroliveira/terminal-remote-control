@@ -163,6 +163,28 @@ describe('registerHandlers: hosts, sidebar and trust', () => {
         );
     });
 
+    it('takes This computer for the per-host settings and clipboard, but never forgets or moves it (US-4.2.2)', async () => {
+        const { handlers: registered, ipc } = fakeIpc();
+        registerHandlers(ipc, handlers(), trusted);
+        await expect(registered.get('hosts:set-clipboard-writes')?.({}, 'local', true)).resolves.toEqual(
+            expect.objectContaining({ id: 'local', allowClipboardWrites: true }),
+        );
+        await expect(registered.get('hosts:set-daemon-removed')?.({}, 'local', true)).resolves.toEqual(
+            expect.objectContaining({ id: 'local', daemonRemoved: true }),
+        );
+        await expect(registered.get('clipboard:write')?.({}, 'local', 'x')).resolves.toBe(true);
+        await expect(
+            registered.get('sessions:save')?.(
+                {},
+                { local: [{ id: '0123456789abcdef', shell: 'zsh', order: 0, state: 'running' }] },
+            ),
+        ).resolves.toBeUndefined();
+        await expect(async () => registered.get('hosts:remove')?.({}, 'local')).rejects.toThrow(/invalid arguments/);
+        await expect(async () => registered.get('hosts:set-install-root')?.({}, 'local', '/x')).rejects.toThrow(
+            /invalid arguments/,
+        );
+    });
+
     it('rejects requests from a page that is not the app', async () => {
         const { handlers: registered, ipc } = fakeIpc();
         registerHandlers(ipc, handlers(), () => false);

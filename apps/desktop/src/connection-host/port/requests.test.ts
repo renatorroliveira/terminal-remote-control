@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { parseHostRequest } from './requests';
 
+const LOCAL_ROOT = '/home/tester/.trc';
+
 describe('parseHostRequest (zod at the renderer boundary)', () => {
     it('accepts every request shape', () => {
         const requests = [
@@ -19,7 +21,7 @@ describe('parseHostRequest (zod at the renderer boundary)', () => {
             {
                 type: 'connect',
                 hostId: 'local',
-                target: { destination: 'localhost', installRoot: '/home/tester/.trc', local: true },
+                target: { destination: 'localhost', installRoot: LOCAL_ROOT, local: true },
             },
             { type: 'send', hostId: 'h1', message: { type: 'listSessions', requestId: 1 } },
             { type: 'input', hostId: 'h1', stream: 1, data: new Uint8Array([3]) },
@@ -31,7 +33,20 @@ describe('parseHostRequest (zod at the renderer boundary)', () => {
             { type: 'stop-retrying', hostId: 'h1' },
         ];
         for (const request of requests) {
-            expect(parseHostRequest(request)).toEqual(request);
+            expect(parseHostRequest(request, LOCAL_ROOT)).toEqual(request);
+        }
+    });
+
+    it('takes a local target only for This computer, at its own install location (US-4.2.4)', () => {
+        const local = { destination: 'localhost', installRoot: LOCAL_ROOT, local: true };
+        expect(parseHostRequest({ type: 'connect', hostId: 'local', target: local }, LOCAL_ROOT)).toBeDefined();
+        for (const [hostId, target, root] of [
+            ['local', local, undefined],
+            ['host-0123456789abcdef', local, LOCAL_ROOT],
+            ['local', { ...local, installRoot: '/home/tester/Library/LaunchAgents' }, LOCAL_ROOT],
+        ] as const) {
+            expect(parseHostRequest({ type: 'connect', hostId, target }, root)).toBeUndefined();
+            expect(parseHostRequest({ type: 'remove-daemon', hostId, target }, root)).toBeUndefined();
         }
     });
 
@@ -51,6 +66,6 @@ describe('parseHostRequest (zod at the renderer boundary)', () => {
         ['an extra field', { type: 'disconnect', hostId: 'h', force: true }],
         ['a non-object', 'connect'],
     ])('refuses %s', (_label, value) => {
-        expect(parseHostRequest(value)).toBeUndefined();
+        expect(parseHostRequest(value, LOCAL_ROOT)).toBeUndefined();
     });
 });

@@ -35,8 +35,9 @@ pub enum Supervisor {
 }
 
 impl Supervisor {
-    /// The exit status for a core that may not start, such as one refused for another running core: under launchd a
-    /// non-zero status would have `KeepAlive` start it again every 10 s, so it exits with 0 (S8).
+    /// The exit status for a core that may not or cannot start, refused for another running core or an untrusted
+    /// install, or failing for the OS: under launchd a non-zero status would have `KeepAlive` start it again every
+    /// second, so it exits with 0 (S8), and the next bridge starts it. A crash still restarts it.
     pub fn refusal_status(self, status: u8) -> u8 {
         if self == Self::Launchd { 0 } else { status }
     }

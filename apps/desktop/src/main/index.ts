@@ -120,7 +120,7 @@ async function start(): Promise<void> {
         (event) => isAppPage((event as Electron.IpcMainInvokeEvent).senderFrame?.url, devServer),
     );
     installMenu(display, config, theme);
-    mainWindow = createWindow(display, screenReader);
+    mainWindow = createWindow(display, screenReader, localRoot);
     mainWindow.on('close', (event) => quitGuard.beforeQuit(event));
 }
 
@@ -346,7 +346,11 @@ async function serveAppRequest(request: Request): Promise<Response> {
     });
 }
 
-function createWindow(display: DisplayRelay, screenReader: ScreenReaderSetting): BrowserWindow {
+function createWindow(
+    display: DisplayRelay,
+    screenReader: ScreenReaderSetting,
+    localRoot: string | undefined,
+): BrowserWindow {
     const size = { width: 1200, height: 800 };
     const window = new BrowserWindow({
         ...(background ? backgroundWindowOptions(screen.getPrimaryDisplay().workArea, size) : size),
@@ -359,7 +363,7 @@ function createWindow(display: DisplayRelay, screenReader: ScreenReaderSetting):
         window.once('ready-to-show', () => showInBackground(window));
     }
     refuseNavigation(window.webContents);
-    startConnectionHost(window, resources, testSeam);
+    startConnectionHost(window, resources, testSeam, localRoot);
     display.attach(window);
     relayAccessibility(window, screenReader);
     void window.loadURL(devServer ?? `${APP_IDENTITY.appScheme}://${APP_IDENTITY.appHost}/index.html`);

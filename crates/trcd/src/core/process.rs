@@ -50,6 +50,9 @@ pub fn run(layout: &InstallLayout, supervisor: Supervisor) -> Result<(), StartEr
     for dir in [layout.logs_dir(), run.dir.clone(), run.holders(), sessions_dir.clone()] {
         ensure_private_dir(&dir, uid)?;
     }
+    if supervisor == Supervisor::Launchd {
+        crate::launchd::trim_log(&layout.logs_dir());
+    }
     let binary_sha256 = sha256_file(&layout.binary)?;
     let _lock = lock_single_instance(&run.core_lock(), &binary_sha256)?;
     crate::logging::init(&layout.logs_dir())?;
@@ -114,8 +117,6 @@ pub fn launch_detached(layout: &InstallLayout) -> io::Result<()> {
         .map(drop)
 }
 
-/// Takes the one-core-per-user lock and records the PID, version and checksum in it, so a newer bridge can tell
-/// whether to replace this core (D-46). Waits a moment for a core that is exiting after Restart daemon to let go.
 /// What runs the core, as Welcome says: systemd only when holders can start in their own scopes, as a core whose
 /// holders would die with its unit serves no better than a detached one.
 fn service_manager(supervisor: Supervisor, scopes: bool) -> ServiceManager {
@@ -126,6 +127,8 @@ fn service_manager(supervisor: Supervisor, scopes: bool) -> ServiceManager {
     }
 }
 
+/// Takes the one-core-per-user lock and records the PID, version and checksum in it, so a newer bridge can tell
+/// whether to replace this core (D-46). Waits a moment for a core that is exiting after Restart daemon to let go.
 fn lock_single_instance(path: &Path, sha256: &str) -> Result<File, StartError> {
     let mut file = std::fs::OpenOptions::new()
         .read(true)

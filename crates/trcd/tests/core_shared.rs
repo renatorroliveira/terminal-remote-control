@@ -74,10 +74,37 @@ async fn synced(client: &mut AppClient, stream: u32) -> u64 {
 }
 
 /// Whether output ends at a shell prompt: `$ ` for a user, `# ` for root, as in the Linux containers, perhaps followed
-/// by the cursor position query busybox ash sends.
+/// by the cursor position query busybox ash sends, or, in a snapshot taken once the prompt was up, by the empty rows
+/// below it and the move back to its cursor.
 fn at_prompt(text: &str) -> bool {
-    let text = text.trim_end_matches("\x1b[6n");
+    let text = without_trailing_controls(text);
     text.ends_with("$ ") || text.ends_with("# ")
+}
+
+/// `text` without the control sequences (`ESC [` parameters and a final byte) and empty rows at its end.
+fn without_trailing_controls(mut text: &str) -> &str {
+    loop {
+        let trimmed = text.trim_end_matches("\r\n");
+        let Some(start) = trimmed.rfind("\x1b[") else {
+            return trimmed;
+        };
+        let Some((last, parameters)) = trimmed.as_bytes()[start + 2..].split_last() else {
+            return trimmed;
+        };
+        if !(0x40..=0x7e).contains(last) || !parameters.iter().all(|byte| (0x30..=0x3f).contains(byte)) {
+            return trimmed;
+        }
+        text = &trimmed[..start];
+    }
+}
+
+#[test]
+fn sees_a_prompt_at_the_end_of_live_output_and_of_a_snapshot() {
+    assert!(at_prompt("echo x\r\nx\r\n$ "));
+    assert!(at_prompt("host:~# \x1b[6n"));
+    assert!(at_prompt("\x1b[H\x1b[3ghost:~# \r\n\r\n\r\n\x1b[1;17H\x1b[0m"));
+    assert!(!at_prompt("echo both-$((1+2))"));
+    assert!(!at_prompt("\x1b[Hloading\r\n\x1b[2;1H"));
 }
 
 async fn prompt(client: &mut AppClient, stream: u32) {

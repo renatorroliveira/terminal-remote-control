@@ -76,6 +76,17 @@ class FakeScreenReader implements ScreenReaderControls {
 }
 
 const CONNECTED = { status: 'connected', daemon: { version: '0.2.0', sha256: 'ab', proto: 1 } } as const;
+const THIS_COMPUTER = {
+    id: 'local',
+    address: { destination: 'localhost' },
+    installRoot: '/home/tester/.trc',
+    local: true,
+} as const;
+
+/** A connection whose daemon `manager` runs. */
+function runBy(manager: 'launchd' | 'detached') {
+    return { ...CONNECTED, daemon: { ...CONNECTED.daemon, service: { manager, sessionsEndAtLogout: false } } };
+}
 
 const NO_CHORD = { ctrl: false, option: false, shift: false, cmd: false, key: '' } as const;
 
@@ -99,10 +110,12 @@ class FakeSettingsSource {
     }
 }
 
-async function setup(narrow = false, stored: Partial<Settings> = {}) {
+async function setup(narrow = false, stored: Partial<Settings> = {}, local = false) {
     const client = new FakeWorkspaceClient([bashSession('a')]);
     const terminals = new FakeTerminalHost([]);
-    const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore());
+    const known = local ? [THIS_COMPUTER] : [];
+    const options = local ? { localName: 'This computer' } : {};
+    const workspace = new WorkspaceController(client, terminals, new FakeKnownHostStore(known), options);
     const spoken: string[] = [];
     const saved: boolean[] = [];
     const screenReader = new FakeScreenReader();
@@ -141,6 +154,7 @@ async function setup(narrow = false, stored: Partial<Settings> = {}) {
     });
     onTestFinished(shell.start());
     await settings.load();
+    await workspace.load();
     await workspace.addHost('devbox-1');
     const zooms = (): (number | undefined)[] => source.changes.map((change) => change.terminalZoom);
     return {
@@ -718,6 +732,27 @@ describe('Shell host reports (A11Y-12.1, A11Y-12.2)', () => {
         expect(shell.notifications.store.getState().items.map((item) => item.text)).toEqual([
             'Connection to devbox-1 lost.',
         ]);
+    });
+
+    it('says once, with what to do, that This computer’s daemon runs without its LaunchAgent (US-4.1.3)', async () => {
+        const { shell, client, spoken, workspace } = await setup(false, {}, true);
+        const lost = { status: 'disconnected', reason: 'ping-timeout' } as const;
+        const devbox = workspace.store.getState().hosts.find((host) => host.destination === 'devbox-1');
+        client.push(devbox?.id ?? '', runBy('detached'));
+        client.push('local', runBy('detached'));
+        client.push('local', lost);
+        client.push('local', runBy('detached'));
+        const warning =
+            'This computer’s daemon runs without its LaunchAgent, so it won’t start at login or restart after a ' +
+            'crash. To register it, choose Restart daemon in the details of This computer.';
+        expect(spoken.filter((text) => text.includes('LaunchAgent'))).toEqual([warning]);
+        client.push('local', lost);
+        client.push('local', runBy('launchd'));
+        client.push('local', lost);
+        client.push('local', runBy('detached'));
+        expect(spoken.filter((text) => text.includes('LaunchAgent'))).toEqual([warning, warning]);
+        const listed = shell.notifications.store.getState().items.filter((item) => item.text === warning);
+        expect(listed.map((item) => item.level)).toEqual(['error', 'error']);
     });
 
     it('announces and lists Reconnected once a lost host is back, and not the steps of each attempt (US-2.2.2)', async () => {

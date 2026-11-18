@@ -74,6 +74,7 @@ function setup() {
             },
             error: () => undefined,
         },
+        undefined,
     );
     return { router, posted, created, warnings, warned };
 }

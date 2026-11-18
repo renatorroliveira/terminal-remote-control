@@ -1,6 +1,7 @@
 import { ClientMessageSchema } from '@trc/protocol';
 import { z } from 'zod';
 import { type HostRequest, RESERVED_REQUEST_IDS } from '../../shared/connection';
+import { LOCAL_HOST_ID } from '../../shared/hosts';
 
 const hostId = z.string().min(1).max(128);
 const stream = z.number().int().min(1).max(0xffff_ffff);
@@ -34,10 +35,13 @@ const hostRequestSchema: z.ZodType<HostRequest> = z.discriminatedUnion('type', [
     }),
 ]);
 
-/** Validates a message from the renderer; anything malformed gives `undefined` (the renderer is a trust boundary). */
-export function parseHostRequest(value: unknown): HostRequest | undefined {
+/**
+ * Validates a message from the renderer; anything malformed gives `undefined` (the renderer is a trust boundary), as
+ * does a local target other than This computer's own: its host ID and `localRoot`, its install location (US-4.2.4).
+ */
+export function parseHostRequest(value: unknown, localRoot: string | undefined): HostRequest | undefined {
     const parsed = hostRequestSchema.safeParse(value);
-    return parsed.success ? parsed.data : undefined;
+    return parsed.success && localTargetAllowed(parsed.data, localRoot) ? parsed.data : undefined;
 }
 
 /**
@@ -53,4 +57,12 @@ export function requestProblem(value: unknown): string | undefined {
         .slice(0, 3)
         .map((issue) => `${issue.code} at ${issue.path.map(String).join('.')}`);
     return issues.join('; ').slice(0, 200);
+}
+
+/** Whether a request's target, if it is local, is This computer at its own install location. */
+function localTargetAllowed(request: HostRequest, localRoot: string | undefined): boolean {
+    if (!('target' in request) || request.target.local !== true) {
+        return true;
+    }
+    return request.hostId === LOCAL_HOST_ID && localRoot !== undefined && request.target.installRoot === localRoot;
 }
