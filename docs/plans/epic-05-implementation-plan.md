@@ -191,10 +191,10 @@ AT passes and any theme still missing. `pnpm test:ax` takes focus, so the owner 
 | Story | Status  | Commit  |
 | ----- | ------- | ------- |
 | ST-62 | Done    | 954b99f |
-| ST-63 | Done    |         |
-| ST-64 | Planned |         |
-| ST-65 | Planned |         |
-| ST-66 | Planned |         |
+| ST-63 | Done    | 0d5e5bf |
+| ST-64 | Done    | faaa425 |
+| ST-65 | Done    | cd98ff6 |
+| ST-66 | Done    |         |
 | ST-67 | Planned |         |
 | ST-68 | Planned |         |
 | ST-69 | Planned |         |

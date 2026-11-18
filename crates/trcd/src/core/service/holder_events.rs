@@ -3,7 +3,7 @@
 
 use tokio::net::UnixStream;
 use trc_protocol::frame::{Frame, FrameKind};
-use trc_protocol::{ServerMessage, SessionChange, SessionId, SessionState};
+use trc_protocol::{ServerMessage, SessionActivity, SessionChange, SessionId, SessionState};
 
 use super::Core;
 use crate::frame_io::{FrameReader, FrameSender};
@@ -87,6 +87,10 @@ impl Core {
                 }
             }
             HolderEvent::Exiting => {}
+            HolderEvent::Bell => self.broadcast_activity(session, SessionActivity::Bell),
+            HolderEvent::CommandFinished { exit_code, duration_ms } => {
+                self.broadcast_activity(session, SessionActivity::CommandFinished { exit_code, duration_ms });
+            }
             other => self.on_attachment_event(session, other),
         }
     }

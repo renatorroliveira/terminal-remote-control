@@ -6,7 +6,7 @@ import { FrameDecoder, FrameKind } from '../src/frame';
 import type { ClientMessage } from '../src/generated/ClientMessage';
 
 /** The current and the previous protocol's fixtures, both of which the app must read (NFR-12). */
-const VERSIONS = ['v1', 'v2', 'v3'] as const;
+const VERSIONS = ['v1', 'v2', 'v3', 'v4'] as const;
 const FIXTURES = resolve(import.meta.dirname, '../../../protocol/fixtures');
 const fixtureNames = (dir: string): readonly (readonly [string, string])[] =>
     VERSIONS.flatMap((version) =>

@@ -187,6 +187,32 @@ pub enum SessionChange {
         /// Every session, in the new order.
         order: Vec<SessionId>,
     },
+    /// Something a session did that the app may announce, badge or notify about (US-5.3, protocol 4); only clients
+    /// of protocol 4 or later get it.
+    Activity {
+        /// The session it happened in.
+        session_id: SessionId,
+        /// What happened.
+        activity: SessionActivity,
+    },
+}
+
+/// Something a session did (US-5.3, protocol 4). Nothing here carries the session's output or a command line.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[ts(export)]
+pub enum SessionActivity {
+    /// Its program rang the bell; at most one a second.
+    Bell,
+    /// A command finished, as shell integration marked it (US-5.2.2).
+    CommandFinished {
+        /// The command's exit code, when the shell reported one.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        exit_code: Option<i32>,
+        /// How long it ran, in milliseconds.
+        duration_ms: u64,
+    },
 }
 
 /// A message from the app to the daemon. Every request but `hello` carries a `requestId`.

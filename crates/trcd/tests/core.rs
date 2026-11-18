@@ -8,8 +8,8 @@ use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
 use support::{AppClient, Installed, parent_of, stop, wait_child};
 use trc_protocol::{
-    AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, ServerMessage, SessionChange, SessionId, SessionInfo,
-    SessionState, TerminalSize,
+    AttachMode, ClientMessage, CreateSessionSpec, ErrorCode, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ServerMessage,
+    SessionChange, SessionId, SessionInfo, SessionState, TerminalSize,
 };
 
 const SIZE: TerminalSize = TerminalSize { cols: 100, rows: 30 };
@@ -97,7 +97,7 @@ async fn greets_with_the_version_and_the_binary_checksum() {
     let mut client = AppClient::connect(&installed.core_socket()).await;
     client.send(&ClientMessage::Hello {
         min_proto: 1,
-        max_proto: 4,
+        max_proto: PROTOCOL_VERSION + 1,
         app_version: "0".into(),
         caps: vec![],
     });
@@ -112,7 +112,7 @@ async fn greets_with_the_version_and_the_binary_checksum() {
     else {
         unreachable!()
     };
-    assert_eq!(proto, 3);
+    assert_eq!(proto, PROTOCOL_VERSION);
     assert_eq!(daemon_version, env!("CARGO_PKG_VERSION"));
     assert_eq!(binary_sha256, trcd::digest::sha256_file(&installed.binary).unwrap());
     let details = details.expect("the welcome names the host's details");
@@ -134,8 +134,8 @@ async fn refuses_an_app_without_a_common_protocol_version() {
     let core = installed.start_core();
     let mut client = AppClient::connect(&installed.core_socket()).await;
     client.send(&ClientMessage::Hello {
-        min_proto: 4,
-        max_proto: 5,
+        min_proto: PROTOCOL_VERSION + 1,
+        max_proto: PROTOCOL_VERSION + 2,
         app_version: "9".into(),
         caps: vec![],
     });
@@ -143,8 +143,8 @@ async fn refuses_an_app_without_a_common_protocol_version() {
     assert_eq!(
         refusal,
         ServerMessage::Incompatible {
-            min_proto: 1,
-            max_proto: 3
+            min_proto: MIN_PROTOCOL_VERSION,
+            max_proto: PROTOCOL_VERSION
         }
     );
     client.until_closed().await;

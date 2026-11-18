@@ -16,11 +16,12 @@ use trc_protocol::frame::{self, Frame, FrameKind};
 use trc_protocol::{ExitStatus, Integration, SessionState, ShellIntegration, ShellKind, TerminalSize};
 use trc_vt::{GhosttyTerminal, Rgb, TerminalConfig, TerminalEvent, TerminalState};
 
+mod activity;
 mod saving;
 
 use super::attachments::{Attachments, Outgoing, Session};
 use super::environment::{Account, session_environment};
-use super::osc7::path_from_file_url;
+use super::osc7::{path_from_file_url, reported_here};
 use super::output_log::OutputLog;
 use super::persistence::{Persistence, SAVE_INTERVAL};
 use super::protocol::{
@@ -67,6 +68,7 @@ pub struct Holder {
     status_dirty: bool,
     finished: bool,
     accepting: AcceptBackoff,
+    activity: activity::Activity,
 }
 
 /// The holder's timers: throttled status reports and saving to disk.
@@ -144,6 +146,7 @@ impl Holder {
             status_dirty: false,
             finished: false,
             accepting: AcceptBackoff::default(),
+            activity: activity::Activity::default(),
         }
     }
 
@@ -530,7 +533,14 @@ impl Holder {
                 self.status.cwd = path_from_file_url(&url).or(self.status.cwd.take());
                 self.status_dirty = true;
             }
-            TerminalEvent::Bell | TerminalEvent::Command(_) => {}
+            TerminalEvent::CurrentDir { path, remote_host } => {
+                if reported_here(remote_host.as_deref()) {
+                    self.status.cwd = Some(path);
+                    self.status_dirty = true;
+                }
+            }
+            TerminalEvent::Bell => self.on_bell(),
+            TerminalEvent::Command(step) => self.on_command_step(step),
         }
     }
 

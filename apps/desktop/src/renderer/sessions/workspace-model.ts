@@ -256,7 +256,7 @@ export function sessionChanged(workspace: Workspace, hostId: string, change: Ses
     return closedOpen ? { ...next, open: undefined } : next;
 }
 
-/** Applies one daemon session event to a session list. */
+/** Applies one daemon session event to a session list; activity (US-5.3) changes no session. */
 export function applySessionChange(sessions: readonly SessionInfo[], change: SessionChange): readonly SessionInfo[] {
     switch (change.kind) {
         case 'created':
@@ -266,6 +266,8 @@ export function applySessionChange(sessions: readonly SessionInfo[], change: Ses
             return sessions.filter((entry) => entry.id !== change.sessionId);
         case 'reordered':
             return reorder(sessions, change.order);
+        case 'activity':
+            return sessions;
     }
 }
 

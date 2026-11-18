@@ -1,0 +1,5 @@
+{
+  "type": "removeDaemon",
+  "requestId": 19,
+  "graceMs": 5000
+}

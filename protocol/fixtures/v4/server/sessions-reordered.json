@@ -1,0 +1,10 @@
+{
+  "type": "sessionEvent",
+  "change": {
+    "kind": "reordered",
+    "order": [
+      "s-2",
+      "s-1"
+    ]
+  }
+}

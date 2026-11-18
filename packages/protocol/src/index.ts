@@ -30,6 +30,7 @@ export type { ResyncKind } from './generated/ResyncKind';
 export type { ServerMessage } from './generated/ServerMessage';
 export type { ServiceInfo } from './generated/ServiceInfo';
 export type { ServiceManager } from './generated/ServiceManager';
+export type { SessionActivity } from './generated/SessionActivity';
 export type { SessionChange } from './generated/SessionChange';
 export type { SessionId } from './generated/SessionId';
 export type { SessionInfo } from './generated/SessionInfo';

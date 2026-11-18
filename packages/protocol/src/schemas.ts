@@ -16,6 +16,7 @@ import type { ResyncKind } from './generated/ResyncKind';
 import type { ServerMessage } from './generated/ServerMessage';
 import type { ServiceInfo } from './generated/ServiceInfo';
 import type { ServiceManager } from './generated/ServiceManager';
+import type { SessionActivity } from './generated/SessionActivity';
 import type { SessionChange } from './generated/SessionChange';
 import type { SessionInfo } from './generated/SessionInfo';
 import type { SessionOptions } from './generated/SessionOptions';
@@ -127,11 +128,17 @@ export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
     integration: shellIntegration.exactOptional(),
 });
 
+const sessionActivity: z.ZodType<SessionActivity> = z.discriminatedUnion('type', [
+    z.object({ type: z.literal('bell') }),
+    z.object({ type: z.literal('commandFinished'), exitCode: i32.exactOptional(), durationMs: timestamp }),
+]);
+
 const sessionChange: z.ZodType<SessionChange> = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('created'), session: SessionInfoSchema }),
     z.object({ kind: z.literal('updated'), session: SessionInfoSchema }),
     z.object({ kind: z.literal('closed'), sessionId }),
     z.object({ kind: z.literal('reordered'), order: z.array(sessionId) }),
+    z.object({ kind: z.literal('activity'), sessionId, activity: sessionActivity }),
 ]);
 
 /** Validates any message a daemon sends. Daemon output is untrusted (SEC-06). */

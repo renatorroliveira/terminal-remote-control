@@ -20,7 +20,10 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::signal::unix::{Signal, SignalKind, signal};
 use tokio::sync::mpsc;
 use trc_protocol::frame::{self, Frame, FrameKind};
-use trc_protocol::{DaemonDetails, ServerMessage, ServiceInfo, SessionChange, SessionId, SessionInfo};
+use trc_protocol::{
+    DaemonDetails, MIN_PROTOCOL_VERSION, ServerMessage, ServiceInfo, SessionActivity, SessionChange, SessionId,
+    SessionInfo,
+};
 
 use super::adopt::{Adopted, adopt_holders, adopt_late, still_served};
 use super::launch::launch_holder;
@@ -37,6 +40,8 @@ use crate::service::ScopeLauncher;
 
 /// How many events may wait for the loop before readers pause.
 const EVENT_QUEUE: usize = 256;
+/// The first app protocol whose clients hear what sessions do (US-5.3).
+const ACTIVITY_PROTOCOL: u32 = 4;
 
 /// Why a core stopped serving.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -390,10 +395,24 @@ impl Core {
     }
 
     fn broadcast(&self, message: &ServerMessage) {
+        self.broadcast_from(MIN_PROTOCOL_VERSION, message);
+    }
+
+    /// Tells every client that speaks protocol 4 or later what a session did (US-5.3); older apps know no such
+    /// change.
+    fn broadcast_activity(&self, session: &SessionId, activity: SessionActivity) {
+        let change = SessionChange::Activity {
+            session_id: session.clone(),
+            activity,
+        };
+        self.broadcast_from(ACTIVITY_PROTOCOL, &ServerMessage::SessionEvent { change });
+    }
+
+    fn broadcast_from(&self, proto: u32, message: &ServerMessage) {
         let Some(frame) = control_frame(message) else {
             return;
         };
-        for link in self.clients.values().filter(|link| link.greeted) {
+        for link in self.clients.values().filter(|link| link.greeted && link.proto >= proto) {
             link.sender.send(frame.clone());
         }
     }

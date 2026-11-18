@@ -1,0 +1,11 @@
+{
+  "type": "sessionEvent",
+  "change": {
+    "kind": "activity",
+    "sessionId": "s-1",
+    "activity": {
+      "type": "commandFinished",
+      "durationMs": 40
+    }
+  }
+}

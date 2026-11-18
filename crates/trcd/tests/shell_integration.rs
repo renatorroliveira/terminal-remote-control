@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 
 use support::{AppClient, Installed, stop};
 use trc_protocol::{
-    AttachMode, ClientMessage, CreateSessionSpec, ServerMessage, SessionId, SessionInfo, SessionOptions,
-    ShellIntegration, ShellKind, ShellProfile, TerminalSize,
+    AttachMode, ClientMessage, CreateSessionSpec, ServerMessage, SessionActivity, SessionChange, SessionId,
+    SessionInfo, SessionOptions, ShellIntegration, ShellKind, ShellProfile, TerminalSize,
 };
 
 const SIZE: TerminalSize = TerminalSize { cols: 100, rows: 30 };
@@ -179,5 +179,68 @@ async fn applies_a_change_of_the_option_when_the_shell_next_starts_us_5_1_3() {
         listed(&mut client, &session.id).await.integration,
         Some(ShellIntegration::Off)
     );
+    stop(core);
+}
+
+#[tokio::test]
+async fn tells_protocol_4_clients_when_a_command_finishes_and_older_ones_nothing_us_5_3() {
+    let installed = Installed::new();
+    let core = installed.start_core();
+    let mut client = AppClient::greeted_with(&installed.core_socket(), 4).await;
+    let mut older = AppClient::greeted_with(&installed.core_socket(), 3).await;
+    let shell = integrated_shells(profiles(&mut client).await).remove(0);
+    let session = create(&mut client, 10, &shell, None).await;
+    let stream = attach(&mut client, 11, &session.id).await;
+    client.until(|c| c.text(stream).contains("\x1b]133;A")).await;
+    client.input(stream, "printf '\\a'; false\r");
+    let activity = |m: &ServerMessage| {
+        matches!(
+            m,
+            ServerMessage::SessionEvent {
+                change: SessionChange::Activity { .. }
+            }
+        )
+    };
+    let ServerMessage::SessionEvent {
+        change: SessionChange::Activity {
+            session_id,
+            activity: finished,
+        },
+    } = client
+        .take(|m| {
+            matches!(
+                m,
+                ServerMessage::SessionEvent {
+                    change: SessionChange::Activity {
+                        activity: SessionActivity::CommandFinished { .. },
+                        ..
+                    }
+                }
+            )
+        })
+        .await
+    else {
+        unreachable!()
+    };
+    assert_eq!(session_id, session.id);
+    assert!(
+        matches!(finished, SessionActivity::CommandFinished { exit_code: Some(1), .. }),
+        "{finished:?}"
+    );
+    client
+        .take(|m| {
+            matches!(
+                m,
+                ServerMessage::SessionEvent {
+                    change: SessionChange::Activity {
+                        activity: SessionActivity::Bell,
+                        ..
+                    }
+                }
+            )
+        })
+        .await;
+    older.pause(std::time::Duration::from_millis(500)).await;
+    assert!(!older.messages.iter().any(activity), "{:?}", older.messages);
     stop(core);
 }

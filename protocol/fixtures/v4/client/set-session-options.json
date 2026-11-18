@@ -1,0 +1,10 @@
+{
+  "type": "setSessionOptions",
+  "requestId": 16,
+  "session": "s-1",
+  "options": {
+    "restore": true,
+    "saveScrollback": false,
+    "integration": false
+  }
+}

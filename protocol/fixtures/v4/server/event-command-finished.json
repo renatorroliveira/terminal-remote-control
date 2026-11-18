@@ -1,0 +1,12 @@
+{
+  "type": "sessionEvent",
+  "change": {
+    "kind": "activity",
+    "sessionId": "s-1",
+    "activity": {
+      "type": "commandFinished",
+      "exitCode": 2,
+      "durationMs": 12500
+    }
+  }
+}
