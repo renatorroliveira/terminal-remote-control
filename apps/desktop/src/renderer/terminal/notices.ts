@@ -13,7 +13,9 @@ export type TerminalNotice =
     /** Another client set a shared session's size, which this terminal shows, or this one took it back (US-2.6.2). */
     | { readonly kind: 'size'; readonly setElsewhere: boolean }
     /** The user typed while the host was disconnected, or before the session attached; nothing was sent (US-1.14.2). */
-    | { readonly kind: 'input-refused'; readonly reason: InputRefusal };
+    | { readonly kind: 'input-refused'; readonly reason: InputRefusal }
+    /** A command shell integration marked finished, with its exit code when the shell gave one (US-5.2.2). */
+    | { readonly kind: 'command-finished'; readonly exitCode: number | undefined };
 
 /** Why typing was not sent: the host is disconnected or reconnecting, or the session is still opening. */
 export type InputRefusal = 'disconnected' | 'reconnecting' | 'opening' | 'elsewhere';

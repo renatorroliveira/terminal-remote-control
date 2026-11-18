@@ -3,6 +3,7 @@ import type { ConnectionState, ConnectTarget, DaemonRemoval } from '../../shared
 import { parseHostAddress } from '../../shared/host-address';
 import { DEFAULT_INSTALL_ROOT, isInstallRoot, type KnownHost } from '../../shared/hosts';
 import { type ClientRequest, HostRequestError } from '../connection/host-client';
+import type { CommandDirection, CommandMove, CommandOutput } from '../terminal/command-navigator';
 import type { FindResult } from '../terminal/find';
 import type { TerminalLink } from '../terminal/hyperlinks';
 import type { TerminalConnection } from '../terminal/terminal-view';
@@ -292,6 +293,29 @@ export class FakeTerminalHost implements TerminalHost {
     /** Records that the search ended. */
     endFind(): void {
         this.searches.push('<end>');
+    }
+
+    /** Where the next command move ends, while a session is shown. */
+    move: CommandMove = { kind: 'unavailable', reason: 'none' };
+    /** What the last command printed, while a session is shown. */
+    output: CommandOutput = { kind: 'unavailable', reason: 'none' };
+    /** The command moves asked for. */
+    readonly commandSteps: CommandDirection[] = [];
+
+    /** Records the move and returns the prepared one. */
+    commandStep(direction: CommandDirection): CommandMove | undefined {
+        this.commandSteps.push(direction);
+        return this.shown.length > 0 ? this.move : undefined;
+    }
+
+    /** The prepared output. */
+    lastCommandOutput(): CommandOutput | undefined {
+        return this.shown.length > 0 ? this.output : undefined;
+    }
+
+    /** The prepared output, as selected. */
+    selectLastCommandOutput(): CommandOutput | undefined {
+        return this.lastCommandOutput();
     }
 
     /** The terminal text size, in percent. */

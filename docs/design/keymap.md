@@ -34,30 +34,35 @@ defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
 
 ## Defaults
 
-| Command                    | Shortcut          | Why this chord                                                                     |
-| -------------------------- | ----------------- | ---------------------------------------------------------------------------------- |
-| Next region                | Command+F6        | The PRD proposed Control+F6, which macOS takes for "Move focus to floating window" |
-| Previous region            | Shift+Command+F6  | The same, backwards                                                                |
-| Show command palette       | Shift+Command+P   | The palette shortcut of VS Code and most editors                                   |
-| Show or hide the sidebar   | Control+Command+S | Finder's and Xcode's sidebar shortcut                                              |
-| Tab moves focus (toggle)   | Shift+Command+M   | Free on macOS; VS Code's Control+M is Return in a terminal                         |
-| Send next key to terminal  | Shift+Command+K   | Free on macOS, next to Command+K, which clears scrollback in Terminal              |
-| Mute output announcements  | Shift+Command+A   | Free in the app; Finder's Go to Applications applies only in Finder                |
-| Show notifications         | Shift+Command+N   | Free in the app                                                                    |
-| Accessibility help         | Option+F1         | The PRD's proposal (A11Y-10.1)                                                     |
-| New session                | Command+T         | Terminal's and every browser's new-tab shortcut                                    |
-| New session with options   | Shift+Command+T   | Beside Command+T                                                                   |
-| Next session               | Shift+Command+]   | The macOS next-tab shortcut                                                        |
-| Previous session           | Shift+Command+[   | The macOS previous-tab shortcut                                                    |
-| Close session              | Command+W         | Terminal's and every browser's close-tab shortcut, through the confirmation        |
-| List links                 | Shift+Command+O   | O for open; free in the app (US-1.12.3)                                            |
-| Bigger terminal text       | Command+=         | The text-size shortcut of Terminal and every browser (A11Y-07.4)                   |
-| Smaller terminal text      | Command+-         | The same, smaller                                                                  |
-| Default terminal text size | Command+0         | The same, back to 100%                                                             |
-| Review mode (toggle)       | Option+F2         | The PRD's proposal, VS Code's Accessible View (A11Y-03.1)                          |
-| Find in the terminal       | Command+F         | Every app's find shortcut (US-1.13)                                                |
-| Clear scrollback           | Command+K         | Terminal's shortcut for it (US-3.2.3)                                              |
-| Open the settings          | Command+,         | The macOS Settings shortcut (A11Y-10.3)                                            |
+| Command                    | Shortcut            | Why this chord                                                                                       |
+| -------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------- |
+| Next region                | Command+F6          | The PRD proposed Control+F6, which macOS takes for "Move focus to floating window"                   |
+| Previous region            | Shift+Command+F6    | The same, backwards                                                                                  |
+| Show command palette       | Shift+Command+P     | The palette shortcut of VS Code and most editors                                                     |
+| Show or hide the sidebar   | Control+Command+S   | Finder's and Xcode's sidebar shortcut                                                                |
+| Tab moves focus (toggle)   | Shift+Command+M     | Free on macOS; VS Code's Control+M is Return in a terminal                                           |
+| Send next key to terminal  | Shift+Command+K     | Free on macOS, next to Command+K, which clears scrollback in Terminal                                |
+| Mute output announcements  | Shift+Command+A     | Free in the app; Finder's Go to Applications applies only in Finder                                  |
+| Show notifications         | Shift+Command+N     | Free in the app                                                                                      |
+| Accessibility help         | Option+F1           | The PRD's proposal (A11Y-10.1)                                                                       |
+| New session                | Command+T           | Terminal's and every browser's new-tab shortcut                                                      |
+| New session with options   | Shift+Command+T     | Beside Command+T                                                                                     |
+| Next session               | Shift+Command+]     | The macOS next-tab shortcut                                                                          |
+| Previous session           | Shift+Command+[     | The macOS previous-tab shortcut                                                                      |
+| Close session              | Command+W           | Terminal's and every browser's close-tab shortcut, through the confirmation                          |
+| List links                 | Shift+Command+O     | O for open; free in the app (US-1.12.3)                                                              |
+| Bigger terminal text       | Command+=           | The text-size shortcut of Terminal and every browser (A11Y-07.4)                                     |
+| Smaller terminal text      | Command+-           | The same, smaller                                                                                    |
+| Default terminal text size | Command+0           | The same, back to 100%                                                                               |
+| Review mode (toggle)       | Option+F2           | The PRD's proposal, VS Code's Accessible View (A11Y-03.1)                                            |
+| Find in the terminal       | Command+F           | Every app's find shortcut (US-1.13)                                                                  |
+| Clear scrollback           | Command+K           | Terminal's shortcut for it (US-3.2.3)                                                                |
+| Previous command           | Option+Command+Up   | Command+Up already reaches the buffer's start in review mode, so Option adds the step (US-5.2, P-77) |
+| Next command               | Option+Command+Down | The same, forwards                                                                                   |
+| Read last command output   | Option+Command+R    | R for read; free in the app and in macOS                                                             |
+| Select last command output | Option+Command+A    | Beside Command+A, which selects all                                                                  |
+| Copy last command output   | Option+Command+C    | Beside Command+C, which copies the selection                                                         |
+| Open the settings          | Command+,           | The macOS Settings shortcut (A11Y-10.3)                                                              |
 
 Windows and Linux (E6, E7) will bind Close session to Control+Shift+W, as Windows Terminal and GNOME Terminal do,
 since Control+W is the shell's delete-word and a control code (rule 3, P-65).

@@ -22,6 +22,11 @@ type Topic = CommandId | { readonly action: MessageDescriptor; readonly keys: st
 const TOPICS: Readonly<Record<HelpContext, readonly Topic[]>> = {
     terminal: [
         'review.toggle',
+        'command.previous',
+        'command.next',
+        'command.readOutput',
+        'command.selectOutput',
+        'command.copyOutput',
         'terminal.find',
         'terminal.clearScrollback',
         'terminal.listLinks',
@@ -43,6 +48,9 @@ const TOPICS: Readonly<Record<HelpContext, readonly Topic[]>> = {
         { action: keys.bufferEnd, keys: 'Cmd+Down' },
         { action: keys.select, keys: 'Shift+Up, Shift+Down, Shift+Left, Shift+Right' },
         { action: keys.copy, keys: 'Cmd+C' },
+        'command.previous',
+        'command.next',
+        'command.selectOutput',
         'terminal.find',
         { action: keys.closeReview, keys: 'Escape' },
         'review.toggle',

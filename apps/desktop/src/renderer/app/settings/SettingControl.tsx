@@ -256,6 +256,27 @@ const RENDERERS: Readonly<
             onChange={(pasteConfirmation) => update({ pasteConfirmation })}
         />
     ),
+    announceFailedCommands: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'announceFailedCommands')}
+            isSelected={settings.announceFailedCommands}
+            onChange={(announceFailedCommands) => update({ announceFailedCommands })}
+        />
+    ),
+    commandSucceededCue: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'commandSucceededCue')}
+            isSelected={settings.commandSucceededCue}
+            onChange={(commandSucceededCue) => update({ commandSucceededCue })}
+        />
+    ),
+    commandFailedCue: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'commandFailedCue')}
+            isSelected={settings.commandFailedCue}
+            onChange={(commandFailedCue) => update({ commandFailedCue })}
+        />
+    ),
 };
 
 function ScreenReaderModeSetting({ shell }: { readonly shell: Shell }) {

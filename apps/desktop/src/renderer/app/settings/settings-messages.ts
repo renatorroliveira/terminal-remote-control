@@ -35,6 +35,7 @@ export const settingGroupMessages = defineMessages({
     sound: { id: 'settings.group.sound', defaultMessage: 'Sound', description: 'Section.' },
     keyboard: { id: 'settings.group.keyboard', defaultMessage: 'Keyboard', description: 'Section.' },
     sessions: { id: 'settings.group.sessions', defaultMessage: 'Sessions', description: 'Section.' },
+    commands: { id: 'settings.group.commands', defaultMessage: 'Commands', description: 'Section (US-5.2).' },
     hosts: { id: 'settings.group.hosts', defaultMessage: 'Hosts', description: 'Section.' },
 });
 
@@ -99,6 +100,21 @@ export const settingLabelMessages = defineMessages({
         id: 'setting.shellIntegration',
         defaultMessage: 'Shell integration',
         description: 'Setting: one switch per host.',
+    },
+    announceFailedCommands: {
+        id: 'setting.announceFailedCommands',
+        defaultMessage: 'Announce failed commands',
+        description: 'Setting (US-5.2.2).',
+    },
+    commandSucceededCue: {
+        id: 'setting.commandSucceededCue',
+        defaultMessage: 'Sound when a command succeeds',
+        description: 'Setting (US-5.2.2).',
+    },
+    commandFailedCue: {
+        id: 'setting.commandFailedCue',
+        defaultMessage: 'Sound when a command fails',
+        description: 'Setting (US-5.2.2).',
     },
 });
 
@@ -169,6 +185,16 @@ export const settingDescriptionMessages = defineMessages({
         id: 'setting.shellIntegration.description',
         defaultMessage:
             'Bash, zsh and fish mark each prompt and command, so you can move between commands and hear when one fails. TRC changes none of your shell’s files. A change applies when a shell next starts.',
+        description: 'Setting description.',
+    },
+    commandSucceededCue: {
+        id: 'setting.commandSucceededCue.description',
+        defaultMessage: 'Plays while sound cues are on, for the open session.',
+        description: 'Setting description.',
+    },
+    commandFailedCue: {
+        id: 'setting.commandFailedCue.description',
+        defaultMessage: 'Plays while sound cues are on, for the open session.',
         description: 'Setting description.',
     },
 });

@@ -1,6 +1,7 @@
 import type { SessionInfo } from '@trc/protocol';
 import { createIntl } from 'react-intl';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { userEvent } from 'vitest/browser';
 import type { ScreenReaderMode } from '../../shared/accessibility';
 import { formatChord, resolveKeymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
@@ -219,6 +220,11 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'User guide',
             'Settings…',
             'Quit and Stop All Sessions…',
+            'Previous command',
+            'Next command',
+            'Read last command output',
+            'Select last command output',
+            'Copy last command output',
         ]);
     });
 
@@ -351,6 +357,35 @@ describe('Shell paste and copy (US-1.12.1, US-1.12.2, A11Y-04.7)', () => {
         const { shell, spoken } = await setup();
         shell.terminalNotice('host-0/a', { kind: 'clipboard-written' });
         expect(spoken).toEqual(['A program on devbox-1 put text on the clipboard.']);
+    });
+});
+
+describe('Shell: commands shell integration marks (US-5.2)', () => {
+    it('moves between commands with Option+Command+Up and Down, and says where it is', async () => {
+        const { client, workspace, terminals, spoken } = await setup();
+        client.push('host-0', CONNECTED);
+        await expect.poll(() => workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
+        workspace.open('host-0/a');
+        terminals.move = { kind: 'moved', line: '$ make test', exitCode: 2, running: false };
+        spoken.length = 0;
+        await userEvent.keyboard('{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}');
+        terminals.move = { kind: 'edge', direction: 'next' };
+        await userEvent.keyboard('{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}');
+        expect(terminals.commandSteps).toEqual(['previous', 'next']);
+        expect(spoken).toEqual(['$ make test. Failed, exit code 2.', 'No later command.']);
+    });
+
+    it('announces a command that failed in the open session and plays its cue, but no success cue by default', async () => {
+        const { shell, client, workspace, spoken, cues } = await setup(false, { audioCues: true });
+        client.push('host-0', CONNECTED);
+        await expect.poll(() => workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
+        workspace.open('host-0/a');
+        spoken.length = 0;
+        cues.length = 0;
+        shell.terminalNotice('host-0/a', { kind: 'command-finished', exitCode: 127 });
+        shell.terminalNotice('host-0/a', { kind: 'command-finished', exitCode: 0 });
+        expect(spoken).toEqual(['Command failed, exit code 127.']);
+        expect(cues).toEqual(['command-failed']);
     });
 });
 

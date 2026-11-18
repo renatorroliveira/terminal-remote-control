@@ -8,6 +8,8 @@ import { AtsSurface, SELECTION_CAP } from './ats-surface';
 import { LogicalText } from './buffer-lines';
 import { type BufferText, bufferText } from './buffer-text';
 import { parseClipboardRequest } from './clipboard-write';
+import { CommandMarks } from './command-marks';
+import { type CommandDirection, type CommandMove, CommandNavigator, type CommandOutput } from './command-navigator';
 import { CreditTracker } from './credit-tracker';
 import { CursorBlink } from './cursor-blink';
 import { type FindMatch, type FindOptions, type FindResult, findMatches } from './find';
@@ -137,6 +139,8 @@ export class TerminalView {
     readonly #announcer: OutputAnnouncer | undefined;
     readonly #links: TerminalLinks;
     readonly #blink: CursorBlink;
+    readonly #marks: CommandMarks;
+    readonly #commands: CommandNavigator;
     #review: ReviewField | undefined;
     #label: TerminalLabel | undefined;
     #connection: TerminalConnection = 'connected';
@@ -179,6 +183,10 @@ export class TerminalView {
         this.#credit = new CreditTracker(options.onCredit);
         this.#announcer = options.speech === undefined ? undefined : new OutputAnnouncer(this.terminal, options.speech);
         this.#blink = new CursorBlink(this.terminal.options);
+        this.#marks = new CommandMarks(this.terminal, {
+            onFinished: (exitCode) => options.onNotice?.({ kind: 'command-finished', exitCode }),
+        });
+        this.#commands = new CommandNavigator(this.terminal, this.#marks, () => this.#review);
         this.#links = new TerminalLinks(
             this.terminal,
             (link) => options.onLink?.(link),
@@ -309,6 +317,7 @@ export class TerminalView {
         this.#announcer?.restart();
         this.endFind();
         this.terminal.reset();
+        this.#forgetCommands();
         this.#outputBelow.hidden = true;
         this.#scheduler.request();
     }
@@ -320,19 +329,27 @@ export class TerminalView {
      */
     beginReplay(mode: ReplayMode): void {
         this.#announcer?.hold();
+        this.#marks.hold();
         if (mode === 'replace') {
             this.endFind();
             this.#outputBelow.hidden = true;
             this.terminal.write('', () => {
                 this.terminal.reset();
+                this.#forgetCommands();
                 this.#scheduler.request();
             });
         }
     }
 
-    /** Ends a replay once the output written so far is parsed; what follows is live and spoken again. */
+    /**
+     * Ends a replay once the output written so far is parsed; what follows is live, spoken again, and a command it
+     * finishes is reported again.
+     */
     endReplay(): void {
-        void this.parsed().then(() => this.#announcer?.release());
+        void this.parsed().then(() => {
+            this.#announcer?.release();
+            this.#marks.release();
+        });
     }
 
     /** Settles once the output written so far is parsed into the buffer. */
@@ -353,6 +370,21 @@ export class TerminalView {
     /** Whether review mode is open. */
     get reviewOpen(): boolean {
         return this.#review?.isOpen === true;
+    }
+
+    /** Goes to the previous or the next command shell integration marked, in review mode while it is open (US-5.2.1). */
+    commandStep(direction: CommandDirection): CommandMove {
+        return this.#commands.step(direction);
+    }
+
+    /** The last command's output (US-5.2.1). */
+    lastCommandOutput(): CommandOutput {
+        return this.#commands.lastOutput();
+    }
+
+    /** Selects the last command's output, in review mode while it is open (US-5.2.1, A11Y-04). */
+    selectLastCommandOutput(): CommandOutput {
+        return this.#commands.selectLastOutput();
     }
 
     /** Finds `query` in the buffer and selects the most recent match (US-1.13, A11Y-03.6). */
@@ -480,6 +512,7 @@ export class TerminalView {
         this.#disposed = true;
         this.#scheduler.dispose();
         this.#announcer?.dispose();
+        this.#marks.dispose();
         this.#review?.close();
         this.#blink.dispose();
         this.#links.dispose();
@@ -745,6 +778,7 @@ export class TerminalView {
         this.#scheduler.input();
         this.#blink.input();
         this.#announcer?.input(text);
+        this.#commands.reset();
         this.terminal.clearSelection();
         this.terminal.scrollToBottom();
         this.#ats.placeCaret();
@@ -767,6 +801,11 @@ export class TerminalView {
                 this.#scheduler.request();
             },
         };
+    }
+
+    #forgetCommands(): void {
+        this.#marks.reset();
+        this.#commands.reset();
     }
 
     #fitted(size: { readonly cols: number; readonly rows: number }): void {

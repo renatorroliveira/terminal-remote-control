@@ -4,7 +4,7 @@ import type { ScreenReaderMode } from '../../shared/accessibility';
 import type { GuideSection } from '../../shared/guide';
 import type { CommandId, Keymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
-import { keymapFor, type Settings } from '../../shared/settings';
+import { DEFAULT_SETTINGS, keymapFor, type Settings } from '../../shared/settings';
 import { nextZoom, TERMINAL_ZOOM, type ZoomChange } from '../../shared/terminal-zoom';
 import { CommandRegistry } from '../commands/command-registry';
 import { installShortcuts } from '../commands/shortcuts';
@@ -27,6 +27,7 @@ import type { TerminalLink } from '../terminal/hyperlinks';
 import type { TerminalNotice } from '../terminal/notices';
 import { pastedLines } from '../terminal/paste';
 import type { Announcer } from './announcer';
+import { CommandActions, type CommandTerminals } from './command-actions';
 import { type DaemonActionOptions, removeDaemon, restartDaemon } from './daemon-actions';
 import { reportActionFailures, reportSettingsFailures } from './failure-reporter';
 import { type HelpContext, helpContext } from './help/help-context';
@@ -53,7 +54,7 @@ import {
 import type { AudioCue } from './sound/audio-cues';
 
 /** What the shell's commands ask of the terminals. */
-export interface TerminalControls {
+export interface TerminalControls extends CommandTerminals {
     focusOpen(): boolean;
     setTabFocusMode(on: boolean): void;
     sendNextKey(): boolean;
@@ -191,6 +192,8 @@ export interface ShellOptions {
     readonly menus?: { readonly ignoreShortcuts: (ignore: boolean) => void };
     /** Plays sound cues beside announcements; without it, the app is silent (A11Y-12.4). */
     readonly cues?: { readonly play: (cue: AudioCue) => void };
+    /** Puts text the user asked to copy on the clipboard; without it, nothing is copied (US-5.2.1). */
+    readonly clipboard?: { readonly copy: (text: string) => Promise<boolean> };
     /** Quits the app as the quit flow decides; without it, quitting does nothing. */
     readonly quitControls?: QuitFlowOptions['controls'];
 }
@@ -241,6 +244,7 @@ export class Shell {
     readonly logoutWarning = new LogoutWarning();
     readonly #options: ShellOptions;
     readonly #regions: RegionCycler;
+    readonly #commandActions: CommandActions;
     /** Where focus returns when the palette, help or the settings page closes (A11Y-05.8). */
     #focusReturn: HTMLElement | undefined;
     /** This computer, while its daemon runs without its LaunchAgent and the user was told. */
@@ -264,6 +268,16 @@ export class Shell {
         this.notifications = options.notifications;
         this.sidebar = options.sidebar;
         this.#regions = new RegionCycler(options.document, { terminal: () => options.terminals.focusOpen() });
+        this.#commandActions = new CommandActions({
+            terminals: options.terminals,
+            workspace: () => options.workspace.store.getState(),
+            intl: options.intl,
+            announcer: options.announcer,
+            playCue: (cue) => this.playCue(cue),
+            settings: () => options.settings?.current ?? DEFAULT_SETTINGS,
+            copy: (text) => options.clipboard?.copy(text).catch(() => false) ?? Promise.resolve(false),
+            noSession: () => this.#announce(shellAnnouncements.noSession),
+        });
         this.#registerCommands();
     }
 
@@ -428,6 +442,9 @@ export class Shell {
                 break;
             case 'size':
                 this.#noteSize(key, notice.setElsewhere);
+                break;
+            case 'command-finished':
+                this.#commandActions.finished(key, notice.exitCode);
                 break;
             case 'input-refused':
                 this.playCue('input-refused');
@@ -682,6 +699,7 @@ export class Shell {
             'help.userGuide': () => this.openGuide(),
             'settings.show': () => void this.openSettings(),
             'app.quitAndStopAll': () => this.quit.requestStopAll(),
+            ...this.#commandActions.actions(),
         };
         for (const [id, run] of Object.entries(actions) as [CommandId, () => void][]) {
             this.commands.register({ id, label: this.#options.intl.formatMessage(commandMessages[id]), run });
