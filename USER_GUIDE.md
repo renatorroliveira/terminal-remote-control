@@ -93,19 +93,21 @@ any host's, from New session (your login shell) to restore and sharing.
   and registers it as a LaunchAgent, `~/Library/LaunchAgents/dev.trc.trcd-<8 hexadecimal digits>.plist`, which
   starts it at login and again if it crashes. No step asks for an administrator password. Each step shows and is
   announced, as for any host. macOS may then say that a background item was added, and lists `trcd` in System
-  Settings, General, Login Items (Login Items & Extensions from macOS 15); leave it allowed there. When the daemon runs without its LaunchAgent, so it would
-  neither start at login nor restart after a crash, TRC says so and lists it in Notifications; choose Restart daemon
-  in This computer's details to register it again.
+  Settings, General, Login Items & Extensions; leave it allowed there. When the daemon runs without its LaunchAgent,
+  so it would neither start at login nor restart after a crash, TRC says so and lists it in Notifications; choose
+  Restart daemon in This computer's details to register it again.
 - **What survives.** Local sessions keep running when you quit the app, when it crashes or is forced to quit, and
   when the daemon is killed or updated. Logging out of macOS ends no session either: the daemon starts again at
   your next login and takes them back. After the Mac restarts, your sessions come back when you log in, below their
   saved scrollback, as on any host [after a restart](#after-a-restart).
 - **Files and folders macOS protects.** The first time a command in a local session reads your Desktop, Documents
   or Downloads folder, or a removable or network volume, macOS asks whether "trcd" may; the command waits until you
-  answer. In 0.x releases, which are ad-hoc signed, an update of TRC may ask again. To stop the questions, add the
-  running `trcd` to Full Disk Access in System Settings, Privacy & Security: choose the + button, press
-  Shift+Command+G and paste the path that
-  `plutil -extract ProgramArguments.0 raw ~/Library/LaunchAgents/dev.trc.trcd-*.plist` prints in Terminal.
+  answer. In 0.x releases, which are ad-hoc signed, an update of TRC may ask again. To stop the questions, give the
+  running `trcd` Full Disk Access: in Terminal, run
+  `plutil -extract ProgramArguments.0 raw ~/Library/LaunchAgents/dev.trc.trcd-*.plist`, which prints its path when
+  TRC's LaunchAgent is the only one; then in System Settings, Privacy & Security, Full Disk Access, choose the +
+  button, press Shift+Command+G and paste that path. Sessions started before an update keep the older `trcd`
+  until they restart.
 - **Another Mac.** A computer that adds this Mac as a host, with the default install location, reaches the same
   daemon and the same sessions.
 

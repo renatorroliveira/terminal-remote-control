@@ -427,7 +427,7 @@ describe('Shell: the open session ends (US-1.10.9)', () => {
         expect(shell.state.getState().sessionDialog).toBeUndefined();
     });
 
-    it('says nothing of a session that had ended before its host reconnected or the app started', async () => {
+    it('says nothing again of a session already known to have ended when its host reconnects', async () => {
         const exited = { ...bashSession('a'), state: 'exited', exit: { code: 2 } } as const;
         const { client, workspace, spoken } = await setup(false, {}, { sessions: [exited] });
         client.push('host-0', CONNECTED);
@@ -775,7 +775,8 @@ describe('Shell host reports (A11Y-12.1, A11Y-12.2)', () => {
         client.push('local', runBy('detached'));
         const warning =
             'This computer’s daemon runs without its LaunchAgent, so it won’t start at login or restart after a ' +
-            'crash. If trcd is turned off in System Settings, General, Login Items, turn it on. Then choose ' +
+            'crash. If trcd is turned off in System Settings, General, Login Items & Extensions, turn it on. ' +
+            'Then choose ' +
             'Restart daemon in the details of This computer.';
         expect(spoken.filter((text) => text.includes('LaunchAgent'))).toEqual([warning]);
         client.push('local', lost);

@@ -314,7 +314,7 @@ export const hostAnnouncements = {
     noLaunchAgent: defineMessage<{ host: string }>({
         id: 'announce.noLaunchAgent',
         defaultMessage:
-            '{host}’s daemon runs without its LaunchAgent, so it won’t start at login or restart after a crash. If trcd is turned off in System Settings, General, Login Items, turn it on. Then choose Restart daemon in the details of {host}.',
+            '{host}’s daemon runs without its LaunchAgent, so it won’t start at login or restart after a crash. If trcd is turned off in System Settings, General, Login Items & Extensions, turn it on. Then choose Restart daemon in the details of {host}.',
         description: 'Announced and listed when This computer’s daemon is not run by launchd (US-4.1.3).',
     }),
 };

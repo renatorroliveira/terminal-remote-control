@@ -45,8 +45,8 @@ impl Supervisor {
     }
 
     /// The exit status for a core that SIGTERM ended: 143 under launchd, so `KeepAlive` starts it again after a
-    /// `kill` or Activity Monitor's Quit, as launchd sends SIGTERM itself only to a job it unloads, which it never
-    /// restarts (US-4.3.2); 0 elsewhere, where the service manager or the next bridge starts it.
+    /// `kill`, Activity Monitor's Quit or `launchctl stop` (US-4.3.2), while a job launchd unloads, at a logout or a
+    /// `bootout`, is never started again; 0 elsewhere, where the service manager or the next bridge starts it.
     pub fn terminated_status(self) -> u8 {
         if self == Self::Launchd { EXIT_TERMINATED } else { 0 }
     }

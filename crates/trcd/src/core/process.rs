@@ -39,6 +39,33 @@ pub enum StartError {
     Io(#[from] io::Error),
 }
 
+impl StartError {
+    /// Whether starting again may succeed: the OS ran short of something for a while, such as file descriptors,
+    /// space or memory. Another running core, a folder others can open, a missing path or a refusal does not pass
+    /// by itself, so under launchd such a core exits 0 rather than start again every second.
+    pub fn may_pass(&self) -> bool {
+        let Self::Io(error) = self else {
+            return false;
+        };
+        let short_of_files = [rustix::io::Errno::MFILE, rustix::io::Errno::NFILE]
+            .iter()
+            .any(|errno| error.raw_os_error() == Some(errno.raw_os_error()));
+        short_of_files || TRANSIENT.contains(&error.kind())
+    }
+}
+
+/// The kinds of OS errors that pass by themselves.
+const TRANSIENT: [io::ErrorKind; 8] = [
+    io::ErrorKind::Interrupted,
+    io::ErrorKind::WouldBlock,
+    io::ErrorKind::TimedOut,
+    io::ErrorKind::StorageFull,
+    io::ErrorKind::QuotaExceeded,
+    io::ErrorKind::ResourceBusy,
+    io::ErrorKind::OutOfMemory,
+    io::ErrorKind::AddrInUse,
+];
+
 /// Runs the core in the foreground until an app asks it to end or SIGTERM ends it, and says which. Under systemd,
 /// holders start in their own transient scopes, outside the unit's control group (US-2.5.2); under launchd they
 /// already run in sessions of their own (D-50).
@@ -49,11 +76,12 @@ pub fn run(layout: &InstallLayout, supervisor: Supervisor) -> Result<Ending, Sta
     let login_umask = rustix::process::umask(Mode::from_raw_mode(0o077));
     let run = RunDir::for_root(&layout.root, uid);
     let sessions_dir = layout.root.join("sessions");
-    for dir in [layout.logs_dir(), run.dir.clone(), run.holders(), sessions_dir.clone()] {
-        ensure_private_dir(&dir, uid)?;
-    }
+    ensure_private_dir(&layout.logs_dir(), uid)?;
     if supervisor == Supervisor::Launchd {
         crate::launchd::trim_log(&layout.logs_dir());
+    }
+    for dir in [run.dir.clone(), run.holders(), sessions_dir.clone()] {
+        ensure_private_dir(&dir, uid)?;
     }
     let binary_sha256 = sha256_file(&layout.binary)?;
     let _lock = lock_single_instance(&run.core_lock(), &binary_sha256)?;
@@ -164,6 +192,17 @@ fn remove_stale(socket: &Path) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn retries_a_start_only_when_the_os_ran_short_of_something() {
+        let io = |error: io::Error| StartError::Io(error);
+        assert!(io(io::Error::from(io::ErrorKind::StorageFull)).may_pass());
+        assert!(io(io::Error::from_raw_os_error(rustix::io::Errno::MFILE.raw_os_error())).may_pass());
+        assert!(!io(io::Error::other("the run folder must be 700")).may_pass());
+        assert!(!io(io::Error::from(io::ErrorKind::PermissionDenied)).may_pass());
+        assert!(!io(io::Error::from(io::ErrorKind::NotADirectory)).may_pass());
+        assert!(!StartError::AlreadyRunning.may_pass());
+    }
 
     #[test]
     fn names_the_manager_that_runs_the_core() {

@@ -37,7 +37,14 @@ fn main() -> ExitCode {
             Ok(Ending::Asked) => ExitCode::SUCCESS,
             Ok(Ending::Terminated) => ExitCode::from(supervisor.terminated_status()),
             Err(StartError::AlreadyRunning) => fail(refusal(EXIT_ALREADY_RUNNING), "another core is already running"),
-            Err(StartError::Io(error)) => fail(EXIT_OS_ERROR, &error.to_string()),
+            Err(error @ StartError::Io(_)) => {
+                let status = if error.may_pass() {
+                    EXIT_OS_ERROR
+                } else {
+                    refusal(EXIT_OS_ERROR)
+                };
+                fail(status, &error.to_string())
+            }
         },
         Command::Core { detach: true, .. } => finish(trcd::core::process::launch_detached(&layout)),
         Command::Holder { socket } => finish(trcd::holder::process::serve(&socket)),
