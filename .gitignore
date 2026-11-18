@@ -63,6 +63,7 @@ nfr-results/
 playwright-report/
 blob-report/
 tools/test-hosts/.run/
+tools/test-hosts/macos/.run/
 
 # Rust
 target/

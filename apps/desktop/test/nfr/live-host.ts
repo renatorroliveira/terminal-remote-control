@@ -9,6 +9,7 @@ import { parseDaemonManifest } from '../../src/connection-host/bootstrap/manifes
 import { type ConnectionRuntime, HostConnection } from '../../src/connection-host/connection/host-connection';
 import { createAppLogger } from '../../src/connection-host/logging/app-log';
 import type { ConnectionState } from '../../src/shared/connection';
+import { bootOutAgent } from '../mac-hosts';
 import { percentile } from './stats';
 
 const repository = resolve(import.meta.dirname, '../../../..');
@@ -296,7 +297,7 @@ export async function waitFor(condition: () => boolean, timeoutMs = 30_000): Pro
 
 /** Stops the daemon under the host's scratch root and removes it; `[/]` keeps pkill off the shell running it. */
 function removeInstall(host: LiveHost): void {
-    const script = `kill $(head -n 1 ~/${host.root}/run/core.lock 2>/dev/null) 2>/dev/null; pkill -f "[/]${host.root}/versions"; rm -rf ~/${host.root}`;
+    const script = `${bootOutAgent(`~/${host.root}`)}; kill $(head -n 1 ~/${host.root}/run/core.lock 2>/dev/null) 2>/dev/null; pkill -f "[/]${host.root}/versions"; rm -rf ~/${host.root}`;
     try {
         ssh(host.alias, script);
     } catch {

@@ -1,6 +1,7 @@
 import { expect, type Locator, test } from '@playwright/test';
 import { ssh } from '../nfr/live-host';
 import {
+    E2E_HOST,
     launchWithTestHosts,
     openTerminal,
     removeInstall,
@@ -16,10 +17,10 @@ async function screenText(terminal: Locator): Promise<string> {
     return (await rowTexts(terminal)).join('\n');
 }
 
-/** Opens a session on trc-ubuntu and returns its shell's PID, which the shell prints. */
+/** Opens a session on the e2e host and returns its shell's PID, which the shell prints. */
 async function shellPid(launched: TestHostApp): Promise<string> {
-    const terminal = await openTerminal(launched.window, 'trc-ubuntu');
-    await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+    const terminal = await openTerminal(launched.window, E2E_HOST);
+    await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
     await terminal.focus();
     await launched.window.keyboard.type('echo "pid=$$"');
     await launched.window.keyboard.press('Enter');
@@ -42,7 +43,7 @@ function chooseMenuItem(launched: TestHostApp, label: string): Promise<void> {
 }
 
 function alive(pid: string): boolean {
-    return ssh('trc-ubuntu', `kill -0 ${pid} 2>/dev/null && echo alive || echo gone`).trim() === 'alive';
+    return ssh(E2E_HOST, `kill -0 ${pid} 2>/dev/null && echo alive || echo gone`).trim() === 'alive';
 }
 
 test.describe('quitting (US-2.1)', () => {
@@ -52,7 +53,7 @@ test.describe('quitting (US-2.1)', () => {
         install.root = scratchInstallRoot();
     });
     test.afterEach(() => {
-        removeInstall('trc-ubuntu', install.root);
+        removeInstall(E2E_HOST, install.root);
     });
 
     test('says once that sessions keep running, and a quit, a crash and a force-kill end none', async () => {
@@ -66,24 +67,24 @@ test.describe('quitting (US-2.1)', () => {
         await closed;
         expect(alive(pid)).toBe(true);
         const again = await launchWithTestHosts(install.root, { scratch: first.scratch, firstQuit: true });
-        await again.window.getByRole('button', { name: 'Disconnect trc-ubuntu' }).waitFor({ timeout: 60_000 });
+        await again.window.getByRole('button', { name: `Disconnect ${E2E_HOST}` }).waitFor({ timeout: 60_000 });
         await again.app.close();
         expect(alive(pid)).toBe(true);
         const crashing = await launchWithTestHosts(install.root, { scratch: first.scratch });
-        await crashing.window.getByRole('button', { name: 'Disconnect trc-ubuntu' }).waitFor({ timeout: 60_000 });
+        await crashing.window.getByRole('button', { name: `Disconnect ${E2E_HOST}` }).waitFor({ timeout: 60_000 });
         const crashed = crashing.app.waitForEvent('close');
         await crashing.app.evaluate(() => process.crash()).catch(() => undefined);
         await crashed;
         expect(alive(pid)).toBe(true);
         const killed = await launchWithTestHosts(install.root, { scratch: first.scratch });
-        await killed.window.getByRole('button', { name: 'Disconnect trc-ubuntu' }).waitFor({ timeout: 60_000 });
+        await killed.window.getByRole('button', { name: `Disconnect ${E2E_HOST}` }).waitFor({ timeout: 60_000 });
         const gone = killed.app.waitForEvent('close');
         process.kill(killed.app.process().pid ?? 0, 'SIGKILL');
         await gone;
         expect(alive(pid)).toBe(true);
         const last = await launchWithTestHosts(install.root, { scratch: first.scratch });
         await last.window.getByRole('treeitem', { name: /, Running$/ }).click({ timeout: 60_000 });
-        const terminal = last.window.getByRole('textbox', { name: /, trc-ubuntu$/ });
+        const terminal = last.window.getByRole('textbox', { name: new RegExp(`, ${E2E_HOST}$`) });
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toContain(`pid=${pid}`);
         await last.app.close();
     });

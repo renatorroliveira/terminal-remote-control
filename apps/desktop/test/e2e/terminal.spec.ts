@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
+    E2E_HOST,
     launchWithTestHosts,
     openTerminal,
     recordSpeech,
@@ -83,7 +84,7 @@ function liveHost(): { root: string } {
         install.root = scratchInstallRoot();
     });
     test.afterEach(() => {
-        removeInstall('trc-ubuntu', install.root);
+        removeInstall(E2E_HOST, install.root);
     });
     return install;
 }
@@ -93,9 +94,9 @@ test.describe('a live terminal on a Linux host (M1)', () => {
 
     test('types a command and reads its output as real text (US-1.11, A11Y-04.1, D-22)', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
+        const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         await window.keyboard.type('echo hi');
         await window.keyboard.press('Enter');
         await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('hi');
@@ -106,12 +107,12 @@ test.describe('a live terminal on a Linux host (M1)', () => {
 
     test('starts the session’s name with the last two folders its shell is in, the home folder as ~ (P-48)', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
+        const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         const session = window.getByRole('tree', { name: 'Sessions' }).getByRole('treeitem', { level: 2 });
         await expect(session).toHaveAccessibleName(/^~ /, { timeout: 15_000 });
-        await window.keyboard.type('mkdir -p /tmp/trc-place/deep && cd /tmp/trc-place/deep');
+        await window.keyboard.type('mkdir -p /tmp/$(id -un)/trc-place/deep && cd /tmp/$(id -un)/trc-place/deep');
         await window.keyboard.press('Enter');
         await expect(session).toHaveAccessibleName(/^trc-place\/deep /, { timeout: 15_000 });
         await expect(session).toContainText('trc-place/deep');
@@ -125,9 +126,9 @@ test.describe('a live terminal on a Linux host: spoken output (A11Y-02, A11Y-10.
     test('speaks a command’s output in screen-reader mode, but not the echo of what was typed (A11Y-01.4)', async () => {
         const { app, window } = await launchWithTestHosts(install.root, { args: ['--screen-reader-mode=on'] });
         await recordSpeech(window);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
+        const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         await window.waitForTimeout(500);
         await window.keyboard.type('echo trc""spoken');
         await window.keyboard.press('Enter');
@@ -154,9 +155,9 @@ test.describe('a live terminal on a Linux host: links (US-1.12.3, US-1.12.4)', (
 
     test('confirms a Command+clicked link, trusts its origin when asked, then opens that origin’s links at once', async () => {
         const { app, window, home, openedLinks } = await launchWithTestHosts(install.root);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
+        const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         await window.keyboard.type(
             String.raw`printf '\e]8;;https://example.com/real\e\\the docs\e]8;;\e\\ or https://example.com/plain\n'`,
         );
@@ -181,9 +182,9 @@ test.describe('a live terminal on a Linux host: paste (US-1.12.2)', () => {
 
     test('asks before pasting two lines, and the shell runs them on Return after a bracketed paste', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
+        const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         await terminal.evaluate((surface) => {
             const data = new DataTransfer();
             data.setData('text/plain', 'echo pasted-one\necho pasted-two\n');
@@ -214,9 +215,9 @@ test.describe('a live terminal on a Linux host: review mode and find (A11Y-03, U
 
     test('reads the buffer in review mode, finds matches, and returns to the terminal each time', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
+        const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         const printed = ['needle-one', 'hay', 'needle-two'];
         const needles = printed.filter((line) => line.startsWith('needle-'));
         await window.keyboard.type(String.raw`printf 'ne%sle-one\nhay\nne%sle-two\n' ed ed`);
@@ -246,16 +247,16 @@ test.describe('a live terminal on a Linux host: connection loss (US-1.14, US-2.2
 
     test('reconnects by itself after the connection drops, keeps the buffer, adds what it missed, and says so', async () => {
         const { app, window, home } = await launchWithTestHosts(install.root);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
+        const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         await recordSpeech(window);
         await window.keyboard.type('echo before-loss; sleep 3; echo missed-while-away');
         await window.keyboard.press('Enter');
         await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('before-loss');
         execFileSync('pkill', ['-f', `${dirname(home)}/known_hosts`]);
-        await expect.poll(() => spokenWith(window, 'Reconnected to trc-ubuntu'), { timeout: 60_000 }).toHaveLength(1);
-        const restored = window.getByRole('textbox', { name: /, trc-ubuntu$/ });
+        await expect.poll(() => spokenWith(window, `Reconnected to ${E2E_HOST}`), { timeout: 60_000 }).toHaveLength(1);
+        const restored = window.getByRole('textbox', { name: new RegExp(`, ${E2E_HOST}$`) });
         await expect.poll(() => rowTexts(restored), { timeout: 30_000 }).toContain('missed-while-away');
         expect(await rowTexts(restored)).toContain('before-loss');
         await restored.focus();
@@ -271,9 +272,9 @@ test.describe('a live terminal on a Linux host: leaving the terminal (A11Y-05)',
 
     test('lets Tab leave the terminal in Tab focus mode, and passes an app shortcut on after send-next-key', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
+        const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         await window.keyboard.press('Shift+Meta+K');
         await window.keyboard.press('Meta+F6');
         await expect(terminal).toBeFocused();
@@ -290,8 +291,8 @@ test.describe('a live session on a Linux host: rename and close (US-1.10)', () =
 
     test('renames a session on the daemon, then closes it after the confirmation', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
-        await openTerminal(window, 'trc-ubuntu');
-        const session = window.getByRole('treeitem', { name: /^~ bash/ }).first();
+        await openTerminal(window, E2E_HOST);
+        const session = window.getByRole('treeitem', { name: /^~ (bash|zsh)/ }).first();
         await session.focus();
         await window.keyboard.press('Shift+F10');
         await window.getByRole('menuitem', { name: 'Rename…' }).click();
@@ -319,8 +320,8 @@ test.describe('a live terminal on a Linux host: size and keys (M1)', () => {
                 height,
             ] as const);
         await resize(1000, 700);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        const terminal = await openTerminal(window, E2E_HOST);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         const before = await terminal.getAttribute('data-columns');
         await resize(1500, 900);
         await expect.poll(() => terminal.getAttribute('data-columns')).not.toBe(before);
@@ -333,8 +334,8 @@ test.describe('a live terminal on a Linux host: size and keys (M1)', () => {
 
     test('delivers Shift+Enter as CSI 13;2u to a program that turned on kitty keys (US-1.11, D-30)', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        const terminal = await openTerminal(window, E2E_HOST);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         await terminal.pressSequentially(
             "printf '\\033[>1u'; IFS= read -rs -d u key; printf '\\033[<u'; printf 'key=%q\\n' \"$key\"\n",
         );
@@ -351,9 +352,9 @@ test.describe('a live terminal on a Linux host: selection and glyphs (M1)', () =
     test('selects words and drags across text with the pointer while VoiceOver is on (A11Y-04.1, A11Y-04.3)', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
         await app.evaluate(({ app: electronApp }) => electronApp.setAccessibilitySupportEnabled(true));
-        const terminal = await openTerminal(window, 'trc-ubuntu');
+        const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         await window.keyboard.type('echo the quick brown fox');
         await window.keyboard.press('Enter');
         await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('the quick brown fox');
@@ -376,8 +377,8 @@ test.describe('a live terminal on a Linux host: selection and glyphs (M1)', () =
         const { app, window } = await launchWithTestHosts(install.root);
         await app.context().addInitScript(recordCanvasFonts);
         await window.reload();
-        const terminal = await openTerminal(window, 'trc-ubuntu');
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        const terminal = await openTerminal(window, E2E_HOST);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         const fonts = await window.evaluate(() => (window as unknown as { canvasFonts?: string[] }).canvasFonts ?? []);
         expect(fonts.filter((font) => font.startsWith('rejected:'))).toEqual([]);
         expect(fonts.some((font) => font.includes('Intel One Mono'))).toBe(true);

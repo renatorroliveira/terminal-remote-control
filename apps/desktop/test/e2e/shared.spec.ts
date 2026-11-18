@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { connectLive, type LiveHost } from '../nfr/live-host';
 import {
+    E2E_HOST,
     launchWithTestHosts,
     openTerminal,
     recordSpeech,
@@ -23,7 +24,7 @@ async function screenText(terminal: Locator): Promise<string> {
 
 /** Attaches a second client, driven by the test over its own ssh connection, to the host's only session. */
 async function secondClient(root: string): Promise<SecondClient> {
-    const host = await connectLive('trc-ubuntu', { root: root.replace(/^~\//, '') });
+    const host = await connectLive(E2E_HOST, { root: root.replace(/^~\//, '') });
     const { message } = await host.request({ type: 'listSessions', requestId: 1 }, 'sessions');
     const session = message.sessions[0]?.id ?? '';
     const attached = await host.request({ type: 'attach', requestId: 2, session, mode: 'full' }, 'attached');
@@ -43,13 +44,13 @@ test.describe('a session shared with another client (US-2.6)', () => {
         install.root = scratchInstallRoot();
     });
     test.afterEach(() => {
-        removeInstall('trc-ubuntu', install.root);
+        removeInstall(E2E_HOST, install.root);
     });
 
     test('shows the size another client set, announces its typing, and takes the size back on input', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
-        const terminal = await openTerminal(window, 'trc-ubuntu');
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        const terminal = await openTerminal(window, E2E_HOST);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         const columns = await terminal.getAttribute('data-columns');
         await recordSpeech(window);
         const { host, session, stream } = await secondClient(install.root);

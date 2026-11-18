@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { MAC_HOST_UP } from '../mac-hosts';
 import { closeLiveHosts, connectLive, type LiveHost, ssh, testHostsMissing, waitFor } from '../nfr/live-host';
 
 /**
- * The Linux service mode on hosts with systemd (US-2.4, US-2.5.1–2, D-44, P-32): how the daemon runs on each kind of
- * host, that every shell survives the daemon's death and restart, and what survives once every connection closed.
+ * The service modes on hosts with systemd (US-2.4, US-2.5.1–2, D-44, P-32) and on the macOS test host, with and
+ * without a GUI login (US-4.5.2, P-61): how the daemon runs on each kind of host, that every shell survives the
+ * daemon's death and restart, and what survives once every connection closed.
  */
 
 const missing = testHostsMissing();
@@ -12,7 +14,7 @@ const LOGOUT_SETTLE_MS = 16_000;
 
 interface Variant {
     readonly alias: string;
-    readonly manager: 'systemd' | 'detached';
+    readonly manager: 'systemd' | 'launchd' | 'detached';
     readonly sessionsEndAtLogout: boolean;
 }
 
@@ -20,6 +22,12 @@ const VARIANTS: readonly Variant[] = [
     { alias: 'trc-systemd', manager: 'detached', sessionsEndAtLogout: false },
     { alias: 'trc-systemd-linger', manager: 'systemd', sessionsEndAtLogout: false },
     { alias: 'trc-systemd-kill', manager: 'systemd', sessionsEndAtLogout: true },
+    ...(MAC_HOST_UP
+        ? ([
+              { alias: 'trc-mac-gui', manager: 'launchd', sessionsEndAtLogout: false },
+              { alias: 'trc-mac-nogui', manager: 'detached', sessionsEndAtLogout: false },
+          ] as const)
+        : []),
 ];
 
 afterEach(() => closeLiveHosts());
@@ -49,7 +57,7 @@ async function reconnect(host: LiveHost): Promise<void> {
     await waitFor(() => host.states.slice(before).some((state) => state.status === 'connected'), 60_000);
 }
 
-describe.skipIf(missing !== undefined)('the daemon on hosts with systemd (US-2.4, US-2.5)', () => {
+describe.skipIf(missing !== undefined)('the daemon on hosts with a service manager (US-2.4, US-2.5, US-4.5)', () => {
     it.each(VARIANTS)('reports how it runs on $alias', async ({ alias, manager, sessionsEndAtLogout }) => {
         const host = await connectLive(alias);
         const state = host.states.at(-1);
@@ -71,8 +79,8 @@ describe.skipIf(missing !== undefined)('the daemon on hosts with systemd (US-2.4
             const killed = corePid(host);
             ssh(alias, `kill -9 ${killed}`);
             await waitFor(() => host.states.at(-1)?.status === 'disconnected', 10_000);
-            if (manager === 'systemd') {
-                await waitFor(() => corePid(host) !== killed, 10_000);
+            if (manager !== 'detached') {
+                await waitFor(() => corePid(host) !== killed, 20_000);
             }
             expect(running(alias, pids)).toEqual(pids);
             await reconnect(host);
@@ -80,9 +88,9 @@ describe.skipIf(missing !== undefined)('the daemon on hosts with systemd (US-2.4
         },
     );
 
-    it.each(VARIANTS.filter((variant) => variant.manager === 'systemd'))(
-        'stays a systemd unit when the app reconnects while systemd restarts the killed core on $alias',
-        async ({ alias }) => {
+    it.each(VARIANTS.filter((variant) => variant.manager !== 'detached'))(
+        'stays under $manager when the app reconnects while it restarts the killed core on $alias',
+        async ({ alias, manager }) => {
             const host = await connectLive(alias);
             await host.session();
             const pids = await shellPids(host);
@@ -91,7 +99,7 @@ describe.skipIf(missing !== undefined)('the daemon on hosts with systemd (US-2.4
             await waitFor(() => host.states.at(-1)?.status === 'disconnected', 10_000);
             await reconnect(host);
             const state = host.states.at(-1);
-            expect(state?.status === 'connected' ? state.daemon.service?.manager : undefined).toBe('systemd');
+            expect(state?.status === 'connected' ? state.daemon.service?.manager : undefined).toBe(manager);
             expect(await shellPids(host)).toEqual(pids);
         },
     );

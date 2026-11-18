@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type Locator, test } from '@playwright/test';
 import {
+    E2E_HOST,
     launchWithTestHosts,
     openTerminal,
     removeInstall,
@@ -23,13 +24,13 @@ test.describe('restoring sessions at launch (US-2.1, US-2.3)', () => {
         install.root = scratchInstallRoot();
     });
     test.afterEach(() => {
-        removeInstall('trc-ubuntu', install.root);
+        removeInstall(E2E_HOST, install.root);
     });
 
     test('lists the last run’s sessions at launch and reattaches them with their output', async () => {
         const first = await launchWithTestHosts(install.root);
-        const terminal = await openTerminal(first.window, 'trc-ubuntu');
-        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+        const terminal = await openTerminal(first.window, E2E_HOST);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
         await terminal.focus();
         await first.window.keyboard.type('echo kept-across-launches');
         await first.window.keyboard.press('Enter');
@@ -44,11 +45,11 @@ test.describe('restoring sessions at launch (US-2.1, US-2.3)', () => {
         const second = await launchWithTestHosts(install.root, { scratch: first.scratch });
         const session = second.window.getByRole('treeitem', { name: /, (Reconnecting|Running)$/ });
         await expect(session).toBeVisible({ timeout: 10_000 });
-        await expect(second.window.getByRole('button', { name: 'Disconnect trc-ubuntu' })).toBeVisible({
+        await expect(second.window.getByRole('button', { name: `Disconnect ${E2E_HOST}` })).toBeVisible({
             timeout: 60_000,
         });
         await second.window.getByRole('treeitem', { name: /, Running$/ }).click();
-        const restored = second.window.getByRole('textbox', { name: /, trc-ubuntu$/ });
+        const restored = second.window.getByRole('textbox', { name: new RegExp(`, ${E2E_HOST}$`) });
         await expect.poll(() => rowTexts(restored), { timeout: 30_000 }).toContain('kept-across-launches');
         await second.app.close();
     });
