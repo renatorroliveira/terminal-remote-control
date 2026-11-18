@@ -3,6 +3,7 @@
 mod ghostty;
 mod grid;
 mod history;
+mod marks;
 mod sanitize;
 mod stream;
 
@@ -58,6 +59,24 @@ pub enum TerminalEvent {
     WorkingDirectory(String),
     /// The program rang the bell.
     Bell,
+    /// Shell integration reported a step of a command (OSC 133, US-5.1.2).
+    Command(CommandStep),
+}
+
+/// A step of a command, as shell integration reports it (OSC 133 A, B, C and D).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommandStep {
+    /// The shell started drawing its prompt.
+    Prompt,
+    /// The prompt is drawn and the user types the command.
+    Input,
+    /// The command started; what follows is its output.
+    Output,
+    /// The command ended, with its exit code when the shell reported one.
+    End {
+        /// The exit code.
+        exit_code: Option<i32>,
+    },
 }
 
 /// A terminal operation failed.

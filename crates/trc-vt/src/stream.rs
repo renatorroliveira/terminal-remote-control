@@ -6,6 +6,7 @@
 use crate::VtError;
 use crate::ghostty::{GhosttyTerminal, SNAPSHOT_EXTRAS};
 use crate::grid::{ACTIVE, SCREEN, TrackedRow, format_rows, history_rows, screen_size, wraps};
+use crate::marks::{format_marked, screen_marks};
 
 /// What a snapshot recreates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -111,7 +112,7 @@ impl SnapshotStream {
             return Ok(None);
         }
         let last = first.saturating_add(rows).min(history) - 1;
-        let mut block = format_rows(source, SCREEN, first, last, 0)?;
+        let mut block = format_marked(source, terminal.marks(), first, last)?;
         self.ends_wrapped = wraps(source, SCREEN, last)?;
         if !self.ends_wrapped {
             block.extend_from_slice(b"\r\n");
@@ -135,6 +136,10 @@ impl SnapshotStream {
         }
         block.extend_from_slice(b"\x1b[H");
         block.extend(format_rows(live, ACTIVE, 0, last, SNAPSHOT_EXTRAS)?);
+        if !is_alternate(terminal) {
+            let cursor = crate::TerminalState::cursor(terminal);
+            block.extend(screen_marks(terminal.marks(), history_rows(live), height, cursor));
+        }
         Ok(block)
     }
 }
@@ -193,6 +198,18 @@ mod tests {
         assert_eq!(a.alternate_screen(), b.alternate_screen(), "alternate screen");
         assert_eq!(a.plain_text().unwrap(), b.plain_text().unwrap(), "text");
         assert_eq!(a.snapshot().unwrap(), b.snapshot().unwrap(), "formatted state");
+    }
+
+    #[test]
+    fn carries_every_mark_of_the_history_and_the_screen_d_56() {
+        let mut live = terminal(10_000);
+        live.feed(&crate::marks::tests::command("build", 40, 0));
+        live.feed(&crate::marks::tests::command("test", 3, 2));
+        live.feed(b"\x1b]133;A\x07$ ");
+        let mut stream = SnapshotStream::new(&live, SnapshotScope::Full, usize::MAX).unwrap();
+        let replay = replayed(&drain(&mut stream, &live, 7), 10_000);
+        assert_same(&live, &replay);
+        assert_eq!(replay.marks().in_rows(0, u32::MAX), live.marks().in_rows(0, u32::MAX));
     }
 
     #[test]

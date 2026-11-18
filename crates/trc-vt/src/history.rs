@@ -3,7 +3,9 @@
 
 use crate::VtError;
 use crate::ghostty::GhosttyTerminal;
-use crate::grid::{ACTIVE, SCREEN, TrackedRow, format_rows, history_rows, wraps};
+use crate::grid::SCREEN;
+use crate::grid::{TrackedRow, history_rows, wraps};
+use crate::marks::format_marked;
 
 /// Rows taken from a terminal's history: VT output that continues the rows taken before.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,7 +49,7 @@ impl HistoryTail {
             return Ok(None);
         }
         let last = first.saturating_add(max_rows.max(1)).min(history) - 1;
-        let mut bytes = format_rows(raw, SCREEN, first, last, 0)?;
+        let mut bytes = format_marked(raw, terminal.marks(), first, last)?;
         if !wraps(raw, SCREEN, last)? {
             bytes.extend_from_slice(b"\r\n");
         }
@@ -66,7 +68,9 @@ pub fn primary_screen(terminal: &GhosttyTerminal) -> Result<Option<Vec<u8>>, VtE
         return Ok(None);
     }
     let (_, cursor_row) = crate::TerminalState::cursor(terminal);
-    let mut bytes = format_rows(terminal.raw(), ACTIVE, 0, u32::from(cursor_row), 0)?;
+    let raw = terminal.raw();
+    let top = history_rows(raw);
+    let mut bytes = format_marked(raw, terminal.marks(), top, top + u32::from(cursor_row))?;
     bytes.extend_from_slice(b"\r\n");
     Ok(Some(bytes))
 }
@@ -128,6 +132,22 @@ mod tests {
         }
         saved.extend(primary_screen(&live).unwrap().unwrap());
         assert_eq!(restored(&saved).trim_end(), live.plain_text().unwrap().trim_end());
+    }
+
+    #[test]
+    fn saves_every_mark_with_the_rows_it_marks_d_56() {
+        let mut live = terminal(10_000);
+        let mut tail = HistoryTail::from_start();
+        let mut saved = Vec::new();
+        live.feed(&crate::marks::tests::command("build", 30, 0));
+        saved.extend(take_all(&mut tail, &live, 4));
+        live.feed(&crate::marks::tests::command("test", 2, 3));
+        live.feed(b"\x1b]133;A\x07$ ");
+        saved.extend(take_all(&mut tail, &live, 4));
+        saved.extend(primary_screen(&live).unwrap().unwrap());
+        let mut replay = terminal(10_000);
+        replay.feed(&saved);
+        assert_eq!(replay.marks().in_rows(0, u32::MAX), live.marks().in_rows(0, u32::MAX));
     }
 
     #[test]
