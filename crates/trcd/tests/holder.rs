@@ -11,7 +11,7 @@ use tokio::time::timeout;
 use trc_protocol::frame::{self, Frame, FrameKind};
 use trc_protocol::{Integration, ProfileOrigin, SessionState, ShellKind, ShellProfile, TerminalSize};
 use trcd::frame_io::{FrameReader, FrameSender};
-use trcd::holder::protocol::{HolderCommand, HolderEvent, HolderSpec, HolderStatus, SESSION_STREAM};
+use trcd::holder::protocol::{HolderCommand, HolderEvent, HolderRestore, HolderSpec, HolderStatus, SESSION_STREAM};
 use trcd::holder::service::Holder;
 
 const WAIT: Duration = Duration::from_secs(10);
@@ -284,6 +284,25 @@ async fn introduces_its_session_and_name_to_every_new_core() {
     assert_eq!(spec.map(|spec| spec.profile.path), Some("/bin/sh".to_owned()));
     assert_eq!(name.as_deref(), Some("build"));
     assert_eq!(next.last().state, SessionState::Running);
+}
+
+#[tokio::test]
+async fn reports_no_state_before_it_is_given_a_session() {
+    let socket = start_holder();
+    let mut client = Client::connect(&socket).await;
+    client.command(&HolderCommand::Start {
+        spec: Box::new(spec("/bin/sh")),
+        restore: Some(Box::new(HolderRestore {
+            lines: vec![],
+            start_shell: false,
+            state: SessionState::Stopped,
+            exit: None,
+            failure: None,
+        })),
+    });
+    client.until(|c| !c.statuses.is_empty()).await;
+    assert_eq!(client.hellos, vec![(None, None)]);
+    assert_eq!(client.statuses[0].state, SessionState::Stopped);
 }
 
 #[tokio::test]

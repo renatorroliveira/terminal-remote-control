@@ -195,6 +195,8 @@ impl Holder {
         }
     }
 
+    /// Takes a core's connection and introduces the session; a holder not yet given one reports no state, so the core
+    /// never takes its placeholder for the state of the session it is about to start.
     fn connect(&mut self, stream: UnixStream) {
         let (read, write) = stream.into_split();
         self.attachments.detach(None);
@@ -207,7 +209,9 @@ impl Holder {
             name: self.name.clone(),
             proto: Some(HOLDER_PROTOCOL),
         });
-        self.send_status();
+        if self.spec.is_some() {
+            self.send_status();
+        }
     }
 
     fn disconnect(&mut self) {

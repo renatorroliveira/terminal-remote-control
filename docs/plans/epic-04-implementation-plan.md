@@ -253,6 +253,12 @@ read; Remove daemon boots the agent out first, then again a second apart while l
 seconds, and says so on standard error if it stays; `launchctl stop` is tested; and the documents name the build each
 measurement ran on.
 
+Found by CI after round 4: a holder not yet given a session reported the placeholder state Starting as a core
+connected, so for a moment the core listed, and saved, a session it brought back as Stopped or Exited as Starting; a
+core restarting in that moment would have restored a stopped session. The holder now reports no state until it runs
+one (`holder.rs` `reports_no_state_before_it_is_given_a_session`), which also ends the restore test's failures on the
+slower Intel runner. Linux clippy refused a conversion that only macOS's 16-bit `mode_t` needs (`umask_bits`).
+
 What stays, and why:
 
 - A refused save of This computer's settings, as of any host's, leaves the host as it was without an error
