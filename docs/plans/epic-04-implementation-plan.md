@@ -258,6 +258,10 @@ connected, so for a moment the core listed, and saved, a session it brought back
 core restarting in that moment would have restored a stopped session. The holder now reports no state until it runs
 one (`holder.rs` `reports_no_state_before_it_is_given_a_session`), which also ends the restore test's failures on the
 slower Intel runner. Linux clippy refused a conversion that only macOS's 16-bit `mode_t` needs (`umask_bits`).
+The first 0.5.0 release run then stopped at its smoke test, before anything was published: electron-builder's ad-hoc
+signing of the app re-signed the bundled macOS daemon, whose bytes no longer matched `manifest.json`, so the
+bootstrap would have refused to install This computer's daemon; `signIgnore` now leaves `Resources/daemon/` as
+built, and `pnpm verify:artifact` passed on a local `pnpm dist` before the release ran again.
 
 What stays, and why:
 
