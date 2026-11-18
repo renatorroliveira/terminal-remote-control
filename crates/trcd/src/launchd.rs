@@ -182,7 +182,7 @@ pub fn start_agent(binary: &Path, root: &Path, umask: Mode, home: &Path) -> io::
         label: agent_label(root),
         binary: binary.to_owned(),
         log: logs.join(LOG_FILE),
-        umask: u32::from(umask.bits()),
+        umask: umask_bits(umask),
         env: PASSED_ENV
             .iter()
             .filter_map(|name| std::env::var_os(name).map(|value| ((*name).to_owned(), value)))
@@ -302,6 +302,18 @@ fn create_private_log(log: &Path) -> io::Result<()> {
         .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits().cast_signed())
         .open(log)?;
     file.set_permissions(std::os::unix::fs::PermissionsExt::from_mode(0o600))
+}
+
+/// A umask's bits as the plist's integer: `mode_t` is 16 bits on macOS and 32 on Linux.
+#[cfg(target_os = "macos")]
+fn umask_bits(umask: Mode) -> u32 {
+    u32::from(umask.bits())
+}
+
+/// A umask's bits as the plist's integer: `mode_t` is 16 bits on macOS and 32 on Linux.
+#[cfg(not(target_os = "macos"))]
+fn umask_bits(umask: Mode) -> u32 {
+    umask.bits()
 }
 
 /// Whether launchd runs `service` or is about to start it, so a kickstart that failed while it started needs no retry.
