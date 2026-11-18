@@ -202,6 +202,7 @@ describe('Shell commands (A11Y-05.3, A11Y-05.4, A11Y-02.4)', () => {
             'Next region',
             'Previous region',
             'Show command palette',
+            'Go to session…',
             'Show notifications',
             'Show or hide the sidebar',
             'Tab moves focus',

@@ -60,6 +60,12 @@ export const commandMessages = defineMessages<CommandId>({
         defaultMessage: 'Previous session',
         description: 'Command name.',
     },
+    'session.quickSwitch': {
+        id: 'command.sessionQuickSwitch',
+        defaultMessage: 'Go to session…',
+        description:
+            'Command name: opens the quick switcher, a filterable list of every session on every host (US-5.4).',
+    },
     'session.close': {
         id: 'command.sessionClose',
         defaultMessage: 'Close session…',

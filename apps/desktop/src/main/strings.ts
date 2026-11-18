@@ -11,6 +11,7 @@ export const MAIN_STRINGS = {
     closeSession: 'Close Session…',
     nextSession: 'Next Session',
     previousSession: 'Previous Session',
+    goToSession: 'Go to Session…',
     commandPalette: 'Command Palette…',
     showNotifications: 'Show Notifications',
     toggleSidebar: 'Show or Hide Sidebar',

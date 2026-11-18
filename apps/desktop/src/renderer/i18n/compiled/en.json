@@ -1119,6 +1119,12 @@
       "value": "Previous session"
     }
   ],
+  "command.sessionQuickSwitch": [
+    {
+      "type": 0,
+      "value": "Go to session…"
+    }
+  ],
   "command.settingsShow": [
     {
       "type": 0,
@@ -4960,6 +4966,80 @@
     {
       "type": 0,
       "value": "Verifying the daemon"
+    }
+  ],
+  "switcher.count": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "=0": {
+          "value": [
+            {
+              "type": 0,
+              "value": "No session matches."
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " session."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " sessions."
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "switcher.entry": [
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": ", "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ", "
+    },
+    {
+      "type": 1,
+      "value": "state"
+    }
+  ],
+  "switcher.search": [
+    {
+      "type": 0,
+      "value": "Session name, host or title"
+    }
+  ],
+  "switcher.title": [
+    {
+      "type": 0,
+      "value": "Go to session"
     }
   ],
   "terminal.hint": [

@@ -61,6 +61,7 @@ export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[]
                 { type: 'separator' },
                 command(options, 'session.next', MAIN_STRINGS.nextSession),
                 command(options, 'session.previous', MAIN_STRINGS.previousSession),
+                command(options, 'session.quickSwitch', MAIN_STRINGS.goToSession),
                 { type: 'separator' },
                 command(options, 'session.close', MAIN_STRINGS.closeSession),
             ],
