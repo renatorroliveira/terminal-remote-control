@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -116,6 +116,22 @@ describe('KnownHosts: This computer (US-4.1, US-4.2.1, P-56)', () => {
             allowClipboardWrites: true,
             daemonRemoved: true,
         });
+    });
+
+    it('writes This computer to hosts.json only while it has a setting of its own', async () => {
+        const home = directory();
+        const hosts = new KnownHosts(home, { localRoot: home });
+        const added = await hosts.add('devbox-1', '~/.trc');
+        const saved = (): readonly string[] =>
+            (JSON.parse(readFileSync(join(home, 'hosts.json'), 'utf8')) as { hosts: { id: string }[] }).hosts.map(
+                (host) => host.id,
+            );
+        await hosts.setClipboardWrites(added.id, true);
+        expect(saved()).toEqual([added.id]);
+        await hosts.setDaemonRemoved('local', true);
+        expect(saved()).toEqual(['local', added.id]);
+        await hosts.setDaemonRemoved('local', false);
+        expect(saved()).toEqual([added.id]);
     });
 
     it('installs This computer in the TRC home it runs with, whatever hosts.json says', async () => {

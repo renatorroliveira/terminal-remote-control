@@ -40,7 +40,9 @@ describe('SessionCacheFile (P-30, SEC-05.1)', () => {
         for (const extra of [{ cwd: '/home/me' }, { env: { TOKEN: 'x' } }, { pid: 4 }]) {
             expect(SESSION_CACHE_SCHEMA.safeParse({ [HOST]: [{ ...session, ...extra }] }).success).toBe(false);
         }
+        expect(SESSION_CACHE_SCHEMA.safeParse({ local: [session] }).success).toBe(true);
         expect(SESSION_CACHE_SCHEMA.safeParse({ '../hosts': [session] }).success).toBe(false);
+        expect(SESSION_CACHE_SCHEMA.safeParse({ locals: [session] }).success).toBe(false);
         expect(SESSION_CACHE_SCHEMA.safeParse({ [HOST]: [{ ...session, id: '../x' }] }).success).toBe(false);
         expect(SESSION_CACHE_SCHEMA.safeParse({ [HOST]: [{ ...session, title: 'x'.repeat(2_000) }] }).success).toBe(
             false,

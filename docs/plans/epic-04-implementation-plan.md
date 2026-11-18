@@ -5,7 +5,7 @@
 | Status | Approved by the owner on 2026-11-17                                                           |
 | Owner  | Renato Oliveira                                                                               |
 | Scope  | PRD §9.4 (US-4.1 to US-4.5) plus every global requirement for what E4 delivers                |
-| Inputs | [PRD.md](../PRD.md) v0.17, [TECH_STACK.md](../TECH_STACK.md) v1.7, the E1 to E3 plans, v0.4.0 |
+| Inputs | [PRD.md](../PRD.md) v0.18, [TECH_STACK.md](../TECH_STACK.md) v1.9, the E1 to E3 plans, v0.4.0 |
 
 ## 1. Context
 
@@ -31,7 +31,7 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 | P-55 | **Owner, 2026-11-17.** The daemon registers as a plain per-user LaunchAgent: a plist in `~/Library/LaunchAgents` that runs the installed `versions/<sha256>/trcd`, loaded with `launchctl bootstrap gui/<uid>`. No step needs an administrator, and it works on 0.x's ad-hoc signed builds. SMAppService (TECH_STACK §5.4), which Electron documents as reliable only for signed and notarized apps, waits for E8's Developer ID signing.                                  |
 | P-56 | **Owner, 2026-11-17.** The Mac's local daemon uses `~/.trc`, the default install root, beside the app's own files (`config.json`, `hosts.json`, `sessions.json`). So one daemon per user serves both the Mac's own sessions and any other computer that adds the Mac as a host (US-4.5.3). Remove daemon deletes only the daemon's entries (P-46).                                                                                                                         |
 | P-57 | **Owner, 2026-11-17.** macOS hosts for the integration and e2e tests are local macOS VMs run with `tart` (Apple's Virtualization framework). Every VM is deleted after its run, and the base image at the end of E4, so the disk gets its space back; the colima profile's unused images and build cache were pruned at the same time.                                                                                                                                     |
-| P-58 | **Owner, 2026-11-17.** Tests on the owner's Mac that need launchd register temporary agents labelled `dev.trc.test-<random>`, each running a scratch install root, and boot them out and delete their plists afterwards. They never touch the real agent or `~/.trc`.                                                                                                                                                                                                      |
+| P-58 | **Owner, 2026-11-17.** Tests on the owner's Mac that need launchd register temporary agents labelled `dev.trc.test-<random>`, each running a scratch install root, and boot them out and delete their plists afterwards. They never touch the real agent or `~/.trc`. As built, a test agent carries the product's label for its scratch root, `dev.trc.trcd-<hash8>`, which is new for every run; only S8's probe used `dev.trc.test-<random>`.                           |
 | P-59 | The local connection is the remote one without `ssh`: the connection host runs the same bootstrap script with `/bin/sh` and talks to `trcd bridge` over its standard input and output. Install, upgrade on connect (D-46), Restart, Remove and every protocol path are shared, and nothing listens (SEC-01).                                                                                                                                                               |
 | P-60 | A LaunchAgent's label is `dev.trc.trcd-<hash8>`, the first 8 hex digits of the install root's SHA-256, as the systemd unit is `trcd-<hash8>.service`. It sets `RunAtLoad` (start at login, US-4.4.1), `KeepAlive` on a crash (US-4.3.2) with a `ThrottleInterval` of 1 s, as the unit's `RestartSec=1` (NFR-07), `AbandonProcessGroup`, and the install root's `logs/` for its output. Holders already call `setsid()`, so stopping the agent never ends them (R4).        |
 | P-61 | On a remote Mac the bridge registers the LaunchAgent only when the user has a GUI login session (`gui/<uid>` exists); otherwise the core runs detached, as on Linux, and after a reboot without a GUI login its sessions come back when the app reconnects (US-4.5.2, R7). This is the one place where TRC writes outside the install root, as the PRD asks; Remove daemon boots the agent out and deletes its plist.                                                      |
@@ -187,16 +187,53 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 
 ## 7. Status
 
-| Story | Status  | Commit  |
-| ----- | ------- | ------- |
-| ST-51 | Done    | c0177ae |
-| ST-52 | Done    | b12168c |
-| ST-53 | Done    | 780625a |
-| ST-54 | Done    | 05e8518 |
-| ST-55 | Done    | caa4cb6 |
-| ST-56 | Done    | 1050aed |
-| ST-57 | Done    | 1050aed |
-| ST-58 | Done    | —       |
-| ST-59 | Planned | —       |
-| ST-60 | Planned | —       |
-| ST-61 | Done    | aa12f0d |
+| Story | Status      | Commit  |
+| ----- | ----------- | ------- |
+| ST-51 | Done        | c0177ae |
+| ST-52 | Done        | b12168c |
+| ST-53 | Done        | 780625a |
+| ST-54 | Done        | 05e8518 |
+| ST-55 | Done        | caa4cb6 |
+| ST-56 | Done        | 1050aed |
+| ST-57 | Done        | 1050aed |
+| ST-58 | Done        | 21d9c7d |
+| ST-59 | Done        | ebee532 |
+| ST-60 | In progress | —       |
+| ST-61 | Done        | aa12f0d |
+
+## 8. Reviews (P-64)
+
+`code-reviewer` and `technical-auditor` review every commit after v0.4.0, in rounds until no critical or high finding
+remains. Each finding is fixed, test-first, or listed below with why it stays.
+
+| Round | Code review (C/H/M/L) | Audit (C/H/M/L) | Fixes |
+| ----- | --------------------- | --------------- | ----- |
+| 1     | 0 / 1 / 3 / 7         | 0 / 0 / 9 / 8   | —     |
+
+The high:
+
+- The main process took only `host-…` IDs, so This computer's `local` broke the session cache for every host, the
+  clipboard switch and the remembered Remove daemon; `local` is now a host ID wherever it belongs, and still never
+  forgotten or moved (round 1).
+
+Fixed in round 1 besides: a core that could not start under launchd restarted every second, and `launchd.log` grew
+without bound; a plist differing only in the registering client's variables replaced a starting core; Remove daemon
+left the LaunchAgent behind once the install was deleted by hand; the connection host took a local target for any
+host or folder; This computer's daemon running without its LaunchAgent went unsaid; Restart and Remove in the
+ended-session banner lost focus; the logout of US-4.4.2 had no committed test (`mac-logout.integration.test.ts`);
+the upgrade's process check is no longer skipped on macOS; and the docs the audit named. The integration runs also explained E3's Alpine failure of `shares_a_session_between_two_apps`, which recurred twice: when busybox ash printed its prompt before a client attached, the client got the prompt inside the snapshot, after empty rows and a cursor move, and the test's prompt check missed it; the check now reads past them.
+
+What stays, and why:
+
+- A refused save of This computer's settings, as of any host's, leaves the host as it was without an error
+  (`#markRemoved`); the next change tries again.
+- `verify-artifact` reads no Mach-O minimum OS version; the deployment target is now forced in `.cargo/config.toml`,
+  which removes the cause.
+- The core takes the default shell from `SHELL` before the passwd entry, as since E1 (ST-5); a Mac's GUI session
+  sets `SHELL` from that entry.
+- A 0.4 app reads a `hosts.json` that holds This computer's settings as empty; 0.x does not support going back to an
+  older app.
+- A remote Mac that had no GUI login when its core started keeps that detached core until it stops (P-61); This
+  computer says so (US-4.1.3), and Restart daemon registers the LaunchAgent.
+- On macOS, Electron's `windowMenu` role has no Close item, so Command-W has one menu item, Session > Close
+  session…; Windows and Linux bind Control-Shift-W (E6, E7).

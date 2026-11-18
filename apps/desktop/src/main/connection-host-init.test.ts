@@ -32,4 +32,12 @@ describe('connectionHostInit', () => {
             localHome: '/t/home',
         });
     });
+
+    it('tells the connection host This computer’s install location, which alone takes a local target', () => {
+        expect(connectionHostInit({ ...base, seam: { background: false }, localRoot: '/home/tester/.trc' })).toEqual({
+            type: 'init',
+            ...base,
+            localRoot: '/home/tester/.trc',
+        });
+    });
 });

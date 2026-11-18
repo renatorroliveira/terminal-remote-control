@@ -17,12 +17,12 @@ use trc_protocol::{
 };
 use trcd::launchd::{agent_label, has_gui_session, plist_path, stop_agent};
 
-/// How long launchd may take to start a core again: it waits 10 s between starts of a job.
+/// How long launchd may take to start a core again: the agent's `ThrottleInterval` is 1 s, and a loaded Mac may lag.
 const RESTART_WAIT: Duration = Duration::from_secs(25);
 
 #[tokio::test]
 async fn registers_the_core_as_a_launch_agent_that_keeps_every_session() {
-    if !has_gui_session(rustix::process::geteuid().as_raw()) {
+    if no_gui_session() {
         return;
     }
     let installed = Installed::new();
@@ -77,7 +77,7 @@ async fn registers_the_core_as_a_launch_agent_that_keeps_every_session() {
 
 #[tokio::test]
 async fn an_upgrade_replaces_the_agent_s_core_and_keeps_every_session() {
-    if !has_gui_session(rustix::process::geteuid().as_raw()) {
+    if no_gui_session() {
         return;
     }
     let installed = Installed::new();
@@ -263,4 +263,14 @@ fn agent_state(installed: &Installed) -> String {
         .collect::<Vec<_>>()
         .join(" | ");
     format!("{state}\nlock: {lock:?}, socket: {socket}\nlog: {log}")
+}
+
+/// Whether the user has no GUI login session, which a LaunchAgent needs: the test then says it checked nothing, as
+/// on a CI runner without one, rather than passing in silence.
+fn no_gui_session() -> bool {
+    let missing = !has_gui_session(rustix::process::geteuid().as_raw());
+    if missing {
+        eprintln!("skipped: no GUI login session, so launchd has no gui/<uid> domain for the agent");
+    }
+    missing
 }

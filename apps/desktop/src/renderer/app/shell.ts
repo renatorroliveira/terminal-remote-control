@@ -242,6 +242,8 @@ export class Shell {
     readonly #regions: RegionCycler;
     /** Where focus returns when the palette, help or the settings page closes (A11Y-05.8). */
     #focusReturn: HTMLElement | undefined;
+    /** This computer, while its daemon runs without its LaunchAgent and the user was told. */
+    readonly #withoutAgent = new Set<string>();
     #keymap: Keymap;
     #bellTimer: number | undefined;
     /** When each session last had input from another client. */
@@ -540,6 +542,11 @@ export class Shell {
         const result = this.#options.terminals.findStep(direction);
         this.state.setState({ find: { ...find, result } });
         this.#announceFind(result);
+    }
+
+    /** Moves focus to the open session's terminal, or its review mode. */
+    focusTerminal(): void {
+        this.#options.terminals.focusOpen();
     }
 
     /** Closes the find bar and returns focus to the terminal or review mode (US-1.13.4). */
@@ -866,6 +873,7 @@ export class Shell {
                 const before = previous.find((entry) => entry.id === host.id);
                 if (before !== undefined && before.state.status !== host.state.status) {
                     this.#reportHost(before, host, state.failureNotice === host.id);
+                    this.#reportLocalService(host);
                 }
                 if (before !== undefined && before.state !== host.state) {
                     this.#reportProgress(before, host);
@@ -949,6 +957,29 @@ export class Shell {
                 group: host.id,
             });
         }
+    }
+
+    /**
+     * Says, once until launchd runs it again, that This computer's daemon runs without its LaunchAgent, so it neither
+     * starts at login nor restarts after a crash, and what to do (US-4.1.3, US-4.3.2, US-4.4.1).
+     */
+    #reportLocalService(host: HostEntry): void {
+        const state = host.state;
+        if (host.local !== true || state.status !== 'connected') {
+            return;
+        }
+        if (state.daemon.service?.manager === 'launchd') {
+            this.#withoutAgent.delete(host.id);
+            return;
+        }
+        if (this.#withoutAgent.has(host.id)) {
+            return;
+        }
+        this.#withoutAgent.add(host.id);
+        const { intl, announcer, notifications } = this.#options;
+        const text = intl.formatMessage(hostAnnouncements.noLaunchAgent, { host: host.destination });
+        announcer.announce(text, { group: `${host.id}/service` });
+        notifications.add({ text, level: 'error' });
     }
 
     #reportHost(before: HostEntry, host: HostEntry, inDialog: boolean): void {

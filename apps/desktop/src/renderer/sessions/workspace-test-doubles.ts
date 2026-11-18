@@ -186,8 +186,12 @@ export class FakeTerminalHost implements TerminalHost {
     tabFocusMode = false;
     nextKeys = 0;
 
-    /** Reports that a terminal took focus once a session was shown. */
+    /** How often the app asked to focus the open terminal. */
+    focused = 0;
+
+    /** Counts the request, and reports that a terminal took focus once a session was shown. */
     focusOpen(): boolean {
+        this.focused += 1;
         return this.shown.length > 0;
     }
 
@@ -309,7 +313,12 @@ export class FakeTerminalHost implements TerminalHost {
 
 /** A known-host store in memory, numbering hosts `host-0`, `host-1`, ... */
 export class FakeKnownHostStore implements KnownHostStore {
-    readonly #hosts: KnownHost[] = [];
+    readonly #hosts: KnownHost[];
+
+    /** A store that already knows `known`. */
+    constructor(known: readonly KnownHost[] = []) {
+        this.#hosts = [...known];
+    }
 
     /** The hosts added so far. */
     list(): Promise<readonly KnownHost[]> {

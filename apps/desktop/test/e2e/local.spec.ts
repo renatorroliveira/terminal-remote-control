@@ -37,6 +37,7 @@ test.describe('This computer (US-4.1, US-4.2)', () => {
         scratch.trcHome = local.trcHome;
         const first = await launchLocal(local);
         const pid = await localShell(first.window);
+        await expect.poll(() => cachedLocalSessions(local.trcHome), { timeout: 15_000 }).toBe(1);
         await first.app.close();
         expect(alive(pid)).toBe(true);
         const crashing = await launchLocal(local);
@@ -70,3 +71,13 @@ test.describe('This computer (US-4.1, US-4.2)', () => {
         await last.app.close();
     });
 });
+
+/** How many of This computer's sessions the app cached in `sessions.json` for the next launch (US-2.3.2). */
+function cachedLocalSessions(trcHome: string): number {
+    const file = join(trcHome, 'sessions.json');
+    if (!existsSync(file)) {
+        return 0;
+    }
+    const cache = JSON.parse(readFileSync(file, 'utf8')) as { readonly hosts?: Record<string, readonly unknown[]> };
+    return cache.hosts?.['local']?.length ?? 0;
+}

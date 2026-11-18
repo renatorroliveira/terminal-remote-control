@@ -311,6 +311,12 @@ export const hostAnnouncements = {
         defaultMessage: 'Couldn’t connect to {host}. {problem}',
         description: 'Announced and listed when a connection fails.',
     }),
+    noLaunchAgent: defineMessage<{ host: string }>({
+        id: 'announce.noLaunchAgent',
+        defaultMessage:
+            '{host}’s daemon runs without its LaunchAgent, so it won’t start at login or restart after a crash. To register it, choose Restart daemon in the details of {host}.',
+        description: 'Announced and listed when This computer’s daemon is not run by launchd (US-4.1.3).',
+    }),
 };
 
 /** What failed, for an action failure's report (US-1.10, WCAG 3.3.1). */

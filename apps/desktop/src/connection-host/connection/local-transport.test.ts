@@ -16,14 +16,13 @@ const ENV = {
 };
 
 describe('localEnvironment (P-59)', () => {
-    it('passes on only the account, path, locale and agent variables', () => {
+    it('passes on only the account and path variables, those the LaunchAgent keeps', () => {
         expect(localEnvironment({ env: ENV })).toEqual({
             HOME: '/home/tester',
             USER: 'tester',
             LOGNAME: 'tester',
             SHELL: '/bin/zsh',
             PATH: '/usr/bin:/bin',
-            SSH_AUTH_SOCK: '/tmp/agent.sock',
         });
     });
 

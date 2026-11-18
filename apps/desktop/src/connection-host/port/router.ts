@@ -49,15 +49,25 @@ export class ConnectionRouter {
     readonly #post: (event: HostEvent) => void;
     readonly #create: CreateConnection;
     readonly #log: AppLogger;
+    readonly #localRoot: string | undefined;
     readonly #connections = new Map<string, HostConnectionLike>();
     readonly #reconnectors = new Map<string, Reconnector>();
     readonly #batcher: OutputBatcher;
 
-    /** Creates a router posting with `post` and making connections with `create`. */
-    constructor(post: (event: HostEvent) => void, create: CreateConnection, log: AppLogger) {
+    /**
+     * Creates a router posting with `post` and making connections with `create`; `localRoot` is This computer's
+     * install location, the one local target it takes (US-4.2.4).
+     */
+    constructor(
+        post: (event: HostEvent) => void,
+        create: CreateConnection,
+        log: AppLogger,
+        localRoot: string | undefined,
+    ) {
         this.#post = post;
         this.#create = create;
         this.#log = log;
+        this.#localRoot = localRoot;
         this.#batcher = new OutputBatcher((hostId, stream, data) => post({ type: 'output', hostId, stream, data }));
     }
 
@@ -73,7 +83,7 @@ export class ConnectionRouter {
 
     /** Handles one message from the renderer. */
     handle(raw: unknown): void {
-        const request = parseHostRequest(raw);
+        const request = parseHostRequest(raw, this.#localRoot);
         if (request === undefined) {
             this.#log.warn('invalid request', { ...requestKind(raw), problem: requestProblem(raw) });
             return;

@@ -76,6 +76,24 @@ describe('App: an ended session (US-1.10.9)', () => {
         });
         await expect.element(banner).not.toBeInTheDocument();
     });
+
+    it('moves focus to the terminal on Restart, and to the session tree once Remove closes it (A11Y-05)', async () => {
+        await page.viewport(1400, 800);
+        const exited = { ...bashSession('a'), state: 'exited', exit: { code: 1 } } as const;
+        const { client, terminals, rendered } = renderApp(400, [exited]);
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        await screen.getByRole('treeitem', { name: 'bash, Exited with code 1' }).click();
+        const banner = screen.getByRole('region', { name: 'Session ended' });
+        const before = terminals.focused;
+        await banner.getByRole('button', { name: 'Restart Session' }).click();
+        expect(terminals.focused).toBe(before + 1);
+        await banner.getByRole('button', { name: 'Remove Session…' }).click();
+        await screen.getByRole('button', { name: 'Close session' }).click();
+        await expect.poll(() => requestTypes(client.requests)).toContain('close');
+        client.message('host-0', { type: 'sessionEvent', change: { kind: 'closed', sessionId: 'a' } });
+        await expect.element(screen.getByRole('treeitem', { name: 'devbox-1, Connected' })).toHaveFocus();
+    });
 });
 
 describe('App: layout (US-1.6.1, A11Y-07.5)', () => {

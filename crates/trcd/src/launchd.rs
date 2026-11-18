@@ -19,6 +19,12 @@ const PASSED_ENV: [&str; 5] = ["HOME", "USER", "LOGNAME", "SHELL", "PATH"];
 /// be handling the old core.
 const BOOTSTRAP_ATTEMPTS: u32 = 10;
 const BOOTSTRAP_RETRY: Duration = Duration::from_millis(300);
+/// The file in `logs/` that launchd writes the core's standard error to.
+pub const LOG_FILE: &str = "launchd.log";
+/// How large that file may grow before a starting core empties it, as nothing rotates it (SEC-08.2).
+pub const LOG_LIMIT: u64 = 1 << 20;
+/// The plist's key whose block holds the variables the core starts with.
+const ENVIRONMENT_KEY: &str = "\t<key>EnvironmentVariables</key>\n";
 
 /// What a LaunchAgent for the core holds.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,12 +111,27 @@ pub fn agent_plist(spec: &AgentSpec) -> String {
     text
 }
 
-/// The step that brings launchd to the agent wanted, from whether one is loaded and the plist written last.
+/// The step that brings launchd to the agent wanted, from whether one is loaded and the plist written last. A plist
+/// that differs only in the variables of the bridge that wrote it, such as another client's `PATH`, is the agent
+/// wanted: replacing it would end a core that may be starting up.
 pub fn next_step(loaded: bool, written: Option<&str>, wanted: &str) -> AgentStep {
     match (loaded, written) {
         (false, _) => AgentStep::Bootstrap,
-        (true, Some(text)) if text == wanted => AgentStep::Kickstart,
+        (true, Some(text)) if without_environment(text) == without_environment(wanted) => AgentStep::Kickstart,
         (true, _) => AgentStep::Replace,
+    }
+}
+
+/// Empties the agent's standard error log in `logs` once it outgrew [`LOG_LIMIT`], as a starting core does: launchd
+/// appends to it on every start and nothing else rotates it. A missing or unreadable log is left alone.
+pub fn trim_log(logs: &Path) {
+    let log = logs.join(LOG_FILE);
+    if std::fs::symlink_metadata(&log).is_ok_and(|meta| meta.is_file() && meta.len() > LOG_LIMIT) {
+        let _ = std::fs::OpenOptions::new()
+            .write(true)
+            .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits().cast_signed())
+            .open(&log)
+            .and_then(|file| file.set_len(0));
     }
 }
 
@@ -128,7 +149,7 @@ pub fn start_agent(binary: &Path, root: &Path, umask: Mode, home: &Path) -> io::
     let spec = AgentSpec {
         label: agent_label(root),
         binary: binary.to_owned(),
-        log: logs.join("launchd.log"),
+        log: logs.join(LOG_FILE),
         umask: u32::from(umask.bits()),
         env: PASSED_ENV
             .iter()
@@ -154,8 +175,7 @@ pub fn start_agent(binary: &Path, root: &Path, umask: Mode, home: &Path) -> io::
 /// comes up in it and starting another one elsewhere would leave it no lock to take.
 pub fn agent_is_running(root: &Path) -> bool {
     let uid = rustix::process::geteuid().as_raw();
-    probe("launchctl", &["print", &format!("gui/{uid}/{}", agent_label(root))])
-        .is_some_and(|text| starts_or_runs(&text))
+    service_starts_or_runs(&format!("gui/{uid}/{}", agent_label(root)))
 }
 
 /// Whether `launchctl print` says its service runs or is scheduled to start, from the service's own `state` line.
@@ -177,7 +197,7 @@ pub fn stop_agent(root: &Path) {
 /// Starts a loaded agent's core, trying again for a moment while launchd still handles a core that just ended.
 fn kickstart(service: &str) -> io::Result<()> {
     for attempt in 1..=BOOTSTRAP_ATTEMPTS {
-        if succeeds("launchctl", &["kickstart", service]) {
+        if succeeds("launchctl", &["kickstart", service]) || service_starts_or_runs(service) {
             return Ok(());
         }
         if attempt < BOOTSTRAP_ATTEMPTS {
@@ -207,12 +227,31 @@ fn bootstrap(uid: u32, file: &Path, text: &str) -> io::Result<()> {
     Err(io::Error::other("launchctl bootstrap did not load the core's agent"))
 }
 
+/// Whether launchd runs `service` or is about to start it, so a kickstart that failed while it started needs no retry.
+fn service_starts_or_runs(service: &str) -> bool {
+    probe("launchctl", &["print", service]).is_some_and(|text| starts_or_runs(&text))
+}
+
+/// Writes the plist 0600 through a temporary file of this process's own, so two bridges starting at once never write
+/// into each other's.
 fn write_private(file: &Path, text: &str) -> io::Result<()> {
-    let temporary = file.with_extension("plist.new");
+    let temporary = file.with_extension(format!("plist.{}.new", std::process::id()));
     let mut options = std::fs::OpenOptions::new();
     options.create(true).write(true).truncate(true).mode(0o600);
     io::Write::write_all(&mut options.open(&temporary)?, text.as_bytes())?;
     std::fs::rename(&temporary, file)
+}
+
+/// A plist's text without its environment block.
+fn without_environment(text: &str) -> String {
+    let Some(start) = text.find(ENVIRONMENT_KEY) else {
+        return text.to_owned();
+    };
+    let block_end = "\n\t</dict>\n";
+    text[start..].find(block_end).map_or_else(
+        || text.to_owned(),
+        |length| format!("{}{}", &text[..start], &text[start + length + block_end.len()..]),
+    )
 }
 
 fn entry(text: &mut String, key: &str, value: &str) {
@@ -297,6 +336,37 @@ mod tests {
         assert!(starts_or_runs(&print("spawn scheduled")));
         assert!(!starts_or_runs(&print("not running")));
         assert!(!starts_or_runs("\t\tstate = running\n"));
+    }
+
+    #[test]
+    fn starts_a_loaded_agent_whose_plist_differs_only_in_the_environment() {
+        let mut other = spec();
+        other.env = vec![("PATH".into(), "/opt/homebrew/bin:/usr/bin".into())];
+        let loaded = agent_plist(&other);
+        assert_eq!(
+            next_step(true, Some(&loaded), &agent_plist(&spec())),
+            AgentStep::Kickstart
+        );
+        let mut upgraded = spec();
+        upgraded.binary = "/home/tester/.trc/versions/def/trcd".into();
+        assert_eq!(
+            next_step(true, Some(&loaded), &agent_plist(&upgraded)),
+            AgentStep::Replace
+        );
+    }
+
+    #[test]
+    fn empties_the_agent_s_standard_error_log_once_it_outgrows_its_limit() {
+        let logs = crate::test_support::temp_dir("launchd-log");
+        let log = logs.join(LOG_FILE);
+        std::fs::write(&log, b"trcd: refused\n").unwrap();
+        trim_log(&logs);
+        assert_eq!(std::fs::metadata(&log).unwrap().len(), 14);
+        let full = usize::try_from(LOG_LIMIT + 1).unwrap();
+        std::fs::write(&log, vec![b'x'; full]).unwrap();
+        trim_log(&logs);
+        assert_eq!(std::fs::metadata(&log).unwrap().len(), 0);
+        trim_log(&logs.join("missing"));
     }
 
     #[test]

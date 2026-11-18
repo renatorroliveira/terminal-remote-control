@@ -323,6 +323,24 @@
       "value": "No host is connected."
     }
   ],
+  "announce.noLaunchAgent": [
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "’s daemon runs without its LaunchAgent, so it won’t start at login or restart after a crash. To register it, choose Restart daemon in the details of "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "announce.noSession": [
     {
       "type": 0,

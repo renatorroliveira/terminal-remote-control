@@ -36,7 +36,7 @@ On your Mac:
 
 On each host:
 
-- Linux on x86_64 or arm64, or macOS 13 or later on Apple silicon or Intel, with Remote Login on.
+- Linux on x86_64 or arm64, or macOS 14 or later on Apple silicon or Intel, with Remote Login on.
 - `sshd` that accepts your key, and a POSIX shell.
 - A few megabytes free in your home folder, or in another folder you choose, that allows running programs (not
   mounted `noexec`), and `sha256sum` or `shasum`. The host needs no internet access, no root or sudo, and no packages.
@@ -89,9 +89,12 @@ This computer, first in the sidebar, is your Mac itself: its sessions run on the
 any host's, from New session (your login shell) to restore and sharing.
 
 - **Setup.** At first launch, and whenever its daemon is missing, TRC installs the daemon in the TRC home, `~/.trc`,
-  and registers it as a LaunchAgent, `~/Library/LaunchAgents/dev.trc.trcd-<8 letters and digits>.plist`, which
+  and registers it as a LaunchAgent, `~/Library/LaunchAgents/dev.trc.trcd-<8 hexadecimal digits>.plist`, which
   starts it at login and again if it crashes. No step asks for an administrator password. Each step shows and is
-  announced, as for any host.
+  announced, as for any host. macOS then says "Background Items Added" and lists `trcd` in System Settings,
+  General, Login Items & Extensions; leave it on there. When the daemon runs without its LaunchAgent, so it would
+  neither start at login nor restart after a crash, TRC says so and lists it in Notifications; choose Restart daemon
+  in This computer's details to register it again.
 - **What survives.** Local sessions keep running when you quit the app, when it crashes or is forced to quit, and
   when the daemon is killed or updated. Logging out of macOS ends no session either: the daemon starts again at
   your next login and takes them back. After the Mac restarts, your sessions come back when you log in, below their
@@ -221,7 +224,7 @@ The Sessions list is a tree: each connected host, then its sessions. It is one s
 - **Session actions.** Rename (an empty name shows the title the program sets), Session settings… (the two
   switches above), Stop, Restart (same shell, folder and environment; the scrollback stays), Duplicate (same shell
   and folder), Move up, Move down, and Close, which asks first because it deletes the session and its scrollback,
-  on the host's disk too. Command+W (Session > Close Session…) closes the open session the same way, whether it
+  on the host's disk too. Command+W (Session > Close session…) closes the open session the same way, whether it
   runs or has ended. You can also drag a session up or down its host's list. The command palette lists the open
   session's actions too.
 - **Ending a session.** Type `exit`, or end its program. A session that exits cleanly (code 0) leaves the list,
