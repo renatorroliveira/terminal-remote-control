@@ -1,4 +1,4 @@
-import { defineMessage, defineMessages } from 'react-intl';
+import { defineMessage } from 'react-intl';
 
 /** What the app says while it manages a host's daemon (US-3.3.2, US-3.3.3, A11Y-12.2). */
 export const daemonAnnouncements = {
