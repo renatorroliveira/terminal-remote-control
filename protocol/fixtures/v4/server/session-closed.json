@@ -1,0 +1,7 @@
+{
+  "type": "sessionEvent",
+  "change": {
+    "kind": "closed",
+    "sessionId": "s-2"
+  }
+}

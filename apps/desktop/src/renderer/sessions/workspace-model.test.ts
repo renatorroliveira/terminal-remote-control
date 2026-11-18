@@ -197,6 +197,12 @@ describe('the workspace model: changes and names (US-1.6, US-1.10)', () => {
         expect(sessions.map((entry) => entry.id)).toEqual(['a']);
     });
 
+    it('keeps the sessions as they are on a session’s activity (US-5.3)', () => {
+        const sessions: readonly SessionInfo[] = [session('a', { order: 0 })];
+        const activity = { type: 'commandFinished', exitCode: 1, durationMs: 20 } as const;
+        expect(applySessionChange(sessions, { kind: 'activity', sessionId: 'a', activity })).toBe(sessions);
+    });
+
     it('names a session by its custom name, then the program title, then its shell', () => {
         expect(sessionName(session('a', { customName: 'build', title: 'vim' }))).toBe('build');
         expect(sessionName(session('a', { title: 'vim' }))).toBe('vim');

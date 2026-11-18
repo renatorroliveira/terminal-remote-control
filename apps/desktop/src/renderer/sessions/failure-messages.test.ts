@@ -1,3 +1,4 @@
+import { PROTOCOL_VERSION } from '@trc/protocol';
 import { createIntl } from 'react-intl';
 import { describe, expect, it } from 'vitest';
 import type { ConnectionFailure } from '../../shared/connection';
@@ -73,7 +74,12 @@ describe('connection failure messages (US-1.3.1, WCAG 3.3.3)', () => {
     });
 
     it('asks for an app update when the daemon is newer, and offers Upgrade daemon when it is older (US-2.5.4)', () => {
-        const newer = failureMessage(intl, 'devbox-1', { kind: 'incompatible', minProto: 4, maxProto: 5, details: '' });
+        const newer = failureMessage(intl, 'devbox-1', {
+            kind: 'incompatible',
+            minProto: PROTOCOL_VERSION + 1,
+            maxProto: PROTOCOL_VERSION + 2,
+            details: '',
+        });
         expect(newer.remedy).toBe('Update the app, then connect again.');
         const older = failureMessage(intl, 'devbox-1', { kind: 'incompatible', minProto: 0, maxProto: 0, details: '' });
         expect(older.problem).toContain('an older daemon');

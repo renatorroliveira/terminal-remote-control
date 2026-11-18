@@ -1,7 +1,7 @@
 //! Protocol version negotiation (NFR-12): each side speaks a range, the highest common version wins.
 
 /// The newest protocol version this build speaks.
-pub const PROTOCOL_VERSION: u32 = 3;
+pub const PROTOCOL_VERSION: u32 = 4;
 /// The oldest protocol version this build still speaks: at most N−1 (NFR-12), and 1 so far, for apps from 0.2.0
 /// on (P-49).
 pub const MIN_PROTOCOL_VERSION: u32 = 1;
@@ -33,6 +33,6 @@ mod tests {
 
     #[test]
     fn speaks_versions_one_to_three() {
-        assert_eq!((MIN_PROTOCOL_VERSION, PROTOCOL_VERSION), (1, 3));
+        assert_eq!((MIN_PROTOCOL_VERSION, PROTOCOL_VERSION), (1, 4));
     }
 }

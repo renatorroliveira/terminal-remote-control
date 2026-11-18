@@ -1,4 +1,4 @@
-//! The shared protocol fixtures (`protocol/fixtures/v1` to `v3`) match what this crate encodes and decodes, so the
+//! The shared protocol fixtures (`protocol/fixtures/v1` to `v4`) match what this crate encodes and decodes, so the
 //! current and the previous protocol stay readable (NFR-12).
 //!
 //! Run with `TRC_BLESS_FIXTURES=1` to rewrite the fixtures after an intended change.
@@ -12,8 +12,8 @@ use trc_protocol::frame::{self, FrameDecoder, FrameKind};
 use trc_protocol::{
     AttachMode, ClientMessage, CreateSessionSpec, DaemonDetails, DetachReason, EndCause, ErrorCode, ExitStatus,
     Integration, PersistenceFailure, ProfileOrigin, Replay, RestoreInfo, ResyncKind, ServerMessage, ServiceInfo,
-    ServiceManager, SessionChange, SessionId, SessionInfo, SessionOptions, SessionState, ShellKind, ShellProfile,
-    TerminalSize,
+    ServiceManager, SessionActivity, SessionChange, SessionId, SessionInfo, SessionOptions, SessionState,
+    ShellIntegration, ShellKind, ShellProfile, TerminalSize,
 };
 
 fn fixtures_dir(version: &str) -> PathBuf {
@@ -493,6 +493,115 @@ fn server_messages_v3() -> Vec<(&'static str, ServerMessage)> {
         .collect()
 }
 
+fn client_messages_v4() -> Vec<(&'static str, ClientMessage)> {
+    let off = SessionOptions {
+        restore: true,
+        save_scrollback: false,
+        integration: Some(false),
+    };
+    client_messages_v3()
+        .into_iter()
+        .map(|(name, message)| match message {
+            ClientMessage::Hello { app_version, caps, .. } => (
+                name,
+                ClientMessage::Hello {
+                    min_proto: 1,
+                    max_proto: 4,
+                    app_version,
+                    caps,
+                },
+            ),
+            ClientMessage::Create { request_id, mut spec } => {
+                spec.options = Some(off);
+                (name, ClientMessage::Create { request_id, spec })
+            }
+            ClientMessage::SetSessionOptions {
+                request_id, session, ..
+            } => (
+                name,
+                ClientMessage::SetSessionOptions {
+                    request_id,
+                    session,
+                    options: off,
+                },
+            ),
+            other => (name, other),
+        })
+        .collect()
+}
+
+fn server_messages_v4() -> Vec<(&'static str, ServerMessage)> {
+    let integrations = [
+        ShellIntegration::Injected,
+        ShellIntegration::Native,
+        ShellIntegration::Off,
+        ShellIntegration::Unsupported,
+    ];
+    let mut messages: Vec<(&'static str, ServerMessage)> = server_messages_v3()
+        .into_iter()
+        .map(|(name, message)| match message {
+            ServerMessage::Welcome {
+                daemon_version,
+                binary_sha256,
+                caps,
+                service,
+                details,
+                ..
+            } => (
+                name,
+                ServerMessage::Welcome {
+                    proto: 4,
+                    daemon_version,
+                    binary_sha256,
+                    caps,
+                    service,
+                    details,
+                },
+            ),
+            ServerMessage::Sessions { request_id, sessions } => (
+                name,
+                ServerMessage::Sessions {
+                    request_id,
+                    sessions: sessions
+                        .into_iter()
+                        .chain([session("s-4", SessionState::Running)])
+                        .zip(integrations)
+                        .map(|(info, integration)| SessionInfo {
+                            integration: Some(integration),
+                            ..info
+                        })
+                        .collect(),
+                },
+            ),
+            other => (name, other),
+        })
+        .collect();
+    let activity = |activity| ServerMessage::SessionEvent {
+        change: SessionChange::Activity {
+            session_id: SessionId("s-1".into()),
+            activity,
+        },
+    };
+    messages.extend([
+        ("event-bell", activity(SessionActivity::Bell)),
+        (
+            "event-command-finished",
+            activity(SessionActivity::CommandFinished {
+                exit_code: Some(2),
+                duration_ms: 12_500,
+            }),
+        ),
+        (
+            "event-command-finished-no-status",
+            activity(SessionActivity::CommandFinished {
+                exit_code: None,
+                duration_ms: 40,
+            }),
+        ),
+    ]);
+    messages
+}
+
 fn check_message<T: Serialize + DeserializeOwned + PartialEq + std::fmt::Debug>(
     version: &str,
     dir: &str,
@@ -526,6 +635,9 @@ fn client_message_fixtures_match() {
     for (name, message) in client_messages_v3() {
         check_message("v3", "client", name, &message);
     }
+    for (name, message) in client_messages_v4() {
+        check_message("v4", "client", name, &message);
+    }
 }
 
 #[test]
@@ -538,6 +650,9 @@ fn server_message_fixtures_match() {
     }
     for (name, message) in server_messages_v3() {
         check_message("v3", "server", name, &message);
+    }
+    for (name, message) in server_messages_v4() {
+        check_message("v4", "server", name, &message);
     }
 }
 

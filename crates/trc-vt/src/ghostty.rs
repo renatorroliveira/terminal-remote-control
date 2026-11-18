@@ -9,6 +9,7 @@ use sys::GhosttyFormatterOption as FormatterOption;
 use sys::GhosttyTerminalData as Data;
 use sys::GhosttyTerminalOption as Opt;
 
+use crate::iterm::{ItermCommand, ItermScanner};
 use crate::marks::Marks;
 use crate::sanitize::strip_controls;
 use crate::{CommandStep, Rgb, TerminalConfig, TerminalEvent, TerminalSize, TerminalState, VtError};
@@ -30,6 +31,8 @@ pub struct GhosttyTerminal {
     effects: NonNull<Effects>,
     size: TerminalSize,
     marks: Marks,
+    iterm: ItermScanner,
+    remote_host: Option<String>,
 }
 
 impl GhosttyTerminal {
@@ -47,6 +50,8 @@ impl GhosttyTerminal {
             effects,
             size: config.size,
             marks: Marks::new(),
+            iterm: ItermScanner::default(),
+            remote_host: None,
         };
         terminal.configure(config)?;
         Ok(terminal)
@@ -151,6 +156,30 @@ impl GhosttyTerminal {
         formatter.format()
     }
 
+    fn write(&mut self, bytes: &[u8]) -> Vec<TerminalEvent> {
+        // SAFETY: `raw` is a live terminal and `bytes` outlives the call. Callbacks only append to `effects`.
+        unsafe { sys::ghostty_terminal_vt_write(self.raw, bytes.as_ptr(), bytes.len()) };
+        self.take_events()
+    }
+
+    /// What an OSC 1337 sequence, already fed, means: a `SetMark` is a prompt's mark at the cursor's row.
+    fn iterm_event(&mut self, command: ItermCommand) -> Option<TerminalEvent> {
+        match command {
+            ItermCommand::CurrentDir(path) => Some(TerminalEvent::CurrentDir {
+                path,
+                remote_host: self.remote_host.clone(),
+            }),
+            ItermCommand::RemoteHost(host) => {
+                self.remote_host = Some(host);
+                None
+            }
+            ItermCommand::SetMark => self
+                .marks
+                .accept(self.raw, CommandStep::Prompt, cursor_row(self.raw))
+                .then_some(TerminalEvent::Command(CommandStep::Prompt)),
+        }
+    }
+
     fn take_events(&mut self) -> Vec<TerminalEvent> {
         // SAFETY: `effects` is live until `Drop`, and no callback runs outside `feed`, so nothing else touches it here.
         let pending = std::mem::take(&mut unsafe { self.effects.as_mut() }.pending);
@@ -173,9 +202,15 @@ impl GhosttyTerminal {
 
 impl TerminalState for GhosttyTerminal {
     fn feed(&mut self, bytes: &[u8]) -> Vec<TerminalEvent> {
-        // SAFETY: `raw` is a live terminal and `bytes` outlives the call. Callbacks only append to `effects`.
-        unsafe { sys::ghostty_terminal_vt_write(self.raw, bytes.as_ptr(), bytes.len()) };
-        self.take_events()
+        let mut events = Vec::new();
+        let mut from = 0;
+        for (end, command) in self.iterm.scan(bytes) {
+            events.extend(self.write(&bytes[from..end]));
+            events.extend(self.iterm_event(command));
+            from = end;
+        }
+        events.extend(self.write(&bytes[from..]));
+        events
     }
 
     fn resize(&mut self, size: TerminalSize) -> Result<(), VtError> {
@@ -487,6 +522,27 @@ mod tests {
             unknown.last(),
             Some(&TerminalEvent::Command(CommandStep::End { exit_code: None }))
         );
+    }
+
+    #[test]
+    fn reads_iterms_folder_its_host_and_its_marks_oq_6() {
+        let mut term = terminal(80, 24);
+        let events = term.feed(
+            b"\x1b]1337;RemoteHost=me@devbox\x07\x1b]1337;CurrentDir=/srv/app\x07\r\n\r\n\x1b]1337;SetMark\x07$ ",
+        );
+        assert_eq!(
+            events,
+            [
+                TerminalEvent::WorkingDirectory("/srv/app".into()),
+                TerminalEvent::CurrentDir {
+                    path: "/srv/app".into(),
+                    remote_host: Some("me@devbox".into())
+                },
+                TerminalEvent::Command(CommandStep::Prompt),
+            ]
+        );
+        assert_eq!(term.marks().in_rows(0, u32::MAX), [(2, CommandStep::Prompt)]);
+        assert_eq!(term.plain_text().unwrap(), "\n\n$");
     }
 
     #[test]

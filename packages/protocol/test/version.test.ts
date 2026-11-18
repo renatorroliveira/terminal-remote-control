@@ -3,7 +3,7 @@ import { MIN_PROTOCOL_VERSION, negotiate, PROTOCOL_VERSION } from '../src/versio
 
 describe('protocol version', () => {
     it('speaks versions N and N-1 at least, like trc-protocol', () => {
-        expect([MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]).toEqual([1, 3]);
+        expect([MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]).toEqual([1, 4]);
     });
 
     it('negotiates the highest common version', () => {

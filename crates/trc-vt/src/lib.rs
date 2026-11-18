@@ -3,6 +3,7 @@
 mod ghostty;
 mod grid;
 mod history;
+mod iterm;
 mod marks;
 mod sanitize;
 mod stream;
@@ -61,6 +62,14 @@ pub enum TerminalEvent {
     Bell,
     /// Shell integration reported a step of a command (OSC 133, US-5.1.2).
     Command(CommandStep),
+    /// The program reported its working folder with iTerm2's OSC 1337 `CurrentDir`, stripped of control characters,
+    /// with the `user@host` its last `RemoteHost` named, if any (OQ-6).
+    CurrentDir {
+        /// The folder, an absolute path.
+        path: String,
+        /// Where it is, when the program said.
+        remote_host: Option<String>,
+    },
 }
 
 /// A step of a command, as shell integration reports it (OSC 133 A, B, C and D).

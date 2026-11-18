@@ -1,5 +1,5 @@
 /** The newest protocol version this build speaks. Matches `trc_protocol::PROTOCOL_VERSION`. */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 /** The oldest protocol version this build still speaks: at most N−1 (NFR-12), and 1 so far (P-49). */
 export const MIN_PROTOCOL_VERSION = 1;
 

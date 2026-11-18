@@ -13,7 +13,7 @@ use trc_protocol::{
 /// The stream of holder protocol 1's one attachment, and of an attachment a protocol 1 core makes.
 pub const SESSION_STREAM: u32 = 1;
 /// The holder protocol this build speaks; it also serves protocol 1 and 2 cores. Protocol 3 adds saving to disk.
-pub const HOLDER_PROTOCOL: u32 = 3;
+pub const HOLDER_PROTOCOL: u32 = 4;
 
 /// What a holder needs to start its session.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -219,4 +219,14 @@ pub enum HolderEvent {
     },
     /// The holder is exiting after `shutdown`.
     Exiting,
+    /// The program rang the bell; at most one a second (US-5.3, holder protocol 4).
+    Bell,
+    /// A command finished, as shell integration marked it (US-5.2.2, US-5.3, holder protocol 4).
+    CommandFinished {
+        /// Its exit code, when the shell reported one.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        exit_code: Option<i32>,
+        /// How long it ran, in milliseconds.
+        duration_ms: u64,
+    },
 }

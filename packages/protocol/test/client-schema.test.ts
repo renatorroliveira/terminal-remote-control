@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { ClientMessageSchema } from '../src/schemas';
 
 const FIXTURES = resolve(import.meta.dirname, '../../../protocol/fixtures');
-const CLIENT_FIXTURES = ['v1', 'v2', 'v3'].flatMap((version) =>
+const CLIENT_FIXTURES = ['v1', 'v2', 'v3', 'v4'].flatMap((version) =>
     readdirSync(resolve(FIXTURES, version, 'client'))
         .filter((name) => name.endsWith('.json'))
         .map((name) => [version, name] as const),

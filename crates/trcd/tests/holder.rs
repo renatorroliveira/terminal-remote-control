@@ -9,7 +9,7 @@ use tokio::net::UnixStream;
 use tokio::net::unix::OwnedReadHalf;
 use tokio::time::timeout;
 use trc_protocol::frame::{self, Frame, FrameKind};
-use trc_protocol::{Integration, ProfileOrigin, SessionState, ShellKind, ShellProfile, TerminalSize};
+use trc_protocol::{Integration, ProfileOrigin, SessionState, ShellIntegration, ShellKind, ShellProfile, TerminalSize};
 use trcd::frame_io::{FrameReader, FrameSender};
 use trcd::holder::protocol::{HolderCommand, HolderEvent, HolderRestore, HolderSpec, HolderStatus, SESSION_STREAM};
 use trcd::holder::service::Holder;
@@ -24,6 +24,8 @@ struct Client {
     output: Vec<u8>,
     statuses: Vec<HolderStatus>,
     exiting: bool,
+    finished: Vec<(Option<i32>, u64)>,
+    bells: usize,
 }
 
 impl Client {
@@ -39,6 +41,8 @@ impl Client {
             output: Vec::new(),
             statuses: Vec::new(),
             exiting: false,
+            finished: Vec::new(),
+            bells: 0,
         }
     }
 
@@ -81,6 +85,8 @@ impl Client {
                 HolderEvent::Status { status } => self.statuses.push(status),
                 HolderEvent::Exiting => self.exiting = true,
                 HolderEvent::Hello { spec, name, .. } => self.hellos.push((spec, name)),
+                HolderEvent::CommandFinished { exit_code, duration_ms } => self.finished.push((exit_code, duration_ms)),
+                HolderEvent::Bell => self.bells += 1,
                 _ => {}
             },
             other => panic!("unexpected frame {other:?}"),
@@ -304,6 +310,19 @@ async fn reports_no_state_before_it_is_given_a_session() {
     client.until(|c| !c.statuses.is_empty()).await;
     assert_eq!(client.hellos, vec![(None, None)]);
     assert_eq!(client.statuses[0].state, SessionState::Stopped);
+}
+
+#[tokio::test]
+async fn reports_each_finished_command_with_its_status_and_time_and_a_bell_a_second_us_5_3() {
+    let mut client = started("/bin/sh").await;
+    client.input("printf '\\033]133;C\\007'; sleep 0.3; printf '\\033]133;D;3\\007'; printf '\\007\\007\\007'\r");
+    client.until(|c| !c.finished.is_empty() && c.bells > 0).await;
+    let (exit_code, duration_ms) = client.finished[0];
+    assert_eq!(exit_code, Some(3));
+    assert!((250..5_000).contains(&duration_ms), "{duration_ms} ms");
+    settle(&mut client).await;
+    assert_eq!(client.bells, 1);
+    assert_eq!(client.last().integration, Some(ShellIntegration::Native));
 }
 
 #[tokio::test]
