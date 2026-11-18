@@ -2,9 +2,9 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.18                     |
+| Status       | Draft v0.19                     |
 | Owner        | Renato Oliveira                 |
-| Last updated | 2026-11-17                      |
+| Last updated | 2026-11-18                      |
 | Scope        | P0 in seven epics, then GA (E8) |
 | Name         | Terminal Remote Control (TRC)   |
 
@@ -727,8 +727,8 @@ Acceptance criteria:
    methods, non-interactive mode — are passed on the command line, so they take
    precedence over the user's SSH configuration (SEC-03).
 5. "Test connection" reports success or the specific failure (US-1.3).
-6. The user-name field exposes its input purpose so autofill and AT recognize
-   it.
+6. The user name, when one is needed, goes in the host field as
+   `user@host`; Add host has no separate user field (owner, E5).
 
 #### US-1.2 — Verify the host's identity
 
@@ -837,6 +837,9 @@ Acceptance criteria:
 6. Each session item's name starts with the last two folders of the session's
    working directory, the home folder shown as `~` and counted as one folder
    (owner, E3).
+7. The sidebar ends with a Settings link, above the status bar. Settings opens
+   in the terminal's place in the center region, from that link, the app menu,
+   its shortcut and the command palette alike (owner, E5).
 
 #### US-1.7 — Create a session
 
@@ -915,6 +918,7 @@ Acceptance criteria:
 9. An ended session's terminal shows a banner at its top that says why it ended
    (its exit status or signal, stopped, or failed to start), with Restart and
    Remove on its right. Remove opens criterion 4's confirmation.
+10. F2 renames the session whose row in the session list has focus (owner, E5).
 
 #### US-1.11 — Terminal emulation fidelity
 
@@ -1319,7 +1323,8 @@ Acceptance criteria:
    without modifying the user's shell startup files.
 2. The integration emits OSC 133 marks (prompt, command, output, exit status)
    and the OSC 7 working directory. The app also reads these sequences from
-   shells that emit them on their own.
+   shells that emit them on their own, and iTerm2's OSC 1337 `CurrentDir`,
+   `RemoteHost` and `SetMark` (OQ-6).
 3. The user can turn injection off per host.
 
 #### US-5.2 — Navigate by command
@@ -1348,7 +1353,7 @@ Acceptance criteria:
 1. When a background session rings the bell, its process exits, or a
    long-running command finishes (shell integration; threshold configurable),
    the app posts a polite announcement, an OS notification, or both
-   (configurable per event type). Example: "Session build on devbox-1: command
+   (configurable per event type; an announcement only by default, owner, E5). Example: "Session build on devbox-1: command
    finished, exit code 1."
 2. The session list shows the same events as text and icon badges. Badges are
    part of the item's accessible description until the session is viewed.
@@ -1703,7 +1708,7 @@ WCAG 2.2 removed 4.1.1 Parsing as obsolete; it is not listed.
 | OQ-3 | What are the distribution channels and update mechanism for the desktop app on each OS?                                                  | Downloads from GitHub Releases: ad-hoc-signed 0.x alpha builds until 1.0.0 (SEC-04.1). Automatic updates arrive with E8 (US-8.5): Electron's built-in updater on macOS, and Windows and Linux updaters chosen there within SEC-01 and SEC-07. [TECH_STACK.md](TECH_STACK.md) D-06, D-43. |
 | OQ-4 | Does the product collect any telemetry? If yes, it must be opt-in and exclude terminal content.                                          | No telemetry and no crash uploads in P0. [TECH_STACK.md](TECH_STACK.md) D-09.                                                                                                                                                                                                            |
 | OQ-5 | What is the final product name?                                                                                                          | Resolved: Terminal Remote Control, TRC for short (owner, M1).                                                                                                                                                                                                                            |
-| OQ-6 | Which shell integration sequences beyond OSC 133 (for example VS Code's OSC 633) should the app read?                                    | Open. OSC 133 and OSC 7 are read in any case.                                                                                                                                                                                                                                            |
+| OQ-6 | Which shell integration sequences beyond OSC 133 (for example VS Code's OSC 633) should the app read?                                    | Resolved (owner, E5): OSC 133 and OSC 7, plus iTerm2's OSC 1337 `CurrentDir`, `RemoteHost` and `SetMark`; no other 1337 key, and not OSC 633. [E5 plan](plans/epic-05-implementation-plan.md) P-69.                                                                                      |
 
 ## 15. References
 
