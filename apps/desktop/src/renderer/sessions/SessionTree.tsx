@@ -5,7 +5,7 @@ import { useShell } from '../app/shell-context';
 import { contextMenuMessages } from '../app/shell-messages';
 import { hostActions, sessionActions } from '../app/workspace-actions';
 import { useContextMenu } from '../ui/context-menu';
-import { CommandFinishedIcon, NotificationsIcon, PlusIcon } from '../ui/icons';
+import { CommandFinishedIcon, EndedIcon, NotificationsIcon, PlusIcon } from '../ui/icons';
 import { hostStateText } from './host-state-text';
 import { typeAhead } from './list-keys';
 import { hostSessionsMessages, sessionRowMessage } from './messages';
@@ -242,14 +242,15 @@ function SessionRow(props: SessionRowProps) {
     );
 }
 
-/** Icons beside the text badges of a background session's events: a bell, or a finished command (US-5.3.2). */
+/** Icons beside the text badges of a background session's events: a bell, an end, a finished command (US-5.3.2). */
 function EventIcons({ item }: { readonly item: SessionItem }) {
-    if (!item.bell && !item.finished) {
+    if (!item.bell && !item.ended && !item.finished) {
         return null;
     }
     return (
         <span aria-hidden="true" className={styles['eventIcons']}>
             {item.bell && <NotificationsIcon />}
+            {item.ended && <EndedIcon />}
             {item.finished && <CommandFinishedIcon />}
         </span>
     );

@@ -60,7 +60,7 @@ describe('SettingsView: the settings in the content area (A11Y-10.3, US-1.6.7, P
         await expect.element(settingsView(screen)).toBeVisible();
         const main = screen.getByRole('main').element().getBoundingClientRect();
         const frame = settingsView(screen).element().firstElementChild?.getBoundingClientRect();
-        const nav = settingsView(screen).getByRole('navigation', { name: 'Settings sections' }).element();
+        const nav = settingsView(screen).element().querySelector('[data-settings-side]') as HTMLElement;
         expect(frame?.width).toBeCloseTo(1280, 0);
         expect(Math.abs((frame?.left ?? 0) - main.left - (main.right - (frame?.right ?? 0)))).toBeLessThan(2);
         expect(nav.getBoundingClientRect().width).toBeCloseTo(400, 0);
@@ -73,7 +73,7 @@ describe('SettingsView: the settings in the content area (A11Y-10.3, US-1.6.7, P
         shell.run('settings.show');
         await expect.element(settingsView(screen)).toBeVisible();
         const view = settingsView(screen).element();
-        const nav = settingsView(screen).getByRole('navigation', { name: 'Settings sections' }).element();
+        const nav = settingsView(screen).element().querySelector('[data-settings-side]') as HTMLElement;
         const heading = settingsView(screen).getByRole('heading', { level: 3, name: 'Appearance' }).element();
         expect(heading.getBoundingClientRect().top).toBeGreaterThan(nav.getBoundingClientRect().bottom);
         expect(view.scrollWidth).toBeLessThanOrEqual(view.clientWidth);
@@ -130,7 +130,8 @@ describe('SettingsView: the settings in the content area (A11Y-10.3, US-1.6.7, P
         const screen = await rendered;
         shell.run('settings.show');
         const total = SETTING_ENTRIES.filter((entry) => entry.id !== 'screenReaderMode').length;
-        await expect.element(screen.getByText(`${total} of ${total} settings shown.`)).toBeVisible();
+        const appearance = SETTING_ENTRIES.filter((entry) => entry.group === 'appearance').length;
+        await expect.element(screen.getByText(`Appearance: ${appearance} settings.`)).toBeVisible();
         await screen.getByRole('searchbox', { name: 'Search settings' }).fill('scrollback');
         await expect.element(screen.getByText(`1 of ${total} settings shown.`)).toBeVisible();
         await expect.element(screen.getByRole('textbox', { name: 'Scrollback lines' })).toBeVisible();

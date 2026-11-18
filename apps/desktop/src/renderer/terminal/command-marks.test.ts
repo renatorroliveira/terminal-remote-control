@@ -91,6 +91,23 @@ describe('CommandMarks: commands as shell integration marks them (US-5.1.2, US-5
         expect(marks.commands).toEqual([]);
     });
 
+    it('lets a prompt where no command ran give way to the next, so empty Returns push no command out', async () => {
+        const { terminal, marks } = marked(MAX_COMMANDS * 3);
+        await write(terminal, command('make', 'x\r\n', 0));
+        await write(terminal, `${A}$ \r\n`.repeat(MAX_COMMANDS + 10));
+        await write(terminal, `${A}$ `);
+        expect(marks.commands.map((entry) => entry.output !== undefined)).toEqual([true, false]);
+    });
+
+    it('turns a SetMark into the prompt that follows on its row, so that command still counts', async () => {
+        const { terminal, marks, finished } = marked();
+        await write(terminal, `${SET_MARK}${A}$ ${B}ls\r\n${C}x\r\n${D(1)}`);
+        expect(marks.commands.map((entry) => [entry.bookmark, entry.exitCode, entry.input])).toEqual([
+            [false, 1, undefined],
+        ]);
+        expect(finished).toEqual([1]);
+    });
+
     it('drops the commands the scrollback trimmed, and keeps at most the newest MAX_COMMANDS', async () => {
         const { terminal, marks } = marked(10);
         for (let index = 0; index < 12; index += 1) {

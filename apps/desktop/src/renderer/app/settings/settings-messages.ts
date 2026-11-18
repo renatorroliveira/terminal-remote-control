@@ -24,7 +24,12 @@ export const settingsPageMessages = {
     shown: defineMessage<{ shown: number; total: number }>({
         id: 'settings.shown',
         defaultMessage: '{shown} of {total} settings shown.',
-        description: 'Status line under the search field.',
+        description: 'Status line under the search field while a search shows settings.',
+    }),
+    inSection: defineMessage<{ count: number; section: string }>({
+        id: 'settings.inSection',
+        defaultMessage: '{section}: {count, plural, one {# setting} other {# settings}}.',
+        description: 'Status line under the search field while one section shows, read when a section is chosen.',
     }),
 };
 

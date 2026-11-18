@@ -12,7 +12,7 @@ import {
     sessionEndedUnseen,
     type Workspace,
 } from '../sessions/workspace-model';
-import { BackgroundEvents, type BackgroundSettings, BELL_MERGE_MS } from './background-events';
+import { BackgroundEvents, type BackgroundSettings, BELL_MERGE_MS, NOTICE_INTERVAL_MS } from './background-events';
 
 const intl = createIntl({ locale: 'en', defaultLocale: 'en', messages: {} });
 
@@ -150,6 +150,21 @@ describe('BackgroundEvents: events in sessions that are not open (US-5.3)', () =
         expect(said).toEqual(['bg:h1/build: Session build on devbox-1: bell.']);
         expect(listed).toEqual(['Session build on devbox-1: ended, exit code 0.']);
         expect(posted).toEqual([{ title: 'build on devbox-1', body: 'Ended, exit code 0.', key: 'h1/build' }]);
+    });
+
+    it('posts at most one OS notification a session every 10 s, and none for an end a restore reports', async () => {
+        const { store, posted, report, advance } = setUp({ notifyBackgroundBell: true, notifyBackgroundEnd: true });
+        report('h1/build', { type: 'bell' });
+        advance(BELL_MERGE_MS);
+        report('h1/build', { type: 'bell' });
+        advance(NOTICE_INTERVAL_MS);
+        report('h1/build', { type: 'bell' });
+        const restarted = session('build', 'exited', { customName: 'build', exit: { ended: 'hostRestart' } });
+        store.setState({
+            sessions: new Map([['h1', [restarted, ...(store.getState().sessions.get('h1') ?? []).slice(1)]]]),
+        });
+        expect(posted.map((notice) => notice.body)).toEqual(['Bell.', 'Bell.']);
+        expect(store.getState().ended).toEqual(new Set());
     });
 
     it('stops watching when stopped', () => {

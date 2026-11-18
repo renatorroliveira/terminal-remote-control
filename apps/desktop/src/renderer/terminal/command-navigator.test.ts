@@ -96,12 +96,21 @@ describe('CommandNavigator: moving between commands (US-5.2.1)', () => {
 });
 
 describe('CommandNavigator: the last command’s output (US-5.2.1)', () => {
-    it('reads the last command’s output, even from a full-screen program, and a running one’s so far', async () => {
+    it('reads a running command’s output so far, and the last finished one’s under a full-screen program', async () => {
         const { terminal, navigator } = setUp();
         await write(terminal, `${command('make test', ['one', 'two'], 2)}${A}$ `);
         expect(navigator.lastOutput()).toEqual({ kind: 'output', text: 'one\ntwo', lines: 2 });
-        await write(terminal, `top\r\n${C}load 1.0\r\n\u001b[?1049h`);
+        await write(terminal, `tail\r\n${C}load 1.0\r\n`);
         expect(navigator.lastOutput()).toEqual({ kind: 'output', text: 'load 1.0', lines: 1 });
+        await write(terminal, '\u001b[?1049hvim screen');
+        expect(navigator.lastOutput()).toEqual({ kind: 'output', text: 'one\ntwo', lines: 2 });
+    });
+
+    it('says the line the command was typed on, below a prompt of two lines', async () => {
+        const { terminal, navigator } = setUp(10);
+        const B = '\u001b]133;B\u0007';
+        await write(terminal, `${A}~/proj main\r\n> ${B}make\r\n${C}built\r\n${D(0)}${A}~/proj main\r\n> ${B}`);
+        expect(navigator.step('previous')).toMatchObject({ kind: 'moved', line: '> make' });
     });
 
     it('reads a long wrapped line as one line, and an empty output as no line', async () => {

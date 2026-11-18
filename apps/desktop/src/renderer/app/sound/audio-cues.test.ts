@@ -61,6 +61,13 @@ describe('AudioCues: short tones beside every announcement (A11Y-12.4)', () => {
         expect(context.resumed).toBe(1);
     });
 
+    it('rests between the two tones of a failed command, so they sound apart (US-5.2.2)', () => {
+        const { context, cues } = setup({ audioCues: true, audioVolume: 50 });
+        cues.play('command-failed');
+        expect(context.played).toHaveLength(2);
+        expect((context.played[1]?.start ?? 0) - (context.played[0]?.stop ?? 0)).toBeGreaterThan(0.05);
+    });
+
     it('keeps every cue under 3 seconds and tells the cues apart', () => {
         const cues = Object.entries(AUDIO_CUES) as [AudioCue, (typeof AUDIO_CUES)[AudioCue]][];
         for (const [, tones] of cues) {

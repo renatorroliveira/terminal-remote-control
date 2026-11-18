@@ -119,19 +119,27 @@ export class CommandNavigator {
     #show(target: MarkedCommand, review: ReviewField | undefined): string {
         const buffer = this.#terminal.buffer.active;
         const row = logicalStart(buffer, target.prompt.marker.line);
-        const line = logicalLine(buffer, row).text;
+        const typed = logicalStart(buffer, target.input?.marker.line ?? row);
+        const line = logicalLine(buffer, typed).text;
         if (review === undefined) {
             this.#current = target;
             this.#terminal.scrollToLine(row);
         } else {
-            const index = bufferText(this.#terminal).firstRows.indexOf(row);
+            const index = bufferText(this.#terminal).firstRows.indexOf(typed);
             review.select(index, 0, line.length);
         }
         return line;
     }
 
+    /**
+     * The last command's output: the running one's so far, or while a full-screen program runs, which is the running
+     * command, the last finished one's.
+     */
     #lastRange(): { readonly from: BufferCell; readonly to: BufferCell } | undefined {
-        const last = this.#marks.commands.findLast((entry) => entry.output !== undefined);
+        const finishedOnly = this.#terminal.buffer.active.type === 'alternate';
+        const last = this.#marks.commands.findLast(
+            (entry) => entry.output !== undefined && (!finishedOnly || entry.end !== undefined),
+        );
         if (last?.output === undefined) {
             return undefined;
         }

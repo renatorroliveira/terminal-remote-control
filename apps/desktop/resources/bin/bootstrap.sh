@@ -332,6 +332,7 @@ owned() {
     versions:.staging.*) return 0 ;;
     versions:*) is_hex "$2" 64 ;;
     sessions:*) is_hex "$2" 16 ;;
+    shell-integration:*) is_hex "$2" 16 ;;
     logs:core.*log | logs:launchd.log) return 0 ;;
     run:core.sock | run:core.lock | run:upgrade.lock) return 0 ;;
     holders:*.sock) is_hex "${2%.sock}" 16 ;;
@@ -371,7 +372,7 @@ remove_install() {
     elif [ -d "/tmp/trc-$uid" ] && [ -O "/tmp/trc-$uid" ] && [ ! -L "/tmp/trc-$uid" ]; then
         remove_owned run "/tmp/trc-$uid"
     fi
-    for folder in versions sessions logs; do
+    for folder in versions sessions shell-integration logs; do
         remove_owned "$folder" "$root/$folder"
     done
     if [ -d "$root/install.lock" ] && [ ! -L "$root/install.lock" ]; then

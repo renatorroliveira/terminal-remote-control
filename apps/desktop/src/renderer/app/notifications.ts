@@ -1,5 +1,8 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
+/** The most notifications the list keeps; past it, the oldest informational one leaves, and no error ever does. */
+export const MAX_NOTIFICATIONS = 200;
+
 /** How serious a notification is. */
 export type NotificationLevel = 'info' | 'error';
 
@@ -35,10 +38,10 @@ export class NotificationCenter {
         this.#now = now;
     }
 
-    /** Posts a notification at the top of the list. */
+    /** Posts a notification at the top of the list, within {@link MAX_NOTIFICATIONS}. */
     add(notification: NewNotification): void {
         const item: AppNotification = { ...notification, id: `notification-${this.#next++}`, time: this.#now() };
-        this.store.setState((state) => ({ items: [item, ...state.items] }));
+        this.store.setState((state) => ({ items: withinLimit([item, ...state.items]) }));
     }
 
     /** Removes one notification. */
@@ -50,4 +53,12 @@ export class NotificationCenter {
     clear(): void {
         this.store.setState({ items: [] });
     }
+}
+
+function withinLimit(items: readonly AppNotification[]): readonly AppNotification[] {
+    if (items.length <= MAX_NOTIFICATIONS) {
+        return items;
+    }
+    const oldestInfo = items.findLastIndex((item) => item.level === 'info');
+    return oldestInfo === -1 ? items : items.filter((_, index) => index !== oldestInfo);
 }

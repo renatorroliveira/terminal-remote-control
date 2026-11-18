@@ -158,6 +158,8 @@ export interface ShellState {
     readonly settingsOpen: boolean;
     /** Sessions shown at a size another client set (US-2.6.2). */
     readonly sizeSetElsewhere: ReadonlySet<SessionKey>;
+    /** The last command shell integration saw finish, which the status bar shows for the open session (US-5.2.2). */
+    readonly lastCommand: { readonly key: SessionKey; readonly exitCode: number } | undefined;
 }
 
 /** A dialog about a session, or the New session dialog. */
@@ -226,6 +228,7 @@ const INITIAL_STATE: ShellState = {
     help: undefined,
     settingsOpen: false,
     sizeSetElsewhere: new Set(),
+    lastCommand: undefined,
 };
 
 /** Input from another client this long after the last starts a new burst, which is announced again (US-2.6.4). */
@@ -284,6 +287,7 @@ export class Shell {
             settings: () => options.settings?.current ?? DEFAULT_SETTINGS,
             copy: (text) => options.clipboard?.copy(text).catch(() => false) ?? Promise.resolve(false),
             noSession: () => this.#announce(shellAnnouncements.noSession),
+            showResult: (key, exitCode) => this.state.setState({ lastCommand: { key, exitCode } }),
         });
         this.#background = new BackgroundEvents({
             workspace: options.workspace,

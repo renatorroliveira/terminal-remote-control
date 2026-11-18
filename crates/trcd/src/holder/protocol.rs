@@ -12,7 +12,8 @@ use trc_protocol::{
 
 /// The stream of holder protocol 1's one attachment, and of an attachment a protocol 1 core makes.
 pub const SESSION_STREAM: u32 = 1;
-/// The holder protocol this build speaks; it also serves protocol 1 and 2 cores. Protocol 3 adds saving to disk.
+/// The holder protocol this build speaks; it also serves protocol 1 to 3 cores. Protocol 3 adds saving to disk, and
+/// protocol 4 the bell, finished commands and the shell's integration (US-5.3, P-75).
 pub const HOLDER_PROTOCOL: u32 = 4;
 
 /// What a holder needs to start its session.

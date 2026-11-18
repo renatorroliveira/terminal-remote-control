@@ -173,10 +173,8 @@ impl GhosttyTerminal {
                 self.remote_host = Some(host);
                 None
             }
-            ItermCommand::SetMark => self
-                .marks
-                .accept(self.raw, CommandStep::Prompt, cursor_row(self.raw))
-                .then_some(TerminalEvent::Command(CommandStep::Prompt)),
+            ItermCommand::SetMark => self.mark(CommandStep::Bookmark, cursor_row(self.raw)),
+            ItermCommand::SemanticPrompt => None,
         }
     }
 
@@ -192,11 +190,13 @@ impl GhosttyTerminal {
             Effect::Title => self.title().map(TerminalEvent::Title),
             Effect::WorkingDirectory => self.working_directory().map(TerminalEvent::WorkingDirectory),
             Effect::Bell => Some(TerminalEvent::Bell),
-            Effect::Command(step, row) => self
-                .marks
-                .accept(self.raw, step, row)
-                .then_some(TerminalEvent::Command(step)),
+            Effect::Command(step, row) => self.mark(step, row),
         }
+    }
+
+    /// Keeps a step at `row` unless the alternate screen is on, where no command runs that its marks could find.
+    fn mark(&mut self, step: CommandStep, row: u32) -> Option<TerminalEvent> {
+        (!self.alternate_screen() && self.marks.accept(self.raw, step, row)).then_some(TerminalEvent::Command(step))
     }
 }
 
@@ -538,10 +538,10 @@ mod tests {
                     path: "/srv/app".into(),
                     remote_host: Some("me@devbox".into())
                 },
-                TerminalEvent::Command(CommandStep::Prompt),
+                TerminalEvent::Command(CommandStep::Bookmark),
             ]
         );
-        assert_eq!(term.marks().in_rows(0, u32::MAX), [(2, CommandStep::Prompt)]);
+        assert_eq!(term.marks().in_rows(0, u32::MAX), [(2, CommandStep::Bookmark)]);
         assert_eq!(term.plain_text().unwrap(), "\n\n$");
     }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NotificationCenter } from './notifications';
+import { MAX_NOTIFICATIONS, NotificationCenter } from './notifications';
 
 describe('NotificationCenter: the persistent notification list (A11Y-12, TECH_STACK §4.3)', () => {
     it('keeps every notification, newest first, until the user dismisses it', () => {
@@ -15,5 +15,17 @@ describe('NotificationCenter: the persistent notification list (A11Y-12, TECH_ST
         expect(center.store.getState().items.map((item) => item.text)).toEqual(['Couldn’t connect to devbox']);
         center.clear();
         expect(center.store.getState().items).toEqual([]);
+    });
+
+    it('lets the oldest informational notification go past MAX_NOTIFICATIONS, and never an error', () => {
+        const center = new NotificationCenter(() => 0);
+        center.add({ text: 'failed', level: 'error' });
+        for (let index = 0; index < MAX_NOTIFICATIONS + 5; index += 1) {
+            center.add({ text: `event ${index}`, level: 'info' });
+        }
+        const items = center.store.getState().items;
+        expect(items).toHaveLength(MAX_NOTIFICATIONS);
+        expect(items.at(-1)?.text).toBe('failed');
+        expect(items.at(-2)?.text).toBe('event 6');
     });
 });

@@ -496,6 +496,16 @@ export const statusMessages = {
         description: 'Shown while no session is open.',
     }),
     noHosts: defineMessage({ id: 'status.noHosts', defaultMessage: 'No hosts', description: 'Status bar text.' }),
+    lastCommandSucceeded: defineMessage({
+        id: 'status.lastCommandSucceeded',
+        defaultMessage: 'Last command succeeded',
+        description: 'Status bar text: the open session’s last command ended with exit code 0 (US-5.2.2).',
+    }),
+    lastCommandFailed: defineMessage<{ code: number }>({
+        id: 'status.lastCommandFailed',
+        defaultMessage: 'Last command failed, exit code {code}',
+        description: 'Status bar text: the open session’s last command ended with a non-zero exit code (US-5.2.2).',
+    }),
     sizeSetElsewhere: defineMessage({
         id: 'status.sizeSetElsewhere',
         defaultMessage: 'Size set by another client',

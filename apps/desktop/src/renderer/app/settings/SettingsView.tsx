@@ -1,6 +1,6 @@
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { Button, Input, Label, SearchField } from 'react-aria-components';
-import { useIntl } from 'react-intl';
+import { type IntlShape, useIntl } from 'react-intl';
 import type { WorkspaceController } from '../../sessions/workspace-controller';
 import { BUTTON, PRIMARY_BUTTON } from '../../ui/buttons';
 import type { Shell } from '../shell';
@@ -47,7 +47,7 @@ export function SettingsView({ shell, settings, workspace }: SettingsViewProps) 
     return (
         <section ref={view} aria-labelledby="trc-settings-title" className={styles['view']}>
             <div className={styles['frame']}>
-                <nav aria-label={intl.formatMessage(settingsPageMessages.sections)} className={styles['nav']}>
+                <div className={styles['nav']} data-settings-side="">
                     <h2 id="trc-settings-title" className={styles['heading']}>
                         {intl.formatMessage(settingsPageMessages.title)}
                     </h2>
@@ -56,18 +56,15 @@ export function SettingsView({ shell, settings, workspace }: SettingsViewProps) 
                         <Input {...{ [SETTINGS_SEARCH_ATTRIBUTE]: '' }} className={styles['input'] ?? ''} />
                     </SearchField>
                     <p role="status" className={styles['status']}>
-                        {shown.length === 0
-                            ? intl.formatMessage(settingsPageMessages.none)
-                            : intl.formatMessage(settingsPageMessages.shown, {
-                                  shown: shown.length,
-                                  total: available.length,
-                              })}
+                        {statusText(intl, { query, section, shown, total: available.length })}
                     </p>
-                    <SectionList current={query.trim() === '' ? section : undefined} onChoose={choose} />
+                    <nav aria-label={intl.formatMessage(settingsPageMessages.sections)}>
+                        <SectionList current={query.trim() === '' ? section : undefined} onChoose={choose} />
+                    </nav>
                     <Button className={PRIMARY_BUTTON} onPress={() => shell.closeSettings()}>
                         {intl.formatMessage(settingsPageMessages.close)}
                     </Button>
-                </nav>
+                </div>
                 <div className={styles['content']}>
                     {groups.map((group) => (
                         <SettingsSection
@@ -102,7 +99,7 @@ function useEscape(view: RefObject<HTMLElement | null>, onEscape: () => void): v
     useEffect(() => {
         const listener = (event: KeyboardEvent): void => {
             const inside = event.target instanceof Node && view.current?.contains(event.target) === true;
-            if (inside && event.key === 'Escape' && !event.defaultPrevented) {
+            if (inside && event.key === 'Escape' && !event.defaultPrevented && !event.isComposing) {
                 event.preventDefault();
                 latest.current();
             }
@@ -110,6 +107,33 @@ function useEscape(view: RefObject<HTMLElement | null>, onEscape: () => void): v
         document.addEventListener('keydown', listener);
         return () => document.removeEventListener('keydown', listener);
     }, [view]);
+}
+
+/** What the status line says: how many settings a search shows, or how many the chosen section holds. */
+function statusText(
+    intl: IntlShape,
+    {
+        query,
+        section,
+        shown,
+        total,
+    }: {
+        readonly query: string;
+        readonly section: SettingGroup;
+        readonly shown: readonly SettingEntry[];
+        readonly total: number;
+    },
+): string {
+    if (query.trim() === '') {
+        const count = shown.filter((entry) => entry.group === section).length;
+        return intl.formatMessage(settingsPageMessages.inSection, {
+            count,
+            section: intl.formatMessage(settingGroupMessages[section]),
+        });
+    }
+    return shown.length === 0
+        ? intl.formatMessage(settingsPageMessages.none)
+        : intl.formatMessage(settingsPageMessages.shown, { shown: shown.length, total });
 }
 
 function SectionList(props: {

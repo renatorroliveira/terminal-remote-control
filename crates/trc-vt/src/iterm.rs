@@ -1,7 +1,9 @@
 //! iTerm2's OSC 1337, of which TRC reads three keys (OQ-6, P-69): `CurrentDir`, the working folder, `RemoteHost`,
-//! which says where that folder is, and `SetMark`, a mark at the cursor's row. libghostty-vt reads none of them, so
-//! the output is scanned for them on its way to the terminal; every other key, `File=` among them, is ignored
-//! (SEC-06), and a sequence longer than [`MAX_BODY`] is dropped.
+//! which says where that folder is, and `SetMark`, a mark at the cursor's row. libghostty-vt reports `CurrentDir` as
+//! its working directory, without saying where it is, and reads neither of the others, so the output is scanned for
+//! them on its way to the terminal; every other key, `File=` among them, is ignored (SEC-06), and a sequence longer
+//! than [`MAX_BODY`] is dropped. The scan also finds the end of each OSC 133 mark, after which the terminal takes the
+//! mark's row before later output can move it.
 
 use crate::sanitize::strip_controls;
 
@@ -17,6 +19,8 @@ pub(crate) enum ItermCommand {
     RemoteHost(String),
     /// A mark at the cursor's row.
     SetMark,
+    /// An OSC 133 mark ended here; libghostty-vt reads it.
+    SemanticPrompt,
 }
 
 /// Finds OSC 1337 sequences in output that may split them across chunks.
@@ -86,6 +90,9 @@ impl ItermScanner {
 }
 
 fn command(body: &str) -> Option<ItermCommand> {
+    if body.starts_with("133;") {
+        return Some(ItermCommand::SemanticPrompt);
+    }
     let rest = body.strip_prefix("1337;")?;
     if rest == "SetMark" {
         return Some(ItermCommand::SetMark);

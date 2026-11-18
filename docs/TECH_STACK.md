@@ -1203,7 +1203,8 @@ probe for bash, zsh, fish and pwsh. The login shell starts as a login shell
 
 **Shell integration (US-5.1, D-55).** Our own short scripts emit OSC 133
 A/B/C/D and OSC 7. They are embedded in the daemon, written by the core to
-`<root>/shell-integration/<version>/` in its 0700 root, and injected at every
+`<root>/shell-integration/<digest>/` in its 0700 root, a folder named by the
+scripts' SHA-256, and injected at every
 shell start (create, restart, restore) without editing dotfiles.
 
 - **bash 4 and later:** `--posix` with `ENV` naming our script, as kitty and
@@ -1505,7 +1506,7 @@ Chromium, and Cargo.
 | E2   | Holders outside the kill scope and the Linux service-mode rule (§5.4, D-44); upgrades in place (D-46); protocol 2 with reconnect from an offset and skip-to-latest flow control (D-04) with `Resync` and rebuild (D-45); automatic reconnect and restore at launch; soak tests (NFR-11)                                                                              |
 | E3   | Persistence and restore (§5.5, D-48); history at program exit (D-49); protocol 3; daemon management                                                                                                                                                                                                                                                                  |
 | E4   | macOS `trcd` (universal2, a plain LaunchAgent, D-50); the local bridge in the shared root (D-51); detached core on remote Macs; tart test hosts (D-52)                                                                                                                                                                                                               |
-| E5   | Shell-integration scripts (§8, D-55); marks in the VT stream (D-56); protocol 4 semantic events and OS notifications (§6, D-57); bash, zsh and fish in the test images                                                                                                                                                                                               |
+| E5   | Shell-integration scripts (§8, D-55); marks in the VT stream (D-56); protocol 4 semantic events and OS notifications (§6, D-57); bash and zsh in the three test images, fish in Ubuntu's and Alpine's                                                                                                                                                                |
 | E6   | Windows: ConPTY holders, named pipes, Windows profile detection, Windows helpers in `trcd`, installer                                                                                                                                                                                                                                                                |
 | E7   | Linux desktop: AppImage, local systemd daemon, AT-detection fallback (R3)                                                                                                                                                                                                                                                                                            |
 | E8   | 1.0.0: Developer ID signing and notarization, Authenticode and Linux package signing (US-8.3); build provenance (US-8.2); signed checksums (US-8.4); the downloads site (US-8.1); Electron's built-in updater on macOS and the Windows and Linux updaters (US-8.5, D-43)                                                                                             |

@@ -23,9 +23,13 @@
     "defaultMessage": "Commands can’t be reached while a full-screen program runs.",
     "description": "Command navigation refused on the alternate screen (US-5.2.3)."
   },
+  "announce.commandIntegrationArguments": {
+    "defaultMessage": "Moving between commands needs shell integration, which TRC adds only to a shell started without arguments; this {shell} has some.",
+    "description": "Command navigation refused: a bash, zsh or fish profile with its own arguments (US-5.2.3)."
+  },
   "announce.commandIntegrationMissing": {
-    "defaultMessage": "Moving between commands needs shell integration, which this session’s shell started without. Restart the session to add it.",
-    "description": "Command navigation refused: the shell started before integration existed (US-5.2.3)."
+    "defaultMessage": "Moving between commands needs shell integration, which this session started without, before TRC 0.6. A new session has it; this one keeps working as it is.",
+    "description": "Command navigation refused: the session’s holder predates shell integration (US-5.2.3, P-82)."
   },
   "announce.commandIntegrationOff": {
     "defaultMessage": "Moving between commands needs shell integration, which is off for {host}. Turn it on in Settings, under Hosts; it applies when a shell next starts.",
@@ -74,6 +78,10 @@
   "announce.commandOutputSelected": {
     "defaultMessage": "Selected the last command’s output, {lines, plural, one {# line} other {# lines}}.",
     "description": "Select last command output selected it."
+  },
+  "announce.commandOutputSelectedCapped": {
+    "defaultMessage": "Selected the last command’s output, {lines} lines; VoiceOver sees the first {cap}. Copy it for all of it.",
+    "description": "Select last command output selected more lines than the OS-visible selection holds (A11Y-04)."
   },
   "announce.commandOutputTail": {
     "defaultMessage": "Last {shown} of {lines} lines: {text}",
@@ -1943,6 +1951,10 @@
     "defaultMessage": "Speech and announcements",
     "description": "Section."
   },
+  "settings.inSection": {
+    "defaultMessage": "{section}: {count, plural, one {# setting} other {# settings}}.",
+    "description": "Status line under the search field while one section shows, read when a section is chosen."
+  },
   "settings.none": {
     "defaultMessage": "No setting matches.",
     "description": "Shown when the search matches no setting."
@@ -1957,7 +1969,7 @@
   },
   "settings.shown": {
     "defaultMessage": "{shown} of {total} settings shown.",
-    "description": "Status line under the search field."
+    "description": "Status line under the search field while a search shows settings."
   },
   "settings.title": {
     "defaultMessage": "Settings",
@@ -2130,6 +2142,14 @@
   "status.hostsConnected": {
     "defaultMessage": "{connected} of {total} hosts connected",
     "description": "Shown while no session is open."
+  },
+  "status.lastCommandFailed": {
+    "defaultMessage": "Last command failed, exit code {code}",
+    "description": "Status bar text: the open session’s last command ended with a non-zero exit code (US-5.2.2)."
+  },
+  "status.lastCommandSucceeded": {
+    "defaultMessage": "Last command succeeded",
+    "description": "Status bar text: the open session’s last command ended with exit code 0 (US-5.2.2)."
   },
   "status.mute": {
     "defaultMessage": "Mute output",
