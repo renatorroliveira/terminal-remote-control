@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { SCREEN_READER_MODES } from '../shared/accessibility';
 import { MAX_CLIPBOARD_COPY, MAX_CLIPBOARD_WRITE } from '../shared/clipboard';
-import type { InvokeChannel, InvokeContract } from '../shared/contract';
+import { type InvokeChannel, type InvokeContract, MAX_NOTICE_BODY, MAX_NOTICE_TITLE } from '../shared/contract';
 import { GUIDE_SECTION_NAMES } from '../shared/guide';
 import { ADDED_HOST_ID_PATTERN, HOST_ID_PATTERN } from '../shared/hosts';
 import { SIDEBAR_WIDTH } from '../shared/layout';
@@ -40,6 +40,15 @@ const ARGUMENTS: { readonly [C in InvokeChannel]: z.ZodType<InvokeContract[C]['a
     'menus:ignore-shortcuts': z.tuple([z.boolean()]),
     'clipboard:write': z.tuple([HOST_ID, z.string().max(MAX_CLIPBOARD_WRITE)]),
     'clipboard:copy': z.tuple([z.string().max(MAX_CLIPBOARD_COPY)]),
+    'notifications:post': z.tuple([
+        z
+            .object({
+                title: z.string().min(1).max(MAX_NOTICE_TITLE),
+                body: z.string().max(MAX_NOTICE_BODY),
+                key: z.string().min(1).max(512),
+            })
+            .strict(),
+    ]),
     'sidebar:get-width': z.tuple([]),
     'sidebar:set-width': z.tuple([z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)]),
     'sidebar:get-collapsed': z.tuple([]),

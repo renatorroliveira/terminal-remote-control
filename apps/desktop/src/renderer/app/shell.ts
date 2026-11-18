@@ -27,6 +27,7 @@ import type { TerminalLink } from '../terminal/hyperlinks';
 import type { TerminalNotice } from '../terminal/notices';
 import { pastedLines } from '../terminal/paste';
 import type { Announcer } from './announcer';
+import { BackgroundEvents, type OsNotifier } from './background-events';
 import { CommandActions, type CommandTerminals } from './command-actions';
 import { type DaemonActionOptions, removeDaemon, restartDaemon } from './daemon-actions';
 import { reportActionFailures, reportSettingsFailures } from './failure-reporter';
@@ -194,6 +195,8 @@ export interface ShellOptions {
     readonly cues?: { readonly play: (cue: AudioCue) => void };
     /** Puts text the user asked to copy on the clipboard; without it, nothing is copied (US-5.2.1). */
     readonly clipboard?: { readonly copy: (text: string) => Promise<boolean> };
+    /** Posts OS notifications of background events, and reports the ones chosen; without it, none are posted (US-5.3). */
+    readonly osNotifications?: OsNotifier & { readonly onChosen: (listener: (key: string) => void) => () => void };
     /** Quits the app as the quit flow decides; without it, quitting does nothing. */
     readonly quitControls?: QuitFlowOptions['controls'];
 }
@@ -245,6 +248,7 @@ export class Shell {
     readonly #options: ShellOptions;
     readonly #regions: RegionCycler;
     readonly #commandActions: CommandActions;
+    readonly #background: BackgroundEvents;
     /** Where focus returns when the palette, help or the settings page closes (A11Y-05.8). */
     #focusReturn: HTMLElement | undefined;
     /** This computer, while its daemon runs without its LaunchAgent and the user was told. */
@@ -277,6 +281,15 @@ export class Shell {
             settings: () => options.settings?.current ?? DEFAULT_SETTINGS,
             copy: (text) => options.clipboard?.copy(text).catch(() => false) ?? Promise.resolve(false),
             noSession: () => this.#announce(shellAnnouncements.noSession),
+        });
+        this.#background = new BackgroundEvents({
+            workspace: options.workspace,
+            intl: options.intl,
+            announcer: options.announcer,
+            notifications: options.notifications,
+            settings: () => options.settings?.current ?? DEFAULT_SETTINGS,
+            ...(options.osNotifications === undefined ? {} : { os: options.osNotifications }),
+            now: () => Date.now(),
         });
         this.#registerCommands();
     }
@@ -316,6 +329,9 @@ export class Shell {
         void this.#options.sidebar.collapsed().then((sidebarCollapsed) => this.state.setState({ sidebarCollapsed }));
         const stopSettings = this.#followSettings();
         const stopLeaving = this.#options.workspace.whenOpened(() => this.#leaveSettings());
+        const stopBackground = this.#background.start();
+        const stopChosen =
+            this.#options.osNotifications?.onChosen((key) => this.#options.workspace.open(key)) ?? (() => undefined);
         return () => {
             stopShortcuts();
             stopRegions();
@@ -327,6 +343,8 @@ export class Shell {
             stopScreenReader();
             stopSettings();
             stopLeaving();
+            stopBackground();
+            stopChosen();
         };
     }
 
@@ -755,7 +773,7 @@ export class Shell {
         const { intl, announcer, workspace, document } = this.#options;
         const state = workspace.store.getState();
         if (state.open !== key) {
-            workspace.recordBell(key);
+            this.#background.bell(key);
             return;
         }
         const item = hostGroups(state)

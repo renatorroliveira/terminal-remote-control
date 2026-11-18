@@ -3,6 +3,10 @@
     "defaultMessage": "{action} {reason}",
     "description": "Announced and listed when a session or host action fails."
   },
+  "announce.backgroundEvent": {
+    "defaultMessage": "Session {session} on {host}: {event}.",
+    "description": "An event in a session that is not open, such as “Session build on devbox-1: bell.” (US-5.3.1)."
+  },
   "announce.bell": {
     "defaultMessage": "Bell in {session}.",
     "description": "Announced when the open session rings its bell."
@@ -246,6 +250,26 @@
   "announce.zoomSmallest": {
     "defaultMessage": "Terminal text {zoom}%, the smallest.",
     "description": "Announced when the terminal text cannot shrink any more."
+  },
+  "background.bell": {
+    "defaultMessage": "bell",
+    "description": "The session’s program rang the bell."
+  },
+  "background.command": {
+    "defaultMessage": "command finished",
+    "description": "A long command finished, as shell integration marked it."
+  },
+  "background.commandWithCode": {
+    "defaultMessage": "command finished, exit code {code}",
+    "description": "A long command finished with an exit code (US-5.3.1’s example)."
+  },
+  "background.ended": {
+    "defaultMessage": "ended",
+    "description": "The session’s process ended."
+  },
+  "background.endedWithCode": {
+    "defaultMessage": "ended, exit code {code}",
+    "description": "The session’s process ended with an exit code."
   },
   "clipboard.written": {
     "defaultMessage": "A program on {host} put text on the clipboard.",
@@ -1243,6 +1267,30 @@
     "defaultMessage": "New session",
     "description": "Dialog title."
   },
+  "notice.backgroundTitle": {
+    "defaultMessage": "{session} on {host}",
+    "description": "Title of an OS notification of an event in a session that is not open (US-5.3.1)."
+  },
+  "notice.bell": {
+    "defaultMessage": "Bell.",
+    "description": "OS notification body: the bell rang."
+  },
+  "notice.command": {
+    "defaultMessage": "Command finished.",
+    "description": "OS notification body: a long command finished."
+  },
+  "notice.commandWithCode": {
+    "defaultMessage": "Command finished, exit code {code}.",
+    "description": "OS notification body: a long command finished with an exit code."
+  },
+  "notice.ended": {
+    "defaultMessage": "Ended.",
+    "description": "OS notification body: the process ended."
+  },
+  "notice.endedWithCode": {
+    "defaultMessage": "Ended, exit code {code}.",
+    "description": "OS notification body: the process ended with an exit code."
+  },
   "notifications.clear": {
     "defaultMessage": "Clear all",
     "description": "Button."
@@ -1579,6 +1627,18 @@
     "defaultMessage": "Settings for {session}",
     "description": "Title of the dialog that sets what a session restores and saves."
   },
+  "setting.announceBackgroundBell": {
+    "defaultMessage": "Announce a bell",
+    "description": "Setting (US-5.3.1)."
+  },
+  "setting.announceBackgroundCommand": {
+    "defaultMessage": "Announce a long command that finishes",
+    "description": "Setting (US-5.3.1)."
+  },
+  "setting.announceBackgroundEnd": {
+    "defaultMessage": "Announce a session that ends",
+    "description": "Setting (US-5.3.1)."
+  },
   "setting.announceFailedCommands": {
     "defaultMessage": "Announce failed commands",
     "description": "Setting (US-5.2.2)."
@@ -1739,6 +1799,14 @@
     "defaultMessage": "Line height",
     "description": "Setting."
   },
+  "setting.longCommandSeconds": {
+    "defaultMessage": "Seconds before a command counts as long",
+    "description": "Setting (US-5.3.1)."
+  },
+  "setting.longCommandSeconds.description": {
+    "defaultMessage": "A command in a session that isn’t open is an event when it finishes after this long. It needs shell integration.",
+    "description": "Setting description."
+  },
   "setting.minimumContrast": {
     "defaultMessage": "Minimum text contrast",
     "description": "Setting."
@@ -1750,6 +1818,22 @@
   "setting.newSessionFolder": {
     "defaultMessage": "New sessions start in",
     "description": "Setting."
+  },
+  "setting.notifyBackgroundBell": {
+    "defaultMessage": "Notify of a bell",
+    "description": "Setting (US-5.3.1)."
+  },
+  "setting.notifyBackgroundBell.description": {
+    "defaultMessage": "Posts a macOS notification for a session that isn’t open. Choosing it opens the session.",
+    "description": "Setting description."
+  },
+  "setting.notifyBackgroundCommand": {
+    "defaultMessage": "Notify of a long command that finishes",
+    "description": "Setting (US-5.3.1)."
+  },
+  "setting.notifyBackgroundEnd": {
+    "defaultMessage": "Notify of a session that ends",
+    "description": "Setting (US-5.3.1)."
   },
   "setting.pasteConfirmation": {
     "defaultMessage": "Ask before pasting more than one line",
@@ -1826,6 +1910,10 @@
   "settings.group.appearance": {
     "defaultMessage": "Appearance",
     "description": "Section."
+  },
+  "settings.group.background": {
+    "defaultMessage": "Background sessions",
+    "description": "Section: events in sessions that are not open (US-5.3)."
   },
   "settings.group.commands": {
     "defaultMessage": "Commands",
@@ -2142,6 +2230,14 @@
   "tree.bell": {
     "defaultMessage": "bell",
     "description": "Badge of a background session whose bell rang."
+  },
+  "tree.commandFinished": {
+    "defaultMessage": "command finished",
+    "description": "Badge of a background session where a long command finished, until it is opened (US-5.3.2)."
+  },
+  "tree.ended": {
+    "defaultMessage": "ended",
+    "description": "Badge of a background session whose process ended, until it is opened (US-5.3.2)."
   },
   "tree.hostRow": {
     "defaultMessage": "{host}, {state}",

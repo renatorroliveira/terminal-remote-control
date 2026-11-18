@@ -40,6 +40,10 @@ export interface Workspace {
     readonly unread: ReadonlySet<SessionKey>;
     /** Background sessions whose bell rang since they were last open (A11Y-08.2). */
     readonly bells: ReadonlySet<SessionKey>;
+    /** Background sessions whose process ended since they were last open (US-5.3.2). */
+    readonly ended: ReadonlySet<SessionKey>;
+    /** Background sessions where a long command finished since they were last open (US-5.3.2). */
+    readonly finished: ReadonlySet<SessionKey>;
     /** For each session, the restore it was last opened after, so its Restored badge clears (US-3.1.6, P-42). */
     readonly restoreSeen: ReadonlyMap<SessionKey, number>;
     /** The last session or host action that failed, for the shell to show and announce (WCAG 3.3.1). */
@@ -86,6 +90,10 @@ export interface SessionItem {
     readonly unread: boolean;
     /** Whether its bell rang while it was in the background (A11Y-08.2). */
     readonly bell: boolean;
+    /** Whether its process ended while it was in the background (US-5.3.2). */
+    readonly ended: boolean;
+    /** Whether a long command finished in it while it was in the background (US-5.3.2). */
+    readonly finished: boolean;
     /** Whether it was restored after its processes ended and has not been opened since (US-3.1.6, P-42). */
     readonly restored: boolean;
     /** Whether its host is not connected, so it takes no input (US-1.14.1). */
@@ -116,6 +124,8 @@ export const EMPTY_WORKSPACE: Workspace = {
     failureNotice: undefined,
     unread: new Set(),
     bells: new Set(),
+    ended: new Set(),
+    finished: new Set(),
     restoreSeen: new Map(),
     actionFailure: undefined,
 };
@@ -273,14 +283,19 @@ export function applySessionChange(sessions: readonly SessionInfo[], change: Ses
 
 /** Opens a session in the terminal area; its output, and its restore, count as seen. */
 export function sessionOpened(workspace: Workspace, key: SessionKey | undefined): Workspace {
-    if (key === undefined || (!workspace.unread.has(key) && !workspace.bells.has(key))) {
+    const badged = [workspace.unread, workspace.bells, workspace.ended, workspace.finished];
+    if (key === undefined || !badged.some((set) => set.has(key))) {
         return seeOpenRestore({ ...workspace, open: key });
     }
-    const unread = new Set(workspace.unread);
-    const bells = new Set(workspace.bells);
-    unread.delete(key);
-    bells.delete(key);
-    return seeOpenRestore({ ...workspace, open: key, unread, bells });
+    const [unread, bells, ended, finished] = badged.map((set) => withoutKey(set, key));
+    return seeOpenRestore({
+        ...workspace,
+        open: key,
+        unread: unread ?? workspace.unread,
+        bells: bells ?? workspace.bells,
+        ended: ended ?? workspace.ended,
+        finished: finished ?? workspace.finished,
+    });
 }
 
 /** Takes the restores already seen, as the session cache kept them at the last run (P-42). */
@@ -294,6 +309,20 @@ export function sessionBell(workspace: Workspace, key: SessionKey): Workspace {
         return workspace;
     }
     return { ...workspace, bells: new Set([...workspace.bells, key]) };
+}
+
+/** Records that a session's process ended; unless it is open, its row shows an ended badge (US-5.3.2). */
+export function sessionEndedUnseen(workspace: Workspace, key: SessionKey): Workspace {
+    return key === workspace.open || workspace.ended.has(key)
+        ? workspace
+        : { ...workspace, ended: new Set([...workspace.ended, key]) };
+}
+
+/** Records that a long command finished in a session; unless it is open, its row shows a badge (US-5.3.2). */
+export function commandFinishedUnseen(workspace: Workspace, key: SessionKey): Workspace {
+    return key === workspace.open || workspace.finished.has(key)
+        ? workspace
+        : { ...workspace, finished: new Set([...workspace.finished, key]) };
 }
 
 /** Records output in a session; unless it is open, it now has unread output (US-1.8.3). */
@@ -324,6 +353,8 @@ export function hostGroups(workspace: Workspace): readonly HostGroup[] {
                 key: sessionKey(host.id, session.id),
                 unread: workspace.unread.has(sessionKey(host.id, session.id)),
                 bell: workspace.bells.has(sessionKey(host.id, session.id)),
+                ended: workspace.ended.has(sessionKey(host.id, session.id)),
+                finished: workspace.finished.has(sessionKey(host.id, session.id)),
                 restored:
                     session.restored !== undefined &&
                     workspace.restoreSeen.get(sessionKey(host.id, session.id)) !== session.restored.at,
@@ -334,6 +365,15 @@ export function hostGroups(workspace: Workspace): readonly HostGroup[] {
                 session,
             })),
         }));
+}
+
+function withoutKey(set: ReadonlySet<SessionKey>, key: SessionKey): ReadonlySet<SessionKey> {
+    if (!set.has(key)) {
+        return set;
+    }
+    const without = new Set(set);
+    without.delete(key);
+    return without;
 }
 
 function homeOf(state: ConnectionState): { readonly home?: string } {

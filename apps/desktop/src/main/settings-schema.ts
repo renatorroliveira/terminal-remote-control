@@ -56,6 +56,13 @@ export const SETTINGS_FIELDS = {
     announceFailedCommands: z.boolean(),
     commandSucceededCue: z.boolean(),
     commandFailedCue: z.boolean(),
+    longCommandSeconds: z.number().int().min(LIMITS.longCommandSeconds.min).max(LIMITS.longCommandSeconds.max),
+    announceBackgroundBell: z.boolean(),
+    notifyBackgroundBell: z.boolean(),
+    announceBackgroundEnd: z.boolean(),
+    notifyBackgroundEnd: z.boolean(),
+    announceBackgroundCommand: z.boolean(),
+    notifyBackgroundCommand: z.boolean(),
 } as const;
 
 const CHANGE = z.object(SETTINGS_FIELDS).partial().strict();

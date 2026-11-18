@@ -104,6 +104,7 @@ if (container !== null) {
             menus: { ignoreShortcuts: (ignore) => void window.trc.menus.ignoreShortcuts(ignore) },
             cues,
             clipboard: window.trc.clipboard,
+            osNotifications: window.trc.osNotifications,
             quitControls: window.trc.app,
         });
         followQuitRequests(shell);

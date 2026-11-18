@@ -1,4 +1,11 @@
-import type { CreateSessionSpec, SessionInfo, SessionOptions, ShellProfile } from '@trc/protocol';
+import type {
+    CreateSessionSpec,
+    SessionActivity,
+    SessionChange,
+    SessionInfo,
+    SessionOptions,
+    ShellProfile,
+} from '@trc/protocol';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ConnectionState, DaemonRemoval } from '../../shared/connection';
 import type { TrcBridge } from '../../shared/contract';
@@ -15,6 +22,7 @@ import {
     watchSessionCache,
 } from './session-cache';
 import {
+    commandFinishedUnseen,
     daemonActionChanged,
     EMPTY_WORKSPACE,
     type FailedAction,
@@ -33,6 +41,7 @@ import {
     sessionActivity,
     sessionBell,
     sessionChanged,
+    sessionEndedUnseen,
     sessionKey,
     sessionOpened,
     sessionsListed,
@@ -147,6 +156,7 @@ export class WorkspaceController {
     #lastHost: string | undefined;
     /** Told whenever a session opens, by any path. */
     readonly #openedListeners = new Set<(key: SessionKey) => void>();
+    readonly #activityListeners = new Set<(key: SessionKey, activity: SessionActivity) => void>();
 
     /**
      * Creates an empty workspace; without `options.preferences`, the daemon's defaults and auto-close apply, and
@@ -418,13 +428,28 @@ export class WorkspaceController {
         return () => this.#openedListeners.delete(listener);
     }
 
+    /**
+     * Calls `listener` with each bell and finished command a daemon reports, for sessions open or not (US-5.3,
+     * protocol 4); returns the stop.
+     */
+    onSessionActivity(listener: (key: SessionKey, activity: SessionActivity) => void): () => void {
+        this.#activityListeners.add(listener);
+        return () => this.#activityListeners.delete(listener);
+    }
+
     /** Records a session's bell, which badges it unless it is open (A11Y-08.2). */
     recordBell(key: SessionKey): void {
-        const before = this.store.getState();
-        const after = sessionBell(before, key);
-        if (after !== before) {
-            this.store.setState(after, true);
-        }
+        this.#badge(sessionBell, key);
+    }
+
+    /** Records that a session's process ended, which badges it unless it is open (US-5.3.2). */
+    recordEnded(key: SessionKey): void {
+        this.#badge(sessionEndedUnseen, key);
+    }
+
+    /** Records that a long command finished in a session, which badges it unless it is open (US-5.3.2). */
+    recordFinished(key: SessionKey): void {
+        this.#badge(commandFinishedUnseen, key);
     }
 
     /** Notes output in a session, which has unread output unless it is open (US-1.8.3). */
@@ -730,24 +755,32 @@ export class WorkspaceController {
             this.#followTerminals(hostId, state);
         });
         const stopMessages = this.#client.onMessage(hostId, (message) => {
-            if (message.type !== 'sessionEvent' || this.#forgotten.has(hostId)) {
-                return;
-            }
-            this.#update((workspace) => sessionChanged(workspace, hostId, message.change));
-            if (message.change.kind === 'created' || message.change.kind === 'updated') {
-                const { session } = message.change;
-                this.#terminals.updateSession(sessionKey(hostId, session.id), session);
-            }
-            if (message.change.kind === 'updated') {
-                this.#closeIfClean(hostId, [message.change.session]);
-            } else if (message.change.kind === 'closed') {
-                this.#terminals.closeSession(sessionKey(hostId, message.change.sessionId));
+            if (message.type === 'sessionEvent' && !this.#forgotten.has(hostId)) {
+                this.#sessionEvent(hostId, message.change);
             }
         });
         this.#unfollow.set(hostId, () => {
             stopStates();
             stopMessages();
         });
+    }
+
+    #sessionEvent(hostId: string, change: SessionChange): void {
+        if (change.kind === 'activity') {
+            for (const listener of this.#activityListeners) {
+                listener(sessionKey(hostId, change.sessionId), change.activity);
+            }
+            return;
+        }
+        this.#update((workspace) => sessionChanged(workspace, hostId, change));
+        if (change.kind === 'created' || change.kind === 'updated') {
+            this.#terminals.updateSession(sessionKey(hostId, change.session.id), change.session);
+        }
+        if (change.kind === 'updated') {
+            this.#closeIfClean(hostId, [change.session]);
+        } else if (change.kind === 'closed') {
+            this.#terminals.closeSession(sessionKey(hostId, change.sessionId));
+        }
     }
 
     #followTerminals(hostId: string, state: ConnectionState): void {
@@ -826,6 +859,14 @@ export class WorkspaceController {
             }
         }
         return undefined;
+    }
+
+    #badge(reduce: (workspace: Workspace, key: SessionKey) => Workspace, key: SessionKey): void {
+        const before = this.store.getState();
+        const after = reduce(before, key);
+        if (after !== before) {
+            this.store.setState(after, true);
+        }
     }
 
     #update(change: (workspace: Workspace) => Workspace): void {

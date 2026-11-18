@@ -3,6 +3,7 @@ import { createIntl } from 'react-intl';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { ScreenReaderMode } from '../../shared/accessibility';
+import type { SessionNotice } from '../../shared/contract';
 import { formatChord, resolveKeymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings';
@@ -17,7 +18,7 @@ import {
 import type { AnnounceOptions } from './announcer';
 import { NotificationCenter } from './notifications';
 import { SettingsStore } from './settings/settings-store';
-import { type LinkControls, type ScreenReaderControls, Shell } from './shell';
+import { type LinkControls, type ScreenReaderControls, Shell, type ShellOptions } from './shell';
 import type { AudioCue } from './sound/audio-cues';
 import { paletteActions } from './workspace-actions';
 
@@ -136,6 +137,7 @@ function fakeSidebar(saved: boolean[]) {
 interface SetupOptions {
     readonly local?: boolean;
     readonly sessions?: readonly SessionInfo[];
+    readonly osNotifications?: ShellOptions['osNotifications'];
 }
 
 async function setup(narrow = false, stored: Partial<Settings> = {}, options: SetupOptions = {}) {
@@ -169,6 +171,7 @@ async function setup(narrow = false, stored: Partial<Settings> = {}, options: Se
         screenReader,
         links,
         settings,
+        ...(options.osNotifications === undefined ? {} : { osNotifications: options.osNotifications }),
     });
     onTestFinished(shell.start());
     await settings.load();
@@ -386,6 +389,35 @@ describe('Shell: commands shell integration marks (US-5.2)', () => {
         shell.terminalNotice('host-0/a', { kind: 'command-finished', exitCode: 0 });
         expect(spoken).toEqual(['Command failed, exit code 127.']);
         expect(cues).toEqual(['command-failed']);
+    });
+});
+
+describe('Shell: background events (US-5.3)', () => {
+    it('posts an OS notification when asked, and opens the session whose notification is chosen', async () => {
+        const posted: SessionNotice[] = [];
+        let chosen: ((key: string) => void) | undefined;
+        const osNotifications = {
+            post: async (notice: SessionNotice) => {
+                posted.push(notice);
+                return true;
+            },
+            onChosen: (listener: (key: string) => void) => {
+                chosen = listener;
+                return () => undefined;
+            },
+        };
+        const { shell, client, workspace, terminals } = await setup(
+            false,
+            { notifyBackgroundBell: true },
+            { osNotifications },
+        );
+        client.push('host-0', CONNECTED);
+        await expect.poll(() => workspace.store.getState().sessions.get('host-0')?.length).toBe(1);
+        shell.terminalNotice('host-0/a', { kind: 'bell' });
+        expect(posted).toEqual([{ title: 'bash on devbox-1', body: 'Bell.', key: 'host-0/a' }]);
+        chosen?.('host-0/a');
+        expect(workspace.store.getState().open).toBe('host-0/a');
+        expect(terminals.shown.at(-1)).toBe('host-0/a');
     });
 });
 

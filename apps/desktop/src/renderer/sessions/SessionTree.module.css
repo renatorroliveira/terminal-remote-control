@@ -59,6 +59,14 @@
         font-size: 0.875rem;
     }
 
+    .eventIcons {
+        display: inline-flex;
+        gap: 0.125rem;
+        margin-inline-start: 0.25rem;
+        color: var(--trc-color-warning);
+        vertical-align: middle;
+    }
+
     .place {
         color: var(--trc-color-text-muted);
     }

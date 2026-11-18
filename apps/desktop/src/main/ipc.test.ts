@@ -34,6 +34,7 @@ function handlers(display: unknown = {}): InvokeHandlers {
         'menus:terminal': async () => undefined,
         'clipboard:write': async () => true,
         'clipboard:copy': async () => true,
+        'notifications:post': async () => true,
         'sidebar:get-width': async () => 400,
         'sidebar:set-width': async () => undefined,
         'sidebar:get-collapsed': async () => false,

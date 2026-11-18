@@ -13,6 +13,36 @@
       "value": "reason"
     }
   ],
+  "announce.backgroundEvent": [
+    {
+      "type": 0,
+      "value": "Session "
+    },
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": " on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    },
+    {
+      "type": 0,
+      "value": ": "
+    },
+    {
+      "type": 1,
+      "value": "event"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "announce.bell": [
     {
       "type": 0,
@@ -873,6 +903,44 @@
     {
       "type": 0,
       "value": "%, the smallest."
+    }
+  ],
+  "background.bell": [
+    {
+      "type": 0,
+      "value": "bell"
+    }
+  ],
+  "background.command": [
+    {
+      "type": 0,
+      "value": "command finished"
+    }
+  ],
+  "background.commandWithCode": [
+    {
+      "type": 0,
+      "value": "command finished, exit code "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    }
+  ],
+  "background.ended": [
+    {
+      "type": 0,
+      "value": "ended"
+    }
+  ],
+  "background.endedWithCode": [
+    {
+      "type": 0,
+      "value": "ended, exit code "
+    },
+    {
+      "type": 1,
+      "value": "code"
     }
   ],
   "clipboard.written": [
@@ -3047,6 +3115,66 @@
       "value": "New session"
     }
   ],
+  "notice.backgroundTitle": [
+    {
+      "type": 1,
+      "value": "session"
+    },
+    {
+      "type": 0,
+      "value": " on "
+    },
+    {
+      "type": 1,
+      "value": "host"
+    }
+  ],
+  "notice.bell": [
+    {
+      "type": 0,
+      "value": "Bell."
+    }
+  ],
+  "notice.command": [
+    {
+      "type": 0,
+      "value": "Command finished."
+    }
+  ],
+  "notice.commandWithCode": [
+    {
+      "type": 0,
+      "value": "Command finished, exit code "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "notice.ended": [
+    {
+      "type": 0,
+      "value": "Ended."
+    }
+  ],
+  "notice.endedWithCode": [
+    {
+      "type": 0,
+      "value": "Ended, exit code "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
   "notifications.clear": [
     {
       "type": 0,
@@ -3888,6 +4016,24 @@
       "value": "session"
     }
   ],
+  "setting.announceBackgroundBell": [
+    {
+      "type": 0,
+      "value": "Announce a bell"
+    }
+  ],
+  "setting.announceBackgroundCommand": [
+    {
+      "type": 0,
+      "value": "Announce a long command that finishes"
+    }
+  ],
+  "setting.announceBackgroundEnd": [
+    {
+      "type": 0,
+      "value": "Announce a session that ends"
+    }
+  ],
   "setting.announceFailedCommands": [
     {
       "type": 0,
@@ -4128,6 +4274,18 @@
       "value": "Line height"
     }
   ],
+  "setting.longCommandSeconds": [
+    {
+      "type": 0,
+      "value": "Seconds before a command counts as long"
+    }
+  ],
+  "setting.longCommandSeconds.description": [
+    {
+      "type": 0,
+      "value": "A command in a session that isn’t open is an event when it finishes after this long. It needs shell integration."
+    }
+  ],
   "setting.minimumContrast": [
     {
       "type": 0,
@@ -4144,6 +4302,30 @@
     {
       "type": 0,
       "value": "New sessions start in"
+    }
+  ],
+  "setting.notifyBackgroundBell": [
+    {
+      "type": 0,
+      "value": "Notify of a bell"
+    }
+  ],
+  "setting.notifyBackgroundBell.description": [
+    {
+      "type": 0,
+      "value": "Posts a macOS notification for a session that isn’t open. Choosing it opens the session."
+    }
+  ],
+  "setting.notifyBackgroundCommand": [
+    {
+      "type": 0,
+      "value": "Notify of a long command that finishes"
+    }
+  ],
+  "setting.notifyBackgroundEnd": [
+    {
+      "type": 0,
+      "value": "Notify of a session that ends"
     }
   ],
   "setting.pasteConfirmation": [
@@ -4258,6 +4440,12 @@
     {
       "type": 0,
       "value": "Appearance"
+    }
+  ],
+  "settings.group.background": [
+    {
+      "type": 0,
+      "value": "Background sessions"
     }
   ],
   "settings.group.commands": [
@@ -4888,6 +5076,18 @@
     {
       "type": 0,
       "value": "bell"
+    }
+  ],
+  "tree.commandFinished": [
+    {
+      "type": 0,
+      "value": "command finished"
+    }
+  ],
+  "tree.ended": [
+    {
+      "type": 0,
+      "value": "ended"
     }
   ],
   "tree.hostRow": [

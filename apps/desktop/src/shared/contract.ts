@@ -29,6 +29,7 @@ export interface InvokeContract {
     readonly 'menus:ignore-shortcuts': { readonly args: readonly [ignore: boolean]; readonly result: undefined };
     readonly 'clipboard:write': { readonly args: readonly [hostId: string, text: string]; readonly result: boolean };
     readonly 'clipboard:copy': { readonly args: readonly [text: string]; readonly result: boolean };
+    readonly 'notifications:post': { readonly args: readonly [notice: SessionNotice]; readonly result: boolean };
     readonly 'sidebar:get-width': { readonly args: readonly []; readonly result: number };
     readonly 'sidebar:set-width': { readonly args: readonly [width: number]; readonly result: undefined };
     readonly 'sidebar:get-collapsed': { readonly args: readonly []; readonly result: boolean };
@@ -71,6 +72,21 @@ export const QUIT_REQUESTED_CHANNEL = 'app:quit-requested';
 
 /** The event the main process sends for a menu command the renderer carries out. */
 export const APP_COMMAND_CHANNEL = 'app:command';
+
+/** The event the main process sends when the user chooses an OS notification, with its session's key (US-5.3.1). */
+export const NOTIFICATION_CHOSEN_CHANNEL = 'notifications:chosen';
+
+/** The longest title an OS notification may have. */
+export const MAX_NOTICE_TITLE = 256;
+/** The longest body an OS notification may have. */
+export const MAX_NOTICE_BODY = 1_024;
+
+/** An OS notification of a background session's event: its session and host, the event, and the session's key. */
+export interface SessionNotice {
+    readonly title: string;
+    readonly body: string;
+    readonly key: string;
+}
 
 /** Commands the menus send to the renderer, which runs every command (docs/design/keymap.md). */
 export type AppCommand = CommandId;
@@ -168,5 +184,11 @@ export interface TrcBridge {
     readonly commands: {
         /** Calls `listener` with each menu command; returns a function that stops listening. */
         onCommand(listener: (command: AppCommand) => void): () => void;
+    };
+    readonly osNotifications: {
+        /** Posts an OS notification of a background event; false when the OS takes none (US-5.3.1, P-76). */
+        post(notice: SessionNotice): Promise<boolean>;
+        /** Calls `listener` with the session key of each notification the user chooses; returns the stop. */
+        onChosen(listener: (key: string) => void): () => void;
     };
 }

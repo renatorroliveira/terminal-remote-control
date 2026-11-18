@@ -36,6 +36,11 @@ export const settingGroupMessages = defineMessages({
     keyboard: { id: 'settings.group.keyboard', defaultMessage: 'Keyboard', description: 'Section.' },
     sessions: { id: 'settings.group.sessions', defaultMessage: 'Sessions', description: 'Section.' },
     commands: { id: 'settings.group.commands', defaultMessage: 'Commands', description: 'Section (US-5.2).' },
+    background: {
+        id: 'settings.group.background',
+        defaultMessage: 'Background sessions',
+        description: 'Section: events in sessions that are not open (US-5.3).',
+    },
     hosts: { id: 'settings.group.hosts', defaultMessage: 'Hosts', description: 'Section.' },
 });
 
@@ -116,6 +121,41 @@ export const settingLabelMessages = defineMessages({
         defaultMessage: 'Sound when a command fails',
         description: 'Setting (US-5.2.2).',
     },
+    longCommandSeconds: {
+        id: 'setting.longCommandSeconds',
+        defaultMessage: 'Seconds before a command counts as long',
+        description: 'Setting (US-5.3.1).',
+    },
+    announceBackgroundBell: {
+        id: 'setting.announceBackgroundBell',
+        defaultMessage: 'Announce a bell',
+        description: 'Setting (US-5.3.1).',
+    },
+    notifyBackgroundBell: {
+        id: 'setting.notifyBackgroundBell',
+        defaultMessage: 'Notify of a bell',
+        description: 'Setting (US-5.3.1).',
+    },
+    announceBackgroundEnd: {
+        id: 'setting.announceBackgroundEnd',
+        defaultMessage: 'Announce a session that ends',
+        description: 'Setting (US-5.3.1).',
+    },
+    notifyBackgroundEnd: {
+        id: 'setting.notifyBackgroundEnd',
+        defaultMessage: 'Notify of a session that ends',
+        description: 'Setting (US-5.3.1).',
+    },
+    announceBackgroundCommand: {
+        id: 'setting.announceBackgroundCommand',
+        defaultMessage: 'Announce a long command that finishes',
+        description: 'Setting (US-5.3.1).',
+    },
+    notifyBackgroundCommand: {
+        id: 'setting.notifyBackgroundCommand',
+        defaultMessage: 'Notify of a long command that finishes',
+        description: 'Setting (US-5.3.1).',
+    },
 });
 
 /** Settings' descriptions, which the search also reads. */
@@ -195,6 +235,17 @@ export const settingDescriptionMessages = defineMessages({
     commandFailedCue: {
         id: 'setting.commandFailedCue.description',
         defaultMessage: 'Plays while sound cues are on, for the open session.',
+        description: 'Setting description.',
+    },
+    longCommandSeconds: {
+        id: 'setting.longCommandSeconds.description',
+        defaultMessage:
+            'A command in a session that isn’t open is an event when it finishes after this long. It needs shell integration.',
+        description: 'Setting description.',
+    },
+    notifyBackgroundBell: {
+        id: 'setting.notifyBackgroundBell.description',
+        defaultMessage: 'Posts a macOS notification for a session that isn’t open. Choosing it opens the session.',
         description: 'Setting description.',
     },
 });

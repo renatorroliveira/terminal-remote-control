@@ -61,6 +61,22 @@ export function NotificationsIcon({ className }: IconProps) {
     );
 }
 
+/** A finished command: a prompt's chevron with a tick (US-5.3.2). */
+export function CommandFinishedIcon({ className }: IconProps) {
+    return (
+        <svg aria-hidden="true" focusable="false" width={SIZE} height={SIZE} viewBox="0 0 20 20" className={className}>
+            <path
+                d="M3.5 6.5 7 10l-3.5 3.5M10 13.5l2.5 2.5 5-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={STROKE}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+}
+
 /** A plus sign, for buttons that create something. */
 export function PlusIcon({ className }: IconProps) {
     return (
