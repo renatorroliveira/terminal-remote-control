@@ -1513,7 +1513,8 @@ Chromium, and Cargo.
 ## 11. Spikes
 
 Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spikes/S4.md), [S5](spikes/S5.md),
-[S6](verification/E2-nfr.md#soak-nfr-11-s6), [S7](spikes/S7.md), [S11](spikes/S11.md), [S12](spikes/S12.md).
+[S6](verification/E2-nfr.md#soak-nfr-11-s6), [S7](spikes/S7.md), [S11](spikes/S11.md), [S12](spikes/S12.md),
+[S14](spikes/S14.md).
 
 | ID  | Epic | Spike                                                                                                                                                                                                                               | Retires                      |
 | --- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |

@@ -525,7 +525,7 @@ impl Holder {
                 self.status.cwd = path_from_file_url(&url).or(self.status.cwd.take());
                 self.status_dirty = true;
             }
-            TerminalEvent::Bell => {}
+            TerminalEvent::Bell | TerminalEvent::Command(_) => {}
         }
     }
 

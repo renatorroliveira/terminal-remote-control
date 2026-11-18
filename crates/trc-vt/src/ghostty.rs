@@ -9,8 +9,9 @@ use sys::GhosttyFormatterOption as FormatterOption;
 use sys::GhosttyTerminalData as Data;
 use sys::GhosttyTerminalOption as Opt;
 
+use crate::marks::Marks;
 use crate::sanitize::strip_controls;
-use crate::{Rgb, TerminalConfig, TerminalEvent, TerminalSize, TerminalState, VtError};
+use crate::{CommandStep, Rgb, TerminalConfig, TerminalEvent, TerminalSize, TerminalState, VtError};
 
 /// DEC private mode 2027: grapheme clustering, which keeps emoji sequences in one cell (S1).
 const GRAPHEME_CLUSTER_MODE: sys::GhosttyMode = 2027;
@@ -28,6 +29,7 @@ pub struct GhosttyTerminal {
     /// pointer: a `Box` would claim unique access that those writes break. Freed in `Drop`.
     effects: NonNull<Effects>,
     size: TerminalSize,
+    marks: Marks,
 }
 
 impl GhosttyTerminal {
@@ -44,6 +46,7 @@ impl GhosttyTerminal {
             raw,
             effects,
             size: config.size,
+            marks: Marks::new(),
         };
         terminal.configure(config)?;
         Ok(terminal)
@@ -57,6 +60,7 @@ impl GhosttyTerminal {
         let pwd: sys::GhosttyTerminalPwdChangedFn = Some(on_pwd_changed);
         let bell: sys::GhosttyTerminalBellFn = Some(on_bell);
         let xtversion: sys::GhosttyTerminalXtversionFn = Some(on_xtversion);
+        let semantic: sys::GhosttyTerminalSemanticPromptFn = Some(on_semantic_prompt);
         self.set_raw(
             Opt::GHOSTTY_TERMINAL_OPT_WRITE_PTY,
             write_pty.map_or(null(), |f| f as *const c_void),
@@ -77,6 +81,10 @@ impl GhosttyTerminal {
             Opt::GHOSTTY_TERMINAL_OPT_XTVERSION,
             xtversion.map_or(null(), |f| f as *const c_void),
         )?;
+        self.set_raw(
+            Opt::GHOSTTY_TERMINAL_OPT_SEMANTIC_PROMPT,
+            semantic.map_or(null(), |f| f as *const c_void),
+        )?;
         self.set_value(Opt::GHOSTTY_TERMINAL_OPT_COLOR_FOREGROUND, &rgb(config.foreground))?;
         self.set_value(Opt::GHOSTTY_TERMINAL_OPT_COLOR_BACKGROUND, &rgb(config.background))?;
         self.set_value(Opt::GHOSTTY_TERMINAL_OPT_SCROLLBACK_MAX_BYTES, &usize::MAX)?;
@@ -93,6 +101,11 @@ impl GhosttyTerminal {
     /// The libghostty-vt handle, for the snapshot stream's grid lookups. It stays owned by `self`.
     pub(crate) fn raw(&self) -> sys::GhosttyTerminal {
         self.raw
+    }
+
+    /// The marks of the commands the terminal holds (D-56).
+    pub(crate) fn marks(&self) -> &Marks {
+        &self.marks
     }
 
     fn set_value<T>(&mut self, option: sys::GhosttyTerminalOption::Type, value: &T) -> Result<(), VtError> {
@@ -141,15 +154,20 @@ impl GhosttyTerminal {
     fn take_events(&mut self) -> Vec<TerminalEvent> {
         // SAFETY: `effects` is live until `Drop`, and no callback runs outside `feed`, so nothing else touches it here.
         let pending = std::mem::take(&mut unsafe { self.effects.as_mut() }.pending);
-        pending
-            .into_iter()
-            .filter_map(|effect| match effect {
-                Effect::Reply(bytes) => Some(TerminalEvent::Reply(bytes)),
-                Effect::Title => self.title().map(TerminalEvent::Title),
-                Effect::WorkingDirectory => self.working_directory().map(TerminalEvent::WorkingDirectory),
-                Effect::Bell => Some(TerminalEvent::Bell),
-            })
-            .collect()
+        pending.into_iter().filter_map(|effect| self.event_of(effect)).collect()
+    }
+
+    fn event_of(&mut self, effect: Effect) -> Option<TerminalEvent> {
+        match effect {
+            Effect::Reply(bytes) => Some(TerminalEvent::Reply(bytes)),
+            Effect::Title => self.title().map(TerminalEvent::Title),
+            Effect::WorkingDirectory => self.working_directory().map(TerminalEvent::WorkingDirectory),
+            Effect::Bell => Some(TerminalEvent::Bell),
+            Effect::Command(step, row) => self
+                .marks
+                .accept(self.raw, step, row)
+                .then_some(TerminalEvent::Command(step)),
+        }
     }
 }
 
@@ -232,6 +250,8 @@ enum Effect {
     Title,
     WorkingDirectory,
     Bell,
+    /// A step of a command, with the row ([`crate::grid::SCREEN`] coordinates) the cursor was on.
+    Command(CommandStep, u32),
 }
 
 /// A formatter over one terminal, freed on drop.
@@ -326,6 +346,49 @@ unsafe extern "C" fn on_bell(_terminal: sys::GhosttyTerminal, userdata: *mut c_v
     unsafe { effects(userdata) }.pending.push(Effect::Bell);
 }
 
+unsafe extern "C" fn on_semantic_prompt(
+    terminal: sys::GhosttyTerminal,
+    userdata: *mut c_void,
+    event: *const sys::GhosttyTerminalSemanticPrompt,
+) {
+    // SAFETY: libghostty passes the userdata set in `configure` and an event valid for this call.
+    let (effects, event) = unsafe { (effects(userdata), &*event) };
+    if let Some(step) = command_step(event) {
+        effects.pending.push(Effect::Command(step, cursor_row(terminal)));
+    }
+}
+
+/// The cursor's row in [`crate::grid::SCREEN`] coordinates: the history above the screen, then the screen row.
+fn cursor_row(terminal: sys::GhosttyTerminal) -> u32 {
+    let mut y: u16 = 0;
+    // SAFETY: the terminal has updated its screen before it calls back, and CURSOR_Y writes a `u16`.
+    unsafe {
+        sys::ghostty_terminal_get(
+            terminal,
+            sys::GhosttyTerminalData::GHOSTTY_TERMINAL_DATA_CURSOR_Y,
+            (&raw mut y).cast(),
+        )
+    };
+    crate::grid::history_rows(terminal).saturating_add(u32::from(y))
+}
+
+fn command_step(event: &sys::GhosttyTerminalSemanticPrompt) -> Option<CommandStep> {
+    use sys::GhosttySemanticPromptKind as Kind;
+    match event.kind {
+        Kind::GHOSTTY_SEMANTIC_PROMPT_PROMPT_START
+            if event.prompt_kind == sys::GhosttySemanticPromptPromptKind::GHOSTTY_SEMANTIC_PROMPT_PROMPT_PRIMARY =>
+        {
+            Some(CommandStep::Prompt)
+        }
+        Kind::GHOSTTY_SEMANTIC_PROMPT_INPUT_START => Some(CommandStep::Input),
+        Kind::GHOSTTY_SEMANTIC_PROMPT_OUTPUT_START => Some(CommandStep::Output),
+        Kind::GHOSTTY_SEMANTIC_PROMPT_COMMAND_END => Some(CommandStep::End {
+            exit_code: event.has_exit_code.then_some(event.exit_code),
+        }),
+        _ => None,
+    }
+}
+
 unsafe extern "C" fn on_xtversion(_terminal: sys::GhosttyTerminal, userdata: *mut c_void) -> sys::GhosttyString {
     // SAFETY: libghostty passes the userdata set in `configure`; the string lives as long as the terminal.
     let version = &unsafe { effects(userdata) }.xtversion;
@@ -338,7 +401,7 @@ unsafe extern "C" fn on_xtversion(_terminal: sys::GhosttyTerminal, userdata: *mu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Rgb;
+    use crate::{CommandStep, Rgb};
 
     fn config(cols: u16, rows: u16, scrollback_lines: usize) -> TerminalConfig {
         TerminalConfig {
@@ -404,6 +467,26 @@ mod tests {
         );
         assert_eq!(term.title().as_deref(), Some("builddone"));
         assert_eq!(term.working_directory().as_deref(), Some("file://host/home/tester"));
+    }
+
+    #[test]
+    fn reports_each_step_of_a_command_with_its_exit_code_us_5_1_2() {
+        let mut term = terminal(80, 24);
+        let events = term.feed(b"\x1b]133;A\x07$ \x1b]133;B\x07false\r\n\x1b]133;C\x07\x1b]133;D;1\x07");
+        let unknown = term.feed(b"\x1b]133;A\x07$ \x1b]133;B\x07x\r\n\x1b]133;C\x07\x1b]133;D\x07");
+        assert_eq!(
+            events,
+            [
+                TerminalEvent::Command(CommandStep::Prompt),
+                TerminalEvent::Command(CommandStep::Input),
+                TerminalEvent::Command(CommandStep::Output),
+                TerminalEvent::Command(CommandStep::End { exit_code: Some(1) }),
+            ]
+        );
+        assert_eq!(
+            unknown.last(),
+            Some(&TerminalEvent::Command(CommandStep::End { exit_code: None }))
+        );
     }
 
     #[test]

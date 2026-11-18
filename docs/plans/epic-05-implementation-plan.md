@@ -53,6 +53,7 @@ roots.
 | P-76 | OS notifications are posted by the main process with Electron's `Notification`; they hold the session name, host and event, never output, and clicking one opens the session. Electron 45 needs a signed app for them; S14 checks that the ad-hoc-signed build qualifies.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | P-77 | Shortcuts that work the same in the terminal and in review mode, where Cmd+Up and Cmd+Down already move to the start and end: Option+Cmd+Up and Option+Cmd+Down go to the previous and next command; Option+Cmd+R reads the last command's output, Option+Cmd+A selects it and Option+Cmd+C copies it; Cmd+P opens the quick switcher. F2 renames only while a session row has focus, as a global F2 would take the key from terminal programs.                                                                                                                                                                                                                                                                |
 | P-78 | Defaults: a failed command in the open session is announced ("Command failed, exit code 2"); the success and failure cues are switchable apart and play only with audio cues on, which they are not by default; a command is long after 10 s, a setting; a bell, an ended session or a finished long command stays a badge in the row's description until the session is viewed.                                                                                                                                                                                                                                                                                                                               |
+| P-79 | After S14: a session keeps the marks of its last 1,000 commands (3,000 marks), which costs a snapshot of 100,000 lines about 3 ms more; older commands keep their output but lose their marks. The privacy prompts that name `trcd` come from programs run in a session (Claude Code, in the owner's case), for which launchd's `trcd` is the responsible process, so P-66 stands with no code change, and the user guide says why `trcd` is named (ST-64, item 6).                                                                                                                                                                                                                                            |
 
 ## 3. Design
 
@@ -187,17 +188,17 @@ AT passes and any theme still missing. `pnpm test:ax` takes focus, so the owner 
 
 ## 7. Status
 
-| Story | Status  | Commit |
-| ----- | ------- | ------ |
-| ST-62 | Done    |        |
-| ST-63 | Planned |        |
-| ST-64 | Planned |        |
-| ST-65 | Planned |        |
-| ST-66 | Planned |        |
-| ST-67 | Planned |        |
-| ST-68 | Planned |        |
-| ST-69 | Planned |        |
-| ST-70 | Planned |        |
-| ST-71 | Planned |        |
-| ST-72 | Planned |        |
-| ST-73 | Planned |        |
+| Story | Status  | Commit  |
+| ----- | ------- | ------- |
+| ST-62 | Done    | 20381a2 |
+| ST-63 | Done    |         |
+| ST-64 | Planned |         |
+| ST-65 | Planned |         |
+| ST-66 | Planned |         |
+| ST-67 | Planned |         |
+| ST-68 | Planned |         |
+| ST-69 | Planned |         |
+| ST-70 | Planned |         |
+| ST-71 | Planned |         |
+| ST-72 | Planned |         |
+| ST-73 | Planned |         |
