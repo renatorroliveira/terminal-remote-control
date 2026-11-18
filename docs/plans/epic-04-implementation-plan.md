@@ -187,19 +187,19 @@ E1's working agreement (E1 plan §3) and its autonomy rule (P-20) apply unchange
 
 ## 7. Status
 
-| Story | Status      | Commit  |
-| ----- | ----------- | ------- |
-| ST-51 | Done        | 661c3ba |
-| ST-52 | Done        | f3e8ad6 |
-| ST-53 | Done        | ba2bb09 |
-| ST-54 | Done        | 64cccdd |
-| ST-55 | Done        | d39645d |
-| ST-56 | Done        | 1a0267f |
-| ST-57 | Done        | 1a0267f |
-| ST-58 | Done        | d84e622 |
-| ST-59 | Done        | 547f305 |
-| ST-60 | In progress | —       |
-| ST-61 | Done        | 6cfe477 |
+| Story | Status | Commit  |
+| ----- | ------ | ------- |
+| ST-51 | Done   | 661c3ba |
+| ST-52 | Done   | f3e8ad6 |
+| ST-53 | Done   | ba2bb09 |
+| ST-54 | Done   | 64cccdd |
+| ST-55 | Done   | d39645d |
+| ST-56 | Done   | 1a0267f |
+| ST-57 | Done   | 1a0267f |
+| ST-58 | Done   | d84e622 |
+| ST-59 | Done   | 547f305 |
+| ST-60 | Done   | e26ffb1 |
+| ST-61 | Done   | 6cfe477 |
 
 ## 8. Reviews (P-64)
 
@@ -212,7 +212,7 @@ it stays.
 | 1     | 0 / 1 / 3 / 7         | 0 / 0 / 9 / 8   | `00491c0` |
 | 2     | 0 / 0 / 2 / 6         | 0 / 0 / 8 / 9   | `2d61048` |
 | 3     | 0 / 0 / 1 / 4         | 0 / 1 / 6 / 5   | `89c814d` |
-| 4     | 0 / 0 / 3 / 3         | 0 / 0 / 5 / 5   | —         |
+| 4     | 0 / 0 / 3 / 3         | 0 / 0 / 5 / 5   | `e26ffb1` |
 
 Round 4 found no critical or high finding, which closed the gate. The highs:
 
