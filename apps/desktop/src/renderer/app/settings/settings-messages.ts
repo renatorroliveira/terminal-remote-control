@@ -15,6 +15,11 @@ export const settingsPageMessages = {
             description: 'Shown when the search matches no setting.',
         },
         close: { id: 'settings.close', defaultMessage: 'Close', description: 'Button that closes the settings page.' },
+        sections: {
+            id: 'settings.sections',
+            defaultMessage: 'Settings sections',
+            description: 'Name of the list of settings sections.',
+        },
     }),
     shown: defineMessage<{ shown: number; total: number }>({
         id: 'settings.shown',
@@ -25,9 +30,9 @@ export const settingsPageMessages = {
 
 /** The settings page's sections. */
 export const settingGroupMessages = defineMessages({
+    appearance: { id: 'settings.group.appearance', defaultMessage: 'Appearance', description: 'Section.' },
     speech: { id: 'settings.group.speech', defaultMessage: 'Speech and announcements', description: 'Section.' },
     sound: { id: 'settings.group.sound', defaultMessage: 'Sound', description: 'Section.' },
-    display: { id: 'settings.group.display', defaultMessage: 'Terminal display', description: 'Section.' },
     keyboard: { id: 'settings.group.keyboard', defaultMessage: 'Keyboard', description: 'Section.' },
     sessions: { id: 'settings.group.sessions', defaultMessage: 'Sessions', description: 'Section.' },
     hosts: { id: 'settings.group.hosts', defaultMessage: 'Hosts', description: 'Section.' },

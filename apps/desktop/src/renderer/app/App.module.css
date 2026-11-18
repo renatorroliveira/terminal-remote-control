@@ -46,6 +46,18 @@
         background: var(--trc-color-terminal-background);
     }
 
+    .area {
+        position: relative;
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .area[data-covered='true'] {
+        visibility: hidden;
+    }
+
     .terminals {
         position: relative;
         flex: 1;

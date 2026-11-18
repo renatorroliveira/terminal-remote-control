@@ -14,7 +14,7 @@ import { keymapFor, type Settings } from '../../../shared/settings';
 import { BUTTON } from '../../ui/buttons';
 import type { Shell } from '../shell';
 import { commandMessages } from '../shell-messages';
-import styles from './SettingsDialog.module.css';
+import styles from './SettingsView.module.css';
 import { bindingProblemMessages, settingLabelMessages, shortcutMessages } from './settings-messages';
 import type { SettingsStore } from './settings-store';
 import { shortcutRefusal } from './shortcut-refusal';

@@ -68,8 +68,7 @@
         gap: 0.5rem;
     }
 
-    .combo,
-    .user {
+    .combo {
         display: flex;
         flex-direction: column;
         gap: 0.25rem;

@@ -145,6 +145,8 @@ export class WorkspaceController {
     #stopCache: () => void = () => undefined;
     /** The host a session was last opened or created on (US-1.7.1). */
     #lastHost: string | undefined;
+    /** Told whenever a session opens, by any path. */
+    readonly #openedListeners = new Set<(key: SessionKey) => void>();
 
     /**
      * Creates an empty workspace; without `options.preferences`, the daemon's defaults and auto-close apply, and
@@ -389,6 +391,15 @@ export class WorkspaceController {
         this.#lastHost = found.hostId;
         this.#update((workspace) => sessionOpened(workspace, key));
         this.#terminals.show(key, found.hostId, found.session);
+        for (const listener of this.#openedListeners) {
+            listener(key);
+        }
+    }
+
+    /** Calls `listener` each time a session opens, from the tree, a command or a new session; returns the stop. */
+    whenOpened(listener: (key: SessionKey) => void): () => void {
+        this.#openedListeners.add(listener);
+        return () => this.#openedListeners.delete(listener);
     }
 
     /** Records a session's bell, which badges it unless it is open (A11Y-08.2). */

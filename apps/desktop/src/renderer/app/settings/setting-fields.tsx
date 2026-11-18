@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { Button, Group, Input, Label, NumberField, Radio, RadioGroup, Text } from 'react-aria-components';
 import { ToggleSwitch } from '../../ui/switches';
-import styles from './SettingsDialog.module.css';
+import styles from './SettingsView.module.css';
 
 /** One choice of a {@link ChoiceSetting}. */
 export interface Choice<T extends string | number> {

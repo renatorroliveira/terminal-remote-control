@@ -138,13 +138,3 @@ export const installRootMessages = {
     save: defineMessage({ id: 'installRoot.save', defaultMessage: 'Save', description: 'Button.' }),
     cancel: defineMessage({ id: 'installRoot.cancel', defaultMessage: 'Cancel', description: 'Button.' }),
 };
-
-/** The optional user field of Add host (US-1.1.6). */
-export const addHostMessages = {
-    user: defineMessage({ id: 'addHost.user', defaultMessage: 'User (optional)', description: 'Field label.' }),
-    twoUsers: defineMessage({
-        id: 'addHost.twoUsers',
-        defaultMessage: 'Give the user either in the host field or here, not both.',
-        description: 'Error when the host field has user@ and the user field is filled too.',
-    }),
-};

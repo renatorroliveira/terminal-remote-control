@@ -27,7 +27,7 @@ import { QuitDialogs } from './QuitDialogs';
 import { REGION_ATTRIBUTE } from './regions';
 import { SidebarSplitter } from './SidebarSplitter';
 import { StatusBar } from './StatusBar';
-import { SettingsDialog } from './settings/SettingsDialog';
+import { SettingsView } from './settings/SettingsView';
 import type { Shell } from './shell';
 import { ShellContext } from './shell-context';
 
@@ -71,7 +71,6 @@ export function App({ workspace, terminals, shell }: AppProps) {
                 <QuitDialogs quit={shell.quit} />
                 <LogoutWarningDialog workspace={workspace} warning={shell.logoutWarning} />
                 <AccessibilityHelp shell={shell} />
-                <SettingsDialog shell={shell} workspace={workspace} />
             </div>
         </ShellContext.Provider>
     );
@@ -79,6 +78,7 @@ export function App({ workspace, terminals, shell }: AppProps) {
 
 function WorkspaceArea({ workspace, terminals, shell }: AppProps) {
     const panelOpen = useStore(shell.state, (state) => state.panelOpen);
+    const settingsOpen = useStore(shell.state, (state) => state.settingsOpen);
     const sidebarCollapsed = useStore(shell.state, (state) => state.sidebarCollapsed);
     const [width, setWidth] = useSidebarWidth(shell);
     return (
@@ -93,6 +93,11 @@ function WorkspaceArea({ workspace, terminals, shell }: AppProps) {
                 className={styles['sidebar'] ?? ''}
                 workspace={workspace}
                 onOpened={() => shell.setPanelOpen(false)}
+                settingsShown={settingsOpen}
+                onSettings={() => {
+                    shell.setPanelOpen(false);
+                    void shell.openSettings();
+                }}
             />
             <SidebarSplitter
                 width={width}
@@ -107,11 +112,17 @@ function WorkspaceArea({ workspace, terminals, shell }: AppProps) {
     );
 }
 
+/**
+ * The center region: the open session's terminal, or the settings in its place (US-1.6.7). While the settings show,
+ * the terminal keeps its size, so its program is never resized, and is inert, so neither focus nor AT reaches it.
+ */
 function TerminalRegion({ workspace, terminals, shell }: AppProps) {
     const intl = useIntl();
     const panelOpen = useStore(shell.state, (state) => state.panelOpen);
+    const settingsOpen = useStore(shell.state, (state) => state.settingsOpen);
     const open = useStore(workspace.store, (state) => state.open);
     const attach = useCallback((element: HTMLDivElement | null) => terminals.attach(element), [terminals]);
+    const settings = shell.settings;
     return (
         <main
             {...{ [REGION_ATTRIBUTE]: 'terminal' }}
@@ -126,13 +137,23 @@ function TerminalRegion({ workspace, terminals, shell }: AppProps) {
             >
                 {intl.formatMessage(sidebarMessages.toggle)}
             </Button>
-            <FindBar shell={shell} />
-            <EndedBanner workspace={workspace} shell={shell} />
-            <div ref={attach} className={styles['terminals'] ?? ''} />
-            {open === undefined && (
-                <p className={styles['empty'] ?? ''}>
-                    <FormattedMessage {...shellMessages.noSession} />
-                </p>
+            <div
+                data-terminal-area=""
+                className={styles['area'] ?? ''}
+                data-covered={settingsOpen ? 'true' : undefined}
+                inert={settingsOpen}
+            >
+                <FindBar shell={shell} />
+                <EndedBanner workspace={workspace} shell={shell} />
+                <div ref={attach} className={styles['terminals'] ?? ''} />
+                {open === undefined && (
+                    <p className={styles['empty'] ?? ''}>
+                        <FormattedMessage {...shellMessages.noSession} />
+                    </p>
+                )}
+            </div>
+            {settingsOpen && settings !== undefined && (
+                <SettingsView shell={shell} settings={settings} workspace={workspace} />
             )}
         </main>
     );

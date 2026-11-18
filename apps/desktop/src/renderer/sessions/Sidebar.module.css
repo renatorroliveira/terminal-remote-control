@@ -23,6 +23,18 @@
         border-block-start: 1px solid var(--trc-color-border);
     }
 
+    .settings {
+        flex: 0 0 auto;
+        justify-content: flex-start;
+        margin: 0.75rem 1rem;
+    }
+
+    .settings[aria-current='page'] {
+        background: var(--trc-color-selection-background);
+        color: var(--trc-color-selection-text);
+        font-weight: 600;
+    }
+
     .heading {
         margin: 0;
         font-size: 1rem;

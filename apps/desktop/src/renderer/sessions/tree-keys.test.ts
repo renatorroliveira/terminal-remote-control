@@ -29,4 +29,9 @@ describe('treeAction: the APG tree keys (US-1.6.4)', () => {
         expect(treeAction(ROWS, 2, 'Enter')).toEqual({ kind: 'open', key: 'h1/b' });
         expect(treeAction(ROWS, 3, ' ')).toEqual({ kind: 'toggle', key: 'h2' });
     });
+
+    it('renames a session with F2, and nothing on a host (US-1.10.10)', () => {
+        expect(treeAction(ROWS, 1, 'F2')).toEqual({ kind: 'rename', key: 'h1/a' });
+        expect(treeAction(ROWS, 0, 'F2')).toEqual({ kind: 'none' });
+    });
 });

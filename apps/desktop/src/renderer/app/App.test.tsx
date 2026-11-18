@@ -627,6 +627,20 @@ describe('App: managing sessions (US-1.10)', () => {
         await expect.poll(() => client.requests).toContainEqual({ type: 'rename', session: 'a', name: 'logs' });
     });
 
+    it('renames the session whose row has focus with F2 (US-1.10.10)', async () => {
+        await page.viewport(1400, 800);
+        const { client, rendered } = renderApp();
+        const screen = await rendered;
+        await connectedHost(screen, client);
+        (screen.getByRole('treeitem', { name: 'bash, Running' }).element() as HTMLElement).focus();
+        await userEvent.keyboard('{F2}');
+        const field = screen.getByRole('dialog', { name: 'Rename bash' }).getByRole('textbox', { name: 'Name' });
+        await expect.element(field).toHaveFocus();
+        await field.fill('deploy');
+        await userEvent.keyboard('{Enter}');
+        await expect.poll(() => client.requests).toContainEqual({ type: 'rename', session: 'a', name: 'deploy' });
+    });
+
     it('closes a session only after a confirmation that names what it deletes (US-1.10.4)', async () => {
         await page.viewport(1400, 800);
         onTestFinished(installTokens());
