@@ -367,6 +367,10 @@
     "defaultMessage": "Previous session",
     "description": "Command name."
   },
+  "command.sessionQuickSwitch": {
+    "defaultMessage": "Go to session…",
+    "description": "Command name: opens the quick switcher, a filterable list of every session on every host (US-5.4)."
+  },
   "command.settingsShow": {
     "defaultMessage": "Settings…",
     "description": "Command name."
@@ -2182,6 +2186,22 @@
   "step.verifying": {
     "defaultMessage": "Verifying the daemon",
     "description": "Connection step."
+  },
+  "switcher.count": {
+    "defaultMessage": "{count, plural, =0 {No session matches.} one {# session.} other {# sessions.}}",
+    "description": "How many sessions the quick switcher shows, announced as the user types (US-5.4.1)."
+  },
+  "switcher.entry": {
+    "defaultMessage": "{session}, {host}, {state}",
+    "description": "One session in the quick switcher: its name, its host and its state."
+  },
+  "switcher.search": {
+    "defaultMessage": "Session name, host or title",
+    "description": "Search field label of the quick switcher."
+  },
+  "switcher.title": {
+    "defaultMessage": "Go to session",
+    "description": "Dialog name."
   },
   "terminal.hint": {
     "defaultMessage": "Option F1: accessibility help.",

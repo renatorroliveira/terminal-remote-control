@@ -131,6 +131,8 @@ export interface ShellState {
     /** Sessions whose output announcements the user muted (A11Y-02.4). */
     readonly muted: ReadonlySet<SessionKey>;
     readonly paletteOpen: boolean;
+    /** Whether the quick switcher is open (US-5.4). */
+    readonly switcherOpen: boolean;
     readonly notificationsOpen: boolean;
     /** Whether the user hid the sidebar in a wide window (US-1.6.3). */
     readonly sidebarCollapsed: boolean;
@@ -210,6 +212,7 @@ const INITIAL_STATE: ShellState = {
     tabFocusMode: false,
     muted: new Set(),
     paletteOpen: false,
+    switcherOpen: false,
     notificationsOpen: false,
     sidebarCollapsed: false,
     panelOpen: false,
@@ -395,6 +398,18 @@ export class Shell {
     /** Closes the command palette, returns focus to where it was, then runs `then` (A11Y-05.8). */
     closePalette(then?: () => void): void {
         this.state.setState({ paletteOpen: false });
+        this.#returnFocus(then);
+    }
+
+    /** Opens the quick switcher, remembering where focus was (US-5.4). */
+    openSwitcher(): void {
+        this.#rememberFocus();
+        this.state.setState({ switcherOpen: true });
+    }
+
+    /** Closes the quick switcher, returns focus to where it was, then runs `then`, such as opening a session. */
+    closeSwitcher(then?: () => void): void {
+        this.state.setState({ switcherOpen: false });
         this.#returnFocus(then);
     }
 
@@ -695,6 +710,7 @@ export class Shell {
             'region.next': () => this.#regions.next(),
             'region.previous': () => this.#regions.previous(),
             'palette.show': () => this.openPalette(),
+            'session.quickSwitch': () => this.openSwitcher(),
             'notifications.show': () => this.setNotificationsOpen(true),
             'sidebar.toggle': () => this.toggleSidebar(),
             'terminal.toggleTabFocus': () => this.toggleTabFocus(),

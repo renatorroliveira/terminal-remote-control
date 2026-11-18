@@ -23,6 +23,7 @@ import { AccessibilityHelp } from './help/AccessibilityHelp';
 import { LinkDialogs } from './LinkDialogs';
 import { NotificationsDialog } from './NotificationsDialog';
 import { PasteDialog } from './PasteDialog';
+import { QuickSwitcher } from './QuickSwitcher';
 import { QuitDialogs } from './QuitDialogs';
 import { REGION_ATTRIBUTE } from './regions';
 import { SidebarSplitter } from './SidebarSplitter';
@@ -65,6 +66,7 @@ export function App({ workspace, terminals, shell }: AppProps) {
                 <DaemonDialogs workspace={workspace} shell={shell} />
                 <SessionDialogs workspace={workspace} shell={shell} />
                 <CommandPalette shell={shell} workspace={workspace} />
+                <QuickSwitcher shell={shell} workspace={workspace} />
                 <NotificationsDialog shell={shell} />
                 <LinkDialogs shell={shell} />
                 <PasteDialog shell={shell} />

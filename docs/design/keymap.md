@@ -50,6 +50,7 @@ defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
 | Next session               | Shift+Command+]     | The macOS next-tab shortcut                                                                          |
 | Previous session           | Shift+Command+[     | The macOS previous-tab shortcut                                                                      |
 | Close session              | Command+W           | Terminal's and every browser's close-tab shortcut, through the confirmation                          |
+| Go to session              | Command+P           | VS Code's Quick Open; the app prints nothing, so Print's shortcut is free (US-5.4)                   |
 | List links                 | Shift+Command+O     | O for open; free in the app (US-1.12.3)                                                              |
 | Bigger terminal text       | Command+=           | The text-size shortcut of Terminal and every browser (A11Y-07.4)                                     |
 | Smaller terminal text      | Command+-           | The same, smaller                                                                                    |

@@ -73,6 +73,7 @@ const TOPICS: Readonly<Record<HelpContext, readonly Topic[]>> = {
         'session.new',
         'session.next',
         'session.previous',
+        'session.quickSwitch',
         'notifications.show',
         'help.accessibility',
     ],

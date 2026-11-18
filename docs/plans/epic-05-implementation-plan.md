@@ -198,8 +198,8 @@ AT passes and any theme still missing. `pnpm test:ax` takes focus, so the owner 
 | ST-65 | Done    | 626a045 |
 | ST-66 | Done    | f350f1a |
 | ST-67 | Done    | 6fadd31 |
-| ST-68 | Planned |         |
-| ST-69 | Planned |         |
+| ST-68 | Done    | 892d57c |
+| ST-69 | Done    |         |
 | ST-70 | Planned |         |
 | ST-71 | Planned |         |
 | ST-72 | Planned |         |
