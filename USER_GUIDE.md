@@ -384,6 +384,42 @@ already marks its commands, as iTerm2's integration makes it, works too.
 Other shells, such as `sh`, `dash` or busybox `ash`, get no marks; commands then can't be moved between, and TRC
 says why when you try. To start a host's shells without shell integration, turn off that host's switch in
 Settings, under Hosts, Shell integration; the change applies to each session the next time its shell starts.
+A session started before TRC 0.6 gets shell integration when you restart it.
+
+### Commands
+
+With shell integration, these work in the terminal and in review mode:
+
+| Action                           | Keys                    |
+| -------------------------------- | ----------------------- |
+| Previous command, next command   | Option-Command-Up, Down |
+| Read the last command's output   | Option-Command-R        |
+| Select the last command's output | Option-Command-A        |
+| Copy the last command's output   | Option-Command-C        |
+
+- **Moving.** In the terminal, the first Option-Command-Up goes to the last command you ran, scrolling it to the
+  top; each one after goes further back, and typing starts again from the prompt. In review mode, moving starts
+  from the line the caret is on and selects the command's line, so VoiceOver reads it. TRC says the command's line,
+  and whether it failed or still runs; at either end it says there's no earlier or no later command.
+- **Reading.** Option-Command-R speaks the last command's output, up to its last 100 lines; select or copy it to
+  read all of it. It works while a full-screen program such as `vim` runs, which moving and selecting don't.
+- **Failed commands.** When a command in the open session fails, TRC says "Command failed, exit code 2" after its
+  output. Settings, under Commands, turns that off, and has a sound for a failed command (on) and for one that
+  succeeds (off); both play only while sound cues are on.
+- **Why it doesn't work.** Without marks, TRC says why: shell integration is off for the host, the shell has
+  none, the session's shell started without it, no command has run yet, or a full-screen program has the screen.
+
+### Background sessions
+
+TRC tells you when something happens in a session that isn't open: its program rings the bell, its process ends,
+or a command that ran longer than 10 seconds finishes (this needs shell integration). It says so politely, such as
+"Session build on devbox-1: command finished, exit code 1.", once per session for a burst of events, and the
+session's row shows "bell", "ended" or "command finished", with an icon, until you open it.
+
+In Settings, under Background sessions, each event can be announced (on by default), posted as a macOS
+notification (off by default), or both, and the 10 seconds can change (1 to 3,600). A notification names the
+session and its host, never its output; choosing it opens the session. Each notification TRC posts is also kept in
+the Notifications list, in case macOS doesn't show it.
 
 ## Moving around and commands
 
@@ -393,6 +429,7 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 | -------------------------------------------- | ----------------------------------------------------- |
 | Next region, previous region                 | Command-F6, Shift-Command-F6                          |
 | Command palette                              | Shift-Command-P                                       |
+| Go to any session by name, host or title     | Command-P                                             |
 | Show or hide the sidebar                     | Control-Command-S, or Enter on the sidebar's edge     |
 | Tab moves focus out of the terminal (toggle) | Shift-Command-M                                       |
 | Send the next key to the terminal            | Shift-Command-K                                       |
@@ -410,6 +447,8 @@ The window has three regions: the sidebar (sessions and hosts), the terminal, an
 - **Send next key.** After Shift-Command-K, the next key goes to the program even if it is an app shortcut.
 - **Command palette.** Type part of a name, then press Return. The palette lists every command with its shortcut,
   every host action (connect, disconnect, new session) and every session to open. Escape closes it.
+- **Go to session.** Command-P lists every session on every host. Type part of its name, its host or what runs in
+  it; TRC says how many sessions match. Down Arrow and Return open the one you want; Escape goes back.
 - **Status bar.** It shows the open session's host and its connection, the daemon version on that host, the "Tab
   moves focus" and "Mute output" switches, and the Notifications button, a bell with the number of notifications
   waiting.
@@ -433,7 +472,9 @@ again.
 | Sound                    | Sound cues, off by default: short tones for the bell, a host connecting, a lost or failed connection, and typing that was not sent, each also announced or shown; their volume                                                                     |
 | Keyboard                 | Tab moves focus out of the terminal, from launch on; plain F6 and Shift-F6 move between regions; every command's shortcut (Change, then press the new shortcut; Reset gives the default back)                                                      |
 | Sessions                 | Where new sessions start (the home folder, or the open session's folder); scrollback lines for new sessions (1,000 to 100,000); the seconds Stop waits; closing sessions that exit cleanly; asking before a paste of more than one line            |
-| Hosts                    | For each host, whether its programs may write the clipboard (OSC 52)                                                                                                                                                                               |
+| Commands                 | Announcing failed commands; a sound for a failed command and for one that succeeds (see [Commands](#commands))                                                                                                                                     |
+| Background sessions      | For a bell, a session that ends and a long command that finishes, announcing it and posting a macOS notification; the seconds before a command counts as long (see [Background sessions](#background-sessions))                                    |
+| Hosts                    | For each host, whether its programs may write the clipboard (OSC 52), and whether its shells start with shell integration                                                                                                                          |
 
 ## Appearance
 
@@ -566,5 +607,5 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 
 ## What's not there yet
 
-Later epics add command awareness (jumping between commands, hearing when one fails), and the Windows and Linux
-apps. [The PRD](docs/PRD.md) has the full plan.
+Later epics add the Windows and Linux apps, with shell integration for PowerShell. [The PRD](docs/PRD.md) has the
+full plan.
