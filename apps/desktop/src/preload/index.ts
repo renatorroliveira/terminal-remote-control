@@ -6,6 +6,7 @@ import {
     APP_COMMAND_CHANNEL,
     type AppCommand,
     DISPLAY_CHANGED_CHANNEL,
+    NOTIFICATION_CHOSEN_CHANNEL,
     QUIT_REQUESTED_CHANNEL,
     type TrcBridge,
 } from '../shared/contract';
@@ -82,6 +83,10 @@ const bridge: TrcBridge = {
     },
     commands: {
         onCommand: (listener) => subscribe<AppCommand>(APP_COMMAND_CHANNEL, listener),
+    },
+    osNotifications: {
+        post: (notice) => ipcRenderer.invoke('notifications:post', notice) as Promise<boolean>,
+        onChosen: (listener) => subscribe<string>(NOTIFICATION_CHOSEN_CHANNEL, listener),
     },
 };
 

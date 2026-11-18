@@ -4,7 +4,16 @@ import { page, userEvent } from 'vitest/browser';
 import { type AppScreen, connectedHost, installTokens, renderApp } from '../app-test-harness';
 import { SETTING_ENTRIES } from './settings-catalog';
 
-const SECTIONS = ['Appearance', 'Speech and announcements', 'Sound', 'Keyboard', 'Sessions', 'Commands', 'Hosts'];
+const SECTIONS = [
+    'Appearance',
+    'Speech and announcements',
+    'Sound',
+    'Keyboard',
+    'Sessions',
+    'Commands',
+    'Background sessions',
+    'Hosts',
+];
 
 function settingsView(screen: AppScreen) {
     return screen.getByRole('main').getByRole('region', { name: 'Settings' });

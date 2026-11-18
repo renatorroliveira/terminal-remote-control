@@ -5,7 +5,7 @@ import { useShell } from '../app/shell-context';
 import { contextMenuMessages } from '../app/shell-messages';
 import { hostActions, sessionActions } from '../app/workspace-actions';
 import { useContextMenu } from '../ui/context-menu';
-import { PlusIcon } from '../ui/icons';
+import { CommandFinishedIcon, NotificationsIcon, PlusIcon } from '../ui/icons';
 import { hostStateText } from './host-state-text';
 import { typeAhead } from './list-keys';
 import { hostSessionsMessages, sessionRowMessage } from './messages';
@@ -228,6 +228,7 @@ function SessionRow(props: SessionRowProps) {
                 {item.place !== undefined && <span className={styles['place']}>{item.place} </span>}
                 <span>{item.label}</span>
                 {badge !== undefined && <span className={styles['badge']}> {badge}</span>}
+                <EventIcons item={item} />
             </span>
             {failure !== undefined && (
                 <span id={failureId} hidden>
@@ -241,12 +242,27 @@ function SessionRow(props: SessionRowProps) {
     );
 }
 
+/** Icons beside the text badges of a background session's events: a bell, or a finished command (US-5.3.2). */
+function EventIcons({ item }: { readonly item: SessionItem }) {
+    if (!item.bell && !item.finished) {
+        return null;
+    }
+    return (
+        <span aria-hidden="true" className={styles['eventIcons']}>
+            {item.bell && <NotificationsIcon />}
+            {item.finished && <CommandFinishedIcon />}
+        </span>
+    );
+}
+
 /** A session row's badges as one phrase, such as "new output, bell", or none (US-1.8.3, A11Y-08.2, P-42). */
 function rowBadge(intl: IntlShape, item: SessionItem): string | undefined {
     const badges = [
         ...(item.restored ? [intl.formatMessage(treeMessages.restored)] : []),
         ...(item.unread ? [intl.formatMessage(treeMessages.newOutput)] : []),
         ...(item.bell ? [intl.formatMessage(treeMessages.bell)] : []),
+        ...(item.ended ? [intl.formatMessage(treeMessages.ended)] : []),
+        ...(item.finished ? [intl.formatMessage(treeMessages.commandFinished)] : []),
         ...(item.session.persistenceFailure === undefined ? [] : [intl.formatMessage(treeMessages.notSaved)]),
     ];
     return badges.length === 0 ? undefined : intl.formatList(badges, { type: 'unit' });

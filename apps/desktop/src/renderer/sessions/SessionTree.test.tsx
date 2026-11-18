@@ -115,6 +115,17 @@ describe('SessionTree: states and badges (US-1.14.1, A11Y-08.2, US-1.8.3)', () =
         await expect.element(screen.getByRole('treeitem', { name: 'build, Running' })).toBeVisible();
     });
 
+    it('badges an ended session and a finished command in the background, with icons, until it opens (US-5.3.2)', async () => {
+        const { screen, workspace } = await renderTree();
+        workspace.recordFinished('host-0/a');
+        workspace.recordEnded('host-0/a');
+        const row = screen.getByRole('treeitem', { name: 'build, Running, ended, command finished' });
+        await expect.element(row).toBeVisible();
+        expect(row.element().querySelectorAll('[aria-hidden="true"] svg')).not.toHaveLength(0);
+        workspace.open('host-0/a');
+        await expect.element(screen.getByRole('treeitem', { name: 'build, Running' })).toBeVisible();
+    });
+
     it('marks a session with output the user has not seen (US-1.8.3)', async () => {
         const { screen, workspace } = await renderTree();
         workspace.recordActivity('host-0/a');

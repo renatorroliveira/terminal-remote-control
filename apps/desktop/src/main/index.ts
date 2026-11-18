@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { app, BrowserWindow, clipboard, ipcMain, Menu, protocol, screen, session, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, Menu, Notification, protocol, screen, session, shell } from 'electron';
 import { APP_IDENTITY } from '../shared/app-identity';
-import { APP_COMMAND_CHANNEL, QUIT_REQUESTED_CHANNEL } from '../shared/contract';
+import { APP_COMMAND_CHANNEL, NOTIFICATION_CHOSEN_CHANNEL, QUIT_REQUESTED_CHANNEL } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
 import { type Keymap, UNBOUND_KEYMAP } from '../shared/keymap';
 import { keymapFor } from '../shared/settings';
@@ -29,6 +29,7 @@ import { type MenuOptions, menuTemplate, terminalContextMenu } from './menu';
 import { refuseNavigation } from './navigation-guard';
 import { disableNetworkSwitches, lockDownNetwork } from './network-guard';
 import { openExternalFor } from './open-external';
+import { OsNotifications } from './os-notifications';
 import { QuitGuard } from './quit-guard';
 import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, GUIDE_CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
@@ -93,6 +94,14 @@ async function start(): Promise<void> {
     });
     const localRoot = localHostRoot({ platform: process.platform, testBuild: __TRC_TEST_SEAM__, seam: testSeam, home });
     const knownHosts = new KnownHosts(home, localRoot === undefined ? {} : { localRoot });
+    const osNotifications = new OsNotifications({
+        supported: () => Notification.isSupported(),
+        create: (options) => new Notification(options),
+        onClick: (key) => {
+            focusMainWindow();
+            mainWindow?.webContents.send(NOTIFICATION_CHOSEN_CHANNEL, key);
+        },
+    });
     const quitGuard = guardQuitting(config, stored.quitNoticeShown);
     registerHandlers(
         ipcMain,
@@ -110,6 +119,7 @@ async function start(): Promise<void> {
                     hostId,
                     text,
                 ),
+            'notifications:post': async (notice) => osNotifications.post(notice),
             'clipboard:copy': async (text) => {
                 clipboard.writeText(text);
                 return true;

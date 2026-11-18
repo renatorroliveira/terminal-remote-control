@@ -277,6 +277,56 @@ const RENDERERS: Readonly<
             onChange={(commandFailedCue) => update({ commandFailedCue })}
         />
     ),
+    longCommandSeconds: ({ intl, settings, update }) => (
+        <NumberSetting
+            {...text(intl, 'longCommandSeconds')}
+            value={settings.longCommandSeconds}
+            {...range(SETTINGS_LIMITS.longCommandSeconds, 1)}
+            onChange={(longCommandSeconds) => update({ longCommandSeconds })}
+        />
+    ),
+    announceBackgroundBell: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'announceBackgroundBell')}
+            isSelected={settings.announceBackgroundBell}
+            onChange={(announceBackgroundBell) => update({ announceBackgroundBell })}
+        />
+    ),
+    notifyBackgroundBell: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'notifyBackgroundBell')}
+            isSelected={settings.notifyBackgroundBell}
+            onChange={(notifyBackgroundBell) => update({ notifyBackgroundBell })}
+        />
+    ),
+    announceBackgroundEnd: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'announceBackgroundEnd')}
+            isSelected={settings.announceBackgroundEnd}
+            onChange={(announceBackgroundEnd) => update({ announceBackgroundEnd })}
+        />
+    ),
+    notifyBackgroundEnd: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'notifyBackgroundEnd')}
+            isSelected={settings.notifyBackgroundEnd}
+            onChange={(notifyBackgroundEnd) => update({ notifyBackgroundEnd })}
+        />
+    ),
+    announceBackgroundCommand: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'announceBackgroundCommand')}
+            isSelected={settings.announceBackgroundCommand}
+            onChange={(announceBackgroundCommand) => update({ announceBackgroundCommand })}
+        />
+    ),
+    notifyBackgroundCommand: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'notifyBackgroundCommand')}
+            isSelected={settings.notifyBackgroundCommand}
+            onChange={(notifyBackgroundCommand) => update({ notifyBackgroundCommand })}
+        />
+    ),
 };
 
 function ScreenReaderModeSetting({ shell }: { readonly shell: Shell }) {

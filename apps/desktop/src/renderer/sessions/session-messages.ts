@@ -13,6 +13,16 @@ export const treeMessages = defineMessages({
         defaultMessage: 'bell',
         description: 'Badge of a background session whose bell rang.',
     },
+    ended: {
+        id: 'tree.ended',
+        defaultMessage: 'ended',
+        description: 'Badge of a background session whose process ended, until it is opened (US-5.3.2).',
+    },
+    commandFinished: {
+        id: 'tree.commandFinished',
+        defaultMessage: 'command finished',
+        description: 'Badge of a background session where a long command finished, until it is opened (US-5.3.2).',
+    },
     restored: {
         id: 'tree.restored',
         defaultMessage: 'restored',

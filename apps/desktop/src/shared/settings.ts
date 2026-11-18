@@ -62,6 +62,20 @@ export interface Settings {
     readonly commandSucceededCue: boolean;
     /** Whether a cue plays when a command in the open session fails, while sound cues are on (US-5.2.2). */
     readonly commandFailedCue: boolean;
+    /** Seconds after which a command counts as long, so its end in a session not open is an event (US-5.3.1). */
+    readonly longCommandSeconds: number;
+    /** Whether a bell in a session not open is announced (US-5.3.1). */
+    readonly announceBackgroundBell: boolean;
+    /** Whether a bell in a session not open posts an OS notification (US-5.3.1). */
+    readonly notifyBackgroundBell: boolean;
+    /** Whether a session not open whose process ends is announced (US-5.3.1). */
+    readonly announceBackgroundEnd: boolean;
+    /** Whether a session not open whose process ends posts an OS notification (US-5.3.1). */
+    readonly notifyBackgroundEnd: boolean;
+    /** Whether a long command finishing in a session not open is announced (US-5.3.1). */
+    readonly announceBackgroundCommand: boolean;
+    /** Whether a long command finishing in a session not open posts an OS notification (US-5.3.1). */
+    readonly notifyBackgroundCommand: boolean;
 }
 
 /** The ranges the numeric settings accept. */
@@ -70,6 +84,7 @@ export const SETTINGS_LIMITS = {
     scrollbackLines: { min: 1_000, max: 100_000 },
     stopGraceSeconds: { min: 1, max: 60 },
     audioVolume: { min: 0, max: 100 },
+    longCommandSeconds: { min: 1, max: 3_600 },
 } as const;
 
 /** The settings of a new install. */
@@ -94,6 +109,13 @@ export const DEFAULT_SETTINGS: Settings = {
     announceFailedCommands: true,
     commandSucceededCue: false,
     commandFailedCue: true,
+    longCommandSeconds: 10,
+    announceBackgroundBell: true,
+    notifyBackgroundBell: false,
+    announceBackgroundEnd: true,
+    notifyBackgroundEnd: false,
+    announceBackgroundCommand: true,
+    notifyBackgroundCommand: false,
 };
 
 /** The keymap the settings put in force: the user's shortcuts, and plain F6 when on (A11Y-05.2, A11Y-05.7). */

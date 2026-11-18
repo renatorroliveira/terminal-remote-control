@@ -23,6 +23,13 @@ const SETTINGS_DEFAULTS = {
     announceFailedCommands: true,
     commandSucceededCue: false,
     commandFailedCue: true,
+    longCommandSeconds: 10,
+    announceBackgroundBell: true,
+    notifyBackgroundBell: false,
+    announceBackgroundEnd: true,
+    notifyBackgroundEnd: false,
+    announceBackgroundCommand: true,
+    notifyBackgroundCommand: false,
 };
 
 function home(): string {
