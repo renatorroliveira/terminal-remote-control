@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { type ElectronApplication, expect, type Page, test } from '@playwright/test';
+import { LOCAL_DAEMON, launchLocal, localShell, removeLocalDaemon, scratchLocal } from './support/local-host';
 import {
     launchWithTestHosts,
     openTerminal,
@@ -83,6 +84,16 @@ async function expectNoListeners(app: ElectronApplication): Promise<void> {
     expect(debugging.every(Boolean)).toBe(true);
 }
 
+/** The processes run from a daemon installed in `trcHome`: its core and every holder (US-4.1). */
+function daemonProcesses(trcHome: string): readonly number[] {
+    try {
+        const out = execFileSync('pgrep', ['-f', `${realpathSync(trcHome)}/versions/`], { encoding: 'utf8' });
+        return out.split('\n').filter(Boolean).map(Number);
+    } catch {
+        return [];
+    }
+}
+
 /** Whether the app has announced that it reconnected. */
 async function saidReconnected(window: Page): Promise<boolean> {
     return (await spokenTexts(window)).some((text) => text.includes('Reconnected'));
@@ -111,6 +122,26 @@ test.describe('no listening sockets after connect, create and reconnect (SEC-01.
         } finally {
             await app.close();
             removeInstall('trc-ubuntu', root);
+        }
+    });
+});
+
+test.describe('no listening sockets on This computer (SEC-01.1, US-4.1)', () => {
+    test.skip(process.platform !== 'darwin' || !existsSync(LOCAL_DAEMON), 'needs macOS and pnpm build:daemon');
+
+    test('opens none in any app process, nor in the local core or its holders', async () => {
+        const local = scratchLocal();
+        try {
+            const { app, window } = await launchLocal(local);
+            await localShell(window);
+            await expectNoListeners(app);
+            const daemon = daemonProcesses(local.trcHome);
+            expect(daemon.length, 'the core and one holder').toBeGreaterThanOrEqual(2);
+            expect(sockets(daemon, ['-iTCP', '-iUDP'])).toEqual([]);
+            await app.close();
+            expect(sockets(daemonProcesses(local.trcHome), ['-iTCP', '-iUDP'])).toEqual([]);
+        } finally {
+            removeLocalDaemon(local.trcHome);
         }
     });
 });

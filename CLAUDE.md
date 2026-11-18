@@ -38,14 +38,18 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
   VM (`--purge` also the base image). The x86_64 slice runs under Rosetta with
   `cargo nextest run --target x86_64-apple-darwin --workspace` (P-63).
 - NFR measurements: `pnpm test:nfr` (needs the test hosts and the daemons;
-  launches the app in the background); `node tools/nfr-report/nfr-report.ts`
-  prints the run's table for `docs/verification/E3-nfr.md`.
+  launches the app in the background); `TRC_NFR_HOST=local` runs the
+  connection-host measurements on This computer instead of `trc-ubuntu`, and
+  `node tools/nfr-report/nfr-report.ts` prints the run's table for
+  `docs/verification/E4-nfr.md`.
 - Soak (NFR-11, P-25): `pnpm test:soak` (needs the test hosts, the daemons and
   `tools/test-hosts/fetch-old-daemon.sh`); `TRC_SOAK_CYCLES` (1,000),
   `TRC_SOAK_APP_CYCLES` (50) and `TRC_SOAK_LOGOUT_CYCLES` (1,000) set the
   cycles, `TRC_SOAK_REBOOT_CYCLES` (100) the host restarts of the reboot soak,
   and `TRC_SOAK_HOST` the host of the ssh-level app quit and crash and of the
-  flap scenarios. It runs for hours (the logout scenario alone takes about
+  flap scenarios. `launchd.soak.test.ts` soaks the LaunchAgent on This
+  computer (a temporary agent, P-58) and, with the macOS test host, on
+  `trc-mac-gui`. It runs for hours (the logout scenario alone takes about
   3.6 hours); each scenario file can run alone with
   `vitest run --project soak <file>`, and its sessions are reached through
   `docker exec` as well as ssh (`DOCKER_CONTEXT`, `colima-trc` by default).

@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { LiveHost, type LiveOptions, type LiveSession, ssh, waitFor } from '../nfr/live-host';
+import { bootOutAgent } from '../mac-hosts';
+import { LiveHost, type LiveOptions, type LiveSession, LOCAL_ALIAS, ssh, waitFor } from '../nfr/live-host';
 import { percentile, record } from '../nfr/stats';
 
 /** How many cycles each scenario runs (NFR-11's 1,000 unless `TRC_SOAK_CYCLES` says otherwise). */
@@ -115,7 +116,11 @@ export class SoakRun {
      * host's sshd, so it starts no login.
      */
     away(cycle: number): void {
-        onHost(this.alias, ['touch', this.#awayFlag(cycle)]);
+        if (this.alias.startsWith('trc-mac') || this.alias === LOCAL_ALIAS) {
+            ssh(this.alias, `touch ${this.#awayFlag(cycle)}`);
+        } else {
+            onHost(this.alias, ['touch', this.#awayFlag(cycle)]);
+        }
         this.#awayIn = cycle;
     }
 
@@ -172,30 +177,33 @@ export class SoakRun {
         }
     }
 
-    /** Stops the run's daemon and removes its install. */
+    /** Stops the run's daemon, with its systemd unit or LaunchAgent, and removes its install (P-58). */
     remove(): void {
         this.#host?.connection.close();
         const root = `$HOME/${this.root}`;
         const unit = `systemctl --user stop "trcd-$(printf %s "${root}" | sha256sum | cut -c1-8).service" 2>/dev/null`;
         const stop = `kill $(head -n 1 ${root}/run/core.lock 2>/dev/null) 2>/dev/null; pkill -f "[/]${this.root}/versions"`;
         try {
-            ssh(this.alias, `${unit}; ${stop}; rm -rf ${root} /tmp/${this.root}-away-*`);
+            ssh(this.alias, `${bootOutAgent(root)}; ${unit}; ${stop}; rm -rf ${root} /tmp/${this.root}-away-*`);
         } catch {
             return;
         }
     }
 
-    /** Has every session wait for the cycle's flag and then print its marker, once the shell has the command. */
+    /**
+     * Has every session wait for the cycle's flag and then print its marker, once the shell runs the command: it
+     * prints that it is armed first, as a shell's line editor may redraw what is typed (zsh does).
+     */
     async #markAway(cycle: number): Promise<void> {
         for (const [index, watched] of this.#watched.entries()) {
             const session = this.#open.get(watched.id);
             if (session === undefined) {
                 throw new Error(`cycle ${cycle}: session ${watched.id} is not attached`);
             }
-            const typed = session.next(`away-${cycle}-${index}-d''one`, 15_000);
+            const armed = session.next(`away-${cycle}-${index}-armed`, 15_000);
             const wait = `until [ -e ${this.#awayFlag(cycle)} ]; do sleep 0.05; done`;
-            session.type(`${wait}; echo away-${cycle}-${index}-d''one\r`);
-            await typed;
+            session.type(`echo away-${cycle}-${index}-ar''med; ${wait}; echo away-${cycle}-${index}-d''one\r`);
+            await armed;
         }
     }
 

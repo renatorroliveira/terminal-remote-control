@@ -1,6 +1,8 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { launchApp } from '../e2e/support/launch';
+import { LOCAL_DAEMON, launchLocal, removeLocalDaemon, scratchLocal } from '../e2e/support/local-host';
 import {
     launchWithTestHosts,
     openTerminal,
@@ -55,7 +57,7 @@ async function screen(terminal: Locator): Promise<string> {
 
 async function ready(window: Page, terminal: Locator): Promise<void> {
     await terminal.focus();
-    await expect.poll(() => screen(terminal), { timeout: 30_000 }).toMatch(/[$#] *$/m);
+    await expect.poll(() => screen(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
     await window.keyboard.type(`PS1='${PROMPT}'`);
     await window.keyboard.press('Enter');
     await window.keyboard.type('clear');
@@ -303,6 +305,44 @@ test.describe('UI echo latency on live hosts (NFR-02)', () => {
             }
         });
     }
+});
+
+test.describe('UI echo latency on This computer (NFR-01)', () => {
+    test.skip(process.platform !== 'darwin' || !existsSync(LOCAL_DAEMON), 'needs macOS and pnpm build:daemon');
+
+    test('readies the echo of typing in a local session within one frame, p99 (NFR-01)', async () => {
+        const local = scratchLocal();
+        try {
+            const { app, window } = await launchLocal(local);
+            await window.getByRole('button', { name: 'New session on This computer' }).click();
+            const terminal = window.getByRole('textbox', { name: /, This computer$/ });
+            await terminal.waitFor({ timeout: 30_000 });
+            await ready(window, terminal);
+            const { parsed, surface } = await typeAndTimeEcho(window, terminal, ECHO_SAMPLES, 40);
+            expect(parsed, 'one echo per typed letter').toHaveLength(ECHO_SAMPLES);
+            const app99 = percentile(parsed, ECHO_PERCENTILE);
+            for (const p of [50, 95, ECHO_PERCENTILE]) {
+                record({
+                    id: 'NFR-01',
+                    what: `This computer: keystroke to its echo parsed in the app, p${p}`,
+                    value: percentile(parsed, p),
+                    unit: 'ms',
+                    target: p === ECHO_PERCENTILE ? `≤ ${ECHO_ALLOWANCE_MS.toFixed(1)} ms` : '—',
+                });
+            }
+            record({
+                id: 'NFR-01',
+                what: `This computer: keystroke to its echo on the text surface (next frame), p${ECHO_PERCENTILE}`,
+                value: percentile(surface, ECHO_PERCENTILE),
+                unit: 'ms',
+                target: 'next frame',
+            });
+            await app.close();
+            expect(app99).toBeLessThanOrEqual(ECHO_ALLOWANCE_MS);
+        } finally {
+            removeLocalDaemon(local.trcHome);
+        }
+    });
 });
 
 test.describe('UI responsiveness under a flood on a live host (NFR-03)', () => {
