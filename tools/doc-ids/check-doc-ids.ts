@@ -22,6 +22,7 @@ export const DEFAULT_DOCUMENTS: readonly string[] = [
     'docs/plans/epic-02-implementation-plan.md',
     'docs/plans/epic-03-implementation-plan.md',
     'docs/plans/epic-04-implementation-plan.md',
+    'docs/plans/epic-05-implementation-plan.md',
 ];
 
 const HEADING_DEFINITION = /^#{2,4} (?:9\.\d+ )?((?:A11Y|SEC)-\d\d|US-\d\.\d+|E\d) /;

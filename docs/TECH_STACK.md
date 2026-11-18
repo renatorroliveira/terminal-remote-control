@@ -1,11 +1,11 @@
 # Terminal Remote Control — Tech Stack
 
-| Field        | Value                                                               |
-| ------------ | ------------------------------------------------------------------- |
-| Status       | Decisions accepted (v1.9). S1–S8, S11–S13 done (§11); S9–S10 later. |
-| Owner        | Renato Oliveira                                                     |
-| Last updated | 2026-11-17                                                          |
-| Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.    |
+| Field        | Value                                                                           |
+| ------------ | ------------------------------------------------------------------------------- |
+| Status       | Decisions accepted (v1.10). S1–S8, S11–S13 done (§11); S14 in E5; S9–S10 later. |
+| Owner        | Renato Oliveira                                                                 |
+| Last updated | 2026-11-18                                                                      |
+| Requirements | [PRD.md](PRD.md). It sets the scope: nothing beyond it is built.                |
 
 This document records the technology choices for P0 and why each one was made.
 Versions were checked against the npm registry and crates.io on 2026-11-11.
@@ -880,11 +880,17 @@ needs Rust. Every request carries a `requestId`.
     - `Detached { reason }` tells a client the daemon ended its attachment:
       `attachedElsewhere` when another client opened a session whose E1
       holder serves one client at a time (P-27, P-34).
-6. **Semantic events.** The daemon parses OSC 133, OSC 7, OSC 0/2 and BEL into
-   `CommandFinished`, `Cwd`, `Title`, `Bell` and `Activity`.
-    - Background sessions attach in `events` mode, so no output flows for them.
-    - That keeps 25 hosts × 100 sessions cheap (NFR-05) while US-5.3 still
-      works.
+6. **Semantic events (protocol 4, E5, D-57).** The holder reads OSC 133, OSC 7,
+   iTerm2's OSC 1337 `CurrentDir`, `RemoteHost` and `SetMark` (OQ-6), OSC 0/2
+   and BEL.
+    - Title and working folder stay fields of `SessionInfo`; `integration`
+      joins them (`injected`, `native`, `off` or `unsupported`).
+    - `Bell` (at most one a second) and `CommandFinished { exitCode, durationMs }`
+      reach every protocol 4 client as `SessionEvent` `event` changes, whether
+      or not it attached the session, so background sessions need no
+      attachment and 25 hosts × 100 sessions stay cheap (NFR-05). The `events`
+      attach mode stays reserved.
+    - No command line is kept, sent or logged.
 7. **Errors.** `Error { requestId, code, message }`.
 
 ### Flow control (D-04: skip to latest)
@@ -1195,22 +1201,40 @@ probe for bash, zsh, fish and pwsh. The login shell starts as a login shell
 - Sessions never inherit the daemon's environment. It carries stale `SSH_*`
   values from whichever connection started it.
 
-**Shell integration (US-5.1).** Our own short scripts emit OSC 133 A/B/C/D and
-OSC 7. They are embedded in the daemon, written to its 0700 directory and
-injected without editing dotfiles.
+**Shell integration (US-5.1, D-55).** Our own short scripts emit OSC 133
+A/B/C/D and OSC 7. They are embedded in the daemon, written by the core to
+`<root>/shell-integration/<version>/` in its 0700 root, and injected at every
+shell start (create, restart, restore) without editing dotfiles.
 
-- **bash:** `--init-file`, with a script that sources the user's normal
-  startup files first.
-- **zsh:** `ZDOTDIR` points at wrapper files that source the user's originals.
-- **fish:** fish 4 emits OSC 133 and OSC 7 natively, so nothing is injected.
-  Older fish gets `--init-command`.
-- **pwsh:** `-NoExit -Command ". '<script>'"`.
+- **bash 4 and later:** `--posix` with `ENV` naming our script, as kitty and
+  Ghostty do; the script leaves POSIX mode and sources the startup files a
+  login or interactive shell reads, so `-bash` stays a login shell, and never
+  reads the system bashrc twice.
+- **bash 3.2** (macOS `/bin/bash`, which ignores `ENV` when interactive): a
+  non-login `--rcfile` that sources the login files itself, as VS Code does,
+  with a `DEBUG` trap for the command start.
+- **zsh:** `ZDOTDIR` points at a `.zshenv` that restores the user's `ZDOTDIR`,
+  sources their `.zshenv` and adds the hooks at the first prompt.
+- **fish:** `XDG_DATA_DIRS` adds our `vendor_conf.d`; fish 4 marks prompts and
+  reports OSC 7 natively, so the script only fills in what fish 3 lacks.
+- **pwsh (E6):** `-NoExit -Command ". '<script>'"`.
+- **Other shells** (sh, ash, dash) get nothing, and command navigation says
+  why.
 
-Injection can be turned off per profile or per host. VS Code's scripts are not
-reused, because they emit only OSC 633 and print environment values.
+A guard variable keeps the script from loading twice, and the holder ignores a
+repeated prompt mark or an end without a start, so a user's own integration
+(iTerm2's, for example) does no harm. Injection can be turned off per host
+(US-5.1.3) and per profile. VS Code's scripts are not reused, because they emit
+only OSC 633 and print environment values.
+
+**Marks (D-56).** The holder keeps every command's prompt row, exit status and
+times, and writes OSC 133 back into snapshots and saved history, which the
+formatter does not do, so xterm.js and a restored session rebuild their marks
+from the stream as live output builds them.
 
 **Marks never trigger actions (SEC-06).** They drive navigation and
-announcements only. Whether to also read OSC 633 stays open (OQ-6).
+announcements only. OSC 1337 is read for `CurrentDir`, `RemoteHost` and
+`SetMark` only, never `File=` or any other key, and OSC 633 is not read (OQ-6).
 
 ## 9. Tooling
 
@@ -1481,7 +1505,7 @@ Chromium, and Cargo.
 | E2   | Holders outside the kill scope and the Linux service-mode rule (§5.4, D-44); upgrades in place (D-46); protocol 2 with reconnect from an offset and skip-to-latest flow control (D-04) with `Resync` and rebuild (D-45); automatic reconnect and restore at launch; soak tests (NFR-11)                                                                              |
 | E3   | Persistence and restore (§5.5, D-48); history at program exit (D-49); protocol 3; daemon management                                                                                                                                                                                                                                                                  |
 | E4   | macOS `trcd` (universal2, a plain LaunchAgent, D-50); the local bridge in the shared root (D-51); detached core on remote Macs; tart test hosts (D-52)                                                                                                                                                                                                               |
-| E5   | Shell-integration scripts and semantic events (§6, §8)                                                                                                                                                                                                                                                                                                               |
+| E5   | Shell-integration scripts (§8, D-55); marks in the VT stream (D-56); protocol 4 semantic events and OS notifications (§6, D-57); bash, zsh and fish in the test images                                                                                                                                                                                               |
 | E6   | Windows: ConPTY holders, named pipes, Windows profile detection, Windows helpers in `trcd`, installer                                                                                                                                                                                                                                                                |
 | E7   | Linux desktop: AppImage, local systemd daemon, AT-detection fallback (R3)                                                                                                                                                                                                                                                                                            |
 | E8   | 1.0.0: Developer ID signing and notarization, Authenticode and Linux package signing (US-8.3); build provenance (US-8.2); signed checksums (US-8.4); the downloads site (US-8.1); Electron's built-in updater on macOS and the Windows and Linux updaters (US-8.5, D-43)                                                                                             |
@@ -1491,21 +1515,22 @@ Chromium, and Cargo.
 Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spikes/S4.md), [S5](spikes/S5.md),
 [S6](verification/E2-nfr.md#soak-nfr-11-s6), [S7](spikes/S7.md), [S11](spikes/S11.md), [S12](spikes/S12.md).
 
-| ID  | Epic | Spike                                                                                                                                                                               | Retires                      |
-| --- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| S1  | E1   | libghostty-vt in Rust on musl x86_64/arm64: size, PSS per holder, VT round trip into xterm.js, matching grapheme widths and cursor columns, query replies                           | D-02, US-1.11, NFR-09        |
-| S2  | E1   | ATS selection and caret: every macOS attribute through the AX probe; Speak Selection, VoiceOver's read-selection command, Look Up, Services, Zoom caret tracking, dictation and IME | R1, A11Y-09                  |
-| S3  | E1   | Floods and churn with VoiceOver on: `yes`, a 1 GB `cat`, `tree /` at 100 ms RTT; tune the credit window, page size, cadence and selection cap; echo suppression                     | R2, R9, NFR-03, NFR-04       |
-| S4  | E1   | `KnownHostsCommand` and `SSH_ASKPASS` behavior; the stderr message corpus for US-1.3; agent discovery for GUI launches                                                              | US-1.2, US-1.3               |
-| S5  | E1   | Bootstrap on Alpine/busybox, Ubuntu and RHEL; noexec home directories; LDAP users                                                                                                   | R10                          |
-| S6  | E2   | A 1,000-cycle soak of daemon kill and upgrade, with and without lingering, and across logout                                                                                        | R4, R5, R6 (Linux), NFR-11   |
-| S11 | E2   | systemd in a container: a transient-unit core with `Restart=on-failure`, holders in transient scopes, lingering and `KillUserProcesses` detection, what survives logout             | R4, R5, R6 (Linux)           |
-| S12 | E2   | Streaming a snapshot in blocks of rows through the formatter selection and tracked grid references while output arrives                                                             | NFR-09                       |
-| S13 | E2   | The renderer to connection-host message path on a sub-millisecond link ([results](spikes/S13.md), D-47)                                                                             | NFR-02                       |
-| S7  | E3   | Consistency of the persistence logs after a power cut                                                                                                                               | NFR-08                       |
-| S8  | E4   | Done ([S8](spikes/S8.md)): `setsid` + `AbandonProcessGroup`; LaunchAgent registration with `launchctl`; detached core on remote Macs                                                | R4, R5, R7 (macOS)           |
-| S9  | E6   | ConPTY holder outside the app's job object; libghostty-vt on MSVC; re-verify the ATS with JAWS, NVDA and Narrator                                                                   | R1, R2, R4, R5, R8 (Windows) |
-| S10 | E7   | Chromium AT detection and Orca on Wayland and X11; re-verify the ATS                                                                                                                | R1, R2, R3 (Linux)           |
+| ID  | Epic | Spike                                                                                                                                                                                                                               | Retires                      |
+| --- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| S1  | E1   | libghostty-vt in Rust on musl x86_64/arm64: size, PSS per holder, VT round trip into xterm.js, matching grapheme widths and cursor columns, query replies                                                                           | D-02, US-1.11, NFR-09        |
+| S2  | E1   | ATS selection and caret: every macOS attribute through the AX probe; Speak Selection, VoiceOver's read-selection command, Look Up, Services, Zoom caret tracking, dictation and IME                                                 | R1, A11Y-09                  |
+| S3  | E1   | Floods and churn with VoiceOver on: `yes`, a 1 GB `cat`, `tree /` at 100 ms RTT; tune the credit window, page size, cadence and selection cap; echo suppression                                                                     | R2, R9, NFR-03, NFR-04       |
+| S4  | E1   | `KnownHostsCommand` and `SSH_ASKPASS` behavior; the stderr message corpus for US-1.3; agent discovery for GUI launches                                                                                                              | US-1.2, US-1.3               |
+| S5  | E1   | Bootstrap on Alpine/busybox, Ubuntu and RHEL; noexec home directories; LDAP users                                                                                                                                                   | R10                          |
+| S6  | E2   | A 1,000-cycle soak of daemon kill and upgrade, with and without lingering, and across logout                                                                                                                                        | R4, R5, R6 (Linux), NFR-11   |
+| S11 | E2   | systemd in a container: a transient-unit core with `Restart=on-failure`, holders in transient scopes, lingering and `KillUserProcesses` detection, what survives logout                                                             | R4, R5, R6 (Linux)           |
+| S12 | E2   | Streaming a snapshot in blocks of rows through the formatter selection and tracked grid references while output arrives                                                                                                             | NFR-09                       |
+| S13 | E2   | The renderer to connection-host message path on a sub-millisecond link ([results](spikes/S13.md), D-47)                                                                                                                             | NFR-02                       |
+| S7  | E3   | Consistency of the persistence logs after a power cut                                                                                                                                                                               | NFR-08                       |
+| S8  | E4   | Done ([S8](spikes/S8.md)): `setsid` + `AbandonProcessGroup`; LaunchAgent registration with `launchctl`; detached core on remote Macs                                                                                                | R4, R5, R7 (macOS)           |
+| S14 | E5   | Shell-integration injection in bash 3.2 to 5, zsh and fish 3 and 4 on every host OS; marks through snapshots and restore; OS notifications from an ad-hoc-signed app; what makes macOS ask for `trcd`'s access to protected folders | US-5.1, US-5.2, US-5.3       |
+| S9  | E6   | ConPTY holder outside the app's job object; libghostty-vt on MSVC; re-verify the ATS with JAWS, NVDA and Narrator                                                                                                                   | R1, R2, R4, R5, R8 (Windows) |
+| S10 | E7   | Chromium AT detection and Orca on Wayland and X11; re-verify the ATS                                                                                                                                                                | R1, R2, R3 (Linux)           |
 
 ## 12. Decision log
 
@@ -1565,6 +1590,9 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | D-52 | macOS test hosts are local tart VMs, deleted after every run                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Real macOS over SSH without touching the owner's Mac (no Remote Login on it)                                                                                                                                                                                                       | — (E4 plan P-57)                                                                                                         |
 | D-53 | The macOS test VM's network is lima's user-mode network (`limactl usernet`) through `tart run --net-fd`, with SSH forwarded to `127.0.0.1` only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Tart's shared NAT got no DHCP lease on the owner's managed Mac: the VM's frames never reached the host bridge (S8). The user-mode network needs no root and exposes nothing beyond loopback                                                                                        | Bridged networking (puts the VM on the LAN); softnet (needs a setuid root binary)                                        |
 | D-54 | The macOS daemon is one universal2 binary, `cargo build` for both Apple targets joined by `lipo` and ad-hoc signed, with macOS 13.0 as the deployment target for Rust and libghostty-vt alike; the release builds every daemon on `macos-15`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | PRD §7.2 asks for the current and previous two macOS releases; one binary serves arm64 and x86_64 Macs, locally and over SSH                                                                                                                                                       | Two thin binaries picked by `uname -m`; cargo-zigbuild for Apple targets (needs the macOS SDK)                           |
+| D-55 | Shell integration is injected by the holder at every shell start: bash 4+ with `--posix` and `ENV`, macOS bash 3.2 with a non-login `--rcfile`, zsh with a `ZDOTDIR` `.zshenv`, fish with `XDG_DATA_DIRS`; the scripts are TRC's own, embedded in `trcd` and written to the 0700 root                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | A login shell stays one (bash ignores `--rcfile` when it is a login shell); no dotfile changes (US-5.1.1); one mechanism on every host                                                                                                                                             | US-5.1 (E5 plan P-73)                                                                                                    |
+| D-56 | Command marks travel as OSC 133 in the VT stream: the holder tracks each command's prompt row, exit status and times, and writes the marks back into snapshots and saved history                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | The formatter drops OSC 133, so without this a reattach or a restore loses every mark; one representation keeps the app's parsing single                                                                                                                                           | US-5.2 (E5 plan P-74)                                                                                                    |
+| D-57 | Protocol 4: the core broadcasts `Bell` and `CommandFinished` events and `integration` to every protocol 4 client instead of `events` attachments; the main process posts OS notifications with Electron's `Notification`, holding the session name, host and event only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Background events for sessions never opened, at no output cost (NFR-05); a sandboxed renderer cannot post notifications, and output must never reach the lock screen                                                                                                               | US-5.3 (E5 plan P-75, P-76)                                                                                              |
 
 ## 13. Versions (verified 2026-11-11)
 

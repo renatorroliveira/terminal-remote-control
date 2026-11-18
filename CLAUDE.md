@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 E1 shipped as v0.2.0 (M1 was v0.1.0), E2 as v0.3.0, E3 as v0.4.0 and E4 as
 v0.5.0; 0.x releases are alpha builds, and 1.0.0 is the first official release
-(D-43). E5 is next. `docs/plans/epic-04-implementation-plan.md` records E4's
-stories, and the E1 to E3 plans sit beside it. Usage is in `USER_GUIDE.md`. The monorepo holds
+(D-43). E5 is in progress for v0.6.0: `docs/plans/epic-05-implementation-plan.md`
+records its stories, and the E1 to E4 plans sit beside it. Usage is in `USER_GUIDE.md`. The monorepo holds
 the Electron app (`apps/desktop`), the protocol package (`packages/protocol`),
 the Rust crates (`crates/*`) and tooling (`tools/*`).
 
@@ -102,8 +102,8 @@ add nothing it doesn't need. Record any new or changed dependency or tool in
 The implementation breakdown of each epic goes in
 `docs/plans/epic-NN-implementation-plan.md`, not in the PRD. Its stories are
 `ST-<n>` and its planning decisions `P-<nn>`, numbered on from the previous
-epic's plan so every identifier stays unique. E4's plan is
-`docs/plans/epic-04-implementation-plan.md`; keep its status table current.
+epic's plan so every identifier stays unique. E5's plan is
+`docs/plans/epic-05-implementation-plan.md`; keep its status table current.
 
 Platforms arrive in this order (PRD §7.4): macOS desktop app plus Linux remote
 daemon (E1–E3), macOS daemon for local sessions and macOS hosts (E4), Windows
