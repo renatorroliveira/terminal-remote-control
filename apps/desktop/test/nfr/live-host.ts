@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { copyFileSync, existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -19,6 +19,16 @@ const scratch = mkdtempSync(join(tmpdir(), 'trc-nfr-'));
 const TAIL = 64 * 1024;
 /** The line the test hosts' .bashrc prints on every login (tools/test-hosts/images/common/noisy.bashrc). */
 const LOGIN_BANNER = 'Welcome to the trc test host';
+
+/**
+ * The alias of This computer as a live host (P-59): its daemon installs under a scratch home folder this run makes,
+ * reached with a local shell, and `ssh` runs its commands locally with that home.
+ */
+export const LOCAL_ALIAS = 'local';
+let localHomeFolder: string | undefined;
+
+/** The host the NFR measurements run on: `trc-ubuntu` unless `TRC_NFR_HOST` names another, such as `local` (E4). */
+export const NFR_HOST = process.env['TRC_NFR_HOST'] ?? 'trc-ubuntu';
 
 /** The app log folder every live host in this run writes to (SEC-08 reads it). */
 export const APP_LOGS = join(scratch, 'logs');
@@ -73,10 +83,13 @@ export class LiveHost {
         this.root = root;
         const connectionRuntime = runtime(options.env, options.daemons);
         this.knownHosts = connectionRuntime.seam?.knownHosts ?? '';
+        const local = alias === LOCAL_ALIAS;
         this.connection = new HostConnection(
-            connectionRuntime,
+            local ? { ...connectionRuntime, localHome: localHome() } : connectionRuntime,
             alias,
-            { destination: alias, installRoot: `~/${root}` },
+            local
+                ? { destination: 'localhost', installRoot: `~/${root}`, local: true }
+                : { destination: alias, installRoot: `~/${root}` },
             {
                 state: (state) => this.states.push(state),
                 message: (message) => this.#onMessage(message),
@@ -250,6 +263,15 @@ export function closeLiveHosts(): void {
         host.connection.close();
         removeInstall(host);
     }
+    removeLocalHome();
+}
+
+/** Deletes This computer's scratch home, once every install in it is removed; the next test makes another. */
+export function removeLocalHome(): void {
+    if (localHomeFolder !== undefined) {
+        rmSync(localHomeFolder, { recursive: true, force: true, maxRetries: 5 });
+        localHomeFolder = undefined;
+    }
 }
 
 /** The median time from a ping to its pong over the host's SSH channel: the SSH round trip NFR-02 is measured against. */
@@ -275,6 +297,13 @@ export async function roundTrips(host: LiveHost, samples: number, gapMs = 0): Pr
 
 /** Runs `script` on `alias` over a plain ssh connection and returns its stdout, without the hosts' login banner. */
 export function ssh(alias: string, script: string): string {
+    if (alias === LOCAL_ALIAS) {
+        return execFileSync('/bin/sh', ['-c', script], {
+            encoding: 'utf8',
+            env: { ...process.env, HOME: localHome() },
+            stdio: ['ignore', 'pipe', 'ignore'],
+        });
+    }
     const known = `UserKnownHostsFile=${join(run, 'known_hosts.smoke')}`;
     const args = ['-F', join(run, 'ssh_config'), '-o', 'BatchMode=yes', '-o', known, alias, script];
     const out = execFileSync('ssh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
@@ -378,4 +407,13 @@ function runtime(
         readBinary: async (platform) => readFile(join(daemons, platform, 'trcd')),
         log: createAppLogger(APP_LOGS),
     };
+}
+
+/**
+ * This computer's scratch home in this run, short so its sockets fit (TECH_STACK §5.3), made when a test first reaches
+ * This computer.
+ */
+function localHome(): string {
+    localHomeFolder ??= mkdtempSync('/tmp/trcn-');
+    return localHomeFolder;
 }

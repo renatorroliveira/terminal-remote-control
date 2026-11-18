@@ -4,6 +4,7 @@ import {
     connectLive,
     type LiveHost,
     type LiveSession,
+    NFR_HOST,
     ssh,
     testHostsMissing,
     waitFor,
@@ -30,11 +31,16 @@ function rssMiB(host: LiveHost, pid: number): number {
     return Number(ssh(host.alias, `ps -o rss= -p ${pid}`).trim()) / 1024;
 }
 
-/** CPU time a process used over `seconds`, as a share of one core, in percent. */
+/**
+ * CPU time a process used over `seconds`, as a share of one core, in percent: from `/proc` on Linux, and from
+ * `ps -o time=` (minutes:seconds, to hundredths) on macOS, which has no `/proc`.
+ */
 function cpuPercent(host: LiveHost, pid: number, seconds: number): number {
-    const script = `t() { awk '{print $14 + $15}' /proc/${pid}/stat; }; a=$(t); sleep ${seconds}; b=$(t); echo "$a $b $(getconf CLK_TCK)"`;
-    const [before = 0, after = 0, ticks = 100] = ssh(host.alias, script).trim().split(' ').map(Number);
-    return ((after - before) / ticks / seconds) * 100;
+    const linux = `t() { awk '{print ($14 + $15) / '"$(getconf CLK_TCK)"'}' /proc/${pid}/stat; }`;
+    const macos = `t() { ps -o time= -p ${pid} | awk -F: '{print $1 * 60 + $2}'; }`;
+    const script = `if [ -d /proc/self ]; then ${linux}; else ${macos}; fi; a=$(t); sleep ${seconds}; b=$(t); echo "$a $b"`;
+    const [before = 0, after = 0] = ssh(host.alias, script).trim().split(' ').map(Number);
+    return ((after - before) / seconds) * 100;
 }
 
 /** Forgets a process's peak resident memory, so the next peak is measured from now, and returns its memory in MiB. */
@@ -138,8 +144,8 @@ async function historyAfterProgram(attached: Attached): Promise<number> {
 }
 
 describe.skipIf(missing !== undefined)('daemon footprint (NFR-09)', () => {
-    it('idles under 30 MB and 0.5% CPU, with under 10 MB per session', async () => {
-        const host = await connectLive('trc-ubuntu');
+    it(`idles under 30 MB and 0.5% CPU, with under 10 MB per session, on ${NFR_HOST}`, async () => {
+        const host = await connectLive(NFR_HOST);
         const [core = 0] = pids(host, 'core');
         await new Promise((done) => setTimeout(done, 3_000));
         const idleRss = rssMiB(host, core);
@@ -153,21 +159,21 @@ describe.skipIf(missing !== undefined)('daemon footprint (NFR-09)', () => {
         const perSession = Math.max(...holders) + (coreWithSessions - idleRss) / IDLE_SESSIONS;
         record({
             id: 'NFR-09',
-            what: 'idle core, no sessions: resident memory',
+            what: `${NFR_HOST}: idle core, no sessions: resident memory`,
             value: idleRss,
             unit: 'MiB',
             target: '≤ 30 MB',
         });
         record({
             id: 'NFR-09',
-            what: `idle core: CPU over ${IDLE_SECONDS} s`,
+            what: `${NFR_HOST}: idle core: CPU over ${IDLE_SECONDS} s`,
             value: idleCpu,
             unit: '%',
             target: '≤ 0.5%',
         });
         record({
             id: 'NFR-09',
-            what: `per session (largest holder plus the core's growth), ${IDLE_SESSIONS} idle sessions`,
+            what: `${NFR_HOST}: per session (largest holder plus the core's growth), ${IDLE_SESSIONS} idle sessions`,
             value: perSession,
             unit: 'MiB',
             target: '≤ 10 MB',

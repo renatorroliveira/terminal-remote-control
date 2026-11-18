@@ -6,6 +6,7 @@ import {
     connectLive,
     type LiveHost,
     type LiveSession,
+    NFR_HOST,
     sshRoundTrip,
     testHostsMissing,
 } from './live-host';
@@ -67,8 +68,8 @@ async function echoTimes(session: LiveSession, samples: number): Promise<readonl
 }
 
 describe.skipIf(missing !== undefined)('scale: sessions per host (NFR-05)', () => {
-    it(`runs ${SESSIONS} sessions on one host, and state changes reach the app within ${STATE_TARGET_MS} ms, p95`, async () => {
-        const host = await connectLive('trc-ubuntu');
+    it(`runs ${SESSIONS} sessions on ${NFR_HOST}, and state changes reach the app within ${STATE_TARGET_MS} ms, p95`, async () => {
+        const host = await connectLive(NFR_HOST);
         const created: { readonly id: string; readonly ms: number }[] = [];
         for (let index = 0; index < SESSIONS; index += 1) {
             created.push(await create(host));
@@ -84,15 +85,15 @@ describe.skipIf(missing !== undefined)('scale: sessions per host (NFR-05)', () =
             created.map(({ ms }) => ms),
             95,
         );
-        measured(`trc-ubuntu: create a session, with up to ${SESSIONS} running, p95`, createP95, 'ms', '—');
+        measured(`${NFR_HOST}: create a session, with up to ${SESSIONS} running, p95`, createP95, 'ms', '—');
         measured(
-            `trc-ubuntu: rename to session event, ${SESSIONS} sessions, p95`,
+            `${NFR_HOST}: rename to session event, ${SESSIONS} sessions, p95`,
             renameP95,
             'ms',
             `≤ ${STATE_TARGET_MS} ms`,
         );
         measured(
-            `trc-ubuntu: keystroke to echo with ${SESSIONS + 1} sessions, p${ECHO_PERCENTILE}`,
+            `${NFR_HOST}: keystroke to echo with ${SESSIONS + 1} sessions, p${ECHO_PERCENTILE}`,
             echo,
             'ms',
             `≤ ${budget.toFixed(1)} ms`,
