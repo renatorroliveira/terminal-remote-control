@@ -56,8 +56,9 @@ pub fn plist_path(home: &Path, label: &str) -> PathBuf {
     home.join("Library/LaunchAgents").join(format!("{label}.plist"))
 }
 
-/// The plist's text: the core with `--launchd`, started at load (login) and after any unsuccessful exit, never
-/// ending the processes it started, with the bridge's environment and umask.
+/// The plist's text: the core with `--launchd`, started at load (login) and within a second of any unsuccessful exit,
+/// as the systemd unit's `RestartSec=1` is, rather than after launchd's default 10 s, never ending the processes it
+/// started, with the bridge's environment and umask.
 pub fn agent_plist(spec: &AgentSpec) -> String {
     let mut text = String::from(concat!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n",
@@ -97,6 +98,7 @@ pub fn agent_plist(spec: &AgentSpec) -> String {
         "<dict>\n\t\t<key>SuccessfulExit</key>\n\t\t<false/>\n\t</dict>",
     );
     entry(&mut text, "AbandonProcessGroup", "<true/>");
+    entry(&mut text, "ThrottleInterval", "<integer>1</integer>");
     entry(&mut text, "ProcessType", &string("Interactive"));
     entry(&mut text, "StandardErrorPath", &string(&spec.log.to_string_lossy()));
     text.push_str("</dict>\n</plist>\n");
@@ -274,6 +276,7 @@ mod tests {
             "<key>RunAtLoad</key>\n\t<true/>".to_owned(),
             "<key>KeepAlive</key>\n\t<dict>\n\t\t<key>SuccessfulExit</key>\n\t\t<false/>\n\t</dict>".to_owned(),
             "<key>AbandonProcessGroup</key>\n\t<true/>".to_owned(),
+            "<key>ThrottleInterval</key>\n\t<integer>1</integer>".to_owned(),
             "<key>ProcessType</key>\n\t<string>Interactive</string>".to_owned(),
             "<key>Umask</key>\n\t<integer>18</integer>".to_owned(),
             "<key>WorkingDirectory</key>\n\t<string>/</string>".to_owned(),
