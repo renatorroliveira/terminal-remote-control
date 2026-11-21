@@ -34,6 +34,7 @@ interface FailureValues {
     readonly os: string;
     readonly arch: string;
     readonly code: string;
+    readonly file: string;
     readonly minProto: number;
     readonly maxProto: number;
     readonly [key: string]: string | number;
@@ -47,6 +48,7 @@ const NO_VALUES = {
     os: '',
     arch: '',
     code: '',
+    file: '',
     minProto: 0,
     maxProto: 0,
 } as const;
@@ -101,6 +103,20 @@ const FAILURE_MESSAGES: Readonly<
         remedy: defineMessage<FailureValues>({
             id: 'failure.hostKeyRejected.remedy',
             defaultMessage: 'Connect again to review the key.',
+            description: 'How to fix a failed connection.',
+        }),
+    },
+    'host-key-not-kept': {
+        problem: defineMessage<FailureValues>({
+            id: 'failure.hostKeyNotKept.problem',
+            defaultMessage:
+                'You trusted the host key of {name}, but {file} didn’t keep it, so ssh still doesn’t know the key.',
+            description: 'What went wrong when a connection failed.',
+        }),
+        remedy: defineMessage<FailureValues>({
+            id: 'failure.hostKeyNotKept.remedy',
+            defaultMessage:
+                'Make sure {file} is a file you can write and that your SSH configuration reads it (UserKnownHostsFile), then connect again.',
             description: 'How to fix a failed connection.',
         }),
     },

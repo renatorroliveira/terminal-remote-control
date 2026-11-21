@@ -619,6 +619,14 @@
     "defaultMessage": "Ask the host’s administrator for its new key fingerprint. Only if it matches, remove the old key with ssh-keygen -R {host}, then connect again.",
     "description": "How to fix a failed connection."
   },
+  "failure.hostKeyNotKept.problem": {
+    "defaultMessage": "You trusted the host key of {name}, but {file} didn’t keep it, so ssh still doesn’t know the key.",
+    "description": "What went wrong when a connection failed."
+  },
+  "failure.hostKeyNotKept.remedy": {
+    "defaultMessage": "Make sure {file} is a file you can write and that your SSH configuration reads it (UserKnownHostsFile), then connect again.",
+    "description": "How to fix a failed connection."
+  },
   "failure.hostKeyRejected.problem": {
     "defaultMessage": "You didn’t trust the host key of {name}, so the app didn’t connect.",
     "description": "What went wrong when a connection failed."

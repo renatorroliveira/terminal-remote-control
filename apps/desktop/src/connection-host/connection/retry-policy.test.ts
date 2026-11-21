@@ -48,6 +48,7 @@ describe('isRetryable (US-2.2.4)', () => {
             failure({ kind: 'authentication', cause: 'certificate-expired' }),
             failure({ kind: 'host-key-changed', host: 'h' }),
             failure({ kind: 'host-key-rejected', host: 'h' }),
+            failure({ kind: 'host-key-not-kept', host: 'h', file: '~/.ssh/known_hosts' }),
             failure({ kind: 'ssh-missing' }),
             failure({ kind: 'ssh-too-old', version: '7.9' }),
             failure({ kind: 'unsupported', missing: 'os', os: 'x', arch: 'y' }),

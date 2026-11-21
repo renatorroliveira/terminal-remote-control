@@ -45,7 +45,9 @@ On each host:
 TRC uses your own SSH setup: `~/.ssh/config` (aliases, `ProxyCommand`, `ProxyJump`, ports, users), your agent and
 your `known_hosts`. It never changes your SSH configuration or your keys. The one file it writes is your known hosts
 file, the first `UserKnownHostsFile` your SSH config names (`~/.ssh/known_hosts` unless you set another), and only
-when you trust a new host key.
+when you trust a new host key. If your config sends known hosts to `/dev/null`, as some generated configs do, TRC's own
+connections use `~/.ssh/known_hosts` instead, so a key you trust is kept and checked; `ssh` in Terminal still follows
+your config.
 
 ## Install
 
@@ -601,6 +603,7 @@ The licenses of the software TRC includes are in the app, in
 | The host refused every key ssh offered               | Check that `ssh <host>` works in Terminal without a password.                                                                                         |
 | The host couldn't be found, or didn't answer         | Check the name, your network or VPN, and any `ProxyCommand` or `ProxyJump` your config needs.                                                         |
 | The host key has changed                             | Ask the host's administrator. Only if the new fingerprint matches, run `ssh-keygen -R <host>`.                                                        |
+| The known hosts file didn't keep the key you trusted | Check that you can write the file the dialog names, and that your SSH config's `UserKnownHostsFile` includes it.                                      |
 | The host runs a newer daemon than this app           | Another Mac installed a newer TRC on this host. Update the app.                                                                                       |
 | The install location doesn't allow running programs  | Choose another install location from the host's actions, then connect again.                                                                          |
 | Other users can change the install location          | If the folder named in the details is yours, run `chmod go-w` on it on the host; otherwise choose a location only you can change. Then connect again. |

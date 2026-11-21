@@ -34,6 +34,8 @@ export type ConnectionFailureKind =
     | { readonly kind: 'ssh-too-old'; readonly version: string }
     | { readonly kind: 'host-key-changed'; readonly host: string }
     | { readonly kind: 'host-key-rejected'; readonly host: string }
+    /** The user accepted the key, and ssh still doesn't know it: `file` did not keep it (US-1.2.1). */
+    | { readonly kind: 'host-key-not-kept'; readonly host: string; readonly file: string }
     | { readonly kind: 'authentication'; readonly cause: AuthenticationCause }
     | { readonly kind: 'dns'; readonly host: string }
     | { readonly kind: 'unreachable'; readonly host: string; readonly port: number }

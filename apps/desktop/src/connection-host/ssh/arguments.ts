@@ -1,4 +1,5 @@
 import { DESTINATION_PATTERN } from '../../shared/host-address';
+import { DEFAULT_KNOWN_HOSTS_FILES } from './client-checks';
 
 /** The helper programs ssh runs for host keys and askpass. */
 export interface SshHelpers {
@@ -29,6 +30,8 @@ export interface SshArgumentOptions {
     /** The remote command. */
     readonly command: string;
     readonly seam?: TestSeam | undefined;
+    /** The known_hosts files read instead of the user's, when theirs keep no key (US-1.2.1). */
+    readonly knownHostsFiles?: readonly string[] | undefined;
 }
 
 /** What the wrapper config needs. */
@@ -39,17 +42,14 @@ export interface WrapperConfigOptions {
 
 const UNQUOTABLE = /["\n\r\0]/;
 const MAX_PORT = 65_535;
-/** OpenSSH's default user known_hosts files, read after the test file in test builds. */
-const USER_KNOWN_HOSTS_FILES = ['~/.ssh/known_hosts', '~/.ssh/known_hosts2'] as const;
 
 /**
  * The ssh command line: the wrapper config, then every security option again with `-o`, so they take precedence
- * over the user's configuration (US-1.1.4, SEC-03, TECH_STACK §7).
+ * over the user's configuration (US-1.1.4, SEC-03, TECH_STACK §7), then the known_hosts files that replace the user's,
+ * if any.
  */
 export function sshArguments(options: SshArgumentOptions): string[] {
     const security = securityOptions(options.helpers).flatMap(([name, value]) => ['-o', `${name}=${value}`]);
-    const seam =
-        options.seam === undefined ? [] : ['-o', `UserKnownHostsFile=${knownHostsFiles(options.seam, quoteIfSpaced)}`];
     return [
         '-F',
         options.wrapper,
@@ -57,7 +57,7 @@ export function sshArguments(options: SshArgumentOptions): string[] {
         '-e',
         'none',
         ...security,
-        ...seam,
+        ...knownHostsArguments(options),
         ...targetArguments(options.target),
         options.command,
     ];
@@ -76,7 +76,7 @@ export function effectiveConfigArguments(wrapper: string, target: SshTarget): st
 export function wrapperConfig(options: WrapperConfigOptions): string {
     const block = securityOptions(options.helpers).map(([name, value]) => `    ${name} ${value}`);
     const { seam } = options;
-    const knownHosts = seam === undefined ? [] : [`    UserKnownHostsFile ${knownHostsFiles(seam, quote)}`];
+    const knownHosts = seam === undefined ? [] : [`    UserKnownHostsFile ${seamKnownHostsFiles(seam, quote)}`];
     const testConfig = seam === undefined ? [] : [`Include ${quote(seam.sshConfig)}`];
     return [
         'Host *',
@@ -103,6 +103,16 @@ export function sshEnvironment(
         SSH_ASKPASS_REQUIRE: 'force',
         TRC_SSH_NONCE: nonce,
     };
+}
+
+/** The test known_hosts file ahead of the user's in test builds (P-14), else the files replacing the user's. */
+function knownHostsArguments({ seam, knownHostsFiles }: SshArgumentOptions): string[] {
+    if (seam !== undefined) {
+        return ['-o', `UserKnownHostsFile=${seamKnownHostsFiles(seam, quoteIfSpaced)}`];
+    }
+    return knownHostsFiles === undefined
+        ? []
+        : ['-o', `UserKnownHostsFile=${knownHostsFiles.map(quoteIfSpaced).join(' ')}`];
 }
 
 function targetArguments({ destination, port }: SshTarget): string[] {
@@ -141,8 +151,8 @@ function quote(path: string): string {
     return `"${path}"`;
 }
 
-function knownHostsFiles(seam: TestSeam, quoted: (path: string) => string): string {
-    return [quoted(seam.knownHosts), ...USER_KNOWN_HOSTS_FILES].join(' ');
+function seamKnownHostsFiles(seam: TestSeam, quoted: (path: string) => string): string {
+    return [quoted(seam.knownHosts), ...DEFAULT_KNOWN_HOSTS_FILES].join(' ');
 }
 
 function quoteIfSpaced(path: string): string {

@@ -18,7 +18,12 @@ export interface EffectiveConfig {
     readonly proxyJump: string | undefined;
 }
 
+/** OpenSSH's default user known_hosts files. */
+export const DEFAULT_KNOWN_HOSTS_FILES: readonly string[] = ['~/.ssh/known_hosts', '~/.ssh/known_hosts2'];
+
 const VERSION_PATTERN = /OpenSSH_(?:for_Windows_)?(\d+)\.(\d+)/;
+/** What `UserKnownHostsFile` names when it keeps no key, as some generated configurations set. */
+const DISCARDING_FILES: ReadonlySet<string> = new Set(['/dev/null', 'none']);
 const MINIMUM: SshVersion = { major: 8, minor: 5 };
 const DEFAULT_PORT = 22;
 
@@ -31,6 +36,16 @@ export function parseSshVersion(text: string): SshVersion | undefined {
 /** Whether the client has `KnownHostsCommand` with the presented key, which the host-key flow needs (8.5+). */
 export function supportsKnownHostsCommand(version: SshVersion): boolean {
     return version.major > MINIMUM.major || (version.major === MINIMUM.major && version.minor >= MINIMUM.minor);
+}
+
+/**
+ * The known_hosts files the app reads instead of `files` when every one of them discards keys (`/dev/null`, `none`):
+ * OpenSSH's defaults, so a key the user accepts is kept and checked on every later connection (US-1.2.1, SEC-03),
+ * instead of being asked about again. `undefined` when ssh's own files keep keys.
+ */
+export function replacementKnownHostsFiles(files: readonly string[]): readonly string[] | undefined {
+    const discardsEveryKey = files.length > 0 && files.every((file) => DISCARDING_FILES.has(file));
+    return discardsEveryKey ? DEFAULT_KNOWN_HOSTS_FILES : undefined;
 }
 
 /** Parses `ssh -G` output. */

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parseEffectiveConfig, parseSshVersion, supportsKnownHostsCommand } from './client-checks';
+import {
+    DEFAULT_KNOWN_HOSTS_FILES,
+    parseEffectiveConfig,
+    parseSshVersion,
+    replacementKnownHostsFiles,
+    supportsKnownHostsCommand,
+} from './client-checks';
 
 describe('parseSshVersion', () => {
     it.each([
@@ -53,4 +59,20 @@ describe('parseEffectiveConfig', () => {
     it('reports a jump host', () => {
         expect(parseEffectiveConfig('hostname behind\nport 22\nproxyjump trc-jump\n').proxyJump).toBe('trc-jump');
     });
+});
+
+describe('replacementKnownHostsFiles (US-1.2.1)', () => {
+    it.each([[['/dev/null']], [['none']], [['/dev/null', 'none']]])(
+        "reads OpenSSH's defaults when %j keeps no key, as some generated configurations set",
+        (files) => {
+            expect(replacementKnownHostsFiles(files)).toEqual(DEFAULT_KNOWN_HOSTS_FILES);
+        },
+    );
+
+    it.each([[['~/.ssh/known_hosts']], [['/dev/null', '~/.ssh/generated_known_hosts']], [[]]])(
+        "keeps ssh's own files when %j keeps keys",
+        (files) => {
+            expect(replacementKnownHostsFiles(files)).toBeUndefined();
+        },
+    );
 });
