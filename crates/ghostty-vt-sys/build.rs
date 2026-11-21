@@ -17,7 +17,8 @@ fn main() {
     let library = cached_library(&cache, &version, zig_target);
     let out = PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR")).join("lib");
     std::fs::create_dir_all(&out).expect("create OUT_DIR/lib");
-    std::fs::copy(&library, out.join("libghostty-vt.a")).expect("copy libghostty-vt.a");
+    let (_, linked) = triple::static_library(zig_target);
+    std::fs::copy(&library, out.join(linked)).unwrap_or_else(|error| panic!("copy {linked}: {error}"));
     println!("cargo:rustc-link-search=native={}", out.display());
     println!("cargo:rustc-link-lib=static=ghostty-vt");
     println!("cargo:rerun-if-changed=build.rs");
@@ -48,12 +49,17 @@ fn cache_dir() -> PathBuf {
     if let Some(dir) = std::env::var_os("XDG_CACHE_HOME") {
         return PathBuf::from(dir).join("trc");
     }
-    PathBuf::from(std::env::var_os("HOME").expect("HOME is set")).join(".cache/trc")
+    // `home_dir` reads USERPROFILE on Windows, where HOME is usually unset, and matches Node's `os.homedir()`.
+    std::env::home_dir()
+        .expect("the home directory is known")
+        .join(".cache")
+        .join("trc")
 }
 
 fn cached_library(cache: &Path, version: &str, zig_target: &str) -> PathBuf {
     let built = cache.join("build").join(zig_target);
-    let library = built.join("lib/libghostty-vt.a");
+    let (installed, _) = triple::static_library(zig_target);
+    let library = built.join("lib").join(installed);
     if library.is_file() {
         return library;
     }
@@ -80,7 +86,7 @@ fn cached_library(cache: &Path, version: &str, zig_target: &str) -> PathBuf {
         .unwrap_or_else(|error| panic!("run {zig}: {error} (install Zig 0.17)"));
     assert!(status.success(), "zig build of libghostty-vt for {zig_target} failed");
     std::fs::create_dir_all(built.join("lib")).expect("create the build directory");
-    std::fs::rename(staging.join("prefix/lib/libghostty-vt.a"), &library).expect("install libghostty-vt.a");
+    std::fs::rename(staging.join("prefix/lib").join(installed), &library).expect("install the static library");
     std::fs::remove_dir_all(&staging).ok();
     library
 }

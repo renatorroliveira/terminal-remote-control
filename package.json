@@ -16,7 +16,7 @@
         "docs:guide": "node tools/user-docs/guide.ts",
         "notices": "node tools/notices/notices.ts",
         "notices:check": "node tools/notices/notices.ts --check",
-        "icons": "node tools/icons/render-icons.ts",
+        "icons:mac": "node tools/require-os/require-os.ts darwin icons:mac && node tools/icons/render-icons.ts",
         "release": "node tools/release/release.ts",
         "typecheck": "tsc -p tools --pretty false && tsc -p crates --pretty false && pnpm -r --parallel run typecheck",
         "test": "vitest run --project node-unit --project browser",
@@ -27,14 +27,14 @@
         "test:e2e": "pnpm --filter @trc/desktop test:e2e",
         "test:nfr": "pnpm --filter @trc/desktop build:test && vitest run --project nfr; pnpm --filter @trc/desktop exec playwright test -c playwright.nfr.config.ts",
         "test:soak": "pnpm --filter @trc/desktop build:test && vitest run --project soak && pnpm --filter @trc/desktop exec playwright test -c playwright.soak.config.ts",
-        "test:ax": "swift build -c release --package-path tools/ax-probe && pnpm --filter @trc/desktop build:test && vitest run --project ax",
+        "test:ax:mac": "node tools/require-os/require-os.ts darwin test:ax:mac && swift build -c release --package-path tools/ax-probe && pnpm --filter @trc/desktop build:test && vitest run --project ax",
         "gen": "cargo test --locked -p trc-protocol --quiet export_bindings",
-        "rust:check": "cargo fmt --all --check && cargo clippy --workspace --all-targets --quiet -- -D warnings && cargo nextest run --workspace --cargo-quiet",
+        "rust:check": "node tools/rust-check/rust-check.ts",
         "build": "pnpm --filter @trc/desktop build",
         "dist": "pnpm --filter @trc/desktop dist",
-        "prepare": "sh tools/git-hooks/install.sh",
+        "prepare": "node tools/git-hooks/install.ts",
         "postinstall": "node tools/dev-electron/brand-electron.ts",
-        "gen:check": "pnpm gen && sh -c 'test -z \"$(git status --porcelain -- packages/protocol/src/generated protocol/fixtures)\" || { echo \"generated protocol files differ from the committed ones; commit them\" >&2; git status --short -- packages/protocol/src/generated protocol/fixtures >&2; exit 1; }'"
+        "gen:check": "pnpm gen && node tools/gen-check/gen-check.ts"
     },
     "devDependencies": {
         "@biomejs/biome": "2.6.7",

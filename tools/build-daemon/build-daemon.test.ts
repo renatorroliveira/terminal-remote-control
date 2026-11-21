@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCommands, DAEMON_BUILDS, manifestFor } from './build-daemon.ts';
+import { buildCommands, buildsFor, builtBinary, DAEMON_BUILDS, manifestFor } from './build-daemon.ts';
 
 describe('build-daemon', () => {
     it('builds both Linux musl targets and one universal macOS binary', () => {
@@ -8,6 +8,12 @@ describe('build-daemon', () => {
             { platform: 'linux-arm64', triples: ['aarch64-unknown-linux-musl'] },
             { platform: 'darwin-universal', triples: ['aarch64-apple-darwin', 'x86_64-apple-darwin'] },
         ]);
+    });
+
+    it('builds every daemon on macOS and all but the macOS one elsewhere', () => {
+        expect(buildsFor('darwin')).toEqual(DAEMON_BUILDS);
+        expect(buildsFor('win32').map((build) => build.platform)).toEqual(['linux-x64', 'linux-arm64']);
+        expect(buildsFor('linux').map((build) => build.platform)).toEqual(['linux-x64', 'linux-arm64']);
     });
 
     it('cross-builds a Linux daemon with cargo-zigbuild and copies it', () => {
@@ -24,8 +30,8 @@ describe('build-daemon', () => {
                 '-p',
                 'trcd',
             ],
-            ['cp', 'target/x86_64-unknown-linux-musl/release/trcd', '/out/linux-x64/trcd'],
         ]);
+        expect(linux && builtBinary(linux)).toBe('target/x86_64-unknown-linux-musl/release/trcd');
     });
 
     it('joins both Apple slices with lipo and signs the result ad hoc (US-4.5.1)', () => {
@@ -43,6 +49,7 @@ describe('build-daemon', () => {
             ],
             ['codesign', '--force', '--sign', '-', '/out/darwin-universal/trcd'],
         ]);
+        expect(mac && builtBinary(mac)).toBeUndefined();
     });
 
     it('writes the manifest the app reads', () => {

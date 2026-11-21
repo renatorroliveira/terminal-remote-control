@@ -11,8 +11,8 @@
         "dev": "electron-vite dev",
         "build": "electron-vite build",
         "typecheck": "tsc -p tsconfig.main.json --pretty false && tsc -p tsconfig.preload.json --pretty false && tsc -p tsconfig.connection-host.json --pretty false && tsc -p tsconfig.renderer.json --pretty false && tsc -p tsconfig.test.json --pretty false",
-        "build:test": "TRC_TEST_BUILD=1 electron-vite build",
-        "dist": "electron-vite build && electron-builder --mac --publish never",
+        "build:test": "electron-vite build --mode test",
+        "dist": "electron-vite build && electron-builder --publish never",
         "test:e2e": "pnpm build:test && playwright test",
         "i18n": "node ../../tools/i18n/i18n.ts",
         "i18n:check": "node ../../tools/i18n/i18n.ts --check"

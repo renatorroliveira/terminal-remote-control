@@ -113,11 +113,15 @@ the app does today.
 
 ### Prerequisites
 
-- macOS on Apple silicon (E1 builds the macOS app and Linux daemons).
+- macOS on Apple silicon, or Windows 11 x64 (E6). On Windows, `pnpm check`, `pnpm build`, the dev app, `pnpm build:daemon`
+  (Linux daemons only) and `pnpm dist` run; the live suites (`test:integration`, `test:e2e`, `test:nfr`, `test:soak`) and
+  the `*:mac` scripts still need a Mac.
 - Node.js 24 and pnpm 12 (`corepack enable pnpm`).
 - Rust through rustup; `rust-toolchain.toml` pins the version, the musl targets and both Apple targets.
 - `cargo install --locked cargo-nextest cargo-zigbuild`, Zig 0.17 and minisign (`brew install zig minisign`), then
   `tools/fetch-libghostty.sh` once to download and verify libghostty-vt.
+- On Windows: Git for Windows, whose Git Bash runs `tools/fetch-libghostty.sh`, and Zig and minisign from winget
+  (`winget install zig.zig --version 0.17.1`, `winget install jedisct1.minisign --version 0.12`).
 - For the Linux test hosts: colima and the docker CLI (`brew install colima docker`).
 - For the accessibility probe: Xcode command-line tools (Swift), and the Accessibility permission for your terminal.
 
@@ -130,15 +134,15 @@ the app does today.
 | `pnpm --filter @trc/desktop i18n` | Extracts and precompiles the UI messages after a string changes                                                                            |
 | `pnpm test`                       | Vitest unit tests (Node) and component tests (Chromium, with axe)                                                                          |
 | `pnpm test:integration`           | Tests against the Linux test hosts (start them with `tools/test-hosts/up.sh`), and the macOS one if `tools/test-hosts/macos/up.sh` runs it |
-| `pnpm build:daemon`               | Builds the Linux daemons and the universal macOS one into `apps/desktop/resources/daemon`, with their manifest (macOS only)                |
+| `pnpm build:daemon`               | Builds the Linux daemons, and on macOS the universal macOS one, into `apps/desktop/resources/daemon`, with their manifest                  |
 | `pnpm test:daemon`                | The daemon's musl tests in Ubuntu, Alpine and Rocky containers (part of the above)                                                         |
 | `pnpm test:e2e`                   | Builds a test build of the app and runs the Playwright Electron tests                                                                      |
 | `pnpm test:nfr`                   | Measures the NFR targets against the test hosts; see `docs/verification/E5-nfr.md`                                                         |
 | `pnpm test:soak`                  | The NFR-11 soak against the test hosts: 1,000 cycles per scenario (50 for app launches, 100 for host restarts), for hours                  |
-| `pnpm test:ax`                    | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests                                                     |
+| `pnpm test:ax:mac`                | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests (macOS)                                             |
 | `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                                                                               |
-| `pnpm icons`                      | Renders the app icons in `apps/desktop/resources/icons` from `tools/icons`                                                                 |
-| `pnpm dist`                       | Builds the ad-hoc signed arm64 and x64 dmg and zip into `apps/desktop/dist`                                                                |
+| `pnpm icons:mac`                  | Renders the app icons in `apps/desktop/resources/icons` from `tools/icons` (macOS, for `iconutil`)                                         |
+| `pnpm dist`                       | Builds for the OS it runs on into `apps/desktop/dist`: ad-hoc signed arm64 and x64 dmg and zip on macOS, an unsigned x64 zip on Windows    |
 | `pnpm verify:artifact <app>`      | Checks a packaged app before it ships (launches it in the background)                                                                      |
 | `pnpm release <level>`            | Starts the release workflow on GitHub; see below                                                                                           |
 | `cargo nextest run`               | Rust tests                                                                                                                                 |

@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import type { SessionCache } from '../shared/session-cache';
 import { SESSION_CACHE_SCHEMA, SessionCacheFile } from './session-cache';
 
+/** Windows has no POSIX modes; the user profile's ACL keeps these files private there (SEC-02, E6). */
+const POSIX_MODES = process.platform !== 'win32';
+
 const HOST = 'host-0123456789abcdef';
 const cache: SessionCache = {
     [HOST]: [
@@ -22,7 +25,9 @@ describe('SessionCacheFile (P-30, SEC-05.1)', () => {
         const dir = home();
         await new SessionCacheFile(dir).write(cache);
         const file = join(dir, 'sessions.json');
-        expect(statSync(file).mode & 0o777).toBe(0o600);
+        if (POSIX_MODES) {
+            expect(statSync(file).mode & 0o777).toBe(0o600);
+        }
         expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ hosts: cache });
         expect(await new SessionCacheFile(dir).read()).toEqual(cache);
     });

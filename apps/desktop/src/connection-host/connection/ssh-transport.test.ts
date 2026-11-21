@@ -31,6 +31,9 @@ echo "Host key verification failed." >&2
 exit 255
 `;
 
+/** `FAKE_SSH` is an sh script, which Windows cannot run; the Windows app's ssh arrives with US-6.1.2 (E6). */
+const SH_SSH = process.platform !== 'win32';
+
 const TARGET = { destination: 'vm-1', installRoot: '~/.trc' } as const;
 
 function runtime(home: string, ssh = '/usr/bin/ssh'): ConnectionRuntime {
@@ -73,30 +76,33 @@ describe('SshTransport (US-1.2.2)', () => {
         expect(existsSync(join(home, '.ssh/known_hosts'))).toBe(false);
     });
 
-    it("keeps an accepted key in OpenSSH's default file, and has ssh read it, when known_hosts is /dev/null (US-1.2.1)", async () => {
-        const home = scratchHome();
-        const transport = new SshTransport(runtime(home, fakeSsh(home)), TARGET, () => {});
-        const channel = await transport.open();
-        if ('failure' in channel) {
-            throw new Error(channel.failure.details);
-        }
-        const closed = await transport.closed(channel);
-        if (closed.kind !== 'host-key-unknown') {
-            throw new Error(`expected an unknown key, got ${closed.kind}`);
-        }
-        expect(readFileSync(join(home, 'args'), 'utf8').split('\n')).toContain(
-            'UserKnownHostsFile=~/.ssh/known_hosts ~/.ssh/known_hosts2',
-        );
-        expect(await transport.acceptHostKey(closed.key)).toBe('~/.ssh/known_hosts');
-        expect(appendKnownHost).toHaveBeenCalledWith(
-            join(homedir(), '.ssh/known_hosts'),
-            `vm-1 ssh-ed25519 ${HOST_KEY}`,
-        );
-        await transport.dispose();
-    });
+    it.runIf(SH_SSH)(
+        "keeps an accepted key in OpenSSH's default file, and has ssh read it, when known_hosts is /dev/null (US-1.2.1)",
+        async () => {
+            const home = scratchHome();
+            const transport = new SshTransport(runtime(home, fakeSsh(home)), TARGET, () => {});
+            const channel = await transport.open();
+            if ('failure' in channel) {
+                throw new Error(channel.failure.details);
+            }
+            const closed = await transport.closed(channel);
+            if (closed.kind !== 'host-key-unknown') {
+                throw new Error(`expected an unknown key, got ${closed.kind}`);
+            }
+            expect(readFileSync(join(home, 'args'), 'utf8').split('\n')).toContain(
+                'UserKnownHostsFile=~/.ssh/known_hosts ~/.ssh/known_hosts2',
+            );
+            expect(await transport.acceptHostKey(closed.key)).toBe('~/.ssh/known_hosts');
+            expect(appendKnownHost).toHaveBeenCalledWith(
+                join(homedir(), '.ssh/known_hosts'),
+                `vm-1 ssh-ed25519 ${HOST_KEY}`,
+            );
+            await transport.dispose();
+        },
+    );
 });
 
-describe('HostConnection host-key acceptance (US-1.2.1)', () => {
+describe.runIf(SH_SSH)('HostConnection host-key acceptance (US-1.2.1)', () => {
     it('fails, naming the file, instead of asking again when ssh still does not know the accepted key', async () => {
         const home = scratchHome();
         const states: ConnectionState[] = [];

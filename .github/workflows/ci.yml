@@ -46,6 +46,31 @@ jobs:
             - run: pnpm test
             - run: pnpm build
 
+    windows:
+        # The app's gate steps whose result can differ on Windows (line ends, cmd.exe scripts, paths), the build and
+        # the unsigned zip (D-59, D-60, D-63). Formatting, lint, types and document IDs are OS-independent: `app` runs them.
+        # Every push to main runs it; the release commit skips it, since no Windows build ships before E6.
+        if: ${{ !inputs.release-commit }}
+        name: app (Windows build and unit tests)
+        runs-on: windows-2025
+        timeout-minutes: 30
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - if: inputs.release-commit
+              uses: ./.github/actions/release-commit
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: 24
+            - run: corepack enable pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm exec playwright install chromium-headless-shell
+            - run: pnpm format:check
+            - run: pnpm --filter @trc/desktop i18n:check
+            - run: pnpm test
+            - run: pnpm dist
+
     daemon:
         name: daemon (build and unit tests, ${{ matrix.runner }})
         strategy:

@@ -31,7 +31,8 @@ describe('localEnvironment (P-59)', () => {
     });
 });
 
-describe('LocalTransport (US-4.2.4, P-59)', () => {
+// This computer's transport runs /bin/sh on macOS; Windows gets its own with the local Windows daemon (US-6.2, E6).
+describe.skipIf(process.platform === 'win32')('LocalTransport (US-4.2.4, P-59)', () => {
     it('runs what it is sent in /bin/sh, in the home folder, with the local environment', async () => {
         const home = realpathSync(mkdtempSync(join(tmpdir(), 'trc-local-')));
         const transport = new LocalTransport({ env: ENV, home });

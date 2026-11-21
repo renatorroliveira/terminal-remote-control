@@ -47,7 +47,10 @@ export class JsonStore<T> {
             await handle.close();
         }
         await rename(temporary, this.#file);
-        const directory = await open(dir, 'r');
-        await directory.sync().finally(() => directory.close());
+        // Windows refuses to flush a directory handle (EPERM); NTFS's metadata journal keeps the rename consistent.
+        if (process.platform !== 'win32') {
+            const directory = await open(dir, 'r');
+            await directory.sync().finally(() => directory.close());
+        }
     }
 }

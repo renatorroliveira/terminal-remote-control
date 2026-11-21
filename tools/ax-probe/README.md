@@ -1,7 +1,7 @@
 # ax-probe
 
 A small Swift command-line tool that reads the macOS accessibility (AX) attributes of an app's focused element and
-prints them as JSON. `pnpm test:ax` uses it to check what the operating system sees of the terminal's Accessible
+prints them as JSON. `pnpm test:ax:mac` uses it to check what the operating system sees of the terminal's Accessible
 Text Surface: role, name, selected text and ranges, text-marker ranges and caret bounds (PRD A11Y-04, A11Y-06).
 
 ```sh

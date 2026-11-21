@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../shared/settings';
 import { migrateLegacyState } from './legacy-state';
 
+/** Windows has no POSIX modes; the user profile's ACL keeps these files private there (SEC-02, E6). */
+const POSIX_MODES = process.platform !== 'win32';
+
 function folders() {
     const root = mkdtempSync(join(tmpdir(), 'trc-migrate-'));
     const appData = join(root, 'app-data');
@@ -37,7 +40,9 @@ describe('migrateLegacyState: settings and hosts from the old @trc/desktop profi
             },
         });
         expect(JSON.parse(readFileSync(join(home, 'hosts.json'), 'utf8'))).toEqual(HOSTS);
-        expect(statSync(join(home, 'hosts.json')).mode & 0o777).toBe(0o600);
+        if (POSIX_MODES) {
+            expect(statSync(join(home, 'hosts.json')).mode & 0o777).toBe(0o600);
+        }
         expect(existsSync(join(userData, 'hosts.json'))).toBe(true);
     });
 

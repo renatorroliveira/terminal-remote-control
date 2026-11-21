@@ -14,6 +14,8 @@ interface Harness {
     readonly sizes: { cols: number; rows: number }[];
 }
 
+/** The line break xterm.js puts between selected rows: CRLF on Windows, as its clipboard expects. */
+const EOL = navigator.platform.startsWith('Win') ? '\r\n' : '\n';
 const views: TerminalView[] = [];
 
 afterEach(() => {
@@ -636,7 +638,7 @@ describe('TerminalView: paste and copy (US-1.12.1, US-1.12.2, A11Y-04.7)', () =>
         const event = new ClipboardEvent('copy', { bubbles: true, cancelable: true, clipboardData: data });
         view.surface.dispatchEvent(event);
         expect(event.defaultPrevented).toBe(true);
-        expect(data.getData('text/plain')).toBe(`${long}\nnext`);
+        expect(data.getData('text/plain')).toBe(`${long}${EOL}next`);
     });
 });
 
@@ -662,7 +664,7 @@ describe('TerminalView: copy and cut (US-1.12.1, A11Y-04.7)', () => {
         view.surface.dispatchEvent(
             new ClipboardEvent('copy', { bubbles: true, cancelable: true, clipboardData: data }),
         );
-        expect(data.getData('text/plain').split('\n').slice(0, lines)).toEqual(
+        expect(data.getData('text/plain').split(EOL).slice(0, lines)).toEqual(
             Array.from({ length: lines }, (_, index) => String(index)),
         );
         expect(notices).toEqual([{ kind: 'copy-capped', lines: expect.any(Number) }]);

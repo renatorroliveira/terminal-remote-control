@@ -11,6 +11,17 @@ pub fn zig_target(rust_target: &str) -> Option<&'static str> {
         "aarch64-unknown-linux-gnu" => Some("aarch64-linux-gnu"),
         "aarch64-apple-darwin" => Some("aarch64-macos.13.0"),
         "x86_64-apple-darwin" => Some("x86_64-macos.13.0"),
+        "x86_64-pc-windows-msvc" => Some("x86_64-windows-msvc"),
         _ => None,
+    }
+}
+
+/// The static library's file name as the Zig build installs it under `lib/`, and as rustc's
+/// `static=ghostty-vt` looks for it: MSVC names it `.lib`, and the build calls its static one `ghostty-vt-static`.
+pub fn static_library(zig_target: &str) -> (&'static str, &'static str) {
+    if zig_target.ends_with("-msvc") {
+        ("ghostty-vt-static.lib", "ghostty-vt.lib")
+    } else {
+        ("libghostty-vt.a", "libghostty-vt.a")
     }
 }

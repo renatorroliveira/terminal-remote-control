@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseSshConfig, sshConfigFilesFor, sshConfigHosts } from './ssh-config-hosts';
 
@@ -51,10 +51,10 @@ describe('sshConfigHosts: every Host the user can type, from ~/.ssh/config and i
 
 describe('sshConfigFilesFor: which configuration files to read', () => {
     it('reads ~/.ssh/config, after the P-14 seam file in a test build only', () => {
-        expect(sshConfigFilesFor({ testConfig: '/tmp/seam/ssh_config', home: '/home/me' })).toEqual([
-            '/tmp/seam/ssh_config',
-            '/home/me/.ssh/config',
-        ]);
-        expect(sshConfigFilesFor({ testConfig: undefined, home: '/home/me' })).toEqual(['/home/me/.ssh/config']);
+        const home = resolve('/home/me');
+        const seam = resolve('/tmp/seam/ssh_config');
+        const user = join(home, '.ssh', 'config');
+        expect(sshConfigFilesFor({ testConfig: seam, home })).toEqual([seam, user]);
+        expect(sshConfigFilesFor({ testConfig: undefined, home })).toEqual([user]);
     });
 });

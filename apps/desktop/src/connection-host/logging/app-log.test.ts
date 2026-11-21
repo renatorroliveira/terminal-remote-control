@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createAppLogger, Sensitive } from './app-log';
 
+/** Windows has no POSIX modes; the user profile's ACL keeps these files private there (SEC-02, E6). */
+const POSIX_MODES = process.platform !== 'win32';
+
 describe('createAppLogger (SEC-08)', () => {
     it('writes JSON lines to a 0600 file in a 0700 directory', () => {
         const dir = join(mkdtempSync(join(tmpdir(), 'trc-log-')), 'logs');
@@ -19,8 +22,10 @@ describe('createAppLogger (SEC-08)', () => {
             { time: '2026-11-12T10:00:00.000Z', level: 'info', event: 'connecting', hostId: 'h1', step: 'checking' },
             { time: '2026-11-12T10:00:00.000Z', level: 'warn', event: 'failed', kind: 'dns' },
         ]);
-        expect(statSync(file).mode & 0o777).toBe(0o600);
-        expect(statSync(dir).mode & 0o777).toBe(0o700);
+        if (POSIX_MODES) {
+            expect(statSync(file).mode & 0o777).toBe(0o600);
+            expect(statSync(dir).mode & 0o777).toBe(0o700);
+        }
     });
 
     it('redacts sensitive values', () => {

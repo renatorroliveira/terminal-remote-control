@@ -3,10 +3,11 @@
  * `src/renderer/i18n/compiled/en.json` (NFR-13). With `--check`, it compares fresh output with the committed files
  * instead and fails when they differ. Run through `pnpm --filter @trc/desktop i18n` or `i18n:check`.
  */
-import { execFileSync } from 'node:child_process';
+import { type ExecFileSyncOptions, execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const SOURCES = 'src/renderer/**/*.{ts,tsx}';
 const TESTS = 'src/renderer/**/*.test.{ts,tsx}';
@@ -23,13 +24,25 @@ export function compileArguments(inFile: string, outFile: string): string[] {
     return ['compile', inFile, '--ast', '--out-file', outFile];
 }
 
+/**
+ * The formatjs CLI's script, from its package's `bin`. It runs through Node, because on Windows
+ * `node_modules/.bin/formatjs` is a shell shim that `execFileSync` cannot start.
+ */
+function formatjsScript(desktop: string): string {
+    const manifest = createRequire(join(desktop, 'package.json')).resolve('@formatjs/cli/package.json');
+    const { bin } = JSON.parse(readFileSync(manifest, 'utf8')) as { bin: Readonly<Record<string, string>> };
+    const script = bin['formatjs'];
+    if (script === undefined) {
+        throw new Error('@formatjs/cli names no formatjs bin');
+    }
+    return join(dirname(manifest), script);
+}
+
 function generate(desktop: string, extracted: string, compiled: string): void {
-    const formatjs = join(desktop, 'node_modules/.bin/formatjs');
-    execFileSync(formatjs, extractArguments(extracted), { cwd: desktop, stdio: ['ignore', 'inherit', 'inherit'] });
-    execFileSync(formatjs, compileArguments(extracted, compiled), {
-        cwd: desktop,
-        stdio: ['ignore', 'inherit', 'inherit'],
-    });
+    const formatjs = formatjsScript(desktop);
+    const options: ExecFileSyncOptions = { cwd: desktop, stdio: ['ignore', 'inherit', 'inherit'] };
+    execFileSync(process.execPath, [formatjs, ...extractArguments(extracted)], options);
+    execFileSync(process.execPath, [formatjs, ...compileArguments(extracted, compiled)], options);
 }
 
 function same(left: string, right: string): boolean {

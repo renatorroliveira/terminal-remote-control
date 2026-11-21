@@ -5,6 +5,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { appendKnownHost, fingerprintOf, knownHostsLine } from './known-hosts';
 
+/** Windows has no POSIX modes; the user profile's ACL keeps these files private there (SEC-02, E6). */
+const POSIX_MODES = process.platform !== 'win32';
+
 const presented = {
     host: '[127.0.0.1]:2221',
     type: 'ssh-ed25519',
@@ -37,8 +40,10 @@ describe('appendKnownHost', () => {
         const file = join(dir, 'known_hosts');
         await appendKnownHost(file, 'h ssh-ed25519 AAAA');
         expect(readFileSync(file, 'utf8')).toBe('h ssh-ed25519 AAAA\n');
-        expect(statSync(file).mode & 0o777).toBe(0o600);
-        expect(statSync(dir).mode & 0o777).toBe(0o700);
+        if (POSIX_MODES) {
+            expect(statSync(file).mode & 0o777).toBe(0o600);
+            expect(statSync(dir).mode & 0o777).toBe(0o700);
+        }
     });
 
     it('starts a new line when the file does not end with one', async () => {

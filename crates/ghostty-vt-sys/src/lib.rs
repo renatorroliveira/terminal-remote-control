@@ -46,7 +46,23 @@ mod tests {
             triple::zig_target("aarch64-unknown-linux-gnu"),
             Some("aarch64-linux-gnu")
         );
+        assert_eq!(
+            triple::zig_target("x86_64-pc-windows-msvc"),
+            Some("x86_64-windows-msvc")
+        );
         assert_eq!(triple::zig_target("riscv64gc-unknown-linux-gnu"), None);
+    }
+
+    #[test]
+    fn names_the_static_library_per_toolchain() {
+        assert_eq!(
+            triple::static_library("x86_64-linux-musl"),
+            ("libghostty-vt.a", "libghostty-vt.a")
+        );
+        assert_eq!(
+            triple::static_library("x86_64-windows-msvc"),
+            ("ghostty-vt-static.lib", "ghostty-vt.lib")
+        );
     }
 
     #[test]

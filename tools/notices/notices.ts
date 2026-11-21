@@ -50,7 +50,7 @@ export function noticesText(): string {
 }
 
 function npm(): readonly ShippedPackage[] {
-    return npmPackages(capture('pnpm', ['licenses', 'list', '--prod', '--json'], DESKTOP), (folder) => {
+    return npmPackages(capturePnpm(['licenses', 'list', '--prod', '--json'], DESKTOP), (folder) => {
         const manifest = join(folder, 'package.json');
         return existsSync(manifest)
             ? (JSON.parse(readFileSync(manifest, 'utf8')) as { version?: string }).version
@@ -179,6 +179,15 @@ function licenseTexts(folder: string): readonly string[] {
 
 function capture(command: string, args: readonly string[], cwd: string): string {
     return execFileSync(command, args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+}
+
+/**
+ * Runs the pnpm that runs this script (`npm_execpath`), its JavaScript entry point through Node, because on Windows
+ * `pnpm` on the PATH is a `.cmd` or `.ps1` shim that `execFileSync` cannot start without a shell.
+ */
+function capturePnpm(args: readonly string[], cwd: string): string {
+    const pnpm = process.env['npm_execpath'] ?? 'pnpm';
+    return /\.[cm]?js$/.test(pnpm) ? capture(process.execPath, [pnpm, ...args], cwd) : capture(pnpm, args, cwd);
 }
 
 if (import.meta.main) {

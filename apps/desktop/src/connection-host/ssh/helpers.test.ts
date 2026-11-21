@@ -3,12 +3,14 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const bin = resolve(import.meta.dirname, '../../../resources/bin');
+/** The helpers are sh scripts the system ssh runs; Windows OpenSSH needs its own (US-6.1.2, E6). */
+const SH_HELPERS = process.platform !== 'win32';
 
 function run(helper: string, args: string[], env: Record<string, string>) {
     return spawnSync(join(bin, helper), args, { env: { PATH: '/usr/bin:/bin', ...env }, encoding: 'utf8' });
 }
 
-describe('known-hosts helper (US-1.2)', () => {
+describe.runIf(SH_HELPERS)('known-hosts helper (US-1.2)', () => {
     it('reports the presented key behind the nonce and returns no keys', () => {
         const result = run('known-hosts', ['ADDRESS', '[h]:22', 'ssh-ed25519', 'AAAA', 'SHA256:x'], {
             TRC_SSH_NONCE: 'n1',
@@ -24,7 +26,7 @@ describe('known-hosts helper (US-1.2)', () => {
     });
 });
 
-describe('askpass helper (US-1.1.3, US-1.3.2)', () => {
+describe.runIf(SH_HELPERS)('askpass helper (US-1.1.3, US-1.3.2)', () => {
     it('relays a notice such as a security-key touch request', () => {
         const result = run('askpass', ['Confirm user presence for key ED25519-SK'], {
             TRC_SSH_NONCE: 'n2',

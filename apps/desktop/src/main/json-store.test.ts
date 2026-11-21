@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { JsonStore } from './json-store';
 
+/** Windows has no POSIX modes; the user profile's ACL keeps these files private there (SEC-02, E6). */
+const POSIX_MODES = process.platform !== 'win32';
+
 const schema = z.strictObject({ width: z.number().int().min(0), collapsed: z.boolean() });
 const defaults = { width: 280, collapsed: false };
 
@@ -22,8 +25,10 @@ describe('JsonStore (P-18)', () => {
         const store = new JsonStore(file, schema, defaults);
         await store.write({ width: 320, collapsed: true });
         expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ width: 320, collapsed: true });
-        expect(statSync(file).mode & 0o777).toBe(0o600);
-        expect(statSync(join(file, '..')).mode & 0o777).toBe(0o700);
+        if (POSIX_MODES) {
+            expect(statSync(file).mode & 0o777).toBe(0o600);
+            expect(statSync(join(file, '..')).mode & 0o777).toBe(0o700);
+        }
         expect(await new JsonStore(file, schema, defaults).read()).toEqual({ width: 320, collapsed: true });
     });
 

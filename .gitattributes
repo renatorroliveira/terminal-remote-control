@@ -1,0 +1,14 @@
+# Every text file is LF in the index and in every checkout, whatever core.autocrlf says, so a Windows clone keeps
+# the LF that Prettier checks and that remote hosts' sh needs in resources/bin/bootstrap.sh (E6).
+* text=auto eol=lf
+
+# Byte-exact captures: terminal output with its CRs (trc-vt corpus), captured ssh output, protocol frames.
+*.vt -text
+*.snapshot -text
+docs/spikes/s4/*.txt -text
+*.bin -text
+
+*.icns binary
+*.ico binary
+*.png binary
+*.ttf binary

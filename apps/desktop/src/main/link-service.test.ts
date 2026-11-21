@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LinkService } from './link-service';
 
+/** Windows has no POSIX modes; the user profile's ACL keeps these files private there (SEC-02, E6). */
+const POSIX_MODES = process.platform !== 'win32';
+
 function service(contents?: string) {
     const home = mkdtempSync(join(tmpdir(), 'trc-links-'));
     if (contents !== undefined) {
@@ -32,7 +35,9 @@ describe('LinkService: opening links from the terminal (US-1.12.3, US-1.12.4, SE
         const { home, links, opened } = service();
         await links.open('https://google.com/a', true);
         expect(JSON.parse(readFileSync(join(home, 'accept_urls.json'), 'utf8'))).toEqual(['https://google.com']);
-        expect(statSync(join(home, 'accept_urls.json')).mode & 0o777).toBe(0o600);
+        if (POSIX_MODES) {
+            expect(statSync(join(home, 'accept_urls.json')).mode & 0o777).toBe(0o600);
+        }
         expect((await links.check('https://google.com/b'))?.trusted).toBe(true);
         expect((await links.check('https://google.com.evil.example/b'))?.trusted).toBe(false);
         await links.open('https://google.com/b', true);

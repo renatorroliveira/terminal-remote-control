@@ -54,22 +54,23 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
   3.6 hours); each scenario file can run alone with
   `vitest run --project soak <file>`, and its sessions are reached through
   `docker exec` as well as ssh (`DOCKER_CONTEXT`, `colima-trc` by default).
-- End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax` (needs the
+- End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax:mac` (needs the
   macOS Accessibility permission). Both build a test build
-  (`pnpm --filter @trc/desktop build:test`, `TRC_TEST_BUILD=1`), which compiles
+  (`pnpm --filter @trc/desktop build:test`, `electron-vite build --mode test`), which compiles
   in the P-14 seam (`TRC_TEST_*`); every test launch gets a scratch `TRC_HOME`; their live-terminal tests skip
   unless the test hosts are up and the daemons are built. Only launches that set
   `TRC_TEST_LOCAL_HOME` (a scratch home for its LaunchAgent plist) get This
   computer, whose daemon installs in their scratch `TRC_HOME` (P-58). Test launches open
   unseen (`TRC_TEST_BACKGROUND=1`, D-27): transparent, click-through, in the
-  bottom-right corner, never focused. `pnpm test:ax` must take focus, so warn
+  bottom-right corner, never focused. `pnpm test:ax:mac` must take focus, so warn
   the owner before running it.
 - App state lives in the TRC home, `~/.trc` (`config.json`, `hosts.json`, `sessions.json`), or
   `TRC_HOME` when set; hosts install the daemon under `~/.trc` unless the
   user moves a host's install location (US-1.4.3).
-- Icons: `pnpm icons` renders `apps/desktop/resources/icons` from
-  `tools/icons`. Packaging: `pnpm dist` (ad-hoc signed arm64 and x64 dmg and
-  zip in `apps/desktop/dist`).
+- Icons: `pnpm icons:mac` (macOS, for `iconutil`) renders `apps/desktop/resources/icons` from
+  `tools/icons`. Packaging: `pnpm dist` builds for the OS it runs on, in
+  `apps/desktop/dist`: ad-hoc signed arm64 and x64 dmg and zip on macOS, an
+  unsigned x64 zip on Windows.
 - Releases run entirely in GitHub Actions (`.github/workflows/release.yml`,
   P-21, D-42): `pnpm release <major|minor|patch> [--dry-run]` starts it with
   `gh` and watches it; it commits the version as `github-actions[bot]`, builds,
@@ -110,6 +111,24 @@ daemon (E1–E3), macOS daemon for local sessions and macOS hosts (E4), Windows
 desktop (E6), Linux desktop (E7). Don't build ahead for later platforms, and
 don't make choices that block them (for example, never depend on
 `ControlMaster`, which Windows OpenSSH lacks).
+
+The default scripts also run on Windows (D-59 to D-64); keep it that way:
+
+- `package.json` scripts run under cmd.exe there: no `VAR=x cmd`, `sh` or
+  `$(...)`; put any per-OS step in a `tools/*.ts` script (D-60).
+- Never `execFileSync` a `node_modules/.bin` shim or bare `pnpm`: on Windows
+  they are `.cmd` files; run the package's JS entry with `process.execPath`.
+- `.gitattributes` forces LF; a new byte-exact fixture with CRs needs a
+  `-text` line there (D-59).
+- Tests build paths with `resolve('/x')` and `join`, never `/`-joined
+  literals, and gate POSIX file-mode assertions off Windows.
+- xterm.js joins selected rows with CRLF on Windows, so selection tests compare
+  with the platform line break.
+- `trcd` does not compile for Windows until US-6.2; there `pnpm rust:check`
+  lints it with clippy for Linux musl instead (D-62).
+- Electron 45 downloads its binary on the first `require('electron')`; the
+  postinstall does that on every OS, or `electron-vite dev` fails with
+  "Electron uninstall".
 
 ## What the product is
 

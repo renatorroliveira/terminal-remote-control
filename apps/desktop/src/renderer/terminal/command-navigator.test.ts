@@ -8,6 +8,8 @@ import { ReviewField } from './review-field';
 const A = '\u001b]133;A\u0007';
 const C = '\u001b]133;C\u0007';
 const D = (code: number): string => `\u001b]133;D;${code}\u0007`;
+/** The line break xterm.js puts between selected rows: CRLF on Windows, as its clipboard expects. */
+const EOL = navigator.platform.startsWith('Win') ? '\r\n' : '\n';
 
 const cleanups: (() => void)[] = [];
 
@@ -129,7 +131,7 @@ describe('CommandNavigator: the last command’s output (US-5.2.1)', () => {
         terminal.open(screen);
         await write(terminal, `${command('make test', ['one', 'two'], 2)}${A}$ `);
         expect(navigator.selectLastOutput()).toMatchObject({ kind: 'output', lines: 2 });
-        expect(terminal.getSelection()).toBe('one\ntwo');
+        expect(terminal.getSelection()).toBe(`one${EOL}two`);
         review.open('Review');
         navigator.selectLastOutput();
         const { value, selectionStart, selectionEnd } = review.element;

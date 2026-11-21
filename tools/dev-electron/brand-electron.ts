@@ -36,13 +36,21 @@ export function brandingSteps(current: BundleBranding, productName: string): rea
 
 /**
  * Brands the development Electron.app that `electron .`, the e2e tests and the test build run (D-35). It runs after
- * `pnpm install`, only on macOS, and leaves release builds alone: electron-builder names and signs those itself.
+ * `pnpm install` and leaves release builds alone: electron-builder names and signs those itself. On the desktop OSes
+ * the app runs on so far, macOS and Windows (E6), it first resolves the development Electron, which downloads its
+ * binary: Electron has no install script and fetches it on first use, and `electron-vite dev` fails until it has (it
+ * reads the `path.txt` that the download writes). Linux, a desktop from E7, skips the download, so CI's Linux install
+ * fetches nothing it does not use. The branding itself is macOS-only.
  */
 export function brandDevelopmentElectron(): void {
+    if (process.platform !== 'darwin' && process.platform !== 'win32') {
+        return;
+    }
+    const executable = developmentElectron();
     if (process.platform !== 'darwin') {
         return;
     }
-    const bundle = developmentBundle();
+    const bundle = resolve(executable, '../../..');
     const plist = join(bundle, 'Contents/Info.plist');
     const icon = join(bundle, 'Contents/Resources', plistValue(plist, 'CFBundleIconFile'));
     const current = {
@@ -85,13 +93,14 @@ function refreshLaunchServices(bundle: string): void {
     run(LSREGISTER, ['-f', bundle]);
 }
 
-function developmentBundle(): string {
+/** The development Electron's executable; resolving it downloads the binary when it is missing. */
+function developmentElectron(): string {
     const require = createRequire(join(ROOT, 'apps/desktop/package.json'));
     const executable: unknown = require('electron');
     if (typeof executable !== 'string') {
         throw new Error('the electron package did not name its executable');
     }
-    return resolve(executable, '../../..');
+    return executable;
 }
 
 function plistValue(plist: string, key: string): string {
