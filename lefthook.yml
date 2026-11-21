@@ -17,5 +17,7 @@ pre-commit:
 
 commit-msg:
     jobs:
+        - name: guard
+          run: sh tools/git-hooks/guard-message.sh {1}
         - name: commitlint
           run: pnpm exec commitlint --edit {1}

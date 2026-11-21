@@ -85,7 +85,8 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
   dispatcher (D-36).
 - The git hooks install with `pnpm install` into `.git/hooks`; a global
   `core.hooksPath` hook manager runs them. Never bypass hooks with
-  `--no-verify`.
+  `--no-verify`. They also refuse, in files and commit messages, any term
+  listed in the clone's own `.git/info/denylist`.
 
 `docs/PRD.md` is the source of truth for requirements. Reference its IDs in
 designs, code reviews and commits:

@@ -1484,14 +1484,17 @@ Notes:
 ### 9.7 Git hooks and AI-driven development
 
 - **lefthook 2.**
-    - `pre-commit` rejects staged `.claude/` paths and absolute home-directory
-      paths, then runs Prettier, `biome check --write` and `cargo fmt` on staged
-      files.
+    - `pre-commit` rejects staged `.claude/` paths, absolute home-directory
+      paths and terms from the clone's own `.git/info/denylist`, then runs
+      Prettier, `biome check --write` and `cargo fmt` on staged files.
     - `pnpm install` installs the hooks into the repository's `.git/hooks`
       without touching a global `core.hooksPath`, whose hook manager then runs
       them.
-    - `commit-msg` runs commitlint 21 with `@commitlint/config-conventional`,
-      which enforces the commit rules in CLAUDE.md.
+    - `commit-msg` rejects a message with a term from that deny list, then runs
+      commitlint 21 with `@commitlint/config-conventional`, which enforces the
+      commit rules in CLAUDE.md.
+    - The deny list (one term per line, any case) sits inside `.git`, so it is
+      never committed.
 - **No agent or editor configuration in git.** `.claude/` and other
   machine-specific files are git-ignored; lefthook is the only formatting hook.
 - **Agent context.** CLAUDE.md lists the build, lint and single-test commands
