@@ -2,9 +2,9 @@
 
 | Field        | Value                           |
 | ------------ | ------------------------------- |
-| Status       | Draft v0.19                     |
+| Status       | Draft v0.20                     |
 | Owner        | Renato Oliveira                 |
-| Last updated | 2026-11-18                      |
+| Last updated | 2026-11-21                      |
 | Scope        | P0 in seven epics, then GA (E8) |
 | Name         | Terminal Remote Control (TRC)   |
 
@@ -131,7 +131,7 @@ Non-goals for P0 are listed in [§12](#12-out-of-scope-for-p0).
 | OS      | Versions                                                                      | Notes                                                                       |
 | ------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | macOS   | Current and previous major release; Apple silicon and Intel                   | Local shells: the user's login shell.                                       |
-| Windows | Windows 11, all versions under Microsoft support                              | Local shells: PowerShell 7, Windows PowerShell 5.1, cmd, WSL distributions. |
+| Windows | Windows 11, all versions under Microsoft support; x64 and arm64               | Local shells: PowerShell 7, Windows PowerShell 5.1, cmd, WSL distributions. |
 | Linux   | Ubuntu LTS (current and previous), Fedora (current); GNOME on Wayland and X11 | Local shells: the user's login shell.                                       |
 
 ### 7.2 Remote hosts
@@ -162,7 +162,7 @@ AT.
 | Braille                  | VoiceOver braille                                                                             | JAWS and NVDA braille                                    | Orca braille (BRLTTY)                                   |
 | Magnifier                | Zoom                                                                                          | Magnifier                                                | GNOME Magnifier                                         |
 | Voice control, dictation | Voice Control, Dictation                                                                      | Voice Access, Voice Typing                               | — (no OS-provided voice control; not gated)             |
-| Read aloud               | Spoken Content: Speak Selection, Speak items under the pointer                                | Narrator                                                 | Orca                                                    |
+| Read aloud               | Spoken Content: Speak Selection, Speak items under the pointer                                | Narrator; Magnifier read aloud                           | Orca                                                    |
 | Keyboard access          | Full Keyboard Access                                                                          | Standard keyboard navigation                             | Standard keyboard navigation                            |
 | Display preferences      | Dark mode, Increase Contrast, Reduce Motion, Reduce Transparency, Differentiate Without Color | Dark mode, Contrast themes, Animation effects, Text size | Dark style, High Contrast, Reduce Animation, Large Text |
 
@@ -296,9 +296,9 @@ read-aloud tools work on it.
       selection for clients that use it.
     - Linux: AT-SPI2 `Text` interface selection.
 2. These work on the selection in both the live terminal and review mode:
-   macOS Spoken Content "Speak Selection"; each screen reader's command for
-   reading the current selection, where it has one; macOS Look Up and the
-   Services menu. On Linux, selecting sets the PRIMARY selection.
+   macOS Spoken Content "Speak Selection"; Windows Magnifier's read aloud
+   (Ctrl+Alt+Enter); each screen reader's command for reading the current
+   selection, where it has one; macOS Look Up and the Services menu. On Linux, selecting sets the PRIMARY selection.
 3. Selection changes are announced as in native text fields.
 4. Selection is visible in every theme, including high contrast and Windows
    contrast themes. The highlight has at least 3:1 contrast with the adjacent
@@ -306,9 +306,10 @@ read-aloud tools work on it.
 5. Selection stays anchored to buffer content while new output arrives, until
    the user clears it or its text leaves the scrollback.
 6. Copy places exactly the selected text on the clipboard: logical lines, no
-   trailing padding. On Windows and Linux, Ctrl+C copies when a selection exists
-   and sends an interrupt otherwise (configurable); Ctrl+Shift+C always copies.
-   On macOS, Cmd+C copies.
+   trailing padding. On Windows and Linux, Ctrl+Shift+C and Ctrl+Insert copy,
+   and Ctrl+C always sends an interrupt. A setting, off by default, makes Ctrl+C
+   copy when a selection exists (owner, E6: a selection the user cannot see
+   must not turn an interrupt into a copy). On macOS, Cmd+C copies.
 7. A selection larger than the platform API can hold in accessible text (an
    initial cap of 5,000 lines, set by spike S3a) is exposed to the OS up
    to the cap. Copy still places the entire selection on the clipboard, and the
@@ -357,8 +358,9 @@ focus at any zoom level.
    and follow focus in the session list, menus and dialogs.
 4. IME candidate windows and OS dictation UI appear at the terminal cursor.
 5. Pointer-based reading works on terminal text: macOS "Speak items under the
-   pointer" and Hover Text, and screen readers' mouse-tracking features where
-   they provide them (for example NVDA mouse tracking), read the text under the
+   pointer" and Hover Text, Windows Magnifier's read aloud from the pointer
+   (Ctrl+Alt+click), and screen readers' mouse-tracking features where they
+   provide them (for example NVDA mouse tracking), read the text under the
    pointer.
 6. Every focusable element shows a visible focus indicator with at least 3:1
    contrast against adjacent colors, and app overlays (headers, toasts, panels)
