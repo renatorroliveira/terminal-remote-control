@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import type { ConnectionFailure, ConnectTarget, PresentedHostKey } from '../../shared/connection';
 import { effectiveConfigArguments, sshArguments, sshEnvironment, wrapperConfig } from '../ssh/arguments';
 import { classifyFailure, diagnoseAuthentication } from '../ssh/classify';
-import { type EffectiveConfig, supportsKnownHostsCommand } from '../ssh/client-checks';
+import { type EffectiveConfig, replacementKnownHostsFiles, supportsKnownHostsCommand } from '../ssh/client-checks';
 import type { HelperLine } from '../ssh/helper-lines';
 import { appendKnownHost, fingerprintOf, knownHostsLine } from '../ssh/known-hosts';
 import { fromSsh } from './failures';
@@ -24,6 +24,8 @@ export class SshTransport implements Transport {
     readonly #target: ConnectTarget;
     readonly #onHelper: (line: HelperLine) => void;
     #config: EffectiveConfig | undefined;
+    /** The known_hosts files ssh reads, the first keeping accepted keys; set once ssh said which files it reads. */
+    #knownHostsFiles: readonly string[] = [];
     #nonce = '';
     #wrapper: string | undefined;
 
@@ -45,7 +47,10 @@ export class SshTransport implements Transport {
             : { kind: 'ssh-too-old', version: `${version.major}.${version.minor}`, details: '' };
     }
 
-    /** Reads the host's effective SSH settings and starts ssh with the bootstrap's remote command. */
+    /**
+     * Reads the host's effective SSH settings and starts ssh with the bootstrap's remote command, reading OpenSSH's
+     * default known_hosts files instead when the user's discard every key (US-1.2.1).
+     */
     async open(): Promise<Channel | { readonly failure: ConnectionFailure }> {
         const runtime = this.#runtime;
         const wrapper = await this.#writeWrapper();
@@ -57,7 +62,9 @@ export class SshTransport implements Transport {
         if (config === undefined) {
             return { failure: { kind: 'other', details: 'ssh could not read the SSH configuration for this host' } };
         }
+        const replacement = replacementKnownHostsFiles(config.knownHostsFiles);
         this.#config = config;
+        this.#knownHostsFiles = replacement ?? config.knownHostsFiles;
         this.#nonce = randomBytes(8).toString('hex');
         return startSsh({
             program: runtime.ssh,
@@ -67,6 +74,7 @@ export class SshTransport implements Transport {
                 target: this.#target,
                 command: REMOTE_COMMAND,
                 seam: runtime.seam,
+                knownHostsFiles: replacement,
             }),
             env: sshEnvironment(runtime.env, runtime.helpers, this.#nonce),
             nonce: this.#nonce,
@@ -91,17 +99,17 @@ export class SshTransport implements Transport {
     }
 
     /**
-     * Appends the key to the user's first known_hosts file, hashed when ssh hashes (US-1.2.2); records nothing before
-     * ssh has said which files it reads and whether it hashes.
+     * Appends the key to the first known_hosts file ssh reads, hashed when ssh hashes (US-1.2.2), and returns that file;
+     * records nothing before ssh has said which files it reads and whether it hashes.
      */
-    async acceptHostKey(key: PresentedHostKey): Promise<boolean> {
+    async acceptHostKey(key: PresentedHostKey): Promise<string | undefined> {
         const config = this.#config;
         if (config === undefined) {
-            return false;
+            return undefined;
         }
-        const file = expandHome(config.knownHostsFiles[0] ?? '~/.ssh/known_hosts');
-        await appendKnownHost(file, knownHostsLine(key, { hashed: config.hashKnownHosts }));
-        return true;
+        const file = this.#knownHostsFiles[0] ?? '~/.ssh/known_hosts';
+        await appendKnownHost(expandHome(file), knownHostsLine(key, { hashed: config.hashKnownHosts }));
+        return file;
     }
 
     /** Deletes the connection's wrapper config. */

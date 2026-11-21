@@ -68,6 +68,36 @@ describe('sshArguments', () => {
         expect(args.join(' ')).toContain('-p 2222 -- me@10.0.0.5 true');
     });
 
+    it("reads the known_hosts files that replace the user's after the security options (US-1.2.1)", () => {
+        const args = sshArguments({
+            wrapper: '/run/w.conf',
+            helpers,
+            target: { destination: 'devbox-1' },
+            command: 'exec /bin/sh -s',
+            knownHostsFiles: ['~/.ssh/known_hosts', '~/.ssh/known_hosts2'],
+        });
+        expect(args).toEqual([
+            ...EXPECTED_ARGUMENTS.slice(0, -3),
+            '-o',
+            'UserKnownHostsFile=~/.ssh/known_hosts ~/.ssh/known_hosts2',
+            ...EXPECTED_ARGUMENTS.slice(-3),
+        ]);
+    });
+
+    it('keeps the test known_hosts file ahead of any replacement in test builds (P-14)', () => {
+        const args = sshArguments({
+            wrapper: '/w',
+            helpers,
+            target: { destination: 'devbox-1' },
+            command: 'true',
+            seam: { sshConfig: '/t/ssh_config', knownHosts: '/t/known_hosts' },
+            knownHostsFiles: ['~/.ssh/known_hosts'],
+        });
+        expect(args.filter((arg) => arg.startsWith('UserKnownHostsFile='))).toEqual([
+            'UserKnownHostsFile=/t/known_hosts ~/.ssh/known_hosts ~/.ssh/known_hosts2',
+        ]);
+    });
+
     it.each(['-oProxyCommand=evil', 'host name', 'host\nname', '', 'a\u0000b'])(
         'refuses the destination %j',
         (destination) => {

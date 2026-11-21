@@ -1689,6 +1689,42 @@
       "value": ", then connect again."
     }
   ],
+  "failure.hostKeyNotKept.problem": [
+    {
+      "type": 0,
+      "value": "You trusted the host key of "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": ", but "
+    },
+    {
+      "type": 1,
+      "value": "file"
+    },
+    {
+      "type": 0,
+      "value": " didn’t keep it, so ssh still doesn’t know the key."
+    }
+  ],
+  "failure.hostKeyNotKept.remedy": [
+    {
+      "type": 0,
+      "value": "Make sure "
+    },
+    {
+      "type": 1,
+      "value": "file"
+    },
+    {
+      "type": 0,
+      "value": " is a file you can write and that your SSH configuration reads it (UserKnownHostsFile), then connect again."
+    }
+  ],
   "failure.hostKeyRejected.problem": [
     {
       "type": 0,

@@ -42,7 +42,7 @@
 <li><code>sshd</code> that accepts your key, and a POSIX shell.</li>
 <li>A few megabytes free in your home folder, or in another folder you choose, that allows running programs (not mounted <code>noexec</code>), and <code>sha256sum</code> or <code>shasum</code>. The host needs no internet access, no root or sudo, and no packages.</li>
 </ul>
-<p>TRC uses your own SSH setup: <code>~/.ssh/config</code> (aliases, <code>ProxyCommand</code>, <code>ProxyJump</code>, ports, users), your agent and your <code>known_hosts</code>. It never changes your SSH configuration or your keys. The one file it writes is your known hosts file, the first <code>UserKnownHostsFile</code> your SSH config names (<code>~/.ssh/known_hosts</code> unless you set another), and only when you trust a new host key.</p>
+<p>TRC uses your own SSH setup: <code>~/.ssh/config</code> (aliases, <code>ProxyCommand</code>, <code>ProxyJump</code>, ports, users), your agent and your <code>known_hosts</code>. It never changes your SSH configuration or your keys. The one file it writes is your known hosts file, the first <code>UserKnownHostsFile</code> your SSH config names (<code>~/.ssh/known_hosts</code> unless you set another), and only when you trust a new host key. If your config sends known hosts to <code>/dev/null</code>, as DevSpaces' does, TRC's own connections use <code>~/.ssh/known_hosts</code> instead, so a key you trust is kept and checked; <code>ssh</code> in Terminal still follows your config.</p>
 <h2 id="install">Install</h2>
 <ol>
 <li>Download the release for your Mac from the <a href="https://github.com/renatorroliveira/terminal-remote-control/releases">Releases page</a>: <code>TRC-&lt;version&gt;-mac-arm64.dmg</code> for Apple silicon, or <code>TRC-&lt;version&gt;-mac-x64.dmg</code> for Intel. <code>SHA256SUMS.txt</code> lists every file's checksum; with it in the same folder, <code>shasum -a 256 --ignore-missing -c SHA256SUMS.txt</code> checks that your download is complete and intact. It comes from the same Releases page, so it cannot show who made the files.</li>
@@ -310,6 +310,7 @@ done</code></pre>
 <tr><td>The host refused every key ssh offered</td><td>Check that <code>ssh &lt;host&gt;</code> works in Terminal without a password.</td></tr>
 <tr><td>The host couldn't be found, or didn't answer</td><td>Check the name, your network or VPN, and any <code>ProxyCommand</code> or <code>ProxyJump</code> your config needs.</td></tr>
 <tr><td>The host key has changed</td><td>Ask the host's administrator. Only if the new fingerprint matches, run <code>ssh-keygen -R &lt;host&gt;</code>.</td></tr>
+<tr><td>The known hosts file didn't keep the key you trusted</td><td>Check that you can write the file the dialog names, and that your SSH config's <code>UserKnownHostsFile</code> includes it.</td></tr>
 <tr><td>The host runs a newer daemon than this app</td><td>Another Mac installed a newer TRC on this host. Update the app.</td></tr>
 <tr><td>The install location doesn't allow running programs</td><td>Choose another install location from the host's actions, then connect again.</td></tr>
 <tr><td>Other users can change the install location</td><td>If the folder named in the details is yours, run <code>chmod go-w</code> on it on the host; otherwise choose a location only you can change. Then connect again.</td></tr>

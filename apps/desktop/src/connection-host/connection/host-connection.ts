@@ -16,6 +16,7 @@ import {
     type ConnectionState,
     type ConnectTarget,
     type DaemonRemoval,
+    type PresentedHostKey,
     RESERVED_REQUEST_IDS,
 } from '../../shared/connection';
 import { type BootstrapFailure, type BootstrapOutcome, runBootstrap, runRemoval } from '../bootstrap/driver';
@@ -55,6 +56,12 @@ export interface ConnectionRuntime {
 }
 
 type Answer = Extract<ServerMessage, { type: 'welcome' | 'incompatible' }>;
+
+/** A host key the user accepted, and the known_hosts file the transport recorded it in. */
+interface AcceptedKey {
+    readonly fingerprint: string;
+    readonly file: string;
+}
 
 /** The first protocol whose cores stop every session and delete their data before a removal (US-3.3.3). */
 const REMOVING_PROTOCOL = 3;
@@ -102,16 +109,8 @@ export class HostConnection implements HostConnectionLike {
     }
 
     /** Connects, or reconnects after a failure or loss. Resolves once the connection settles. */
-    async connect(): Promise<void> {
-        if (!this.#dispatch({ type: 'connect' })) {
-            return;
-        }
-        await this.#teardown();
-        try {
-            await this.#attempt();
-        } catch (error) {
-            this.#fail({ kind: 'other', details: errorText(error) });
-        }
+    connect(): Promise<void> {
+        return this.#connect(undefined);
     }
 
     /** Sends a control message; `false` when not connected. */
@@ -134,7 +133,8 @@ export class HostConnection implements HostConnectionLike {
 
     /**
      * Records the key the user accepted in known_hosts, hashed when ssh hashes, and connects again. Only the key
-     * this connection was presented can be accepted.
+     * this connection was presented can be accepted. If ssh still doesn't know the key, its known_hosts file did not
+     * keep it, and the connection fails with that instead of asking again (US-1.2.1).
      */
     async acceptHostKey(fingerprint: string): Promise<void> {
         const state = this.#state;
@@ -142,12 +142,13 @@ export class HostConnection implements HostConnectionLike {
             this.#runtime.log.warn('host key acceptance ignored', { hostId: this.#hostId });
             return;
         }
-        if (!(await this.#transport.acceptHostKey(state.key))) {
+        const file = await this.#transport.acceptHostKey(state.key);
+        if (file === undefined) {
             this.#runtime.log.warn('host key acceptance ignored', { hostId: this.#hostId });
             return;
         }
         this.#runtime.log.info('host key accepted', { hostId: this.#hostId, fingerprint });
-        await this.connect();
+        await this.#connect({ fingerprint, file });
     }
 
     /** Aborts after the user rejects a host key (US-1.2.1). */
@@ -183,6 +184,19 @@ export class HostConnection implements HostConnectionLike {
             return { kind: 'failed', failure: { kind: 'other', details: errorText(error) } };
         } finally {
             await this.#teardown();
+        }
+    }
+
+    /** Connects, failing instead of asking again when the host presents `accepted`, the key the user just accepted. */
+    async #connect(accepted: AcceptedKey | undefined): Promise<void> {
+        if (!this.#dispatch({ type: 'connect' })) {
+            return;
+        }
+        await this.#teardown();
+        try {
+            await this.#attempt(accepted);
+        } catch (error) {
+            this.#fail({ kind: 'other', details: errorText(error) });
         }
     }
 
@@ -253,7 +267,7 @@ export class HostConnection implements HostConnectionLike {
         return opened;
     }
 
-    async #attempt(): Promise<void> {
+    async #attempt(accepted: AcceptedKey | undefined): Promise<void> {
         const clientProblem = await this.#transport.check();
         if (clientProblem !== undefined) {
             return this.#fail(clientProblem);
@@ -277,10 +291,14 @@ export class HostConnection implements HostConnectionLike {
                 onStep: (step) => this.#dispatch({ type: 'step', step }),
             },
         );
-        await this.#afterBootstrap(outcome, opened);
+        await this.#afterBootstrap(outcome, opened, accepted);
     }
 
-    async #afterBootstrap(outcome: BootstrapOutcome, process: Channel): Promise<void> {
+    async #afterBootstrap(
+        outcome: BootstrapOutcome,
+        process: Channel,
+        accepted: AcceptedKey | undefined,
+    ): Promise<void> {
         if (outcome.kind === 'running') {
             return this.#handshake(process, outcome.remainder);
         }
@@ -290,10 +308,19 @@ export class HostConnection implements HostConnectionLike {
         }
         const closed = await this.#transport.closed(process);
         if (closed.kind === 'host-key-unknown') {
-            this.#dispatch({ type: 'host-key', key: closed.key });
-            return;
+            return this.#onUnknownKey(closed.key, accepted);
         }
         this.#fail(closed);
+    }
+
+    /** Asks about an unknown key, unless it is the one just accepted, which its known_hosts file did not keep. */
+    #onUnknownKey(key: PresentedHostKey, accepted: AcceptedKey | undefined): void {
+        if (key.fingerprint !== accepted?.fingerprint) {
+            this.#dispatch({ type: 'host-key', key });
+            return;
+        }
+        this.#runtime.log.warn('accepted host key not kept', { hostId: this.#hostId });
+        this.#fail({ kind: 'host-key-not-kept', host: key.host, file: accepted.file, details: '' });
     }
 
     async #handshake(process: Channel, remainder: Uint8Array): Promise<void> {

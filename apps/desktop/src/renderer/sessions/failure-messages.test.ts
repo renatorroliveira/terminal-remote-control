@@ -11,6 +11,7 @@ const FAILURES: readonly ConnectionFailure[] = [
     { kind: 'ssh-too-old', version: '8.1', details: '' },
     { kind: 'host-key-changed', host: 'devbox-1', details: '' },
     { kind: 'host-key-rejected', host: 'devbox-1', details: '' },
+    { kind: 'host-key-not-kept', host: 'devbox-1', file: '~/.ssh/known_hosts', details: '' },
     ...(
         [
             'no-agent',

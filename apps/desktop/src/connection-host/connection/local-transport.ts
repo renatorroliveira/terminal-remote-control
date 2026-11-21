@@ -68,8 +68,8 @@ export class LocalTransport implements Transport {
     }
 
     /** This computer has no host key, so it records none. */
-    acceptHostKey(): Promise<boolean> {
-        return Promise.resolve(false);
+    acceptHostKey(): Promise<string | undefined> {
+        return Promise.resolve(undefined);
     }
 
     /** Nothing to release. */
