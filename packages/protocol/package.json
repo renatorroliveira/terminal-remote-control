@@ -1,6 +1,6 @@
 {
     "name": "@trc/protocol",
-    "version": "0.7.0-dev",
+    "version": "0.6.1-dev",
     "private": true,
     "type": "module",
     "exports": {
