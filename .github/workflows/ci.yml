@@ -47,13 +47,20 @@ jobs:
             - run: pnpm build
 
     windows:
-        # The app's gate steps whose result can differ on Windows (line ends, cmd.exe scripts, paths), the build and
-        # the unsigned zip (D-59, D-60, D-63). Formatting, lint, types and document IDs are OS-independent: `app` runs them.
-        # Every push to main runs it; the release commit skips it, since no Windows build ships before E6.
-        if: ${{ !inputs.release-commit }}
-        name: app (Windows build and unit tests)
-        runs-on: windows-2025
-        timeout-minutes: 30
+        # The app's gate steps whose result can differ on Windows (line ends, cmd.exe scripts, paths), the Rust
+        # workspace natively with trcd's Unix code linted for Linux musl, and the packages of the runner's architecture
+        # (D-59, D-60, D-62, P-87). Lint, types and document IDs are OS-independent: `app` runs them.
+        name: app and daemon (Windows ${{ matrix.arch }})
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - runner: windows-2025
+                      arch: x64
+                    - runner: windows-11-arm
+                      arch: arm64
+        runs-on: ${{ matrix.runner }}
+        timeout-minutes: 60
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -69,7 +76,9 @@ jobs:
             - run: pnpm format:check
             - run: pnpm --filter @trc/desktop i18n:check
             - run: pnpm test
-            - run: pnpm dist
+            - uses: ./.github/actions/windows-rust
+            - run: pnpm rust:check
+            - run: pnpm dist --${{ matrix.arch }}
 
     daemon:
         name: daemon (build and unit tests, ${{ matrix.runner }})

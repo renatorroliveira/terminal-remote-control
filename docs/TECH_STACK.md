@@ -1292,7 +1292,9 @@ docs/plans/               one implementation plan per epic
 - **minisign** verifies the libghostty-vt release signature (D-14).
 - **On Windows**, winget installs Zig 0.17.1 and minisign 0.12, and the Git Bash
   of Git for Windows runs `tools/fetch-libghostty.sh`; every other step needs
-  no POSIX shell (D-60).
+  no POSIX shell (D-60). The Windows runners install minisign from its signed
+  0.12 release zip, pinned by SHA-256 in `.github/actions/windows-rust`, since
+  neither runner image has it.
 - **colima** runs the Linux test hosts in its own `trc` profile, and the
   **docker CLI** drives them (D-15). Both are development-only.
 - **Docker Desktop**, with its WSL 2 engine, runs the same Linux test hosts on

@@ -2,7 +2,7 @@ name: release
 
 # Cuts a release entirely in GitHub Actions (P-21, D-42), from the Run workflow button or `pnpm release <bump>`. The
 # prepare job commits the version; CI, the daemons, the macOS packages and a smoke test on each architecture's own
-# runner all check that commit; only then does the publish job tag, push and publish it. A dry run stops before
+# runner, and the Windows packages built and verified on each architecture's own runner (P-87), all check that commit; only then does the publish job tag, push and publish it. A dry run stops before
 # publish, and pushes nothing. Installs skip dependency lifecycle scripts wherever a job commits or pushes. A failed
 # publish resumes when the job is re-run (tools/release/publish.ts).
 on:
@@ -168,9 +168,55 @@ jobs:
             - if: always()
               run: hdiutil detach "$RUNNER_TEMP/dmg" || true
 
+    windows:
+        name: Windows packages (${{ matrix.arch }})
+        needs: [prepare, daemon]
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - runner: windows-2025
+                      arch: x64
+                    - runner: windows-11-arm
+                      arch: arm64
+        runs-on: ${{ matrix.runner }}
+        timeout-minutes: 60
+        defaults:
+            run:
+                shell: bash
+        env:
+            VERSION: ${{ needs.prepare.outputs.version }}
+            ARCH: ${{ matrix.arch }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: ./.github/actions/release-commit
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: 24
+            - run: corepack enable pnpm
+            - run: pnpm install --frozen-lockfile
+            - uses: ./.github/actions/windows-rust
+            - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+              with:
+                  name: daemon
+                  path: apps/desktop/resources/daemon
+            - run: node tools/build-daemon/build-daemon.ts --add "windows-$ARCH"
+            - run: pnpm dist "--$ARCH"
+            - run: pnpm verify:artifact "apps/desktop/dist/TRC-$VERSION-win-$ARCH.zip"
+            - run: pnpm verify:artifact "apps/desktop/dist/TRC-$VERSION-win-$ARCH-setup.exe"
+            - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: packages-windows-${{ matrix.arch }}
+                  path: |
+                      apps/desktop/dist/TRC-*-win-*-setup.exe
+                      apps/desktop/dist/TRC-*-win-*.zip
+                  if-no-files-found: error
+
     publish:
         name: publish
-        needs: [prepare, checks, smoke]
+        needs: [prepare, checks, smoke, windows]
         if: ${{ format('{0}', inputs.dry-run) == 'false' }}
         runs-on: ubuntu-24.04
         timeout-minutes: 15
@@ -189,7 +235,8 @@ jobs:
             - run: node tools/git-hooks/install.ts
             - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
               with:
-                  name: packages
+                  pattern: packages*
+                  merge-multiple: true
                   path: ${{ runner.temp }}/packages
             - run: node tools/release/publish.ts "$VERSION" "$RUNNER_TEMP/release/notes.md" "$RUNNER_TEMP/packages"
               env:

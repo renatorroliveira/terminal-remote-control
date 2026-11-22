@@ -45,11 +45,22 @@ mac:
     artifactName: TRC-${version}-mac-${arch}.${ext}
 dmg:
     artifactName: TRC-${version}-mac-${arch}.${ext}
-# Windows (E6): an unsigned x64 zip until the E6 plan picks the installer and signing (SEC-04, US-8.3).
+# Windows (E6, P-87): a per-user installer and a zip, unsigned until E8 (SEC-04.1). The targets name no architecture,
+# which would override the command line: each release runner builds its own with --x64 or --arm64, and a plain
+# `pnpm dist` builds this computer's.
 win:
     icon: resources/icons/icon.ico
     target:
-        - target: zip
-          arch: [x64]
+        - nsis
+        - zip
     artifactName: TRC-${version}-win-${arch}.${ext}
+nsis:
+    oneClick: true
+    perMachine: false
+    allowElevation: false
+    include: resources/installer.nsh
+    shortcutName: Terminal Remote Control
+    createDesktopShortcut: false
+    createStartMenuShortcut: true
+    artifactName: TRC-${version}-win-${arch}-setup.${ext}
 publish: null

@@ -1,0 +1,31 @@
+name: Windows Rust tools
+description: >-
+    Installs what builds trcd.exe and lints the workspace on a Windows runner (D-62, D-66): Rust with the Linux musl
+    target, cargo-nextest, Zig 0.17 and minisign 0.12, pinned by its SHA-256, then fetches libghostty-vt's source,
+    which minisign verifies.
+runs:
+    using: composite
+    steps:
+        - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+          with:
+              toolchain: 1.99.1
+              components: clippy, rustfmt
+              targets: x86_64-unknown-linux-musl
+        - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+          with:
+              tool: cargo-nextest
+        - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+          with:
+              version: 0.17.1
+        - shell: bash
+          env:
+              MINISIGN_SHA256: 37b600344e20c19314b2e82813db2bfdcc408b77b876f7727889dbd46d539479
+          run: |
+              cd "$RUNNER_TEMP"
+              curl -sSfL -o minisign.zip https://github.com/jedisct1/minisign/releases/download/0.12/minisign-0.12-win64.zip
+              echo "$MINISIGN_SHA256  minisign.zip" | sha256sum -c -
+              unzip -q minisign.zip
+              case "$RUNNER_ARCH" in ARM64) folder=aarch64 ;; *) folder=x86_64 ;; esac
+              echo "$RUNNER_TEMP/minisign-win64/$folder" >> "$GITHUB_PATH"
+        - shell: bash
+          run: tools/fetch-libghostty.sh

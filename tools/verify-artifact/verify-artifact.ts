@@ -1,21 +1,18 @@
 /**
  * Checks a packaged Terminal Remote Control.app before it ships (ST-20, SEC-01, SEC-04.2, P-11, P-14): the ad-hoc
  * signature, the fuses, no test seam in the bundle, the third-party notices, the bundled daemons against their manifest, and that the app,
- * launched in the background with every debugging switch, opens no listening TCP socket and no UDP socket. Run `pnpm verify:artifact <path to the .app>`.
+ * launched in the background with every debugging switch, opens no listening TCP socket and no UDP socket. On Windows
+ * it checks a zip, the installer or an unpacked app instead (`verify-windows.ts`, P-87). Run
+ * `pnpm verify:artifact <path>`.
  */
-import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { FuseV1Options, getCurrentFuseWire } from '@electron/fuses';
 import {
     DAEMON_PLATFORMS,
-    type DaemonFile,
     descendants,
     expectedFuses,
-    type FuseStates,
     fuseProblems,
     listenerProblems,
     lsofVisibilityProblems,
@@ -23,18 +20,12 @@ import {
     seamProblems,
     signatureProblems,
 } from './checks.ts';
+import { bundleText, daemonFiles, fuseStates, run } from './package-files.ts';
+import { verifyWindowsArtifact } from './verify-windows.ts';
 
 const ROOT = resolve(import.meta.dirname, '../..');
-const FUSE_ENABLED = 49;
 const LAUNCH_TIMEOUT_MS = 30_000;
 const SETTLE_MS = 3_000;
-
-interface Ran {
-    readonly status: number | null;
-    readonly stdout: string;
-    readonly stderr: string;
-    readonly output: string;
-}
 
 /** Every problem the packaged app has; none means it may ship. */
 export async function verifyArtifact(app: string): Promise<readonly string[]> {
@@ -47,7 +38,7 @@ export async function verifyArtifact(app: string): Promise<readonly string[]> {
         ...seamProblems(bundleText(resources)),
         ...manifestProblems(
             readFileSync(join(resources, 'daemon/manifest.json'), 'utf8'),
-            daemonFiles(resources),
+            daemonFiles(resources, DAEMON_PLATFORMS),
             plist(app, 'CFBundleShortVersionString'),
         ),
         ...(existsSync(join(resources, 'notices/THIRD_PARTY_NOTICES.txt'))
@@ -60,43 +51,6 @@ export async function verifyArtifact(app: string): Promise<readonly string[]> {
 function verifySignature(app: string): readonly string[] {
     const result = run('codesign', ['--verify', '--deep', '--strict', app]);
     return result.status === 0 ? [] : [`the signature does not verify: ${result.output}`];
-}
-
-async function fuseStates(app: string): Promise<FuseStates> {
-    const wire = (await getCurrentFuseWire(app)) as unknown as Readonly<Record<number, number>>;
-    const names = Object.entries(FuseV1Options).filter(
-        (entry): entry is [string, number] => typeof entry[1] === 'number',
-    );
-    return Object.fromEntries(
-        names
-            .filter(([, index]) => wire[index] !== undefined)
-            .map(([name, index]) => [name[0]?.toLowerCase() + name.slice(1), wire[index] === FUSE_ENABLED]),
-    );
-}
-
-function bundleText(resources: string): string {
-    const unpacked = join(resources, 'app.asar.unpacked');
-    const files = [join(resources, 'app.asar'), ...(existsSync(unpacked) ? filesUnder(unpacked) : [])];
-    return files.map((file) => readFileSync(file, 'latin1')).join('\n');
-}
-
-function filesUnder(folder: string): readonly string[] {
-    return readdirSync(folder, { recursive: true, encoding: 'utf8' })
-        .map((entry) => join(folder, entry))
-        .filter((path) => statSync(path).isFile());
-}
-
-function daemonFiles(resources: string): Readonly<Record<string, DaemonFile | undefined>> {
-    return Object.fromEntries(
-        DAEMON_PLATFORMS.map((platform) => {
-            const path = join(resources, 'daemon', platform, 'trcd');
-            if (!existsSync(path)) {
-                return [platform, undefined];
-            }
-            const bytes = readFileSync(path);
-            return [platform, { sha256: createHash('sha256').update(bytes).digest('hex'), size: bytes.length }];
-        }),
-    );
 }
 
 async function launchProblems(app: string): Promise<readonly string[]> {
@@ -166,23 +120,13 @@ function plist(app: string, key: string): string {
     return run('plutil', ['-extract', key, 'raw', join(app, 'Contents/Info.plist')]).output;
 }
 
-/** A command's exit status, its stdout, and all its output, stdout then stderr (codesign -dv reports on stderr). */
-function run(command: string, args: readonly string[]): Ran {
-    const result = spawnSync(command, args, { encoding: 'utf8' });
-    return {
-        status: result.status,
-        stdout: result.stdout,
-        stderr: result.stderr,
-        output: `${result.stdout}${result.stderr}`.trim(),
-    };
-}
-
 if (import.meta.main) {
     const [app] = process.argv.slice(2);
     if (app === undefined) {
-        throw new Error('usage: pnpm verify:artifact <path to Terminal Remote Control.app>');
+        throw new Error('usage: pnpm verify:artifact <the .app on macOS; a zip, -setup.exe or app folder on Windows>');
     }
-    const problems = await verifyArtifact(resolve(app));
+    const problems =
+        process.platform === 'win32' ? await verifyWindowsArtifact(resolve(app)) : await verifyArtifact(resolve(app));
     for (const problem of problems) {
         process.stderr.write(`✗ ${problem}\n`);
     }

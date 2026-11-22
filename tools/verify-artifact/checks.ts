@@ -58,6 +58,7 @@ export function manifestProblems(
     manifestText: string,
     files: Readonly<Record<string, DaemonFile | undefined>>,
     appVersion: string,
+    platforms: readonly string[] = DAEMON_PLATFORMS,
 ): readonly string[] {
     const manifest = JSON.parse(manifestText) as {
         readonly version: string;
@@ -67,7 +68,7 @@ export function manifestProblems(
         manifest.version === appVersion
             ? []
             : [`daemon manifest version ${manifest.version} is not the app version ${appVersion}`];
-    return [...version, ...DAEMON_PLATFORMS.flatMap((platform) => daemonProblem(platform, manifest.binaries, files))];
+    return [...version, ...platforms.flatMap((platform) => daemonProblem(platform, manifest.binaries, files))];
 }
 
 /**
