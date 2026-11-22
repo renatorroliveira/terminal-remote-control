@@ -9,14 +9,14 @@ import { OLD_DAEMONS } from '../soak/old-daemons';
 /**
  * Upgrading a host's daemon in place (US-2.5.3, D-46): a 0.2.0 daemon with running sessions is replaced by this
  * build's when the app connects, and every session keeps its shell and keeps working; an older bridge never replaces
- * a newer core. The 0.2.0 daemons come from its release (`tools/test-hosts/fetch-old-daemon.sh`).
+ * a newer core. The 0.2.0 daemons come from its release (`node tools/test-hosts/fetch-old-daemon.ts`).
  */
 
 const OLD_VERSION = '0.2.0';
 const oldDaemons = OLD_DAEMONS;
 const missing =
     testHostsMissing() ??
-    (existsSync(join(oldDaemons, 'manifest.json')) ? undefined : 'run tools/test-hosts/fetch-old-daemon.sh');
+    (existsSync(join(oldDaemons, 'manifest.json')) ? undefined : 'run node tools/test-hosts/fetch-old-daemon.ts');
 
 afterEach(() => closeLiveHosts());
 

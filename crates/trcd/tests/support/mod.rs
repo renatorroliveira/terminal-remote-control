@@ -53,7 +53,7 @@ impl Installed {
             std::fs::set_permissions(base.join(dir), std::fs::Permissions::from_mode(0o700)).unwrap();
         }
         let binary = version_dir.join("trcd");
-        copy_without_open_descriptors(Path::new(env!("CARGO_BIN_EXE_trcd")), &binary);
+        copy_without_open_descriptors(&trcd_binary(), &binary);
         std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o700)).unwrap();
         let home = base.join("home");
         std::fs::DirBuilder::new().mode(0o700).create(&home).unwrap();
@@ -132,6 +132,12 @@ impl Drop for Installed {
         }
         let _ = std::fs::remove_dir_all(&self.base);
     }
+}
+
+/// The `trcd` under test: `TRC_TEST_TRCD` when set, as in containers that see the build folder elsewhere than
+/// the machine that built it (`pnpm test:daemon` on Windows), else the one cargo built.
+pub fn trcd_binary() -> PathBuf {
+    std::env::var_os("TRC_TEST_TRCD").map_or_else(|| PathBuf::from(env!("CARGO_BIN_EXE_trcd")), PathBuf::from)
 }
 
 /// Copies a file in a child process, so no write descriptor to it ever exists in this process. Otherwise a

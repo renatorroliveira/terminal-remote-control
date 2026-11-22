@@ -15,7 +15,9 @@ afterEach(() => {
     }
 });
 
-const oldMissing = existsSync(join(OLD_DAEMONS, 'manifest.json')) ? undefined : 'run fetch-old-daemon.sh';
+const oldMissing = existsSync(join(OLD_DAEMONS, 'manifest.json'))
+    ? undefined
+    : 'run node tools/test-hosts/fetch-old-daemon.ts';
 
 /**
  * How long a cycle waits for systemd to restart a killed core (`RestartSec=1`). Cycles kill it faster than systemd's

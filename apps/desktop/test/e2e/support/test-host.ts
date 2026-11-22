@@ -20,7 +20,7 @@ export const E2E_HOST = process.env['TRC_E2E_HOST'] ?? 'trc-ubuntu';
 /** Why the test hosts cannot be used, or `undefined` when they can. */
 export function testHostsMissing(): string | undefined {
     if (!existsSync(join(run, 'ssh_config')) || !existsSync(join(run, 'known_hosts.smoke'))) {
-        return 'start the test hosts with tools/test-hosts/up.sh';
+        return 'start the test hosts with node tools/test-hosts/up.ts';
     }
     return existsSync(manifest) ? undefined : 'build the daemons with pnpm build:daemon';
 }

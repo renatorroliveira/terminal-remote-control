@@ -23,7 +23,7 @@
         "test:integration": "pnpm build:daemon && pnpm test:daemon && vitest run --project node-integration",
         "build:daemon": "node tools/build-daemon/build-daemon.ts",
         "verify:artifact": "node tools/verify-artifact/verify-artifact.ts",
-        "test:daemon": "sh tools/test-hosts/rust-tests.sh",
+        "test:daemon": "node tools/test-hosts/rust-tests.ts",
         "test:e2e": "pnpm --filter @trc/desktop test:e2e",
         "test:nfr": "pnpm --filter @trc/desktop build:test && vitest run --project nfr; pnpm --filter @trc/desktop exec playwright test -c playwright.nfr.config.ts",
         "test:soak": "pnpm --filter @trc/desktop build:test && vitest run --project soak && pnpm --filter @trc/desktop exec playwright test -c playwright.soak.config.ts",

@@ -1,19 +1,22 @@
 # Linux test hosts
 
-sshd containers for the integration and end-to-end tests, run on a dedicated colima profile (TECH_STACK D-15).
+sshd containers for the integration and end-to-end tests, run on a dedicated colima profile on macOS (TECH_STACK
+D-15) and on Docker Desktop with its WSL 2 engine on Windows (D-69).
 
 ```sh
-colima start trc --vm-type vz --vz-rosetta --cpu 4 --memory 6   # once
-tools/test-hosts/up.sh     # fresh keys, build, start, smoke-test every host
-tools/test-hosts/down.sh   # stop and remove containers and generated keys
+colima start trc --vm-type vz --vz-rosetta --cpu 4 --memory 6   # once, on macOS; on Windows start Docker Desktop
+node tools/test-hosts/up.ts     # fresh keys, build, start, smoke-test every host
+node tools/test-hosts/down.ts   # stop and remove containers and generated keys
 ```
 
-`rust-tests.sh` (`pnpm test:daemon`) builds the daemon's tests for Linux musl and runs every test binary as root in
+`rust-tests.ts` (`pnpm test:daemon`) builds the daemon's tests for Linux musl and runs every test binary as root in
 plain Ubuntu, Alpine and Rocky containers, which also runs the Linux-only checks (no network sockets, memory) and the
-other-user peer test. It needs only the colima profile, not the sshd hosts.
+other-user peer test. It needs only the docker engine, not the sshd hosts.
+`fetch-old-daemon.ts` puts the 0.2.0 release's daemons in the build cache for the upgrade tests.
 
-`up.sh` writes everything it generates to `tools/test-hosts/.run/` (git-ignored), including `ssh_config`, which tests
-pass to ssh with `-F`. Ports are published on `127.0.0.1` only.
+`up.ts` writes everything it generates to `tools/test-hosts/.run/` (git-ignored), including `ssh_config`, which tests
+pass to ssh with `-F`. On Windows it gives `.run` an ACL that only the user can read, since Windows OpenSSH refuses
+private keys others can read. Ports are published on `127.0.0.1` only.
 
 | Alias                                       | Host                                                      |
 | ------------------------------------------- | --------------------------------------------------------- |

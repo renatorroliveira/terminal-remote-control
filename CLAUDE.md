@@ -28,11 +28,13 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
 - Rust: `cargo nextest run --workspace`; one test: `cargo nextest run <name>`.
   The first build needs `tools/fetch-libghostty.sh` (verified libghostty-vt
   source) and Zig 0.17. `TRC_BLESS_FIXTURES=1` rewrites golden fixtures.
-- Integration (needs `tools/test-hosts/up.sh`): `pnpm test:integration`. It
+- Integration (needs `node tools/test-hosts/up.ts`, on colima on macOS and Docker
+  Desktop on Windows; Windows ssh refuses keys others can read, so it makes
+  `.run` user-only): `pnpm test:integration`. It
   builds the daemon bundle (`pnpm build:daemon`), then runs `pnpm test:daemon`, which runs the musl daemon tests as root in
   Ubuntu, Alpine and Rocky containers (Linux-only and other-user checks).
 - macOS test host (E4, P-57): `tools/test-hosts/macos/up.sh`, after
-  `tools/test-hosts/up.sh`, starts a tart VM on lima's user-mode network with
+  `node tools/test-hosts/up.ts`, starts a tart VM on lima's user-mode network with
   SSH on `127.0.0.1:2230` only, and adds `trc-mac-gui` (LaunchAgent) and
   `trc-mac-nogui` (detached) to the test SSH config; the integration suites and
   `host-restart.spec.ts` then include them (`mac-logout.integration.test.ts`
@@ -46,7 +48,7 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
   `node tools/nfr-report/nfr-report.ts` prints the run's table for
   `docs/verification/E5-nfr.md`.
 - Soak (NFR-11, P-25): `pnpm test:soak` (needs the test hosts, the daemons and
-  `tools/test-hosts/fetch-old-daemon.sh`); `TRC_SOAK_CYCLES` (1,000),
+  `node tools/test-hosts/fetch-old-daemon.ts`); `TRC_SOAK_CYCLES` (1,000),
   `TRC_SOAK_APP_CYCLES` (50) and `TRC_SOAK_LOGOUT_CYCLES` (1,000) set the
   cycles, `TRC_SOAK_REBOOT_CYCLES` (100) the host restarts of the reboot soak,
   and `TRC_SOAK_HOST` the host of the ssh-level app quit and crash and of the

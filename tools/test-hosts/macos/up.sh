@@ -3,7 +3,7 @@
 # its SSH port forwarded to 127.0.0.1 only (P-67), with Rosetta, and two users who sign in with the Linux test
 # hosts' key: admin, whom the image logs in to the GUI at boot, and trcnogui, who never has a GUI login. Password
 # logins are turned off once the key is in. Writes ../.run/macos.ssh_config, which the test hosts' ssh_config
-# includes, so run tools/test-hosts/up.sh first; tools/test-hosts/macos/down.sh deletes the VM.
+# includes, so run node tools/test-hosts/up.ts first; tools/test-hosts/macos/down.sh deletes the VM.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -15,7 +15,7 @@ port=2230
 address=192.168.105.10
 
 [ -f "$hosts/id_ed25519" ] || {
-    echo "start the Linux test hosts first: tools/test-hosts/up.sh" >&2
+    echo "start the Linux test hosts first: node tools/test-hosts/up.ts" >&2
     exit 1
 }
 "$here/down.sh"
