@@ -1671,7 +1671,7 @@ Results: [S1](spikes/S1.md), [S2](spikes/S2.md), [S3a](spikes/S3.md), [S4](spike
 | tokio-util                         | 0.7.20  | tracing-appender   | 0.2.5             |
 | rustix                             | 1.1.6   | thiserror          | 2.0.21            |
 | windows-sys (E6)                   | 0.61.2  | bindgen (one-off)  | 0.73.2            |
-|                                    |         | cargo-nextest      | 0.9.151           |
+| windows (uia-probe, dev only, E6)  | 0.62.2  | cargo-nextest      | 0.9.151           |
 
 ## 14. Not used, and why
 

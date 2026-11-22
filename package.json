@@ -28,6 +28,7 @@
         "test:nfr": "pnpm --filter @trc/desktop build:test && node tools/test-nfr/test-nfr.ts",
         "test:soak": "pnpm --filter @trc/desktop build:test && vitest run --project soak && pnpm --filter @trc/desktop exec playwright test -c playwright.soak.config.ts",
         "test:ax:mac": "node tools/require-os/require-os.ts darwin test:ax:mac && swift build -c release --package-path tools/ax-probe && pnpm --filter @trc/desktop build:test && vitest run --project ax",
+        "test:ax:win": "node tools/require-os/require-os.ts win32 test:ax:win && cargo build --quiet --release --manifest-path tools/uia-probe/Cargo.toml && pnpm --filter @trc/desktop build:test && vitest run --project ax",
         "gen": "cargo test --locked -p trc-protocol --quiet export_bindings",
         "rust:check": "node tools/rust-check/rust-check.ts",
         "build": "pnpm --filter @trc/desktop build",
