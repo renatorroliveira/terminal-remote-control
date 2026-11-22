@@ -40,6 +40,7 @@
         left: var(--trc-terminal-padding);
         z-index: 1;
         overflow: hidden;
+        forced-color-adjust: none;
         color: transparent;
         caret-color: transparent;
         white-space: pre;

@@ -18,6 +18,7 @@ import { AudioCues, webAudioContext } from './app/sound/audio-cues';
 import { receiveConnectionPorts } from './connection/connection-port';
 import { HostClient } from './connection/host-client';
 import { DEFAULT_LOCALE, messagesFor } from './i18n/locale';
+import { resolveSystemColor, systemTerminalPalette } from './ui/system-palette';
 import { type TerminalPalette, THEMES, themeStyleSheet } from './ui/themes';
 import './ui/fonts.css';
 import './ui/base.css';
@@ -34,7 +35,10 @@ let composed: ComposedWorkspace | undefined;
 let reducedMotion = false;
 const onDisplay = (settings: Parameters<typeof applyDisplaySettings>[1]): void => {
     applyDisplaySettings(root, settings);
-    palette = THEMES[themeFor(settings)].terminal;
+    palette =
+        settings.forcedColors && settings.themePreference === 'system'
+            ? systemTerminalPalette((name) => resolveSystemColor(document, name))
+            : THEMES[themeFor(settings)].terminal;
     reducedMotion = settings.reducedMotion;
     composed?.terminals.setPalette(palette);
     composed?.terminals.setReducedMotion(reducedMotion);

@@ -204,6 +204,24 @@ test.describe('a live terminal on a Linux host: context menu (A11Y-11.11)', () =
     });
 });
 
+test.describe('a live terminal on a Linux host: contrast themes (A11Y-07.3)', () => {
+    const install = liveHost();
+
+    test('keeps the text surface invisible over the canvas when a contrast theme forces colors', async () => {
+        const { app, window } = await launchWithTestHosts(install.root);
+        const terminal = await openTerminal(window, E2E_HOST);
+        await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
+        await window.emulateMedia({ forcedColors: 'active' });
+        expect(await window.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
+        const rowColor = await terminal
+            .locator('.ats-row')
+            .first()
+            .evaluate((row) => getComputedStyle(row).color);
+        expect(rowColor).toBe('rgba(0, 0, 0, 0)');
+        await app.close();
+    });
+});
+
 test.describe('a live terminal on a Linux host: paste (US-1.12.2)', () => {
     const install = liveHost();
 
