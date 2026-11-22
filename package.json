@@ -25,7 +25,7 @@
         "verify:artifact": "node tools/verify-artifact/verify-artifact.ts",
         "test:daemon": "node tools/test-hosts/rust-tests.ts",
         "test:e2e": "pnpm --filter @trc/desktop test:e2e",
-        "test:nfr": "pnpm --filter @trc/desktop build:test && vitest run --project nfr; pnpm --filter @trc/desktop exec playwright test -c playwright.nfr.config.ts",
+        "test:nfr": "pnpm --filter @trc/desktop build:test && node tools/test-nfr/test-nfr.ts",
         "test:soak": "pnpm --filter @trc/desktop build:test && vitest run --project soak && pnpm --filter @trc/desktop exec playwright test -c playwright.soak.config.ts",
         "test:ax:mac": "node tools/require-os/require-os.ts darwin test:ax:mac && swift build -c release --package-path tools/ax-probe && pnpm --filter @trc/desktop build:test && vitest run --project ax",
         "gen": "cargo test --locked -p trc-protocol --quiet export_bindings",

@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { basename } from 'node:path';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { launchApp } from '../e2e/support/launch';
 import { LOCAL_DAEMON, launchLocal, removeLocalDaemon, scratchLocal } from '../e2e/support/local-host';
@@ -11,6 +11,7 @@ import {
     scratchInstallRoot,
     testHostsMissing,
 } from '../e2e/support/test-host';
+import { killMatching } from '../test-platform';
 import { ECHO_ALLOWANCE_MS, ECHO_PERCENTILE, ECHO_SAMPLES } from './echo-target';
 import { closeLiveHosts, connectLive, type LiveHost, roundTrips, ssh } from './live-host';
 import { percentile, record } from './stats';
@@ -506,7 +507,7 @@ test.describe('restoring and reconnecting on live hosts (NFR-06, NFR-07)', () =>
             const times: number[] = [];
             for (let round = 0; round < 5; round += 1) {
                 const lost = performance.now();
-                execFileSync('pkill', ['-f', `${scratch}/known_hosts`]);
+                expect(killMatching([basename(scratch), 'known_hosts'])).toBeGreaterThan(0);
                 await window
                     .getByRole('textbox', { name: /, trc-ubuntu, (disconnected|reconnecting)$/ })
                     .waitFor({ timeout: 10_000 });

@@ -107,8 +107,7 @@ export function killMatching(needles: readonly string[]): number {
     for (const entry of doomed) {
         try {
             process.kill(entry.pid, 'SIGTERM');
-        } catch {
-        }
+        } catch {}
     }
     return doomed.length;
 }

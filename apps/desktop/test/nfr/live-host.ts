@@ -10,7 +10,7 @@ import { type ConnectionRuntime, HostConnection } from '../../src/connection-hos
 import { createAppLogger } from '../../src/connection-host/logging/app-log';
 import type { ConnectionState } from '../../src/shared/connection';
 import { bootOutAgent } from '../mac-hosts';
-import { testRuntimeSsh, testSshTool } from '../test-platform';
+import { dockerContextArguments, testRuntimeSsh, testSshTool } from '../test-platform';
 import { percentile } from './stats';
 
 const repository = resolve(import.meta.dirname, '../../../..');
@@ -235,11 +235,11 @@ export async function connectLive(alias: string, options: LiveOptions = {}): Pro
 
 /** Restarts a test host's container, which ends every process in it as a reboot does (P-50). */
 export function restartTestHost(alias: string): void {
-    const context = process.env['DOCKER_CONTEXT'] ?? 'colima-trc';
     const container = `trc-test-hosts-${alias.replace(/^trc-/, '')}-1`;
-    execFileSync('docker', ['--context', context, 'restart', '--time', '1', container], {
+    execFileSync('docker', [...dockerContextArguments(), 'restart', '--time', '1', container], {
         stdio: 'ignore',
         timeout: 60_000,
+        windowsHide: true,
     });
 }
 

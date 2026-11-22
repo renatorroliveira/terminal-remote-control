@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { CREDIT_WINDOW } from '@trc/protocol';
 import { afterAll, describe, expect, it } from 'vitest';
+import { dockerContextArguments } from '../test-platform';
 import { ECHO_ALLOWANCE_MS, ECHO_PERCENTILE, ECHO_SAMPLES } from './echo-target';
 import {
     closeLiveHosts,
@@ -159,8 +160,8 @@ async function waitBytes(session: LiveSession, bytes: number): Promise<void> {
 describe.skipIf(missing !== undefined)('dead connection detection (NFR-07)', () => {
     it('notices a host that stopped answering within 30 s', async () => {
         const host = await connectLive('trc-rocky');
-        const docker = ['--context', 'colima-trc'];
-        execFileSync('docker', [...docker, 'pause', 'trc-test-hosts-rocky-1']);
+        const docker = dockerContextArguments();
+        execFileSync('docker', [...docker, 'pause', 'trc-test-hosts-rocky-1'], { windowsHide: true });
         try {
             const started = performance.now();
             await waitFor(() => host.states.at(-1)?.status === 'disconnected', 35_000);

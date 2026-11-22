@@ -6,7 +6,9 @@ import {
     type LiveHost,
     reconnectLive,
     restartTestHost,
+    ssh,
     testHostsMissing,
+    waitFor,
 } from './live-host';
 import { record } from './stats';
 
@@ -26,6 +28,15 @@ async function listed(host: LiveHost): Promise<readonly SessionInfo[]> {
     return message.sessions;
 }
 
+/**
+ * How many sessions under `root` have their record on disk, with no write still in flight: the core syncs each one
+ * from a queue, which a slow disk such as Docker Desktop's drains over a few seconds, within NFR-08's 5 s.
+ */
+function recordsOnDisk(root: string): number {
+    const script = `ls ~/${root}/sessions/*/meta.json.new >/dev/null 2>&1 && echo 0 || ls ~/${root}/sessions/*/meta.json | wc -l`;
+    return Number(ssh(HOST, script).trim());
+}
+
 /** Waits until every listed session runs and `wanted` holds for each, polling the daemon's list. */
 async function allRunning(host: LiveHost, wanted: (session: SessionInfo) => boolean): Promise<void> {
     const deadline = performance.now() + 300_000;
@@ -35,7 +46,11 @@ async function allRunning(host: LiveHost, wanted: (session: SessionInfo) => bool
             return;
         }
         if (performance.now() > deadline) {
-            throw new Error(`not every session runs again: ${sessions.filter((s) => s.state !== 'running').length}`);
+            const stopped = sessions.filter((s) => s.state !== 'running').length;
+            const unwanted = sessions.filter((s) => !wanted(s)).length;
+            throw new Error(
+                `${sessions.length} sessions listed, ${stopped} not running, ${unwanted} not yet as wanted, such as ${JSON.stringify(sessions.find((s) => !wanted(s)))}`,
+            );
         }
         await new Promise((resolve) => setTimeout(resolve, 250));
     }
@@ -49,6 +64,7 @@ describe.skipIf(testHostsMissing() !== undefined)('restore at scale (US-3.1, NFR
             await host.session({ env: { PS1: '$ ' } });
         }
         await allRunning(host, () => true);
+        await waitFor(() => recordsOnDisk(root) === SESSIONS, 30_000);
         host.connection.close();
         restartTestHost(HOST);
         const restarted = performance.now();

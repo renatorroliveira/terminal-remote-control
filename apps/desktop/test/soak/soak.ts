@@ -1,8 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { basename, dirname } from 'node:path';
 import { bootOutAgent } from '../mac-hosts';
 import { LiveHost, type LiveOptions, type LiveSession, LOCAL_ALIAS, ssh, waitFor } from '../nfr/live-host';
 import { percentile, record } from '../nfr/stats';
+import { dockerContextArguments, killMatching } from '../test-platform';
 
 /** How many cycles each scenario runs (NFR-11's 1,000 unless `TRC_SOAK_CYCLES` says otherwise). */
 export const CYCLES = soakCycles('TRC_SOAK_CYCLES', 1_000);
@@ -243,10 +245,9 @@ export class SoakRun {
  * returns its output.
  */
 export function onHost(alias: string, command: readonly string[]): string {
-    const context = process.env['DOCKER_CONTEXT'] ?? 'colima-trc';
     const container = `trc-test-hosts-${alias.replace(/^trc-/, '')}-1`;
-    const args = ['--context', context, 'exec', '-u', 'tester', container, ...command];
-    return execFileSync('docker', args, { encoding: 'utf8', timeout: 30_000 });
+    const args = [...dockerContextArguments(), 'exec', '-u', 'tester', container, ...command];
+    return execFileSync('docker', args, { encoding: 'utf8', timeout: 30_000, windowsHide: true });
 }
 
 /** The PID of the run's core, from its lock. */
@@ -254,12 +255,25 @@ export function corePid(run: SoakRun): string {
     return ssh(run.alias, `head -n 1 ~/${run.root}/run/core.lock 2>/dev/null`).trim();
 }
 
-/** Sends `signal` to the ssh process of a live host's connection. */
+/**
+ * Sends `signal` to the ssh process of a live host's connection, found by its known-hosts file. Windows can only kill
+ * it, with TerminateProcess; stopping and continuing it, which the flap soak does, stays macOS's. Fails with status 1,
+ * as pkill does, when no ssh matched.
+ */
 export function signalSsh(host: LiveHost, signal: 'KILL' | 'STOP' | 'CONT'): void {
     if (host.knownHosts === '') {
         throw new Error('the connection has no known-hosts file to find its ssh by');
     }
-    execFileSync('pkill', [`-${signal}`, '-f', host.knownHosts]);
+    if (process.platform !== 'win32') {
+        execFileSync('pkill', [`-${signal}`, '-f', host.knownHosts]);
+        return;
+    }
+    if (signal !== 'KILL') {
+        throw new Error(`Windows cannot ${signal} a process; the flap soak runs on macOS`);
+    }
+    if (killMatching([basename(dirname(host.knownHosts)), 'known_hosts']) === 0) {
+        throw Object.assign(new Error('no ssh matched'), { status: 1 });
+    }
 }
 
 /** Kills a connection's ssh when it still runs; one that already ended is fine. */
