@@ -16,4 +16,8 @@ describe('trcHome: the folder that holds the app config and known hosts', () => 
         expect(trcHome({ TRC_HOME: '~/.trc-dev' }, HOME)).toBe(join(HOME, '.trc-dev'));
         expect(trcHome({ TRC_HOME: 'trc-dev' }, HOME)).toBe(join(HOME, 'trc-dev'));
     });
+
+    it('reads ~\\ as the home folder on Windows (P-95)', () => {
+        expect(trcHome({ TRC_HOME: '~\\.trc-dev' }, HOME, 'win32')).toBe(join(HOME, '.trc-dev'));
+    });
 });

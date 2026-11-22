@@ -6,6 +6,7 @@ import { APP_COMMAND_CHANNEL, NOTIFICATION_CHOSEN_CHANNEL, QUIT_REQUESTED_CHANNE
 import type { ThemePreference } from '../shared/display';
 import { type Keymap, UNBOUND_KEYMAP } from '../shared/keymap';
 import { keymapFor } from '../shared/settings';
+import { windowsTrcd } from '../shared/windows-helper';
 import { aboutPanelOptions } from './about-panel';
 import { relayAccessibility } from './accessibility-relay';
 import { AppConfigFile, settingsOf } from './app-config';
@@ -31,6 +32,7 @@ import { disableNetworkSwitches, lockDownNetwork } from './network-guard';
 import { openExternalFor } from './open-external';
 import { OsNotifications } from './os-notifications';
 import { Pacer } from './pacer';
+import { makeFoldersPrivate } from './private-folders';
 import { QuitGuard } from './quit-guard';
 import { ScreenReaderSetting, screenReaderFlag } from './screen-reader-mode';
 import { CONTENT_SECURITY_POLICY, GUIDE_CONTENT_SECURITY_POLICY, secureWebPreferences } from './security';
@@ -83,6 +85,7 @@ async function start(): Promise<void> {
         app.dock?.setIcon(appIconPath(resources));
     }
     const home = trcHome(process.env, app.getPath('home'));
+    await keepPrivate([home, app.getPath('userData')]);
     await migrateLegacyState({ appData: app.getPath('appData'), home });
     const config = new AppConfigFile(home);
     const stored = await config.read();
@@ -148,6 +151,14 @@ async function start(): Promise<void> {
  * Holds the first quit while sessions may run, so the page can show the first-quit notice (US-2.1.5): on
  * `before-quit`, and on closing the window, which quits the app.
  */
+/** Makes the TRC home and the app's data folder private to the user (SEC-05, D-68), warning about any it cannot. */
+async function keepPrivate(folders: readonly string[]): Promise<void> {
+    const trcd = windowsTrcd(resources, process.arch);
+    for (const folder of await makeFoldersPrivate(folders, { platform: process.platform, trcd })) {
+        console.warn(`TRC could not make ${folder} private to this user`);
+    }
+}
+
 function guardQuitting(config: AppConfigFile, noticeShown: boolean): QuitGuard {
     const guard = new QuitGuard({
         noticeShown,

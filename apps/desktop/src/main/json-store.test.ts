@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { JsonStore } from './json-store';
+import { JsonStore, replaceFile } from './json-store';
 
 /** Windows has no POSIX modes; the user profile's ACL keeps these files private there (SEC-02, E6). */
 const POSIX_MODES = process.platform !== 'win32';
@@ -14,6 +14,41 @@ const defaults = { width: 280, collapsed: false };
 function fresh(): string {
     return join(mkdtempSync(join(tmpdir(), 'trc-store-')), 'state', 'ui.json');
 }
+
+describe('replaceFile (P-95)', () => {
+    const busy = Object.assign(new Error('busy'), { code: 'EBUSY' });
+
+    it('retries while the file is in use, then succeeds', async () => {
+        let calls = 0;
+        const rename = async (): Promise<void> => {
+            calls += 1;
+            if (calls < 3) {
+                throw busy;
+            }
+        };
+        await replaceFile('a', 'b', rename, async () => undefined);
+        expect(calls).toBe(3);
+    });
+
+    it('gives up after a second, and at once on any other error', async () => {
+        let calls = 0;
+        const always = async (): Promise<void> => {
+            calls += 1;
+            throw busy;
+        };
+        await expect(replaceFile('a', 'b', always, async () => undefined)).rejects.toBe(busy);
+        expect(calls).toBe(10);
+        const missing = Object.assign(new Error('gone'), { code: 'ENOENT' });
+        await expect(
+            replaceFile(
+                'a',
+                'b',
+                async () => Promise.reject(missing),
+                async () => undefined,
+            ),
+        ).rejects.toBe(missing);
+    });
+});
 
 describe('JsonStore (P-18)', () => {
     it('returns the defaults when nothing is stored', async () => {
