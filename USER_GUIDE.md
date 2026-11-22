@@ -1,11 +1,12 @@
 # Terminal Remote Control user guide
 
 Terminal Remote Control (TRC) runs terminal sessions on your Mac and on your Linux and macOS hosts, and shows them
-in one accessible macOS window. The sessions belong to a small daemon, `trcd`, that the app installs for your user
+in one accessible window, on macOS or Windows. The sessions belong to a small daemon, `trcd`, that the app installs for your user
 on each computer, so a session keeps running when you quit the app or lose the network.
 
-This guide covers version 0.5, which completes Epic 4. [What's not there yet](#whats-not-there-yet) lists what
-later releases add.
+This guide covers version 0.7, the first release for Windows. It gives the macOS keys; [On Windows](#on-windows)
+has the Windows app's requirements, install and keys. [What's not there yet](#whats-not-there-yet) lists what later
+releases add.
 
 ## Contents
 
@@ -23,11 +24,12 @@ later releases add.
 - [Accessibility](#accessibility)
 - [Files and folders](#files-and-folders)
 - [Troubleshooting](#troubleshooting)
+- [On Windows](#on-windows)
 - [What's not there yet](#whats-not-there-yet)
 
 ## Requirements
 
-On your Mac:
+For Windows, see [Requirements and install on Windows](#requirements-and-install-on-windows). On your Mac:
 
 - macOS 15 or later, on Apple silicon or Intel.
 - OpenSSH 8.5 or later. The one that ships with macOS works.
@@ -50,6 +52,8 @@ connections use `~/.ssh/known_hosts` instead, so a key you trust is kept and che
 your config.
 
 ## Install
+
+For Windows, see [Requirements and install on Windows](#requirements-and-install-on-windows).
 
 1. Download the release for your Mac from the
    [Releases page](https://github.com/renatorroliveira/terminal-remote-control/releases): `TRC-<version>-mac-arm64.dmg`
@@ -88,7 +92,7 @@ VO below means the VoiceOver keys: Control-Option, or Caps Lock if you set Voice
 
 ## This computer
 
-This computer, first in the sidebar, is your Mac itself: its sessions run on the Mac, with no SSH, and work like
+On Windows, This computer arrives in version 0.8. On a Mac, This computer, first in the sidebar, is the Mac itself: its sessions run on the Mac, with no SSH, and work like
 any host's, from New session (your login shell) to restore and sharing.
 
 - **Setup.** At first launch, and whenever its daemon is missing, TRC installs the daemon in the TRC home, `~/.trc`,
@@ -613,7 +617,120 @@ If the app doesn't open after you download it, see [Install](#install), step 3.
 
 `ssh -G <host>` shows the settings ssh will use for a host, and `ssh -v <host>` shows each connection step.
 
+## On Windows
+
+Version 0.7 brings the app to Windows 11, on x64 and arm64. It reaches the same Linux and macOS hosts through
+Windows' own OpenSSH, and everything above works the same, with Windows keys. Sessions on the Windows PC itself,
+This computer, arrive in version 0.8; until then the sidebar says so where This computer will be.
+
+### Requirements and install on Windows
+
+- Windows 11, on x64 or arm64.
+- The OpenSSH client that comes with Windows. TRC runs `C:\Windows\System32\OpenSSH\ssh.exe` by its full path and
+  reads your `%USERPROFILE%\.ssh\config` and `known_hosts`, as it does on a Mac.
+- Your key in the OpenSSH Authentication Agent. Windows ships that service turned off, and only an administrator can
+  turn it on, once: in Services, set OpenSSH Authentication Agent to start automatically and start it, or run
+  `Get-Service ssh-agent | Set-Service -StartupType Automatic; Start-Service ssh-agent` in PowerShell run as
+  administrator. Then, as yourself, `ssh-add` your key. TRC says so when the agent isn't running.
+
+1. Download `TRC-<version>-win-x64-setup.exe` from the
+   [Releases page](https://github.com/renatorroliveira/terminal-remote-control/releases), or
+   `TRC-<version>-win-arm64-setup.exe` for an arm64 PC. In PowerShell, `Get-FileHash <file>` prints the SHA-256 to
+   compare with `SHA256SUMS.txt`.
+2. Run it. 0.x releases are alpha builds and aren't signed, so Microsoft Defender SmartScreen may say "Windows
+   protected your PC": choose More info, then Run anyway. The installer needs no administrator rights. It installs
+   for you alone, into `%LOCALAPPDATA%\Programs\TRC`, adds Terminal Remote Control to the Start menu, and opens it.
+3. Or unpack `TRC-<version>-win-<arch>.zip` into any folder and run `Terminal Remote Control.exe` from there. Windows
+   shows TRC's notifications only for the installed app, whose Start menu shortcut carries its identity.
+
+To remove the installed app, choose Uninstall for Terminal Remote Control in Settings, Apps, Installed apps. The
+daemons on your hosts stay; Remove daemon, in each host's details, removes them first.
+
+### Quick start with NVDA, JAWS or Narrator
+
+1. Open Terminal Remote Control from the Start menu. TRC notices your screen reader, turns on screen-reader mode
+   and says so.
+2. Press Ctrl+F6 until you hear "Sessions and hosts", then Tab to "New host". Type a host as you would after `ssh`,
+   and press Enter. TRC says each step of connecting.
+3. Press Ctrl+Shift+T for a new session. Focus moves to its terminal, an editable text field, so your screen reader
+   reads it by character, word and line as you move.
+4. Type commands. TRC speaks new output as it arrives, and leaves out what you type; Ctrl+Shift+A mutes the
+   session's output.
+5. Alt+F2 opens review mode: the whole scrollback as text, read with the arrow keys and your screen reader's reading
+   commands. Escape returns to the terminal.
+6. Alt+F1 lists the shortcuts for where you are. Alt or F10 moves to the menu bar: File, Edit, View, Terminal and
+   Help.
+
+### Windows keys
+
+The shortcuts that use Command on a Mac use Ctrl+Shift on Windows, as Windows Terminal's do. The terminal keeps Ctrl
+and Alt with a letter for the program: Alt with a letter is the shell's Meta key, such as Alt+B and Alt+F in bash,
+so in the terminal it never opens a menu. TRC binds no Ctrl+Alt chord, which types characters with AltGr on many
+keyboards and is Magnifier's, nor the Windows key.
+
+| Action                                       | Keys                                      |
+| -------------------------------------------- | ----------------------------------------- |
+| Next region, previous region                 | Ctrl+F6, Ctrl+Shift+F6                    |
+| Command palette                              | Ctrl+Shift+P                              |
+| Go to any session                            | Ctrl+Shift+G                              |
+| New session, new session with options        | Ctrl+Shift+T, Ctrl+Shift+Space            |
+| Next session, previous session               | Ctrl+Tab, Ctrl+Shift+Tab                  |
+| Close session                                | Ctrl+Shift+W                              |
+| Show or hide the sidebar                     | Ctrl+Shift+S                              |
+| Tab moves focus out of the terminal (toggle) | Ctrl+Shift+M                              |
+| Send the next key to the terminal            | Ctrl+Shift+K                              |
+| Mute output announcements for this session   | Ctrl+Shift+A                              |
+| Notifications                                | Ctrl+Shift+N                              |
+| List the links on the screen                 | Ctrl+Shift+O                              |
+| Open the link under the pointer              | Ctrl+click                                |
+| Review mode; its start and end               | Alt+F2; Ctrl+Home and Ctrl+End            |
+| Find in the terminal                         | Ctrl+Shift+F                              |
+| Clear the scrollback                         | Ctrl+Shift+L                              |
+| Previous command, next command               | Ctrl+Up, Ctrl+Down                        |
+| Read, select, copy the last command's output | Ctrl+Shift+R, Ctrl+Shift+Up, Ctrl+Shift+Y |
+| Bigger, smaller, default terminal text       | Ctrl+=, Ctrl+-, Ctrl+Shift+0              |
+| Accessibility help                           | Alt+F1                                    |
+| Settings                                     | Ctrl+,                                    |
+| Actions for what has focus                   | Shift+F10, the Menu key or right-click    |
+
+Settings, under Keyboard, changes any shortcut, and turns on plain F6 and Shift+F6 for the regions. TRC refuses a
+shortcut the shell, Windows or a screen reader needs, and says why.
+
+### Copy and paste on Windows
+
+Copy and paste leave the shell its keys: Ctrl+Shift+C or Ctrl+Insert copies the selection, and Ctrl+Shift+V or
+Shift+Insert pastes. Ctrl+C always reaches the program as an interrupt, even while text is selected, since a
+selection you can't see would otherwise turn an interrupt into a copy; Ctrl+V reaches it too. To have Ctrl+C copy
+while text is selected, as in Windows Terminal, turn on "Ctrl+C copies when text is selected" in Settings, under
+Keyboard. Copied text has Windows line breaks. A double-click selects a word without the space after it. Characters
+you type with AltGr reach the program as text.
+
+### Magnifier and read aloud
+
+Magnifier follows the terminal's cursor as you type. With Magnifier's read aloud, Ctrl+Alt+Enter reads the
+selection and Ctrl+Alt+click reads from the pointer, in the terminal and in review mode.
+
+### Contrast themes and animation effects
+
+A Windows contrast theme gives the sidebar and the dialogs the theme's own colors; with Theme set to System, the
+terminal takes them too. With Windows' Animation effects off, TRC plays no animation and the cursor never blinks.
+
+### Files and folders on Windows
+
+The TRC home is `%USERPROFILE%\.trc`, with the same files as on a Mac; `TRC_HOME` can name another folder, where a
+leading `~\` means your profile folder. TRC's logs and Chromium's data are in `%APPDATA%\Terminal Remote Control`.
+TRC limits both folders to your account alone and keeps Windows Search from indexing them.
+
+### Troubleshooting on Windows
+
+| What happens                                           | What to do                                                                                                                                    |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Windows' OpenSSH Authentication Agent isn't running    | Have an administrator turn it on, as in [Requirements and install on Windows](#requirements-and-install-on-windows), then `ssh-add` your key. |
+| "Windows protected your PC" when you run the installer | Choose More info, then Run anyway; 0.x builds aren't signed.                                                                                  |
+| ssh says your key file is unprotected                  | Windows OpenSSH refuses a key other accounts can read. Give your account alone access to it, from its Properties, Security, Advanced.         |
+
 ## What's not there yet
 
-Later epics add the Windows and Linux apps, with shell integration for PowerShell. [The PRD](docs/PRD.md) has the
+Version 0.8 adds sessions on the Windows PC itself: This computer on Windows, with PowerShell, cmd and WSL shells.
+Later epics add the Linux app and shell integration for PowerShell. [The PRD](docs/PRD.md) has the
 full plan.

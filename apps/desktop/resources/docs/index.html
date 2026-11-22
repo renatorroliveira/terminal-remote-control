@@ -9,8 +9,8 @@
 <body>
 <main>
 <h1 id="terminal-remote-control-user-guide">Terminal Remote Control user guide</h1>
-<p>Terminal Remote Control (TRC) runs terminal sessions on your Mac and on your Linux and macOS hosts, and shows them in one accessible macOS window. The sessions belong to a small daemon, <code>trcd</code>, that the app installs for your user on each computer, so a session keeps running when you quit the app or lose the network.</p>
-<p>This guide covers version 0.5, which completes Epic 4. <a href="#whats-not-there-yet">What's not there yet</a> lists what later releases add.</p>
+<p>Terminal Remote Control (TRC) runs terminal sessions on your Mac and on your Linux and macOS hosts, and shows them in one accessible window, on macOS or Windows. The sessions belong to a small daemon, <code>trcd</code>, that the app installs for your user on each computer, so a session keeps running when you quit the app or lose the network.</p>
+<p>This guide covers version 0.7, the first release for Windows. It gives the macOS keys; <a href="#on-windows">On Windows</a> has the Windows app's requirements, install and keys. <a href="#whats-not-there-yet">What's not there yet</a> lists what later releases add.</p>
 <h2 id="contents">Contents</h2>
 <ul>
 <li><a href="#requirements">Requirements</a></li>
@@ -27,10 +27,11 @@
 <li><a href="#accessibility">Accessibility</a></li>
 <li><a href="#files-and-folders">Files and folders</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#on-windows">On Windows</a></li>
 <li><a href="#whats-not-there-yet">What's not there yet</a></li>
 </ul>
 <h2 id="requirements">Requirements</h2>
-<p>On your Mac:</p>
+<p>For Windows, see <a href="#requirements-and-install-on-windows">Requirements and install on Windows</a>. On your Mac:</p>
 <ul>
 <li>macOS 15 or later, on Apple silicon or Intel.</li>
 <li>OpenSSH 8.5 or later. The one that ships with macOS works.</li>
@@ -44,6 +45,7 @@
 </ul>
 <p>TRC uses your own SSH setup: <code>~/.ssh/config</code> (aliases, <code>ProxyCommand</code>, <code>ProxyJump</code>, ports, users), your agent and your <code>known_hosts</code>. It never changes your SSH configuration or your keys. The one file it writes is your known hosts file, the first <code>UserKnownHostsFile</code> your SSH config names (<code>~/.ssh/known_hosts</code> unless you set another), and only when you trust a new host key. If your config sends known hosts to <code>/dev/null</code>, as some generated configs do, TRC's own connections use <code>~/.ssh/known_hosts</code> instead, so a key you trust is kept and checked; <code>ssh</code> in Terminal still follows your config.</p>
 <h2 id="install">Install</h2>
+<p>For Windows, see <a href="#requirements-and-install-on-windows">Requirements and install on Windows</a>.</p>
 <ol>
 <li>Download the release for your Mac from the <a href="https://github.com/renatorroliveira/terminal-remote-control/releases">Releases page</a>: <code>TRC-&lt;version&gt;-mac-arm64.dmg</code> for Apple silicon, or <code>TRC-&lt;version&gt;-mac-x64.dmg</code> for Intel. <code>SHA256SUMS.txt</code> lists every file's checksum; with it in the same folder, <code>shasum -a 256 --ignore-missing -c SHA256SUMS.txt</code> checks that your download is complete and intact. It comes from the same Releases page, so it cannot show who made the files.</li>
 <li>Open the dmg and drag Terminal Remote Control to Applications.</li>
@@ -63,7 +65,7 @@
 <li>Option-F1 lists the shortcuts for where you are. Help, then Terminal Remote Control Help, opens this guide in its own window.</li>
 </ol>
 <h2 id="this-computer">This computer</h2>
-<p>This computer, first in the sidebar, is your Mac itself: its sessions run on the Mac, with no SSH, and work like any host's, from New session (your login shell) to restore and sharing.</p>
+<p>On Windows, This computer arrives in version 0.8. On a Mac, This computer, first in the sidebar, is the Mac itself: its sessions run on the Mac, with no SSH, and work like any host's, from New session (your login shell) to restore and sharing.</p>
 <ul>
 <li><strong>Setup.</strong> At first launch, and whenever its daemon is missing, TRC installs the daemon in the TRC home, <code>~/.trc</code>, and registers it as a LaunchAgent, <code>~/Library/LaunchAgents/dev.trc.trcd-&lt;8 hexadecimal digits&gt;.plist</code>, which starts it at login and again if it crashes. No step asks for an administrator password. Each step shows and is announced, as for any host. macOS may then say that a background item was added, and lists <code>trcd</code> in System Settings, General, Login Items &amp; Extensions; leave it allowed there. When the daemon runs without its LaunchAgent, so it would neither start at login nor restart after a crash, TRC says so and lists it in Notifications; choose Restart daemon in This computer's details to register it again.</li>
 <li><strong>What survives.</strong> Local sessions keep running when you quit the app, when it crashes or is forced to quit, and when the daemon is killed or updated. Logging out of macOS ends no session either: the daemon starts again at your next login and takes them back. After the Mac restarts, your sessions come back when you log in, below their saved scrollback, as on any host <a href="#after-a-restart">after a restart</a>.</li>
@@ -319,8 +321,78 @@ done</code></pre>
 </table>
 <p>If the app doesn't open after you download it, see <a href="#install">Install</a>, step 3.</p>
 <p><code>ssh -G &lt;host&gt;</code> shows the settings ssh will use for a host, and <code>ssh -v &lt;host&gt;</code> shows each connection step.</p>
+<h2 id="on-windows">On Windows</h2>
+<p>Version 0.7 brings the app to Windows 11, on x64 and arm64. It reaches the same Linux and macOS hosts through Windows' own OpenSSH, and everything above works the same, with Windows keys. Sessions on the Windows PC itself, This computer, arrive in version 0.8; until then the sidebar says so where This computer will be.</p>
+<h3 id="requirements-and-install-on-windows">Requirements and install on Windows</h3>
+<ul>
+<li>Windows 11, on x64 or arm64.</li>
+<li>The OpenSSH client that comes with Windows. TRC runs <code>C:\Windows\System32\OpenSSH\ssh.exe</code> by its full path and reads your <code>%USERPROFILE%\.ssh\config</code> and <code>known_hosts</code>, as it does on a Mac.</li>
+<li>Your key in the OpenSSH Authentication Agent. Windows ships that service turned off, and only an administrator can turn it on, once: in Services, set OpenSSH Authentication Agent to start automatically and start it, or run <code>Get-Service ssh-agent | Set-Service -StartupType Automatic; Start-Service ssh-agent</code> in PowerShell run as administrator. Then, as yourself, <code>ssh-add</code> your key. TRC says so when the agent isn't running.</li>
+</ul>
+<ol>
+<li>Download <code>TRC-&lt;version&gt;-win-x64-setup.exe</code> from the <a href="https://github.com/renatorroliveira/terminal-remote-control/releases">Releases page</a>, or <code>TRC-&lt;version&gt;-win-arm64-setup.exe</code> for an arm64 PC. In PowerShell, <code>Get-FileHash &lt;file&gt;</code> prints the SHA-256 to compare with <code>SHA256SUMS.txt</code>.</li>
+<li>Run it. 0.x releases are alpha builds and aren't signed, so Microsoft Defender SmartScreen may say &quot;Windows protected your PC&quot;: choose More info, then Run anyway. The installer needs no administrator rights. It installs for you alone, into <code>%LOCALAPPDATA%\Programs\TRC</code>, adds Terminal Remote Control to the Start menu, and opens it.</li>
+<li>Or unpack <code>TRC-&lt;version&gt;-win-&lt;arch&gt;.zip</code> into any folder and run <code>Terminal Remote Control.exe</code> from there. Windows shows TRC's notifications only for the installed app, whose Start menu shortcut carries its identity.</li>
+</ol>
+<p>To remove the installed app, choose Uninstall for Terminal Remote Control in Settings, Apps, Installed apps. The daemons on your hosts stay; Remove daemon, in each host's details, removes them first.</p>
+<h3 id="quick-start-with-nvda-jaws-or-narrator">Quick start with NVDA, JAWS or Narrator</h3>
+<ol>
+<li>Open Terminal Remote Control from the Start menu. TRC notices your screen reader, turns on screen-reader mode and says so.</li>
+<li>Press Ctrl+F6 until you hear &quot;Sessions and hosts&quot;, then Tab to &quot;New host&quot;. Type a host as you would after <code>ssh</code>, and press Enter. TRC says each step of connecting.</li>
+<li>Press Ctrl+Shift+T for a new session. Focus moves to its terminal, an editable text field, so your screen reader reads it by character, word and line as you move.</li>
+<li>Type commands. TRC speaks new output as it arrives, and leaves out what you type; Ctrl+Shift+A mutes the session's output.</li>
+<li>Alt+F2 opens review mode: the whole scrollback as text, read with the arrow keys and your screen reader's reading commands. Escape returns to the terminal.</li>
+<li>Alt+F1 lists the shortcuts for where you are. Alt or F10 moves to the menu bar: File, Edit, View, Terminal and Help.</li>
+</ol>
+<h3 id="windows-keys">Windows keys</h3>
+<p>The shortcuts that use Command on a Mac use Ctrl+Shift on Windows, as Windows Terminal's do. The terminal keeps Ctrl and Alt with a letter for the program: Alt with a letter is the shell's Meta key, such as Alt+B and Alt+F in bash, so in the terminal it never opens a menu. TRC binds no Ctrl+Alt chord, which types characters with AltGr on many keyboards and is Magnifier's, nor the Windows key.</p>
+<table>
+<thead><tr><th scope="col">Action</th><th scope="col">Keys</th></tr></thead>
+<tbody>
+<tr><td>Next region, previous region</td><td>Ctrl+F6, Ctrl+Shift+F6</td></tr>
+<tr><td>Command palette</td><td>Ctrl+Shift+P</td></tr>
+<tr><td>Go to any session</td><td>Ctrl+Shift+G</td></tr>
+<tr><td>New session, new session with options</td><td>Ctrl+Shift+T, Ctrl+Shift+Space</td></tr>
+<tr><td>Next session, previous session</td><td>Ctrl+Tab, Ctrl+Shift+Tab</td></tr>
+<tr><td>Close session</td><td>Ctrl+Shift+W</td></tr>
+<tr><td>Show or hide the sidebar</td><td>Ctrl+Shift+S</td></tr>
+<tr><td>Tab moves focus out of the terminal (toggle)</td><td>Ctrl+Shift+M</td></tr>
+<tr><td>Send the next key to the terminal</td><td>Ctrl+Shift+K</td></tr>
+<tr><td>Mute output announcements for this session</td><td>Ctrl+Shift+A</td></tr>
+<tr><td>Notifications</td><td>Ctrl+Shift+N</td></tr>
+<tr><td>List the links on the screen</td><td>Ctrl+Shift+O</td></tr>
+<tr><td>Open the link under the pointer</td><td>Ctrl+click</td></tr>
+<tr><td>Review mode; its start and end</td><td>Alt+F2; Ctrl+Home and Ctrl+End</td></tr>
+<tr><td>Find in the terminal</td><td>Ctrl+Shift+F</td></tr>
+<tr><td>Clear the scrollback</td><td>Ctrl+Shift+L</td></tr>
+<tr><td>Previous command, next command</td><td>Ctrl+Up, Ctrl+Down</td></tr>
+<tr><td>Read, select, copy the last command's output</td><td>Ctrl+Shift+R, Ctrl+Shift+Up, Ctrl+Shift+Y</td></tr>
+<tr><td>Bigger, smaller, default terminal text</td><td>Ctrl+=, Ctrl+-, Ctrl+Shift+0</td></tr>
+<tr><td>Accessibility help</td><td>Alt+F1</td></tr>
+<tr><td>Settings</td><td>Ctrl+,</td></tr>
+<tr><td>Actions for what has focus</td><td>Shift+F10, the Menu key or right-click</td></tr>
+</tbody>
+</table>
+<p>Settings, under Keyboard, changes any shortcut, and turns on plain F6 and Shift+F6 for the regions. TRC refuses a shortcut the shell, Windows or a screen reader needs, and says why.</p>
+<h3 id="copy-and-paste-on-windows">Copy and paste on Windows</h3>
+<p>Copy and paste leave the shell its keys: Ctrl+Shift+C or Ctrl+Insert copies the selection, and Ctrl+Shift+V or Shift+Insert pastes. Ctrl+C always reaches the program as an interrupt, even while text is selected, since a selection you can't see would otherwise turn an interrupt into a copy; Ctrl+V reaches it too. To have Ctrl+C copy while text is selected, as in Windows Terminal, turn on &quot;Ctrl+C copies when text is selected&quot; in Settings, under Keyboard. Copied text has Windows line breaks. A double-click selects a word without the space after it. Characters you type with AltGr reach the program as text.</p>
+<h3 id="magnifier-and-read-aloud">Magnifier and read aloud</h3>
+<p>Magnifier follows the terminal's cursor as you type. With Magnifier's read aloud, Ctrl+Alt+Enter reads the selection and Ctrl+Alt+click reads from the pointer, in the terminal and in review mode.</p>
+<h3 id="contrast-themes-and-animation-effects">Contrast themes and animation effects</h3>
+<p>A Windows contrast theme gives the sidebar and the dialogs the theme's own colors; with Theme set to System, the terminal takes them too. With Windows' Animation effects off, TRC plays no animation and the cursor never blinks.</p>
+<h3 id="files-and-folders-on-windows">Files and folders on Windows</h3>
+<p>The TRC home is <code>%USERPROFILE%\.trc</code>, with the same files as on a Mac; <code>TRC_HOME</code> can name another folder, where a leading <code>~\</code> means your profile folder. TRC's logs and Chromium's data are in <code>%APPDATA%\Terminal Remote Control</code>. TRC limits both folders to your account alone and keeps Windows Search from indexing them.</p>
+<h3 id="troubleshooting-on-windows">Troubleshooting on Windows</h3>
+<table>
+<thead><tr><th scope="col">What happens</th><th scope="col">What to do</th></tr></thead>
+<tbody>
+<tr><td>Windows' OpenSSH Authentication Agent isn't running</td><td>Have an administrator turn it on, as in <a href="#requirements-and-install-on-windows">Requirements and install on Windows</a>, then <code>ssh-add</code> your key.</td></tr>
+<tr><td>&quot;Windows protected your PC&quot; when you run the installer</td><td>Choose More info, then Run anyway; 0.x builds aren't signed.</td></tr>
+<tr><td>ssh says your key file is unprotected</td><td>Windows OpenSSH refuses a key other accounts can read. Give your account alone access to it, from its Properties, Security, Advanced.</td></tr>
+</tbody>
+</table>
 <h2 id="whats-not-there-yet">What's not there yet</h2>
-<p>Later epics add the Windows and Linux apps, with shell integration for PowerShell. <a href="https://github.com/renatorroliveira/terminal-remote-control/blob/main/docs/PRD.md">The PRD</a> has the full plan.</p>
+<p>Version 0.8 adds sessions on the Windows PC itself: This computer on Windows, with PowerShell, cmd and WSL shells. Later epics add the Linux app and shell integration for PowerShell. <a href="https://github.com/renatorroliveira/terminal-remote-control/blob/main/docs/PRD.md">The PRD</a> has the full plan.</p>
 </main>
 </body>
 </html>

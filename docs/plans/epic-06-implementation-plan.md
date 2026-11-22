@@ -335,25 +335,25 @@ instead (P-103).
 
 ## 7. Status
 
-| Story | Status | Commit |
-| ----- | ------ | ------ |
-| ST-74 | Done   |        |
-| ST-75 | To do  |        |
-| ST-76 | To do  |        |
-| ST-77 | To do  |        |
-| ST-78 | To do  |        |
-| ST-79 | To do  |        |
-| ST-80 | To do  |        |
-| ST-81 | To do  |        |
-| ST-82 | To do  |        |
-| ST-83 | To do  |        |
-| ST-84 | To do  |        |
-| ST-85 | To do  |        |
-| ST-86 | To do  |        |
-| ST-87 | To do  |        |
-| ST-88 | To do  |        |
-| ST-89 | To do  |        |
-| ST-90 | To do  |        |
-| ST-91 | To do  |        |
-| ST-92 | To do  |        |
-| ST-93 | To do  |        |
+| Story | Status | Commit                    |
+| ----- | ------ | ------------------------- |
+| ST-74 | Done   | 5d4dfd1                   |
+| ST-75 | Doing  |                           |
+| ST-76 | Doing  | e1f262a, e763804, 0625166 |
+| ST-77 | Done   | 47ba320                   |
+| ST-78 | Done   | 14765f5                   |
+| ST-79 | Doing  | 8bf0e69                   |
+| ST-80 | Done   | 19d565e, 14765f5          |
+| ST-81 | Doing  | f18a947                   |
+| ST-82 | Doing  |                           |
+| ST-83 | Doing  | a8e0098                   |
+| ST-84 | To do  |                           |
+| ST-85 | To do  |                           |
+| ST-86 | To do  |                           |
+| ST-87 | To do  |                           |
+| ST-88 | To do  |                           |
+| ST-89 | To do  |                           |
+| ST-90 | To do  |                           |
+| ST-91 | To do  |                           |
+| ST-92 | To do  |                           |
+| ST-93 | To do  |                           |

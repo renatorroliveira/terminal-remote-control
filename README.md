@@ -17,11 +17,13 @@ An accessible desktop terminal manager whose sessions outlive the app, the netwo
 > with their scrollback, the Mac's own sessions also survive a logout, and each daemon can be inspected, restarted,
 > upgraded and removed from the app. In bash, zsh and fish, with no change to their files, the terminal knows each
 > command: it moves between them, reads their output, and says when one fails or when something happens in another
-> session, and Command-P reaches any session by name. 0.x releases are experimental, ad-hoc-signed builds; 1.0.0 is
-> the first official release. The [E1](docs/plans/epic-01-implementation-plan.md),
+> session, and Command-P reaches any session by name. Version 0.7 adds the Windows 11 app, which reaches the same
+> hosts through Windows' OpenSSH with NVDA, JAWS, Narrator, Magnifier and Windows keys; sessions on the Windows PC
+> itself follow in 0.8. 0.x releases are experimental builds, ad-hoc-signed on macOS and unsigned on Windows; 1.0.0
+> is the first official release. The [E1](docs/plans/epic-01-implementation-plan.md),
 > [E2](docs/plans/epic-02-implementation-plan.md), [E3](docs/plans/epic-03-implementation-plan.md),
-> [E4](docs/plans/epic-04-implementation-plan.md) and
-> [E5 implementation plans](docs/plans/epic-05-implementation-plan.md) record how each epic was built.
+> [E4](docs/plans/epic-04-implementation-plan.md), [E5](docs/plans/epic-05-implementation-plan.md) and
+> [E6 implementation plans](docs/plans/epic-06-implementation-plan.md) record how each epic was built.
 
 ## Why
 
@@ -85,7 +87,9 @@ Desktop app (Electron)                        Host
 1. Download the dmg for your Mac (Apple silicon or Intel) from the
    [latest release](https://github.com/renatorroliveira/terminal-remote-control/releases/latest) and drag the app to
    Applications. 0.x releases are alpha, experimental builds, ad-hoc signed until 1.0.0, so the first launch needs
-   Open Anyway in System Settings, Privacy & Security.
+   Open Anyway in System Settings, Privacy & Security. On Windows 11 (x64 or arm64), from 0.7, run the
+   `-setup.exe` instead: it installs for you alone, without administrator rights; the user guide's
+   [On Windows](USER_GUIDE.md#on-windows) covers SmartScreen's warning and the OpenSSH agent.
 2. Make sure `ssh <host>` works in Terminal with a key in your SSH agent and no password.
 3. Open the app, type the host in the Hosts field (an SSH alias or `user@host:port`) and choose Add host.
 4. Choose the + next to the host to start a session.
@@ -113,39 +117,41 @@ the app does today.
 
 ### Prerequisites
 
-- macOS on Apple silicon, or Windows 11 x64 (E6). On Windows, `pnpm check`, `pnpm build`, the dev app, `pnpm build:daemon`
-  (Linux daemons only) and `pnpm dist` run; the live suites (`test:integration`, `test:e2e`, `test:nfr`, `test:soak`) and
-  the `*:mac` scripts still need a Mac.
+- macOS on Apple silicon, or Windows 11 (E6). On Windows everything runs against the Linux test hosts on Docker
+  Desktop, `test:ax:win` included, except the macOS daemon and test host and the `*:mac` scripts.
 - Node.js 24 and pnpm 12 (`corepack enable pnpm`).
 - Rust through rustup; `rust-toolchain.toml` pins the version, the musl targets and both Apple targets.
 - `cargo install --locked cargo-nextest cargo-zigbuild`, Zig 0.17 and minisign (`brew install zig minisign`), then
   `tools/fetch-libghostty.sh` once to download and verify libghostty-vt.
 - On Windows: Git for Windows, whose Git Bash runs `tools/fetch-libghostty.sh`, and Zig and minisign from winget
   (`winget install zig.zig --version 0.17.1`, `winget install jedisct1.minisign --version 0.12`).
-- For the Linux test hosts: colima and the docker CLI (`brew install colima docker`).
-- For the accessibility probe: Xcode command-line tools (Swift), and the Accessibility permission for your terminal.
+- For the Linux test hosts: colima and the docker CLI (`brew install colima docker`), or Docker Desktop with its WSL 2
+  engine on Windows.
+- For the accessibility probes: Xcode command-line tools (Swift), and the Accessibility permission for your terminal,
+  on macOS; nothing more on Windows, where `tools/uia-probe` is Rust.
 
 ### Commands
 
-| Command                           | What it does                                                                                                                                    |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm install`                    | Installs dependencies and the git hooks                                                                                                         |
-| `pnpm check`                      | The full local gate: Prettier, Biome, document IDs, `tsc`, Vitest, Rust fmt/clippy/nextest                                                      |
-| `pnpm --filter @trc/desktop i18n` | Extracts and precompiles the UI messages after a string changes                                                                                 |
-| `pnpm test`                       | Vitest unit tests (Node) and component tests (Chromium, with axe)                                                                               |
-| `pnpm test:integration`           | Tests against the Linux test hosts (start them with `node tools/test-hosts/up.ts`), and the macOS one if `tools/test-hosts/macos/up.sh` runs it |
-| `pnpm build:daemon`               | Builds the Linux daemons, and on macOS the universal macOS one, into `apps/desktop/resources/daemon`, with their manifest                       |
-| `pnpm test:daemon`                | The daemon's musl tests in Ubuntu, Alpine and Rocky containers (part of the above)                                                              |
-| `pnpm test:e2e`                   | Builds a test build of the app and runs the Playwright Electron tests                                                                           |
-| `pnpm test:nfr`                   | Measures the NFR targets against the test hosts; see `docs/verification/E5-nfr.md`                                                              |
-| `pnpm test:soak`                  | The NFR-11 soak against the test hosts: 1,000 cycles per scenario (50 for app launches, 100 for host restarts), for hours                       |
-| `pnpm test:ax:mac`                | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests (macOS)                                                  |
-| `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                                                                                    |
-| `pnpm icons:mac`                  | Renders the app icons in `apps/desktop/resources/icons` from `tools/icons` (macOS, for `iconutil`)                                              |
-| `pnpm dist`                       | Builds for the OS it runs on into `apps/desktop/dist`: ad-hoc signed arm64 and x64 dmg and zip on macOS, an unsigned x64 zip on Windows         |
-| `pnpm verify:artifact <app>`      | Checks a packaged app before it ships (launches it in the background)                                                                           |
-| `pnpm release <level>`            | Starts the release workflow on GitHub; see below                                                                                                |
-| `cargo nextest run`               | Rust tests                                                                                                                                      |
+| Command                           | What it does                                                                                                                                                                                                                |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm install`                    | Installs dependencies and the git hooks                                                                                                                                                                                     |
+| `pnpm check`                      | The full local gate: Prettier, Biome, document IDs, `tsc`, Vitest, Rust fmt/clippy/nextest                                                                                                                                  |
+| `pnpm --filter @trc/desktop i18n` | Extracts and precompiles the UI messages after a string changes                                                                                                                                                             |
+| `pnpm test`                       | Vitest unit tests (Node) and component tests (Chromium, with axe)                                                                                                                                                           |
+| `pnpm test:integration`           | Tests against the Linux test hosts (start them with `node tools/test-hosts/up.ts`), and the macOS one if `tools/test-hosts/macos/up.sh` runs it                                                                             |
+| `pnpm build:daemon`               | Builds the Linux daemons, and on macOS the universal macOS one, into `apps/desktop/resources/daemon`, with their manifest                                                                                                   |
+| `pnpm test:daemon`                | The daemon's musl tests in Ubuntu, Alpine and Rocky containers (part of the above)                                                                                                                                          |
+| `pnpm test:e2e`                   | Builds a test build of the app and runs the Playwright Electron tests                                                                                                                                                       |
+| `pnpm test:nfr`                   | Measures the NFR targets against the test hosts; see `docs/verification/E5-nfr.md`                                                                                                                                          |
+| `pnpm test:soak`                  | The NFR-11 soak against the test hosts: 1,000 cycles per scenario (50 for app launches, 100 for host restarts), for hours                                                                                                   |
+| `pnpm test:ax:mac`                | Builds `tools/ax-probe` and a test build, then runs the macOS accessibility-tree tests (macOS)                                                                                                                              |
+| `pnpm test:ax:win`                | Builds `tools/uia-probe` and a test build, then runs the UI Automation tests (Windows); it takes focus                                                                                                                      |
+| `pnpm --filter @trc/desktop dev`  | Runs the app with hot reload                                                                                                                                                                                                |
+| `pnpm icons:mac`                  | Renders the app icons in `apps/desktop/resources/icons` from `tools/icons` (macOS, for `iconutil`)                                                                                                                          |
+| `pnpm dist`                       | Builds for the OS it runs on into `apps/desktop/dist`: ad-hoc signed arm64 and x64 dmg and zip on macOS; on Windows an unsigned per-user installer and zip for this PC's architecture, or another with `--x64` or `--arm64` |
+| `pnpm verify:artifact <app>`      | Checks a packaged app before it ships (launches it in the background)                                                                                                                                                       |
+| `pnpm release <level>`            | Starts the release workflow on GitHub; see below                                                                                                                                                                            |
+| `cargo nextest run`               | Rust tests                                                                                                                                                                                                                  |
 
 Single tests: `pnpm exec vitest run <file> -t <name>` and `cargo nextest run <name>`.
 
@@ -163,15 +169,18 @@ pnpm release minor             # or patch, or major
 The workflow computes the version from the last `v*` tag and commits it, runs CI on that commit, builds both Linux
 daemons on Ubuntu and the arm64 and x64 dmg and zip on macOS, then checks each package on its own architecture's
 runner with `pnpm verify:artifact` on the app in both the zip and the dmg (signature, fuses, no test seam, the
-daemons against their manifest, and no listening sockets). Only when all of that passes does it tag and push the
+daemons against their manifest, and no listening sockets). The Windows installer and zip are built and checked the
+same way on `windows-2025` and `windows-11-arm`, the installer also installed, for the current user only, and
+uninstalled. Only when all of that passes does it tag and push the
 release commit, publish the [GitHub Release](https://github.com/renatorroliveira/terminal-remote-control/releases)
-`TRC v<version>` with the notes, the four packages and `SHA256SUMS.txt` (a draft until every file is up), and push
+`TRC v<version>` with the notes, the eight packages and `SHA256SUMS.txt` (a draft until every file is up), and push
 the next `-dev` version. If `main` moved during the run, the push is refused and nothing is published. A version
 below the one `main` carries is refused too. If the publish job fails part way, re-run it from the run's page: it
 skips each step that is already done (the tag, the release, the `-dev` version).
 
-CI builds the project and runs the unit tests on every push to `main` and every pull request. The integration, e2e
-and accessibility-tree suites need the local test hosts and macOS permissions, so they run locally.
+CI builds the project and runs the unit tests on every push to `main` and every pull request, on Linux, macOS and
+both Windows architectures. The integration, e2e and accessibility-tree suites need the local test hosts and, on
+macOS, its permissions, so they run locally.
 
 ## Contributing
 
