@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { type ElectronApplication, expect, type Page, test } from '@playwright/test';
+import { electronMainPid, killMatching, openSockets, processTree } from '../test-platform';
 import { LOCAL_DAEMON, launchLocal, localShell, removeLocalDaemon, scratchLocal } from './support/local-host';
 import {
     launchWithTestHosts,
@@ -15,42 +16,6 @@ import {
 } from './support/test-host';
 
 const missing = testHostsMissing();
-
-interface OpenSocket {
-    readonly pid: number;
-    readonly name: string;
-}
-
-/** `root` and every process it started. */
-function processTree(root: number): readonly number[] {
-    const pairs = execFileSync('ps', ['-A', '-o', 'pid=,ppid='], { encoding: 'utf8' })
-        .split('\n')
-        .map((line) => line.trim().split(/\s+/).map(Number))
-        .filter((pair): pair is [number, number] => pair.length === 2 && pair.every(Number.isInteger));
-    const tree = [root];
-    for (let index = 0; index < tree.length; index += 1) {
-        tree.push(...pairs.filter(([, parent]) => parent === tree[index]).map(([pid]) => pid));
-    }
-    return tree;
-}
-
-/** The listening TCP sockets and the UDP sockets `pids` own, from lsof's machine-readable output. */
-function sockets(pids: readonly number[], filter: readonly string[]): readonly OpenSocket[] {
-    let out = '';
-    try {
-        out = execFileSync('lsof', ['-nP', '-a', '-p', pids.join(','), ...filter, '-F', 'pn'], { encoding: 'utf8' });
-    } catch (error) {
-        out = (error as { readonly stdout?: string }).stdout ?? '';
-    }
-    let pid = 0;
-    return out.split('\n').flatMap((line) => {
-        if (line.startsWith('p')) {
-            pid = Number(line.slice(1));
-            return [];
-        }
-        return line.startsWith('n') ? [{ pid, name: line.slice(1) }] : [];
-    });
-}
 
 /** Whether a loopback listener is a debugging endpoint, as Chromium's DevTools and Node's inspector answer. */
 async function isDebuggingEndpoint(name: string): Promise<boolean> {
@@ -70,10 +35,10 @@ function isTestBuild(): boolean {
 
 /** Checks that no app process or ssh child listens or holds a UDP socket, beside the test build's debugging ports. */
 async function expectNoListeners(app: ElectronApplication): Promise<void> {
-    const main = app.process().pid ?? 0;
+    const main = electronMainPid(app.process().pid ?? 0);
     const tree = processTree(main);
-    const listening = sockets(tree, ['-iTCP', '-sTCP:LISTEN']);
-    const udp = sockets(tree, ['-iUDP']);
+    const listening = openSockets(tree, 'tcp-listen');
+    const udp = openSockets(tree, 'udp');
     expect(tree.length).toBeGreaterThan(4);
     expect(isTestBuild()).toBe(true);
     expect(listening.length).toBeGreaterThan(0);
@@ -116,7 +81,7 @@ test.describe('no listening sockets after connect, create and reconnect (SEC-01.
             await expect.poll(() => rowTexts(terminal)).toContain('trc-listeners');
             await expectNoListeners(app);
             await recordSpeech(window);
-            execFileSync('pkill', ['-f', `${dirname(home)}/known_hosts`]);
+            expect(killMatching([basename(dirname(home)), 'known_hosts'])).toBeGreaterThan(0);
             await expect.poll(() => saidReconnected(window), { timeout: 60_000 }).toBe(true);
             await expectNoListeners(app);
         } finally {
@@ -137,9 +102,10 @@ test.describe('no listening sockets on This computer (SEC-01.1, US-4.1)', () => 
             await expectNoListeners(app);
             const daemon = daemonProcesses(local.trcHome);
             expect(daemon.length, 'the core and one holder').toBeGreaterThanOrEqual(2);
-            expect(sockets(daemon, ['-iTCP', '-iUDP'])).toEqual([]);
+            expect([...openSockets(daemon, 'tcp-listen'), ...openSockets(daemon, 'udp')]).toEqual([]);
             await app.close();
-            expect(sockets(daemonProcesses(local.trcHome), ['-iTCP', '-iUDP'])).toEqual([]);
+            const after = daemonProcesses(local.trcHome);
+            expect([...openSockets(after, 'tcp-listen'), ...openSockets(after, 'udp')]).toEqual([]);
         } finally {
             removeLocalDaemon(local.trcHome);
         }

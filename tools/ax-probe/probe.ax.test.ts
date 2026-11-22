@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 const run = promisify(execFile);
 const PROBE = resolve(import.meta.dirname, '.build/release/ax-probe');
 
-describe('ax-probe', () => {
+describe.runIf(process.platform === 'darwin')('ax-probe', () => {
     it('reports whether this process holds the Accessibility permission', async () => {
         const outcome = await run(PROBE, ['trusted']).then(
             ({ stdout }) => ({ code: 0, stdout }),

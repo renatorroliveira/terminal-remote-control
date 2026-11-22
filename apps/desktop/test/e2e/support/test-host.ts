@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { ElectronApplication, Locator, Page } from '@playwright/test';
 import { bootOutAgent } from '../../mac-hosts';
+import { dockerContextArguments, testSshTool } from '../../test-platform';
 import { launchApp, skipFirstQuitNotice } from './launch';
 
 const repository = resolve(import.meta.dirname, '../../../../..');
@@ -89,7 +90,7 @@ export function removeInstall(alias: string, root: string): void {
     const script = `${bootOutAgent(root)}; kill $(head -n 1 "${path}/run/core.lock" 2>/dev/null) 2>/dev/null; pkill -f "${path}/" ; rm -rf "${path}"`;
     try {
         execFileSync(
-            'ssh',
+            testSshTool('ssh'),
             [
                 '-F',
                 join(run, 'ssh_config'),
@@ -102,7 +103,7 @@ export function removeInstall(alias: string, root: string): void {
                 alias,
                 script,
             ],
-            { stdio: 'ignore' },
+            { stdio: 'ignore', windowsHide: true },
         );
     } catch {
         return;
@@ -113,22 +114,16 @@ export function removeInstall(alias: string, root: string): void {
 function overSsh(alias: string, script: string): string {
     const known = `UserKnownHostsFile=${join(run, 'known_hosts.smoke')}`;
     try {
-        return execFileSync('ssh', ['-F', join(run, 'ssh_config'), '-o', 'BatchMode=yes', '-o', known, alias, script], {
-            encoding: 'utf8',
-            timeout: 30_000,
-        });
+        const args = ['-F', join(run, 'ssh_config'), '-o', 'BatchMode=yes', '-o', known, alias, script];
+        return execFileSync(testSshTool('ssh'), args, { encoding: 'utf8', timeout: 30_000, windowsHide: true });
     } catch {
         return '';
     }
 }
 
 /** The docker container of a test host, such as `trc-test-hosts-ubuntu-1` for `trc-ubuntu`. */
-function container(alias: string): readonly string[] {
-    return [
-        '--context',
-        process.env['DOCKER_CONTEXT'] ?? 'colima-trc',
-        `trc-test-hosts-${alias.replace(/^trc-/, '')}-1`,
-    ];
+function container(alias: string): string {
+    return `trc-test-hosts-${alias.replace(/^trc-/, '')}-1`;
 }
 
 /**
@@ -139,15 +134,11 @@ export function onTestHost(alias: string, script: string): string {
     if (alias.startsWith('trc-mac-')) {
         return overSsh(alias, script);
     }
-    const [flag, context, name] = container(alias);
     try {
         return execFileSync(
             'docker',
-            [flag ?? '', context ?? '', 'exec', '-u', 'tester', name ?? '', 'sh', '-c', script],
-            {
-                encoding: 'utf8',
-                timeout: 30_000,
-            },
+            [...dockerContextArguments(), 'exec', '-u', 'tester', container(alias), 'sh', '-c', script],
+            { encoding: 'utf8', timeout: 30_000, windowsHide: true },
         );
     } catch {
         return '';
@@ -171,22 +162,33 @@ export function restartTestHost(alias: string): void {
         }
         return;
     }
-    const [flag, context, name] = container(alias);
-    execFileSync('docker', [flag ?? '', context ?? '', 'restart', '--time', '1', name ?? ''], {
+    execFileSync('docker', [...dockerContextArguments(), 'restart', '--time', '1', container(alias)], {
         stdio: 'ignore',
         timeout: 60_000,
+        windowsHide: true,
     });
 }
 
 /**
- * Adds `destination` as a known host, choosing its SSH config suggestion by name so a pointer resting over the list
- * cannot pick another, connects it from its badge, creates a session, past the warning a host that ends processes at
- * logout gives first (US-2.4.4), and returns the session's text surface once it opens.
+ * Adds `destination` as a known host once its SSH config suggestion shows. Escape closes the suggestions, keeping the
+ * typed address, and Add host submits it: clicking the suggestion instead fails on Windows, where react-aria keeps it
+ * clipped until it is placed and the Settings button can sit under it, and the open list hides Add host from the
+ * accessibility tree.
+ */
+export async function addHost(window: Page, destination: string): Promise<void> {
+    const field = window.getByRole('combobox', { name: 'New host' });
+    await field.fill(destination);
+    await window.getByRole('option', { name: destination, exact: true }).waitFor();
+    await field.press('Escape');
+    await window.getByRole('button', { name: 'Add host' }).click();
+}
+
+/**
+ * Adds `destination` as a known host, connects it from its badge, creates a session, past the warning a host that
+ * ends processes at logout gives first (US-2.4.4), and returns the session's text surface once it opens.
  */
 export async function openTerminal(window: Page, destination: string): Promise<Locator> {
-    await window.getByRole('combobox', { name: 'New host' }).fill(destination);
-    await window.getByRole('option', { name: destination, exact: true }).click();
-    await window.getByRole('button', { name: 'Add host' }).click();
+    await addHost(window, destination);
     await window.getByRole('button', { name: `Connect ${destination}` }).click();
     await window.getByRole('button', { name: `Disconnect ${destination}` }).waitFor({ timeout: 60_000 });
     await window.getByRole('button', { name: `New session on ${destination}` }).click();

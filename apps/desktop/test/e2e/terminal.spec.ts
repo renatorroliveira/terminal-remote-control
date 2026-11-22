@@ -1,7 +1,7 @@
-import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { killMatching, linkClickModifier, shortcutKeys } from '../test-platform';
 import {
     E2E_HOST,
     launchWithTestHosts,
@@ -143,7 +143,7 @@ async function commandClick(terminal: Locator, point: Point): Promise<void> {
     if (box === null) {
         throw new Error('the terminal is not on the screen');
     }
-    await terminal.click({ position: { x: point.x - box.x, y: point.y - box.y }, modifiers: ['Meta'] });
+    await terminal.click({ position: { x: point.x - box.x, y: point.y - box.y }, modifiers: [linkClickModifier()] });
 }
 
 function readOrEmpty(file: string): string {
@@ -153,7 +153,7 @@ function readOrEmpty(file: string): string {
 test.describe('a live terminal on a Linux host: links (US-1.12.3, US-1.12.4)', () => {
     const install = liveHost();
 
-    test('confirms a Command+clicked link, trusts its origin when asked, then opens that origin’s links at once', async () => {
+    test('confirms a link opened with the link click, trusts its origin when asked, then opens that origin’s links at once', async () => {
         const { app, window, home, openedLinks } = await launchWithTestHosts(install.root);
         const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
@@ -173,6 +173,33 @@ test.describe('a live terminal on a Linux host: links (US-1.12.3, US-1.12.4)', (
         await commandClick(terminal, await wordCenter(window, row, 'plain'));
         await expect.poll(() => readOrEmpty(openedLinks)).toBe('https://example.com/real\nhttps://example.com/plain\n');
         await expect(dialog).toHaveCount(0);
+        await app.close();
+    });
+});
+
+test.describe('a live terminal on a Linux host: context menu (A11Y-11.11)', () => {
+    const install = liveHost();
+
+    test('opens one menu per Shift+F10, Menu key and secondary click, Windows’ Menu key echo included', async () => {
+        const { app, window } = await launchWithTestHosts(install.root);
+        const terminal = await openTerminal(window, E2E_HOST);
+        await terminal.focus();
+        await app.evaluate(({ Menu }) => {
+            const counted = globalThis as unknown as { popups: number };
+            counted.popups = 0;
+            Menu.prototype.popup = function popup() {
+                counted.popups += 1;
+            };
+        });
+        const popups = (): Promise<number> => app.evaluate(() => (globalThis as unknown as { popups: number }).popups);
+        await window.keyboard.press('Shift+F10');
+        await expect.poll(popups).toBe(1);
+        await window.keyboard.press('ContextMenu');
+        await expect.poll(popups).toBe(2);
+        await terminal.click({ button: 'right' });
+        await expect.poll(popups).toBe(3);
+        await window.waitForTimeout(1_000);
+        expect(await popups()).toBe(3);
         await app.close();
     });
 });
@@ -223,13 +250,13 @@ test.describe('a live terminal on a Linux host: review mode and find (A11Y-03, U
         await window.keyboard.type(String.raw`printf 'ne%sle-one\nhay\nne%sle-two\n' ed ed`);
         await window.keyboard.press('Enter');
         await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('needle-two');
-        await window.keyboard.press('Alt+F2');
+        await window.keyboard.press(shortcutKeys('review.toggle'));
         const review = window.getByRole('textbox', { name: /^Review / });
         await expect(review).toBeFocused();
         await expect(review).toHaveValue(new RegExp(printed.join('\n')));
         await window.keyboard.press('Escape');
         await expect(terminal).toBeFocused();
-        await window.keyboard.press('Meta+F');
+        await window.keyboard.press(shortcutKeys('terminal.find'));
         const search = window.getByRole('searchbox', { name: 'Find' });
         await expect(search).toBeFocused();
         await search.fill('needle-');
@@ -254,7 +281,7 @@ test.describe('a live terminal on a Linux host: connection loss (US-1.14, US-2.2
         await window.keyboard.type('echo before-loss; sleep 3; echo missed-while-away');
         await window.keyboard.press('Enter');
         await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('before-loss');
-        execFileSync('pkill', ['-f', `${dirname(home)}/known_hosts`]);
+        expect(killMatching([basename(dirname(home)), 'known_hosts'])).toBeGreaterThan(0);
         await expect.poll(() => spokenWith(window, `Reconnected to ${E2E_HOST}`), { timeout: 60_000 }).toHaveLength(1);
         const restored = window.getByRole('textbox', { name: new RegExp(`, ${E2E_HOST}$`) });
         await expect.poll(() => rowTexts(restored), { timeout: 30_000 }).toContain('missed-while-away');
@@ -275,10 +302,10 @@ test.describe('a live terminal on a Linux host: leaving the terminal (A11Y-05)',
         const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
         await expect.poll(() => screenText(terminal), { timeout: 30_000 }).toMatch(/[$#%] *$/m);
-        await window.keyboard.press('Shift+Meta+K');
-        await window.keyboard.press('Meta+F6');
+        await window.keyboard.press(shortcutKeys('terminal.sendNextKey'));
+        await window.keyboard.press(shortcutKeys('region.next'));
         await expect(terminal).toBeFocused();
-        await window.keyboard.press('Shift+Meta+M');
+        await window.keyboard.press(shortcutKeys('terminal.toggleTabFocus'));
         await expect(window.getByRole('switch', { name: 'Tab moves focus' })).toBeChecked();
         await window.keyboard.press('Tab');
         await expect(terminal).not.toBeFocused();

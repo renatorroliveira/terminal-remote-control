@@ -69,7 +69,10 @@ async function cursorCell({ app, window }: TestHostApp): Promise<Rect> {
     return { ...cell, x: content.x + cell.x, y: content.y + cell.y };
 }
 
-const skip = testHostsMissing() ?? ((await trusted()) ? undefined : 'grant the Accessibility permission');
+const skip =
+    process.platform !== 'darwin'
+        ? 'the AX API is macOS only'
+        : (testHostsMissing() ?? ((await trusted()) ? undefined : 'grant the Accessibility permission'));
 
 describe.skipIf(skip !== undefined)('the terminal in the macOS accessibility tree (A11Y-01, A11Y-04, A11Y-06)', () => {
     let launched: TestHostApp;

@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { shortcutKeys } from '../test-platform';
 import { launchApp, skipFirstQuitNotice } from './support/launch';
 import { LOCAL_DAEMON, removeLocalDaemon, scratchLocal } from './support/local-host';
 import {
@@ -51,30 +52,30 @@ test.describe('commands in a live session (US-5.1, US-5.2, US-5.3, US-5.4)', () 
         await expect
             .poll(() => spokenWith(window, 'Command failed, exit code 1.'), { timeout: 15_000 })
             .not.toEqual([]);
-        await window.keyboard.press('Alt+Meta+ArrowUp');
+        await window.keyboard.press(shortcutKeys('command.previous'));
         await expect.poll(() => spokenWith(window, 'false. Failed, exit code 1.'), { timeout: 5_000 }).not.toEqual([]);
-        await window.keyboard.press('Alt+Meta+ArrowUp');
+        await window.keyboard.press(shortcutKeys('command.previous'));
         await expect.poll(() => spokenWith(window, 'echo trc-""first'), { timeout: 5_000 }).not.toEqual([]);
         await run(window, 'printf "one\\ntwo\\n"');
         await expect.poll(() => rowTexts(terminal), { timeout: 15_000 }).toContain('two');
-        await window.keyboard.press('Alt+Meta+R');
+        await window.keyboard.press(shortcutKeys('command.readOutput'));
         await expect.poll(() => spokenWith(window, 'one\ntwo'), { timeout: 5_000 }).not.toEqual([]);
         await app.close();
     });
 
-    test('announces and badges a bell in a background session, and Command+P goes back to it (US-5.3, US-5.4)', async () => {
+    test('announces and badges a bell in a background session, and Go to session goes back to it (US-5.3, US-5.4)', async () => {
         const { app, window } = await launchWithTestHosts(install.root, { args: ['--screen-reader-mode=on'] });
         await recordSpeech(window);
         const terminal = await openTerminal(window, E2E_HOST);
         await terminal.focus();
         await prompted(terminal);
         await run(window, "sleep 3; printf '\\a'");
-        await window.keyboard.press('Meta+T');
+        await window.keyboard.press(shortcutKeys('session.new'));
         const rows = window.getByRole('tree', { name: 'Sessions' }).getByRole('treeitem', { level: 2 });
         await expect(rows).toHaveCount(2, { timeout: 30_000 });
         await expect(rows.first()).toHaveAccessibleName(/, bell$/, { timeout: 15_000 });
         await expect.poll(() => spokenWith(window, ': bell.'), { timeout: 5_000 }).not.toEqual([]);
-        await window.keyboard.press('Meta+P');
+        await window.keyboard.press(shortcutKeys('session.quickSwitch'));
         const switcher = window.getByRole('dialog', { name: 'Go to session' });
         await expect(switcher.getByRole('status')).toHaveText('2 sessions.');
         await window.keyboard.press('ArrowDown');
@@ -113,7 +114,7 @@ test.describe('commands on This computer (US-5.1, US-5.2, P-71)', () => {
         await expect
             .poll(() => spokenWith(window, 'Command failed, exit code 3.'), { timeout: 15_000 })
             .not.toEqual([]);
-        await window.keyboard.press('Alt+Meta+ArrowUp');
+        await window.keyboard.press(shortcutKeys('command.previous'));
         await expect
             .poll(() => spokenWith(window, '(exit 3). Failed, exit code 3.'), { timeout: 5_000 })
             .not.toEqual([]);

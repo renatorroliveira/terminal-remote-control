@@ -1,5 +1,6 @@
 import { expect, type Locator, test } from '@playwright/test';
 import {
+    addHost,
     launchWithTestHosts,
     removeInstall,
     rowTexts,
@@ -26,9 +27,7 @@ test.describe('a host that ends sessions at logout (US-2.4.4)', () => {
 
     test('says so in the host’s status, and warns before the first session there only', async () => {
         const { app, window } = await launchWithTestHosts(install.root);
-        await window.getByRole('combobox', { name: 'New host' }).fill(HOST);
-        await window.getByRole('option', { name: HOST, exact: true }).click();
-        await window.getByRole('button', { name: 'Add host' }).click();
+        await addHost(window, HOST);
         await window.getByRole('button', { name: `Connect ${HOST}` }).click();
         const ending = 'programs end when its last connection closes';
         await expect(window.getByRole('treeitem', { name: new RegExp(`^${HOST}.*${ending}`) })).toBeVisible({

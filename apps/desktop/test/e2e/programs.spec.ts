@@ -128,7 +128,7 @@ test.describe('the program matrix on a Linux host: full-screen programs (US-1.11
     test('htop draws its meters and quits', async () => {
         await run('htop');
         await shows(/Mem\[/, 20_000);
-        await shows(/F10Quit/);
+        await shows(/F1Help\s+F2Setup/);
         await window().keyboard.press('q');
         await freshPrompt();
     });

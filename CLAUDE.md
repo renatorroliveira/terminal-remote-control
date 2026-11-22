@@ -138,6 +138,12 @@ The default scripts also run on Windows (D-59 to D-64); keep it that way:
 - Electron 45 downloads its binary on the first `require('electron')`; the
   postinstall does that on every OS, or `electron-vite dev` fails with
   "Electron uninstall".
+- The keymap functions default to macOS's keymap (D-67): pass the platform
+  wherever the app runs, and have e2e specs press `shortcutKeys(command)` from
+  `test/test-platform.ts`, never a literal chord.
+- react-aria keeps a combobox suggestion clipped for about 600 ms after it
+  opens, and Playwright's click retries then miss it; e2e helpers submit the
+  typed text instead of clicking a suggestion.
 
 ## What the product is
 

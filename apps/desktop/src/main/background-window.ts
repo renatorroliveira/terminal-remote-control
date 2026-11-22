@@ -6,9 +6,11 @@ export interface WindowSize {
     readonly height: number;
 }
 
-/** Where and how a test build's window opens in the background: its bounds, fully transparent. */
+/** Where and how a test build's window opens in the background: its bounds, fully transparent, off the taskbar. */
 export interface BackgroundWindowOptions extends Rectangle {
     readonly opacity: number;
+    /** Keeps the window off Windows' taskbar (P-98); macOS keeps it out of the Dock by the activation policy. */
+    readonly skipTaskbar: boolean;
 }
 
 /**
@@ -23,6 +25,7 @@ export function backgroundWindowOptions(workArea: Rectangle, size: WindowSize): 
         width: size.width,
         height: size.height,
         opacity: 0,
+        skipTaskbar: true,
     };
 }
 

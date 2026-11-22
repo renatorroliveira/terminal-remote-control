@@ -10,6 +10,7 @@ import { type ConnectionRuntime, HostConnection } from '../../src/connection-hos
 import { createAppLogger } from '../../src/connection-host/logging/app-log';
 import type { ConnectionState } from '../../src/shared/connection';
 import { bootOutAgent } from '../mac-hosts';
+import { testRuntimeSsh, testSshTool } from '../test-platform';
 import { percentile } from './stats';
 
 const repository = resolve(import.meta.dirname, '../../../..');
@@ -306,7 +307,11 @@ export function ssh(alias: string, script: string): string {
     }
     const known = `UserKnownHostsFile=${join(run, 'known_hosts.smoke')}`;
     const args = ['-F', join(run, 'ssh_config'), '-o', 'BatchMode=yes', '-o', known, alias, script];
-    const out = execFileSync('ssh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const out = execFileSync(testSshTool('ssh'), args, {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        windowsHide: true,
+    });
     return out
         .split('\n')
         .filter((line) => !line.startsWith(LOGIN_BANNER))
@@ -396,8 +401,7 @@ function runtime(
     copyFileSync(join(run, 'known_hosts.smoke'), knownHosts);
     const manifest = parseDaemonManifest(readFileSync(join(daemons, 'manifest.json'), 'utf8'));
     return {
-        ssh: '/usr/bin/ssh',
-        helpers: { askpass: join(resources, 'bin/askpass'), knownHosts: join(resources, 'bin/known-hosts') },
+        ...testRuntimeSsh(),
         seam: { sshConfig: join(run, 'ssh_config'), knownHosts },
         env,
         runDir: mkdtempSync(join(scratch, 'run-')),

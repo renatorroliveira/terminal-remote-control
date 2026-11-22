@@ -1,5 +1,6 @@
 import { expect, type Locator, test } from '@playwright/test';
 import { ssh } from '../nfr/live-host';
+import { forceKill } from '../test-platform';
 import {
     E2E_HOST,
     launchWithTestHosts,
@@ -79,7 +80,7 @@ test.describe('quitting (US-2.1)', () => {
         const killed = await launchWithTestHosts(install.root, { scratch: first.scratch });
         await killed.window.getByRole('button', { name: `Disconnect ${E2E_HOST}` }).waitFor({ timeout: 60_000 });
         const gone = killed.app.waitForEvent('close');
-        process.kill(killed.app.process().pid ?? 0, 'SIGKILL');
+        forceKill(killed.app.process().pid ?? 0);
         await gone;
         expect(alive(pid)).toBe(true);
         const last = await launchWithTestHosts(install.root, { scratch: first.scratch });
@@ -92,7 +93,8 @@ test.describe('quitting (US-2.1)', () => {
     test('Quit and Stop All Sessions asks first, then stops every session and quits (US-2.1.4)', async () => {
         const launched = await launchWithTestHosts(install.root);
         const pid = await shellPid(launched);
-        await chooseMenuItem(launched, 'Quit and Stop All Sessions…');
+        const stopAll = process.platform === 'darwin' ? 'Quit and Stop All Sessions…' : 'Exit and Stop All Sessions…';
+        await chooseMenuItem(launched, stopAll);
         const confirm = launched.window.getByRole('alertdialog', { name: 'Stop all sessions and quit?' });
         await expect(confirm).toContainText('1 session on 1 host will stop');
         const closed = launched.app.waitForEvent('close');

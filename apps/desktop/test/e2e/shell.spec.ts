@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { shortcutKeys } from '../test-platform';
 import { axeViolations } from './support/axe';
 import { APP_DIRECTORY, launchApp, scratchProfile, testEnvironment } from './support/launch';
 
@@ -40,20 +41,66 @@ test('a second launch focuses the running app and exits (US-1.6.5)', async () =>
     await app.close();
 });
 
-test('moves between the sidebar, terminal and status bar regions with Command+F6 (A11Y-05.2)', async () => {
+test('moves between the sidebar, terminal and status bar regions with Next region (A11Y-05.2)', async () => {
     const app = await launchApp();
     const window = await app.firstWindow();
     await window.getByRole('combobox', { name: 'New host' }).focus();
-    await window.keyboard.press('Meta+F6');
+    await window.keyboard.press(shortcutKeys('region.next'));
     await expect(window.getByRole('main', { name: 'Terminal Remote Control' })).toBeFocused();
-    await window.keyboard.press('Meta+F6');
+    await window.keyboard.press(shortcutKeys('region.next'));
     await expect(window.getByRole('switch', { name: 'Tab moves focus' })).toBeFocused();
-    await window.keyboard.press('Shift+Meta+F6');
+    await window.keyboard.press(shortcutKeys('region.previous'));
     await expect(window.getByRole('main', { name: 'Terminal Remote Control' })).toBeFocused();
     await app.close();
 });
 
-test('puts the commands in the View and Terminal menus with their Command shortcuts (docs/design/keymap.md)', async () => {
+/** The macOS Terminal menu: every Command chord shows (docs/design/keymap.md). */
+const MAC_TERMINAL_MENU = [
+    'Terminal',
+    [
+        'Tab Moves Focus Shift+Command+M',
+        'Send Next Key to Terminal Shift+Command+K',
+        'Mute Output Announcements Shift+Command+A',
+        'List Links… Shift+Command+O',
+        'Review Mode',
+        'Find… Command+F',
+        '',
+        'Previous Command Alt+Command+Up',
+        'Next Command Alt+Command+Down',
+        'Read Last Command Output Alt+Command+R',
+        'Select Last Command Output Alt+Command+A',
+        'Copy Last Command Output Alt+Command+C',
+        '',
+        'Bigger Text Command+=',
+        'Smaller Text Command+-',
+        'Default Text Size Command+0',
+    ],
+];
+
+/** The Windows Terminal menu: only Ctrl chords with a printable key show (docs/design/keymap.md, Windows rule 6). */
+const WINDOWS_TERMINAL_MENU = [
+    '&Terminal',
+    [
+        'Tab Moves Focus Control+Shift+M',
+        'Send Next Key to Terminal Control+Shift+K',
+        'Mute Output Announcements Control+Shift+A',
+        'List Links… Control+Shift+O',
+        'Review Mode',
+        'Find… Control+Shift+F',
+        '',
+        'Previous Command',
+        'Next Command',
+        'Read Last Command Output Control+Shift+R',
+        'Select Last Command Output',
+        'Copy Last Command Output Control+Shift+Y',
+        '',
+        'Bigger Text Control+=',
+        'Smaller Text Control+-',
+        'Default Text Size Control+Shift+0',
+    ],
+];
+
+test('puts the commands in the menus with the shortcuts the menus may show (docs/design/keymap.md)', async () => {
     const app = await launchApp();
     await app.firstWindow();
     const menus = await app.evaluate(({ Menu }) => {
@@ -63,27 +110,10 @@ test('puts the commands in the View and Terminal menus with their Command shortc
             menu.submenu?.items.map(label) ?? [],
         ]);
     });
-    expect(menus).toContainEqual([
-        'Terminal',
-        [
-            'Tab Moves Focus Shift+Command+M',
-            'Send Next Key to Terminal Shift+Command+K',
-            'Mute Output Announcements Shift+Command+A',
-            'List Links… Shift+Command+O',
-            'Review Mode',
-            'Find… Command+F',
-            '',
-            'Previous Command Alt+Command+Up',
-            'Next Command Alt+Command+Down',
-            'Read Last Command Output Alt+Command+R',
-            'Select Last Command Output Alt+Command+A',
-            'Copy Last Command Output Alt+Command+C',
-            '',
-            'Bigger Text Command+=',
-            'Smaller Text Command+-',
-            'Default Text Size Command+0',
-        ],
-    ]);
+    expect(menus).toContainEqual(process.platform === 'darwin' ? MAC_TERMINAL_MENU : WINDOWS_TERMINAL_MENU);
+    if (process.platform !== 'darwin') {
+        expect(menus.map(([label]) => label)).toEqual(['&File', '&Edit', '&View', '&Terminal', '&Help']);
+    }
     await app.close();
 });
 
@@ -97,15 +127,16 @@ test('offers the SSH config hosts in Add host, read from the seam config ahead o
     await app.close();
 });
 
-test('Option+F1 lists the shortcuts, and opens the user guide in its own accessible window (A11Y-10.1, A11Y-10.4)', async () => {
+test('Accessibility help lists the shortcuts, and opens the user guide in its own accessible window (A11Y-10.1, A11Y-10.4)', async () => {
     const app = await launchApp();
     const window = await app.firstWindow();
     const field = window.getByRole('combobox', { name: 'New host' });
     await field.focus();
-    await window.keyboard.press('Alt+F1');
+    await window.keyboard.press(shortcutKeys('help.accessibility'));
     const help = window.getByRole('dialog', { name: 'Accessibility help' });
     await expect(help.getByRole('table', { name: 'Everywhere' })).toBeVisible();
-    await expect(help.getByRole('row', { name: /^Accessibility help Option\+F1$/ })).toBeVisible();
+    const helpKeys = process.platform === 'darwin' ? 'Option+F1' : 'Alt+F1';
+    await expect(help.getByRole('row', { name: `Accessibility help ${helpKeys}`, exact: true })).toBeVisible();
     expect(await axeViolations(window)).toEqual([]);
     const opened = app.waitForEvent('window');
     await help.getByRole('button', { name: 'VoiceOver quick start' }).click();
@@ -118,12 +149,12 @@ test('Option+F1 lists the shortcuts, and opens the user guide in its own accessi
     await app.close();
 });
 
-test('Command+, opens the searchable settings page, and a theme change applies and is kept (A11Y-10.3)', async () => {
+test('the Settings shortcut opens the searchable settings page, and a theme change applies and is kept (A11Y-10.3)', async () => {
     const home = mkdtempSync(join(tmpdir(), 'trc-e2e-home-'));
     const app = await launchApp([], { TRC_HOME: home });
     const window = await app.firstWindow();
     await window.getByRole('combobox', { name: 'New host' }).focus();
-    await window.keyboard.press('Meta+Comma');
+    await window.keyboard.press(shortcutKeys('settings.show'));
     const settings = window.getByRole('main').getByRole('region', { name: 'Settings' });
     await expect(settings.getByRole('searchbox', { name: 'Search settings' })).toBeFocused();
     expect(await axeViolations(window)).toEqual([]);
@@ -138,11 +169,17 @@ test('Command+, opens the searchable settings page, and a theme change applies a
     await app.close();
 });
 
+/** A free chord to rebind the palette to: Ctrl+Command+Y on macOS, and Ctrl+Shift+J on Windows (D-67). */
+const REBINDING =
+    process.platform === 'darwin'
+        ? { keys: 'Control+Meta+Y', shown: 'Ctrl+Cmd+Y', accelerator: 'Control+Command+Y' }
+        : { keys: 'Control+Shift+J', shown: 'Ctrl+Shift+J', accelerator: 'Control+Shift+J' };
+
 test('rebinds a command from the settings page, and the menus and the keyboard follow (A11Y-05.7)', async () => {
     const app = await launchApp();
     const window = await app.firstWindow();
     await window.getByRole('combobox', { name: 'New host' }).focus();
-    await window.keyboard.press('Meta+Comma');
+    await window.keyboard.press(shortcutKeys('settings.show'));
     const settings = window.getByRole('main').getByRole('region', { name: 'Settings' });
     await settings
         .getByRole('navigation', { name: 'Settings sections' })
@@ -150,8 +187,8 @@ test('rebinds a command from the settings page, and the menus and the keyboard f
         .click();
     await settings.getByRole('button', { name: 'Change Show command palette' }).click();
     await expect(settings.getByRole('button', { name: /^Press the new shortcut/ })).toBeFocused();
-    await window.keyboard.press('Control+Meta+Y');
-    await expect(settings.getByText('Show command palette: Ctrl+Cmd+Y.')).toBeVisible();
+    await window.keyboard.press(REBINDING.keys);
+    await expect(settings.getByText(`Show command palette: ${REBINDING.shown}.`)).toBeVisible();
     await expect(settings.getByRole('button', { name: 'Change Show command palette' })).toBeFocused();
     await window.keyboard.press('Escape');
     await expect(settings).toHaveCount(0);
@@ -160,8 +197,8 @@ test('rebinds a command from the settings page, and the menus and the keyboard f
             const items = Menu.getApplicationMenu()?.items.flatMap((item) => item.submenu?.items ?? []) ?? [];
             return items.find((item) => item.label === 'Command Palette…')?.accelerator ?? undefined;
         });
-    await expect.poll(accelerator).toBe('Control+Command+Y');
-    await window.keyboard.press('Control+Meta+Y');
+    await expect.poll(accelerator).toBe(REBINDING.accelerator);
+    await window.keyboard.press(REBINDING.keys);
     await expect(window.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
     await app.close();
 });

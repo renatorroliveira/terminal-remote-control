@@ -39,7 +39,9 @@ test.describe('restoring sessions at launch (US-2.1, US-2.3)', () => {
         await expect
             .poll(() => existsSync(cacheFile) && readFileSync(cacheFile, 'utf8').includes('"state"'))
             .toBe(true);
-        expect(statSync(cacheFile).mode & 0o777).toBe(0o600);
+        if (process.platform !== 'win32') {
+            expect(statSync(cacheFile).mode & 0o777).toBe(0o600);
+        }
         expect(readFileSync(cacheFile, 'utf8')).not.toMatch(/"(cwd|env|pid|size)"/);
         await first.app.close();
         const second = await launchWithTestHosts(install.root, { scratch: first.scratch });

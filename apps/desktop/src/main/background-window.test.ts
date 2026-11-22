@@ -11,6 +11,7 @@ describe('backgroundWindowOptions (P-14, D-27)', () => {
             width: 1200,
             height: 800,
             opacity: 0,
+            skipTaskbar: true,
         });
     });
 
