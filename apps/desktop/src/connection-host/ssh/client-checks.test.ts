@@ -4,6 +4,7 @@ import {
     parseEffectiveConfig,
     parseSshVersion,
     replacementKnownHostsFiles,
+    splitFileList,
     supportsKnownHostsCommand,
 } from './client-checks';
 
@@ -56,13 +57,41 @@ describe('parseEffectiveConfig', () => {
         });
     });
 
+    it("reads Windows OpenSSH's CRLF output (S9)", () => {
+        const config = parseEffectiveConfig('user ana\r\nhostname h\r\nport 2221\r\nuserknownhostsfile NUL\r\n');
+        expect([config.user, config.hostname, config.port, config.knownHostsFiles]).toEqual([
+            'ana',
+            'h',
+            2221,
+            ['NUL'],
+        ]);
+    });
+
     it('reports a jump host', () => {
         expect(parseEffectiveConfig('hostname behind\nport 22\nproxyjump trc-jump\n').proxyJump).toBe('trc-jump');
     });
 });
 
+describe('splitFileList', () => {
+    it('keeps a Windows profile folder with a space in one file', () => {
+        expect(
+            splitFileList('D:\\Profiles\\Ana Maria/.ssh/known_hosts D:\\Profiles\\Ana Maria/.ssh/known_hosts2'),
+        ).toEqual(['D:\\Profiles\\Ana Maria/.ssh/known_hosts', 'D:\\Profiles\\Ana Maria/.ssh/known_hosts2']);
+    });
+
+    it('splits absolute, home, share and discarding entries', () => {
+        expect(splitFileList('/a b/kh ~/.ssh/kh \\\\server\\kh NUL none')).toEqual([
+            '/a b/kh',
+            '~/.ssh/kh',
+            '\\\\server\\kh',
+            'NUL',
+            'none',
+        ]);
+    });
+});
+
 describe('replacementKnownHostsFiles (US-1.2.1)', () => {
-    it.each([[['/dev/null']], [['none']], [['/dev/null', 'none']]])(
+    it.each([[['/dev/null']], [['none']], [['/dev/null', 'none']], [['NUL']], [['nul', '/dev/null']]])(
         "reads OpenSSH's defaults when %j keeps no key, as some generated configurations set",
         (files) => {
             expect(replacementKnownHostsFiles(files)).toEqual(DEFAULT_KNOWN_HOSTS_FILES);

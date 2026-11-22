@@ -1,5 +1,6 @@
 //! `trcd core` driven over its socket the way the app drives it through the bridge
 //! (US-1.4.6, US-1.5.1, US-1.7, US-1.9, US-1.10, SEC-02, SEC-04.4, SEC-08, NFR-09).
+#![cfg(unix)]
 
 mod support;
 

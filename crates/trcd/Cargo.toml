@@ -10,10 +10,12 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+sha2.workspace = true
+
+[target.'cfg(unix)'.dependencies]
 rustix.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-sha2.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -21,6 +23,9 @@ tracing-appender.workspace = true
 tracing-subscriber.workspace = true
 trc-protocol = { path = "../trc-protocol" }
 trc-vt = { path = "../trc-vt" }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_SystemServices", "Win32_System_Threading"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2.191"

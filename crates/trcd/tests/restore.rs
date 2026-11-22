@@ -1,6 +1,7 @@
 //! Sessions brought back after their processes ended (US-3.1, US-3.2.1, P-40, P-41), through the core the way the
 //! app drives it: a killed holder is restored in place, and a core that starts after every process ended, as after
 //! a reboot or a logout that ends user processes, restores the saved sessions in their order or keeps them ended.
+#![cfg(unix)]
 
 mod support;
 

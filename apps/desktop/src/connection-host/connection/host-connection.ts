@@ -24,7 +24,7 @@ import type { DaemonManifest, DaemonPlatform } from '../bootstrap/manifest';
 import { buildBootstrapScript } from '../bootstrap/script';
 import type { AppLogger } from '../logging/app-log';
 import type { ConnectionListener, HostConnectionLike } from '../port/router';
-import type { SshHelpers, TestSeam } from '../ssh/arguments';
+import type { SshHelpers, SshLogLevel, TestSeam } from '../ssh/arguments';
 import type { HelperLine } from '../ssh/helper-lines';
 import { onLocalClock } from './daemon-details';
 import { fromBootstrap } from './failures';
@@ -40,6 +40,10 @@ export interface ConnectionRuntime {
     /** The system OpenSSH client, by absolute path. */
     readonly ssh: string;
     readonly helpers: SshHelpers;
+    /** The system-wide ssh config, where the OS keeps one elsewhere than `/etc/ssh/ssh_config` (Windows). */
+    readonly systemSshConfig?: string | undefined;
+    /** ssh's `LogLevel`, `ERROR` unless set (S9). */
+    readonly sshLogLevel?: SshLogLevel | undefined;
     /** The P-14 test seam; always `undefined` in release builds. */
     readonly seam: TestSeam | undefined;
     /** The environment ssh inherits, including `SSH_AUTH_SOCK`. */

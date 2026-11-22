@@ -90,6 +90,19 @@ describe('classifyFailure on the S4 corpus: network and fallbacks (US-1.3.1)', (
         });
     });
 
+    it("reads Windows OpenSSH's refusal at the banner exchange, which names no host (S9)", () => {
+        const refused = ['banner exchange: Connection to UNKNOWN port -1: Connection refused'];
+        expect(classifyFailure(refused, 'n0nce', { ...direct, port: 2299 })).toMatchObject({
+            kind: 'unreachable',
+            host: '127.0.0.1',
+            port: 2299,
+        });
+        const viaJump = { ...direct, hostname: 'behind', port: 22, proxyJump: 'trc-unreachable' };
+        expect(
+            classifyFailure([...refused, 'Connection closed by UNKNOWN port 65535'], 'n0nce', viaJump),
+        ).toMatchObject({ kind: 'jump-failed', jump: 'trc-unreachable', cause: 'unreachable' });
+    });
+
     it('keeps the shown details free of helper lines', () => {
         const failure = classifyFailure(stderrOf('key-rejected'), 'n0nce', direct);
         expect(failure.details).toBe('tester@127.0.0.1: Permission denied (publickey).');
@@ -140,6 +153,9 @@ describe('diagnoseAuthentication (US-1.3.1)', () => {
         });
         expect(await diagnoseAuthentication(withKey, encrypted)).toBe('no-agent');
         expect(await diagnoseAuthentication(withKey, { ...encrypted, agent: async () => 'empty' })).toBe('agent-empty');
+        expect(await diagnoseAuthentication(withKey, { ...encrypted, agent: async () => 'windows-agent-off' })).toBe(
+            'windows-agent-off',
+        );
         const loadedOther = {
             ...encrypted,
             agent: async () => 'loaded' as const,

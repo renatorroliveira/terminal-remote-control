@@ -129,8 +129,12 @@ The default scripts also run on Windows (D-59 to D-64); keep it that way:
   literals, and gate POSIX file-mode assertions off Windows.
 - xterm.js joins selected rows with CRLF on Windows, so selection tests compare
   with the platform line break.
-- `trcd` does not compile for Windows until US-6.2; there `pnpm rust:check`
-  lints it with clippy for Linux musl instead (D-62).
+- On Windows `trcd` builds only its SSH helpers and `private-dir` until US-6.2
+  (D-66, D-68), and `pnpm rust:check` also lints its Unix code for Linux musl
+  (D-62). Gate new daemon modules with `cfg(unix)`.
+- Start every child process with `windowsHide`, and give the test suites' own
+  ssh calls `BatchMode=yes`: a hidden Windows ssh waits forever on its
+  invisible console for a passphrase (S9).
 - Electron 45 downloads its binary on the first `require('electron')`; the
   postinstall does that on every OS, or `electron-vite dev` fails with
   "Electron uninstall".

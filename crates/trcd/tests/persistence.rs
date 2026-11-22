@@ -1,6 +1,7 @@
 //! Sessions saved to disk as they run, through the core the way the app drives it (US-3.1.2, US-3.2, NFR-08,
 //! SEC-05): every session gets a private data folder whose scrollback file follows its output within seconds, Clear
 //! scrollback rewrites it, turning saving off deletes it, and closing the session deletes the folder.
+#![cfg(unix)]
 
 mod support;
 

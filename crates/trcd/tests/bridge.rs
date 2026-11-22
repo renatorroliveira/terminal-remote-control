@@ -1,5 +1,6 @@
 //! `trcd bridge` as the app runs it over the SSH exec channel: it starts a detached core when none runs and relays
 //! frames between stdio and the core (US-1.5.1, US-1.5.3, P-17).
+#![cfg(unix)]
 
 mod support;
 

@@ -21,6 +21,21 @@ pub enum Command {
     Bridge,
     /// Prints the version.
     Version,
+    /// The app's `SSH_ASKPASS` helper on Windows (D-66), with the prompt ssh passes.
+    Askpass {
+        /// What ssh asks or notifies.
+        prompt: String,
+    },
+    /// The app's `KnownHostsCommand` helper on Windows (D-66), with ssh's `%I %H %t %K %f`.
+    KnownHosts {
+        /// The tokens ssh expanded.
+        args: Vec<String>,
+    },
+    /// Gives a folder a user-only ACL on Windows (D-68).
+    PrivateDir {
+        /// The folder.
+        path: PathBuf,
+    },
 }
 
 /// The status of a process SIGTERM ended, 128 plus the signal's number.
@@ -68,6 +83,16 @@ impl Command {
             Some("holder") => Self::parse_holder(&args[1..]),
             Some("bridge") => Ok(Self::Bridge),
             Some("--version") => Ok(Self::Version),
+            Some("askpass") => Ok(Self::Askpass {
+                prompt: args.get(1).cloned().unwrap_or_default(),
+            }),
+            Some("known-hosts") => Ok(Self::KnownHosts {
+                args: args[1..].to_vec(),
+            }),
+            Some("private-dir") => match &args[1..] {
+                [path] => Ok(Self::PrivateDir { path: path.into() }),
+                _ => Err("private-dir needs <folder>".into()),
+            },
             Some(other) => Err(format!("unknown subcommand: {other}")),
             None => Err("missing subcommand: core, holder, bridge or --version".into()),
         }
@@ -131,6 +156,28 @@ mod tests {
             Ok(Supervisor::Launchd)
         );
         assert_eq!(parse(&["--version"]), Ok(Command::Version));
+    }
+
+    #[test]
+    fn parses_the_windows_helpers() {
+        assert_eq!(
+            parse(&["askpass", "Enter passphrase:"]),
+            Ok(Command::Askpass {
+                prompt: "Enter passphrase:".into()
+            })
+        );
+        assert_eq!(parse(&["askpass"]), Ok(Command::Askpass { prompt: String::new() }));
+        assert_eq!(
+            parse(&["known-hosts", "ORDER", "h"]),
+            Ok(Command::KnownHosts {
+                args: vec!["ORDER".into(), "h".into()]
+            })
+        );
+        assert_eq!(
+            parse(&["private-dir", "C:/x"]),
+            Ok(Command::PrivateDir { path: "C:/x".into() })
+        );
+        assert_eq!(parse(&["private-dir"]), Err("private-dir needs <folder>".to_owned()));
     }
 
     #[test]

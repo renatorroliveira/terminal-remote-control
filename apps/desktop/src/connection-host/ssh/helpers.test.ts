@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { windowsTrcd } from '../../shared/windows-helper';
 
 const bin = resolve(import.meta.dirname, '../../../resources/bin');
 /** The helpers are sh scripts the system ssh runs; Windows OpenSSH needs its own (US-6.1.2, E6). */
@@ -45,5 +47,37 @@ describe.runIf(SH_HELPERS)('askpass helper (US-1.1.3, US-1.3.2)', () => {
         expect(result.status).not.toBe(0);
         expect(result.stdout).toBe('');
         expect(result.stderr).toBe('');
+    });
+});
+
+/** The bundled trcd.exe, which `pnpm build:daemon` builds on Windows (D-66). */
+const TRCD_EXE = windowsTrcd(resolve(import.meta.dirname, '../../../resources'), process.arch);
+
+function runExe(args: string[], env: Record<string, string>) {
+    return spawnSync(TRCD_EXE, args, { env, encoding: 'utf8', windowsHide: true });
+}
+
+describe.runIf(process.platform === 'win32' && existsSync(TRCD_EXE))('the Windows helpers in trcd.exe (D-66)', () => {
+    it('reports the presented key behind the nonce, and stays silent for the ORDER call', () => {
+        const key = runExe(['known-hosts', 'ADDRESS', '[h]:22', 'ssh-ed25519', 'AAAA', 'SHA256:x'], {
+            TRC_SSH_NONCE: 'n1',
+        });
+        expect([key.status, key.stdout, key.stderr.replace(/\r\n$/, '\n')]).toEqual([
+            0,
+            '',
+            'n1 HOSTKEY [h]:22 ssh-ed25519 AAAA SHA256:x\n',
+        ]);
+        const order = runExe(['known-hosts', 'ORDER', 'h', 'NONE', 'NONE', 'NONE'], { TRC_SSH_NONCE: 'n1' });
+        expect([order.status, order.stdout, order.stderr]).toEqual([0, '', '']);
+    });
+
+    it('relays a notice and refuses every secret without output', () => {
+        const notice = runExe(['askpass', 'Confirm user presence'], {
+            TRC_SSH_NONCE: 'n2',
+            SSH_ASKPASS_PROMPT: 'none',
+        });
+        expect([notice.status, notice.stderr.replace(/\r\n$/, '\n')]).toEqual([0, 'n2 NOTICE Confirm user presence\n']);
+        const secret = runExe(['askpass', 'Enter passphrase for key:'], { TRC_SSH_NONCE: 'n2' });
+        expect([secret.status, secret.stdout, secret.stderr]).toEqual([1, '', '']);
     });
 });

@@ -1,5 +1,6 @@
 //! `trcd holder --socket <path>` as the core starts it: a private socket that disappears on shutdown and refuses
 //! peers of another user (SEC-02), and a shell that keeps the umask the holder was started with.
+#![cfg(unix)]
 
 mod support;
 

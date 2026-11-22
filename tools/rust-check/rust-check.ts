@@ -1,8 +1,7 @@
 /**
- * The Rust part of `pnpm check`: rustfmt, clippy with warnings denied, and nextest over the workspace. The daemon,
- * `trcd`, builds only for Unix until the Windows daemon arrives (US-6.2), so on Windows clippy checks it against the
- * Linux musl target it ships for, without linking, and every other crate is linted and tested natively. Run
- * `pnpm rust:check`.
+ * The Rust part of `pnpm check`: rustfmt, clippy with warnings denied, and nextest over the workspace. On Windows,
+ * where `trcd` builds only its SSH helpers and user-only folders until the Windows daemon arrives (US-6.2, D-66),
+ * clippy also checks its Unix code against the Linux musl target it ships for, without linking. Run `pnpm rust:check`.
  */
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -25,9 +24,9 @@ export function rustCheckCommands(platform: NodeJS.Platform): readonly Command[]
     }
     return [
         fmt,
-        [...clippy, '--workspace', '--exclude', 'trcd', ...DENY_WARNINGS],
+        [...clippy, '--workspace', ...DENY_WARNINGS],
         [...clippy, '-p', 'trcd', '--target', 'x86_64-unknown-linux-musl', ...DENY_WARNINGS],
-        ['cargo', 'nextest', 'run', '--workspace', '--exclude', 'trcd', '--cargo-quiet'],
+        ['cargo', 'nextest', 'run', '--workspace', '--cargo-quiet'],
     ];
 }
 

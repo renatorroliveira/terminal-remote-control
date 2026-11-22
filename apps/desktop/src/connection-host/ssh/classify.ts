@@ -19,8 +19,8 @@ export type SshFailureKind =
 
 /** Local checks that explain a refused public key. */
 export interface AuthProbes {
-    /** `ssh-add -l`: exit 2 means no agent, 1 an empty agent. */
-    readonly agent: () => Promise<'none' | 'empty' | 'loaded'>;
+    /** `ssh-add -l`: exit 2 means no agent (on Windows, its service not running), 1 an empty agent. */
+    readonly agent: () => Promise<AgentState>;
     /** `ssh-add -L`: the public keys the agent holds, as `type base64`. */
     readonly agentKeys: () => Promise<readonly string[]>;
     /** One `IdentityFile`: whether it exists, whether it needs a passphrase, and its public key. */
@@ -28,6 +28,9 @@ export interface AuthProbes {
     /** Whether a certificate file exists and its validity has ended. */
     readonly certificateExpired: (path: string) => Promise<boolean>;
 }
+
+/** What `ssh-add -l` found. */
+export type AgentState = 'none' | 'windows-agent-off' | 'empty' | 'loaded';
 
 /** What the probes found about one identity file. */
 export interface IdentityProbe {
@@ -48,6 +51,11 @@ const DENIED = /Permission denied \([^)]*publickey/;
 const UNRESOLVED = /Could not resolve hostname ([^\s:]+)/;
 const CONNECT = /connect to host (\S+) port (\d+): (.+)$/;
 const TIMED_OUT = /timed out/i;
+/**
+ * Windows OpenSSH connects asynchronously and reports a refused connection at the banner exchange, naming no host or
+ * port (S9); with a jump host it is the jump that failed, as a refusal behind it reads `connect failed`.
+ */
+const BANNER_FAILED = /^banner exchange: Connection to UNKNOWN port -1: (.+)$/;
 
 const MATCHERS: readonly Matcher[] = [
     (stderr, keys) => {
@@ -78,6 +86,14 @@ const MATCHERS: readonly Matcher[] = [
         const cause = TIMED_OUT.test(reason) ? 'timeout' : 'unreachable';
         const elsewhere = host !== config.hostname || Number(port) !== config.port;
         return viaJump(config, elsewhere, cause) ?? { kind: cause, host, port: Number(port) };
+    },
+    (stderr, _keys, config) => {
+        const reason = firstMatch(stderr, BANNER_FAILED);
+        if (reason === undefined) {
+            return undefined;
+        }
+        const cause = TIMED_OUT.test(reason) ? 'timeout' : 'unreachable';
+        return viaJump(config, true, cause) ?? { kind: cause, host: config.hostname, port: config.port };
     },
 ];
 
@@ -139,9 +155,12 @@ export async function diagnoseAuthentication(
     return 'key-rejected';
 }
 
-function byAgent(agent: 'none' | 'empty' | 'loaded', loaded: AuthenticationCause): AuthenticationCause {
+function byAgent(agent: AgentState, loaded: AuthenticationCause): AuthenticationCause {
     if (agent === 'none') {
         return 'no-agent';
+    }
+    if (agent === 'windows-agent-off') {
+        return agent;
     }
     return agent === 'empty' ? 'agent-empty' : loaded;
 }

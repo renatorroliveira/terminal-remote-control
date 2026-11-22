@@ -514,6 +514,7 @@ dependencies = [
  "tracing-subscriber",
  "trc-protocol",
  "trc-vt",
+ "windows-sys",
 ]
 
 [[package]]

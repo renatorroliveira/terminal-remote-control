@@ -1,21 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { buildCommands, buildsFor, builtBinary, DAEMON_BUILDS, manifestFor } from './build-daemon.ts';
+import { binaryName, buildCommands, buildsFor, builtBinary, DAEMON_BUILDS, manifestFor } from './build-daemon.ts';
 
-describe('build-daemon', () => {
-    it('builds both Linux musl targets and one universal macOS binary', () => {
+describe('build-daemon platforms', () => {
+    it('builds both Linux musl targets, one universal macOS binary and Windows x64 and arm64', () => {
         expect(DAEMON_BUILDS).toEqual([
             { platform: 'linux-x64', triples: ['x86_64-unknown-linux-musl'] },
             { platform: 'linux-arm64', triples: ['aarch64-unknown-linux-musl'] },
             { platform: 'darwin-universal', triples: ['aarch64-apple-darwin', 'x86_64-apple-darwin'] },
+            { platform: 'windows-x64', triples: ['x86_64-pc-windows-msvc'] },
+            { platform: 'windows-arm64', triples: ['aarch64-pc-windows-msvc'] },
         ]);
     });
 
-    it('builds every daemon on macOS and all but the macOS one elsewhere', () => {
-        expect(buildsFor('darwin')).toEqual(DAEMON_BUILDS);
-        expect(buildsFor('win32').map((build) => build.platform)).toEqual(['linux-x64', 'linux-arm64']);
-        expect(buildsFor('linux').map((build) => build.platform)).toEqual(['linux-x64', 'linux-arm64']);
+    it('builds the Linux daemons everywhere, the macOS one on macOS and the Windows one of its own architecture', () => {
+        const platforms = (host: NodeJS.Platform, arch: string): readonly string[] =>
+            buildsFor(host, arch).map((build) => build.platform);
+        expect(platforms('darwin', 'arm64')).toEqual(['linux-x64', 'linux-arm64', 'darwin-universal']);
+        expect(platforms('win32', 'x64')).toEqual(['linux-x64', 'linux-arm64', 'windows-x64']);
+        expect(platforms('win32', 'arm64')).toEqual(['linux-x64', 'linux-arm64', 'windows-arm64']);
+        expect(platforms('linux', 'x64')).toEqual(['linux-x64', 'linux-arm64']);
     });
 
+    it('builds trcd.exe for Windows with cargo and MSVC (D-66)', () => {
+        const windows = DAEMON_BUILDS.find((build) => build.platform === 'windows-arm64');
+        expect(windows && buildCommands(windows, 'C:/out/windows-arm64/trcd.exe')).toEqual([
+            ['cargo', 'build', '--locked', '--quiet', '--release', '--target', 'aarch64-pc-windows-msvc', '-p', 'trcd'],
+        ]);
+        expect(windows && builtBinary(windows)).toBe('target/aarch64-pc-windows-msvc/release/trcd.exe');
+        expect(windows && binaryName(windows)).toBe('trcd.exe');
+    });
+});
+
+describe('build-daemon commands and manifest', () => {
     it('cross-builds a Linux daemon with cargo-zigbuild and copies it', () => {
         const [linux] = DAEMON_BUILDS;
         expect(linux && buildCommands(linux, '/out/linux-x64/trcd')).toEqual([

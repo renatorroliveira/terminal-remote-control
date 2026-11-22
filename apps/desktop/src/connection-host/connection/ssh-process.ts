@@ -27,11 +27,15 @@ export interface SshLaunch {
     readonly cwd?: string | undefined;
 }
 
-/** Starts ssh, splitting its stderr into lines and reporting the app helpers' lines as they arrive. */
+/**
+ * Starts ssh, splitting its stderr into lines and reporting the app helpers' lines as they arrive. It starts hidden, as
+ * on Windows ssh and the helpers it runs would otherwise each open a console window (S9).
+ */
 export function startSsh({ program, args, env, nonce, onHelper, cwd }: SshLaunch): SshProcess {
     const child = spawn(program, [...args], {
         env,
         stdio: ['pipe', 'pipe', 'pipe'],
+        windowsHide: true,
         ...(cwd === undefined ? {} : { cwd }),
     });
     const stderr: string[] = [];
@@ -41,11 +45,11 @@ export function startSsh({ program, args, env, nonce, onHelper, cwd }: SshLaunch
     child.stderr.on('data', (chunk: string) => {
         const lines = `${partial}${chunk}`.split('\n');
         partial = lines.pop() ?? '';
-        for (const line of lines) {
+        for (const line of lines.map((ended) => ended.replace(/\r$/, ''))) {
             if (stderr.length < KEPT_STDERR_LINES) {
                 stderr.push(line);
             }
-            const helper = parseHelperLine(line.replace(/\r$/, ''), nonce);
+            const helper = parseHelperLine(line, nonce);
             if (helper !== undefined) {
                 onHelper(helper);
             }
@@ -54,7 +58,7 @@ export function startSsh({ program, args, env, nonce, onHelper, cwd }: SshLaunch
     const exited = new Promise<number | null>((resolve) => {
         child.on('close', (code) => {
             if (partial !== '') {
-                stderr.push(partial);
+                stderr.push(partial.replace(/\r$/, ''));
             }
             resolve(code);
         });

@@ -6,6 +6,12 @@ export const DAEMON_PLATFORMS = ['linux-x64', 'linux-arm64', 'darwin-universal']
 /** One bundled daemon platform. */
 export type DaemonPlatform = (typeof DAEMON_PLATFORMS)[number];
 
+/** The Windows builds of `trcd`, which run the app's SSH helpers on Windows and never go to a host (D-66). */
+export const WINDOWS_PLATFORMS = ['windows-x64', 'windows-arm64'] as const;
+
+/** One Windows build of `trcd`. */
+export type WindowsPlatform = (typeof WINDOWS_PLATFORMS)[number];
+
 /** One bundled daemon binary. */
 export interface DaemonBinary {
     /** SHA-256 of the binary, in hex. */
@@ -19,7 +25,7 @@ export interface DaemonManifest {
     /** The daemon version every bundled binary reports. */
     readonly version: string;
     /** The binaries, by platform. */
-    readonly binaries: Readonly<Partial<Record<DaemonPlatform, DaemonBinary>>>;
+    readonly binaries: Readonly<Partial<Record<DaemonPlatform | WindowsPlatform, DaemonBinary>>>;
 }
 
 const binarySchema = z.strictObject({
@@ -33,6 +39,8 @@ const manifestSchema = z.strictObject({
         'linux-x64': binarySchema.exactOptional(),
         'linux-arm64': binarySchema.exactOptional(),
         'darwin-universal': binarySchema.exactOptional(),
+        'windows-x64': binarySchema.exactOptional(),
+        'windows-arm64': binarySchema.exactOptional(),
     }),
 });
 

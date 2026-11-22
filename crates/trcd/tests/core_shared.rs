@@ -1,5 +1,6 @@
 //! `trcd core` serving several apps on one session, protocol 1 and 2 clients side by side, reconnects from an offset,
 //! and sessions whose holder an E1 core started (US-2.2.2, US-2.5.3, US-2.6, NFR-12).
+#![cfg(unix)]
 
 mod support;
 

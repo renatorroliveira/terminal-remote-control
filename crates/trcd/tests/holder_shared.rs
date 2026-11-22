@@ -1,5 +1,6 @@
 //! The holder driven the way a protocol 2 core drives it: several attachments on their own streams, replays from an
 //! offset, and output that never waits for a slow client (US-2.1.2, US-2.2.2, US-2.6, D-04).
+#![cfg(unix)]
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;

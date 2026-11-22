@@ -1569,6 +1569,26 @@
       "value": "Add the key to your SSH agent with ssh-add, which asks for the PIN, then connect again."
     }
   ],
+  "failure.authenticationWindowsAgentOff.problem": [
+    {
+      "type": 0,
+      "value": "Windows’ OpenSSH Authentication Agent isn’t running, so ssh had no key to offer "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "failure.authenticationWindowsAgentOff.remedy": [
+    {
+      "type": 0,
+      "value": "Windows ships it turned off, and only an administrator can turn it on: in Services, set OpenSSH Authentication Agent to start automatically and start it. Then add your key with ssh-add and connect again."
+    }
+  ],
   "failure.clearScrollback": [
     {
       "type": 0,

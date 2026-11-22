@@ -148,6 +148,19 @@ describe('wrapperConfig (D-21)', () => {
         expect(text).toContain('Include "/t/my config"\nInclude ~/.ssh/config\nInclude /etc/ssh/ssh_config\n');
     });
 
+    it("runs trcd.exe's known-hosts subcommand and includes Windows' system config (D-66)", () => {
+        const text = wrapperConfig({
+            helpers: {
+                askpass: '"C:\\TRC\\trcd.exe" askpass',
+                knownHosts: 'C:\\TRC\\trcd.exe',
+                knownHostsArgs: ['known-hosts'],
+            },
+            systemConfig: 'C:/ProgramData/ssh/ssh_config',
+        });
+        expect(text).toContain('    KnownHostsCommand "C:\\TRC\\trcd.exe" known-hosts %I %H %t %K %f\n');
+        expect(text).toContain('Include ~/.ssh/config\nInclude C:/ProgramData/ssh/ssh_config\n');
+    });
+
     it('refuses paths it cannot quote', () => {
         expect(() => wrapperConfig({ helpers: { ...helpers, knownHosts: '/a"b' } })).toThrow(/quote/);
     });

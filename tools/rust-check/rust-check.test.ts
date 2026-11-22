@@ -12,10 +12,10 @@ describe('rustCheckCommands', () => {
         }
     });
 
-    it('lints the Unix-only daemon for Linux on Windows and tests every other crate natively (US-6.2)', () => {
+    it('lints and tests the workspace natively on Windows, and the Unix code of the daemon for Linux too (D-62, D-66)', () => {
         expect(rustCheckCommands('win32')).toEqual([
             ['cargo', 'fmt', '--all', '--check'],
-            ['cargo', 'clippy', '--all-targets', '--quiet', '--workspace', '--exclude', 'trcd', '--', '-D', 'warnings'],
+            ['cargo', 'clippy', '--all-targets', '--quiet', '--workspace', '--', '-D', 'warnings'],
             [
                 'cargo',
                 'clippy',
@@ -29,7 +29,7 @@ describe('rustCheckCommands', () => {
                 '-D',
                 'warnings',
             ],
-            ['cargo', 'nextest', 'run', '--workspace', '--exclude', 'trcd', '--cargo-quiet'],
+            ['cargo', 'nextest', 'run', '--workspace', '--cargo-quiet'],
         ]);
     });
 });

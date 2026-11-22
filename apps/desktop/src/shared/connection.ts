@@ -12,9 +12,15 @@ export interface PresentedHostKey {
     readonly fingerprint: string;
 }
 
-/** Why public-key authentication failed (US-1.3.1). */
+/** Why public-key authentication failed (US-1.3.1); `windows-agent-off` is Windows' agent service not running (P-89). */
 export type AuthenticationCause =
-    'no-agent' | 'agent-empty' | 'passphrase-not-loaded' | 'pin-required' | 'certificate-expired' | 'key-rejected';
+    | 'no-agent'
+    | 'windows-agent-off'
+    | 'agent-empty'
+    | 'passphrase-not-loaded'
+    | 'pin-required'
+    | 'certificate-expired'
+    | 'key-rejected';
 
 /** What a network failure was. */
 export type NetworkCause = 'dns' | 'unreachable' | 'timeout';

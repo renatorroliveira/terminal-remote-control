@@ -132,6 +132,17 @@ const FAILURE_MESSAGES: Readonly<
             description: 'How to fix a failed connection.',
         }),
     },
+    'authentication-windows-agent-off': {
+        problem: defineMessage<FailureValues>({
+            id: 'failure.authenticationWindowsAgentOff.problem',
+            defaultMessage: 'Windows’ OpenSSH Authentication Agent isn’t running, so ssh had no key to offer {name}.',
+        }),
+        remedy: defineMessage<FailureValues>({
+            id: 'failure.authenticationWindowsAgentOff.remedy',
+            defaultMessage:
+                'Windows ships it turned off, and only an administrator can turn it on: in Services, set OpenSSH Authentication Agent to start automatically and start it. Then add your key with ssh-add and connect again.',
+        }),
+    },
     'authentication-agent-empty': {
         problem: defineMessage<FailureValues>({
             id: 'failure.authenticationAgentEmpty.problem',

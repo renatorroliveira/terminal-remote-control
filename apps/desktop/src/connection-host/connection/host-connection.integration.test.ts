@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { PROTOCOL_VERSION, type ServerMessage } from '@trc/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bootOutAgent, MAC_HOSTS } from '../../../test/mac-hosts';
+import { dockerContextArguments, testRuntimeSsh, testSshTool } from '../../../test/test-platform';
 import type { ConnectionState, ConnectTarget } from '../../shared/connection';
 import { parseDaemonManifest } from '../bootstrap/manifest';
 import { createAppLogger } from '../logging/app-log';
@@ -46,8 +47,7 @@ function knownHosts(content: 'trusted' | 'empty' | 'changed'): string {
 
 function runtime(known: string, env: Readonly<Record<string, string | undefined>> = process.env): ConnectionRuntime {
     return {
-        ssh: '/usr/bin/ssh',
-        helpers: { askpass: join(resources, 'bin/askpass'), knownHosts: join(resources, 'bin/known-hosts') },
+        ...testRuntimeSsh(),
         seam: { sshConfig: join(run, 'ssh_config'), knownHosts: known },
         env,
         runDir: mkdtempSync(join(scratch, 'run-')),
@@ -181,7 +181,7 @@ describe('HostConnection host keys (US-1.2)', () => {
         expect(asked).toMatchObject({ status: 'host-key', key: { host: '[127.0.0.1]:2222', type: 'ssh-ed25519' } });
         const fingerprint = asked?.status === 'host-key' ? asked.key.fingerprint : '';
         const expected = execFileSync(
-            'ssh-keygen',
+            testSshTool('ssh-keygen'),
             ['-l', '-F', '[127.0.0.1]:2222', '-f', join(run, 'known_hosts.smoke')],
             { encoding: 'utf8' },
         );
@@ -227,22 +227,38 @@ describe('HostConnection failures (US-1.3.1)', () => {
         expect(await settled(observed)).toMatchObject({ status: 'failed', failure });
     });
 
-    it('tells a missing agent from an empty one for a passphrase key', async () => {
+    it("names Windows' agent service when it is off, as Windows ships it (P-89)", async () => {
+        if (process.platform !== 'win32' || agentServiceRuns()) {
+            return;
+        }
         const noAgent = open('trc-pass', knownHosts('trusted'), { ...process.env, SSH_AUTH_SOCK: undefined });
         await noAgent.connection.connect();
-        expect(await settled(noAgent)).toMatchObject({ failure: { kind: 'authentication', cause: 'no-agent' } });
-
-        const socket = join(mkdtempSync(join(scratch, 'agent-')), 'agent.sock');
-        const agent = spawn('ssh-agent', ['-D', '-a', socket], { stdio: 'ignore' });
-        try {
-            await until(() => agentAnswers(socket));
-            const empty = open('trc-pass', knownHosts('trusted'), { ...process.env, SSH_AUTH_SOCK: socket });
-            await empty.connection.connect();
-            expect(await settled(empty)).toMatchObject({ failure: { kind: 'authentication', cause: 'agent-empty' } });
-        } finally {
-            agent.kill();
-        }
+        expect(await settled(noAgent)).toMatchObject({
+            failure: { kind: 'authentication', cause: 'windows-agent-off' },
+        });
     });
+
+    it.skipIf(process.platform === 'win32')(
+        'tells a missing agent from an empty one for a passphrase key',
+        async () => {
+            const noAgent = open('trc-pass', knownHosts('trusted'), { ...process.env, SSH_AUTH_SOCK: undefined });
+            await noAgent.connection.connect();
+            expect(await settled(noAgent)).toMatchObject({ failure: { kind: 'authentication', cause: 'no-agent' } });
+
+            const socket = join(mkdtempSync(join(scratch, 'agent-')), 'agent.sock');
+            const agent = spawn('ssh-agent', ['-D', '-a', socket], { stdio: 'ignore' });
+            try {
+                await until(() => agentAnswers(socket));
+                const empty = open('trc-pass', knownHosts('trusted'), { ...process.env, SSH_AUTH_SOCK: socket });
+                await empty.connection.connect();
+                expect(await settled(empty)).toMatchObject({
+                    failure: { kind: 'authentication', cause: 'agent-empty' },
+                });
+            } finally {
+                agent.kill();
+            }
+        },
+    );
 });
 
 describe('HostConnection liveness', () => {
@@ -250,7 +266,7 @@ describe('HostConnection liveness', () => {
         const observed = open('trc-rocky', knownHosts('trusted'));
         await observed.connection.connect();
         expect(await settled(observed)).toMatchObject({ status: 'connected' });
-        const docker = ['--context', 'colima-trc'];
+        const docker = dockerContextArguments();
         execFileSync('docker', [...docker, 'pause', 'trc-test-hosts-rocky-1']);
         try {
             const started = Date.now();
@@ -261,6 +277,16 @@ describe('HostConnection liveness', () => {
         }
     }, 60_000);
 });
+
+/** Whether Windows' OpenSSH Authentication Agent answers, which `ssh-add -l` reports with 0 or 1. */
+function agentServiceRuns(): boolean {
+    try {
+        execFileSync(testSshTool('ssh-add'), ['-l'], { stdio: 'ignore', windowsHide: true });
+    } catch (error) {
+        return (error as { status?: number }).status === 1;
+    }
+    return true;
+}
 
 function agentAnswers(socket: string): boolean {
     try {
@@ -279,9 +305,22 @@ function removeInstall(alias: string, root: string): void {
     const known = `UserKnownHostsFile=${join(run, 'known_hosts.smoke')}`;
     const command = `${bootOutAgent(root)}; kill $(head -n 1 ${root}/run/core.lock 2>/dev/null) 2>/dev/null; pkill -f "[/]${root}/versions"; rm -rf ${root}`;
     try {
-        execFileSync('ssh', ['-F', join(run, 'ssh_config'), '-o', known, '-o', 'ConnectTimeout=3', alias, command], {
-            stdio: 'ignore',
-        });
+        execFileSync(
+            testSshTool('ssh'),
+            [
+                '-F',
+                join(run, 'ssh_config'),
+                '-o',
+                known,
+                '-o',
+                'BatchMode=yes',
+                '-o',
+                'ConnectTimeout=3',
+                alias,
+                command,
+            ],
+            { stdio: 'ignore', windowsHide: true },
+        );
     } catch {
         return;
     }

@@ -1,6 +1,7 @@
 //! Shell integration through the core the way the app drives it (US-5.1, P-73): every bash, zsh and fish the host
 //! offers starts with TRC's script, marks its prompts and commands with OSC 133, ends a command with its status, and
 //! says so in its session; turned off, the same shell marks nothing.
+#![cfg(unix)]
 
 mod support;
 

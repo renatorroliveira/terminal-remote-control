@@ -1,5 +1,6 @@
 //! The holder over its socket, driven the way a protocol 1 core drives it: one attachment, on the session stream
 //! (US-1.7, US-1.9, US-1.10, US-1.11.3).
+#![cfg(unix)]
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -315,7 +316,7 @@ async fn reports_no_state_before_it_is_given_a_session() {
 #[tokio::test]
 async fn reports_each_finished_command_with_its_status_and_time_and_a_bell_a_second_us_5_3() {
     let mut client = started("/bin/sh").await;
-    client.input("printf '\\033]133;C\\007'; sleep 0.3; printf '\\033]133;D;3\\007'; printf '\\007\\007\\007'\r");
+    client.input("printf '\\033]133;C\\007'; sleep 0.5; printf '\\033]133;D;3\\007'; printf '\\007\\007\\007'\r");
     client.until(|c| !c.finished.is_empty() && c.bells > 0).await;
     let (exit_code, duration_ms) = client.finished[0];
     assert_eq!(exit_code, Some(3));

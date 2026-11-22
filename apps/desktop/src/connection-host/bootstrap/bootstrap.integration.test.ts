@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { decodeServerMessage, encodeClientMessage, FrameDecoder, FrameKind, type ServerMessage } from '@trc/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bootOutAgent, MAC_HOSTS } from '../../../test/mac-hosts';
+import { testSshTool } from '../../../test/test-platform';
 import {
     type BootstrapOptions,
     type BootstrapOutcome,
@@ -62,13 +63,13 @@ function sshArguments(alias: string, command: string): string[] {
 }
 
 function open(alias: string): Opened {
-    const child = spawn('ssh', sshArguments(alias, 'exec /bin/sh -s'));
+    const child = spawn(testSshTool('ssh'), sshArguments(alias, 'exec /bin/sh -s'), { windowsHide: true });
     cleanups.push(() => child.kill());
     return { child, input: child.stdin, output: child.stdout };
 }
 
 function remote(alias: string, command: string): string {
-    return execFileSync('ssh', sshArguments(alias, command), { encoding: 'utf8' });
+    return execFileSync(testSshTool('ssh'), sshArguments(alias, command), { encoding: 'utf8', windowsHide: true });
 }
 
 /** Whether `path` exists on the host, read from the last line, since a login banner may come before it. */

@@ -5,8 +5,10 @@ import { DEFAULT_KNOWN_HOSTS_FILES } from './client-checks';
 export interface SshHelpers {
     /** The `SSH_ASKPASS` helper. */
     readonly askpass: string;
-    /** The `KnownHostsCommand` helper. */
+    /** The `KnownHostsCommand` helper program. */
     readonly knownHosts: string;
+    /** Arguments ahead of ssh's tokens, such as `known-hosts` for `trcd.exe` on Windows (D-66). */
+    readonly knownHostsArgs?: readonly string[] | undefined;
 }
 
 /** Where to connect: a host alias or `[user@]host`, and a port the user typed. */
@@ -32,12 +34,22 @@ export interface SshArgumentOptions {
     readonly seam?: TestSeam | undefined;
     /** The known_hosts files read instead of the user's, when theirs keep no key (US-1.2.1). */
     readonly knownHostsFiles?: readonly string[] | undefined;
+    readonly logLevel?: SshLogLevel | undefined;
 }
+
+/**
+ * ssh's `LogLevel`: `ERROR`, or `INFO` on Windows, whose OpenSSH reports a refused connection at the banner exchange
+ * at that level only (S9).
+ */
+export type SshLogLevel = 'ERROR' | 'INFO';
 
 /** What the wrapper config needs. */
 export interface WrapperConfigOptions {
     readonly helpers: SshHelpers;
     readonly seam?: TestSeam | undefined;
+    /** The system-wide ssh config; `/etc/ssh/ssh_config` unless the OS keeps it elsewhere. */
+    readonly systemConfig?: string | undefined;
+    readonly logLevel?: SshLogLevel | undefined;
 }
 
 const UNQUOTABLE = /["\n\r\0]/;
@@ -49,7 +61,10 @@ const MAX_PORT = 65_535;
  * if any.
  */
 export function sshArguments(options: SshArgumentOptions): string[] {
-    const security = securityOptions(options.helpers).flatMap(([name, value]) => ['-o', `${name}=${value}`]);
+    const security = securityOptions(options.helpers, options.logLevel).flatMap(([name, value]) => [
+        '-o',
+        `${name}=${value}`,
+    ]);
     return [
         '-F',
         options.wrapper,
@@ -74,7 +89,7 @@ export function effectiveConfigArguments(wrapper: string, target: SshTarget): st
  * Test builds put the test config and known_hosts file ahead of the user's, never in their place (P-14).
  */
 export function wrapperConfig(options: WrapperConfigOptions): string {
-    const block = securityOptions(options.helpers).map(([name, value]) => `    ${name} ${value}`);
+    const block = securityOptions(options.helpers, options.logLevel).map(([name, value]) => `    ${name} ${value}`);
     const { seam } = options;
     const knownHosts = seam === undefined ? [] : [`    UserKnownHostsFile ${seamKnownHostsFiles(seam, quote)}`];
     const testConfig = seam === undefined ? [] : [`Include ${quote(seam.sshConfig)}`];
@@ -85,7 +100,7 @@ export function wrapperConfig(options: WrapperConfigOptions): string {
         '',
         ...testConfig,
         'Include ~/.ssh/config',
-        'Include /etc/ssh/ssh_config',
+        `Include ${quoteIfSpaced(options.systemConfig ?? '/etc/ssh/ssh_config')}`,
         '',
     ].join('\n');
 }
@@ -125,11 +140,14 @@ function targetArguments({ destination, port }: SshTarget): string[] {
     return [...(port === undefined ? [] : ['-p', String(port)]), '--', destination];
 }
 
-function securityOptions(helpers: SshHelpers): readonly (readonly [string, string])[] {
+function securityOptions(helpers: SshHelpers, logLevel: SshLogLevel = 'ERROR'): readonly (readonly [string, string])[] {
     return [
         ['BatchMode', 'yes'],
         ['StrictHostKeyChecking', 'yes'],
-        ['KnownHostsCommand', `${quote(helpers.knownHosts)} %I %H %t %K %f`],
+        [
+            'KnownHostsCommand',
+            [quote(helpers.knownHosts), ...(helpers.knownHostsArgs ?? []), '%I %H %t %K %f'].join(' '),
+        ],
         ['PreferredAuthentications', 'publickey'],
         ['PasswordAuthentication', 'no'],
         ['KbdInteractiveAuthentication', 'no'],
@@ -140,8 +158,13 @@ function securityOptions(helpers: SshHelpers): readonly (readonly [string, strin
         ['ServerAliveInterval', '10'],
         ['ServerAliveCountMax', '2'],
         ['ConnectTimeout', '15'],
-        ['LogLevel', 'ERROR'],
+        ['LogLevel', logLevel],
     ];
+}
+
+/** A path in double quotes, as ssh's configuration and command lines read it; refuses what quotes cannot hold. */
+export function quoteForSsh(path: string): string {
+    return quote(path);
 }
 
 function quote(path: string): string {

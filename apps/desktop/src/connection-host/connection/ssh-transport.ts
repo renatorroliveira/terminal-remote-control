@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, extname, join } from 'node:path';
 import type { ConnectionFailure, ConnectTarget, PresentedHostKey } from '../../shared/connection';
 import { effectiveConfigArguments, sshArguments, sshEnvironment, wrapperConfig } from '../ssh/arguments';
 import { classifyFailure, diagnoseAuthentication } from '../ssh/classify';
@@ -75,6 +75,7 @@ export class SshTransport implements Transport {
                 command: REMOTE_COMMAND,
                 seam: runtime.seam,
                 knownHostsFiles: replacement,
+                logLevel: runtime.sshLogLevel,
             }),
             env: sshEnvironment(runtime.env, runtime.helpers, this.#nonce),
             nonce: this.#nonce,
@@ -93,7 +94,7 @@ export class SshTransport implements Transport {
         if (failure.kind === 'host-key-unknown') {
             return { kind: 'host-key-unknown', key: { ...failure.key, fingerprint: fingerprintOf(failure.key.key) } };
         }
-        const probes = createAuthProbes(dirname(this.#runtime.ssh), this.#runtime.env);
+        const probes = createAuthProbes(dirname(this.#runtime.ssh), this.#runtime.env, extname(this.#runtime.ssh));
         const cause = failure.kind === 'authentication' ? await diagnoseAuthentication(config, probes) : undefined;
         return fromSsh(failure, cause);
     }
@@ -125,9 +126,9 @@ export class SshTransport implements Transport {
         await this.dispose();
         await mkdir(this.#runtime.runDir, { recursive: true, mode: 0o700 });
         const file = join(this.#runtime.runDir, `ssh-${randomBytes(8).toString('hex')}.conf`);
-        await writeFile(file, wrapperConfig({ helpers: this.#runtime.helpers, seam: this.#runtime.seam }), {
-            mode: 0o600,
-        });
+        const { helpers, seam, systemSshConfig, sshLogLevel } = this.#runtime;
+        const text = wrapperConfig({ helpers, seam, systemConfig: systemSshConfig, logLevel: sshLogLevel });
+        await writeFile(file, text, { mode: 0o600 });
         this.#wrapper = file;
         return file;
     }

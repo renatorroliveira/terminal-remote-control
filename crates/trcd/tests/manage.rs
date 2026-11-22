@@ -1,5 +1,6 @@
 //! Managing a host's daemon from the app (US-3.3.2, US-3.3.3): Restart daemon ends only the core, whose successor
 //! adopts every session, and Remove daemon stops every session, deletes their data and ends the core.
+#![cfg(unix)]
 
 mod support;
 
