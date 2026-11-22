@@ -1,5 +1,5 @@
 import { DEFAULT_THEME_PREFERENCE, type ThemePreference } from './display';
-import { type CommandId, type Keymap, resolveKeymap } from './keymap';
+import { type CommandId, type Keymap, type KeymapPlatform, resolveKeymap } from './keymap';
 import { DEFAULT_TERMINAL_APPEARANCE, type TerminalAppearance } from './terminal-appearance';
 import { TERMINAL_ZOOM } from './terminal-zoom';
 
@@ -52,6 +52,8 @@ export interface Settings {
     readonly shortcuts: Readonly<Partial<Record<CommandId, string>>>;
     /** Whether plain F6 and Shift+F6 also move between regions (A11Y-05.2). */
     readonly plainF6: boolean;
+    /** Whether Ctrl+C copies, instead of interrupting, while the terminal has a selection; Windows only (A11Y-04.6). */
+    readonly ctrlCCopies: boolean;
     /** Whether short tones play beside announcements (A11Y-12.4). */
     readonly audioCues: boolean;
     /** The sound cues' volume, in percent. */
@@ -104,6 +106,7 @@ export const DEFAULT_SETTINGS: Settings = {
     newSessionFolder: 'home',
     shortcuts: {},
     plainF6: false,
+    ctrlCCopies: false,
     audioCues: false,
     audioVolume: 50,
     announceFailedCommands: true,
@@ -118,7 +121,10 @@ export const DEFAULT_SETTINGS: Settings = {
     notifyBackgroundCommand: false,
 };
 
-/** The keymap the settings put in force: the user's shortcuts, and plain F6 when on (A11Y-05.2, A11Y-05.7). */
-export function keymapFor(settings: Pick<Settings, 'shortcuts' | 'plainF6'>): Keymap {
-    return resolveKeymap(settings.shortcuts, { plainF6: settings.plainF6 });
+/**
+ * The keymap the settings put in force on `platform`: the user's shortcuts, and plain F6 when on (A11Y-05.2,
+ * A11Y-05.7).
+ */
+export function keymapFor(settings: Pick<Settings, 'shortcuts' | 'plainF6'>, platform: KeymapPlatform = 'mac'): Keymap {
+    return resolveKeymap(settings.shortcuts, { plainF6: settings.plainF6, platform });
 }

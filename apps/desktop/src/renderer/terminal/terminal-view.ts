@@ -2,6 +2,7 @@ import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { type IDisposable, Terminal } from '@xterm/xterm';
 import type { TerminalAppearance } from '../../shared/terminal-appearance';
+import { menuKeyEcho, opensContextMenu } from '../ui/menu-key-echo';
 import type { TerminalPalette } from '../ui/themes';
 import { attachInput, type InputModes } from './ats-input';
 import { AtsSurface, SELECTION_CAP } from './ats-surface';
@@ -147,7 +148,7 @@ export class TerminalView {
     #find: FindState | undefined;
     #wantsBlink = false;
     #reducedMotion = false;
-    readonly #modes: InputModes = { tabFocusMode: false, sendNextKey: false };
+    readonly #modes: InputModes = { tabFocusMode: false, sendNextKey: false, ctrlCCopies: false };
     readonly #cleanups: (() => void)[] = [];
     #geometry: TerminalGeometry | undefined;
     #ready: Promise<void> = Promise.resolve();
@@ -433,6 +434,11 @@ export class TerminalView {
         return this.#modes.tabFocusMode;
     }
 
+    /** Lets Ctrl+C copy the selection instead of interrupting, off macOS (A11Y-04.6, P-86). */
+    setCtrlCCopies(on: boolean): void {
+        this.#modes.ctrlCCopies = on;
+    }
+
     /** Sends the next key to the process even if the app reserves it (A11Y-05.3). */
     sendNextKey(): void {
         this.#modes.sendNextKey = true;
@@ -625,14 +631,19 @@ export class TerminalView {
                 this.#options.onNotice?.({ kind: 'copy-capped', lines });
             }
         };
-        const onContextMenu = (event: Event): void => {
+        const echo = menuKeyEcho();
+        const onContextMenu = (event: MouseEvent): void => {
             event.preventDefault();
-            this.#options.onContextMenu?.(this.terminal.hasSelection());
+            if (!echo.echoes(event)) {
+                this.#options.onContextMenu?.(this.terminal.hasSelection());
+            }
         };
         const onMenuKey = (event: KeyboardEvent): void => {
-            if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+            echo.pressed(event);
+            if (opensContextMenu(event)) {
                 event.stopImmediatePropagation();
-                onContextMenu(event);
+                event.preventDefault();
+                this.#options.onContextMenu?.(this.terminal.hasSelection());
             }
         };
         this.surface.addEventListener('copy', onCopy);

@@ -129,7 +129,9 @@ describe('SettingsView: the settings in the content area (A11Y-10.3, US-1.6.7, P
         const { shell, rendered } = renderApp();
         const screen = await rendered;
         shell.run('settings.show');
-        const total = SETTING_ENTRIES.filter((entry) => entry.id !== 'screenReaderMode').length;
+        const shown = (entry: { readonly id: string }): boolean =>
+            !['screenReaderMode', 'ctrlCCopies'].includes(entry.id);
+        const total = SETTING_ENTRIES.filter(shown).length;
         const appearance = SETTING_ENTRIES.filter((entry) => entry.group === 'appearance').length;
         await expect.element(screen.getByText(`Appearance: ${appearance} settings.`)).toBeVisible();
         await screen.getByRole('searchbox', { name: 'Search settings' }).fill('scrollback');

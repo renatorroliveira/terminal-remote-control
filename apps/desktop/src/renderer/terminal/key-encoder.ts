@@ -15,6 +15,8 @@ export interface KeyInput {
     readonly ctrlKey: boolean;
     readonly shiftKey: boolean;
     readonly metaKey: boolean;
+    /** Whether AltGr is held, which on Windows also sets Control and Alt. */
+    readonly altGraph?: boolean;
 }
 
 /** Terminal modes and preferences that change the encoding. */
@@ -93,7 +95,7 @@ const SHIFTED_BY_CODE: Readonly<Record<string, readonly [string, string]>> = {
 
 /** Encodes a key press for the terminal, or `none` when the key is text input or belongs to the app. */
 export function encodeKey(input: KeyInput, modes: EncoderModes): KeyAction {
-    if (input.metaKey) {
+    if (input.metaKey || (!modes.isMac && typesWithAltGraph(input))) {
         return NONE;
     }
     const kitty = (modes.kittyFlags & KITTY_DISAMBIGUATE) === 0 ? undefined : disambiguatedKey(input, modes);
@@ -213,6 +215,21 @@ function letterOf(input: KeyInput): string | undefined {
     return /^Key[A-Z]$/.test(input.code) && input.key !== 'Dead' && input.key.length === 1
         ? input.code.slice(3, 4)
         : undefined;
+}
+
+/**
+ * Whether a Control+Alt press off macOS types a character with AltGr, such as `@` on a German keyboard, which then
+ * arrives as text: AltGr is held, or the key gives a character its physical key does not name (D-67).
+ */
+function typesWithAltGraph(input: KeyInput): boolean {
+    if (!input.ctrlKey || !input.altKey || [...input.key].length !== 1) {
+        return false;
+    }
+    if (input.altGraph === true) {
+        return true;
+    }
+    const named = /^(Key|Digit)(.)$/.exec(input.code)?.[2];
+    return named === undefined || input.key.toUpperCase() !== named;
 }
 
 function modifierCode(input: KeyInput): number {

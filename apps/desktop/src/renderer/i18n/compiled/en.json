@@ -834,7 +834,15 @@
   "announce.reviewOutput": [
     {
       "type": 0,
-      "value": "New output. Command-Down Arrow goes to the end."
+      "value": "New output. "
+    },
+    {
+      "type": 1,
+      "value": "keys"
+    },
+    {
+      "type": 0,
+      "value": " goes to the end."
     }
   ],
   "announce.screenReaderOff": [
@@ -4318,6 +4326,18 @@
       "value": "Plays while sound cues are on, for the open session."
     }
   ],
+  "setting.ctrlCCopies": [
+    {
+      "type": 0,
+      "value": "Ctrl+C copies when text is selected"
+    }
+  ],
+  "setting.ctrlCCopies.description": [
+    {
+      "type": 0,
+      "value": "Off by default, so Ctrl+C always interrupts, even with a selection you may not see. Ctrl+Shift+C and Ctrl+Insert always copy."
+    }
+  ],
   "setting.cursorBlink": [
     {
       "type": 0,
@@ -4357,7 +4377,7 @@
   "setting.hints.description": [
     {
       "type": 0,
-      "value": "VoiceOver reads it after the terminal’s name: Option F1, accessibility help."
+      "value": "VoiceOver, NVDA or JAWS reads it after the terminal’s name: the accessibility help shortcut."
     }
   ],
   "setting.letterSpacing": [
@@ -4708,6 +4728,12 @@
       "value": "None"
     }
   ],
+  "shortcuts.problem.controlAlt": [
+    {
+      "type": 0,
+      "value": "Ctrl with Alt types characters on many keyboards, and Magnifier uses it."
+    }
+  ],
   "shortcuts.problem.controlCode": [
     {
       "type": 0,
@@ -4736,6 +4762,42 @@
     {
       "type": 0,
       "value": "VoiceOver uses Control with Option."
+    }
+  ],
+  "shortcuts.problem.windows.altTypes": [
+    {
+      "type": 0,
+      "value": "Alt with that key is the terminal’s Meta key and opens menus."
+    }
+  ],
+  "shortcuts.problem.windows.controlAlt": [
+    {
+      "type": 0,
+      "value": "Ctrl with Alt types characters on many keyboards, and Magnifier uses it."
+    }
+  ],
+  "shortcuts.problem.windows.controlCode": [
+    {
+      "type": 0,
+      "value": "The terminal uses Ctrl with that key."
+    }
+  ],
+  "shortcuts.problem.windows.noModifier": [
+    {
+      "type": 0,
+      "value": "A shortcut needs Ctrl or Alt, or a function key."
+    }
+  ],
+  "shortcuts.problem.windows.reserved": [
+    {
+      "type": 0,
+      "value": "Windows, a screen reader or a menu already uses that shortcut."
+    }
+  ],
+  "shortcuts.problem.windows.screenReader": [
+    {
+      "type": 0,
+      "value": "A screen reader uses that shortcut."
     }
   ],
   "shortcuts.recording": [
@@ -4870,6 +4932,12 @@
     {
       "type": 0,
       "value": "Known hosts"
+    }
+  ],
+  "sidebar.localLater": [
+    {
+      "type": 0,
+      "value": "Sessions on this computer arrive in a later release."
     }
   ],
   "sidebar.newHost": [
@@ -5196,8 +5264,12 @@
   ],
   "terminal.hint": [
     {
+      "type": 1,
+      "value": "keys"
+    },
+    {
       "type": 0,
-      "value": "Option F1: accessibility help."
+      "value": ": accessibility help."
     }
   ],
   "terminal.inputElsewhere": [

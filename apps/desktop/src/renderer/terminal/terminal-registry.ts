@@ -92,6 +92,7 @@ export class TerminalRegistry implements TerminalHost {
     #appearance: TerminalAppearance = DEFAULT_TERMINAL_APPEARANCE;
     #reducedMotion = false;
     #hints = true;
+    #ctrlCCopies = false;
     #minimumContrast = 4.5;
     #scrollback = DEFAULT_SCROLLBACK_LINES;
 
@@ -259,6 +260,14 @@ export class TerminalRegistry implements TerminalHost {
         this.#hints = on;
         for (const entry of this.#entries.values()) {
             entry.view.setHints(on);
+        }
+    }
+
+    /** Lets Ctrl+C copy a selection in every terminal instead of interrupting, on Windows (A11Y-04.6, P-86). */
+    setCtrlCCopies(on: boolean): void {
+        this.#ctrlCCopies = on;
+        for (const entry of this.#entries.values()) {
+            entry.view.setCtrlCCopies(on);
         }
     }
 
@@ -561,6 +570,7 @@ export class TerminalRegistry implements TerminalHost {
         view.setHints(this.#hints);
         view.setMinimumContrast(this.#minimumContrast);
         view.setTabFocusMode(this.#tabFocusMode);
+        view.setCtrlCCopies(this.#ctrlCCopies);
         view.setReducedMotion(this.#reducedMotion);
         const appearance = this.#appearance;
         void view.ready.then(() => view.setAppearance(appearance));

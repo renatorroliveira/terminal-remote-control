@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { KnownHost } from '../shared/hosts';
-import { writeHostClipboard } from './clipboard-writes';
+import { platformLineBreaks, writeHostClipboard } from './clipboard-writes';
 
 const host = (id: string, allowClipboardWrites?: boolean): KnownHost => ({
     id,
@@ -20,5 +20,12 @@ describe('writeHostClipboard (SEC-06.1)', () => {
         await expect(writeHostClipboard(deps, 'default', 'two')).resolves.toBe(false);
         await expect(writeHostClipboard(deps, 'unknown', 'three')).resolves.toBe(false);
         expect(written).toEqual(['one']);
+    });
+});
+
+describe('platformLineBreaks (P-92)', () => {
+    it('puts CRLF line breaks in text copied on Windows, once, and leaves other platforms as they are', () => {
+        expect(platformLineBreaks('one\ntwo\r\nthree\n', 'win32')).toBe('one\r\ntwo\r\nthree\r\n');
+        expect(platformLineBreaks('one\ntwo', 'darwin')).toBe('one\ntwo');
     });
 });

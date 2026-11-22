@@ -54,8 +54,15 @@ export interface KeyInput {
     readonly metaKey: boolean;
 }
 
-/** Why a binding cannot be used (A11Y-05.5, A11Y-05.6). */
-export type BindingProblem = 'no-modifier' | 'control-code' | 'option-types' | 'screen-reader' | 'reserved';
+/**
+ * Why a binding cannot be used (A11Y-05.5, A11Y-05.6). `control-alt` is Windows': Control with Alt types characters
+ * (AltGr) on many layouts and is Magnifier's modifier.
+ */
+export type BindingProblem =
+    'no-modifier' | 'control-code' | 'option-types' | 'screen-reader' | 'control-alt' | 'reserved';
+
+/** Whose shortcut conventions the keymap follows: macOS's, or Windows' (E6, D-67). */
+export type KeymapPlatform = 'mac' | 'windows';
 
 /** A binding the user asked for that the keymap refused, so the command kept its default. */
 export interface RefusedBinding {
@@ -69,10 +76,22 @@ export interface Keymap {
     commandFor(chord: Chord): CommandId | undefined;
     chordFor(command: CommandId): Chord | undefined;
     readonly refused: readonly RefusedBinding[];
+    /** Whose conventions the shortcuts follow, which also names their keys. */
+    readonly platform: KeymapPlatform;
 }
 
 /** A keymap that binds nothing, for menus that must leave every key to the page for a while. */
-export const UNBOUND_KEYMAP: Keymap = { commandFor: () => undefined, chordFor: () => undefined, refused: [] };
+export const UNBOUND_KEYMAP: Keymap = {
+    commandFor: () => undefined,
+    chordFor: () => undefined,
+    refused: [],
+    platform: 'mac',
+};
+
+/** The keymap platform of a Node or Electron `process.platform` value; Linux follows Windows' rules until E7. */
+export function keymapPlatformOf(platform: string): KeymapPlatform {
+    return platform === 'darwin' ? 'mac' : 'windows';
+}
 
 /** The default shortcuts on macOS (docs/design/keymap.md). Commands without one run from menus and the palette. */
 export const DEFAULT_KEYMAP: Readonly<Partial<Record<CommandId, string>>> = {
@@ -106,6 +125,47 @@ export const DEFAULT_KEYMAP: Readonly<Partial<Record<CommandId, string>>> = {
     'settings.show': 'Cmd+,',
 };
 
+/**
+ * The default shortcuts on Windows (docs/design/keymap.md, D-67): Control+Shift where macOS has Command, as Windows
+ * Terminal binds its commands, Windows' own Control+Tab, Control+F6 and Control+, conventions, Alt+F1 and Alt+F2 as
+ * the PRD proposed, and never Control with a letter alone, Control with Alt, or the Windows key.
+ */
+export const WINDOWS_KEYMAP: Readonly<Partial<Record<CommandId, string>>> = {
+    'region.next': 'Ctrl+F6',
+    'region.previous': 'Ctrl+Shift+F6',
+    'palette.show': 'Ctrl+Shift+P',
+    'sidebar.toggle': 'Ctrl+Shift+S',
+    'terminal.toggleTabFocus': 'Ctrl+Shift+M',
+    'terminal.sendNextKey': 'Ctrl+Shift+K',
+    'announcements.toggleMute': 'Ctrl+Shift+A',
+    'notifications.show': 'Ctrl+Shift+N',
+    'help.accessibility': 'Alt+F1',
+    'session.new': 'Ctrl+Shift+T',
+    'session.newWithOptions': 'Ctrl+Shift+Space',
+    'session.next': 'Ctrl+Tab',
+    'session.previous': 'Ctrl+Shift+Tab',
+    'session.close': 'Ctrl+Shift+W',
+    'session.quickSwitch': 'Ctrl+Shift+G',
+    'terminal.listLinks': 'Ctrl+Shift+O',
+    'terminal.zoomIn': 'Ctrl+=',
+    'terminal.zoomOut': 'Ctrl+-',
+    'terminal.zoomReset': 'Ctrl+Shift+0',
+    'review.toggle': 'Alt+F2',
+    'terminal.find': 'Ctrl+Shift+F',
+    'terminal.clearScrollback': 'Ctrl+Shift+L',
+    'command.previous': 'Ctrl+Up',
+    'command.next': 'Ctrl+Down',
+    'command.readOutput': 'Ctrl+Shift+R',
+    'command.selectOutput': 'Ctrl+Shift+Up',
+    'command.copyOutput': 'Ctrl+Shift+Y',
+    'settings.show': 'Ctrl+,',
+};
+
+/** The default shortcuts on `platform`. */
+export function defaultKeymap(platform: KeymapPlatform): Readonly<Partial<Record<CommandId, string>>> {
+    return platform === 'windows' ? WINDOWS_KEYMAP : DEFAULT_KEYMAP;
+}
+
 /** Reads a chord such as `Shift+Cmd+P`; modifiers come in any order, as `Ctrl`, `Control`, `Option`, `Alt`, `Cmd`. */
 export function parseChord(text: string): Chord | undefined {
     const parts = text.split('+').map((part) => part.trim());
@@ -123,9 +183,20 @@ export function parseChord(text: string): Chord | undefined {
     };
 }
 
-/** A chord as text, modifiers in the macOS order: `Ctrl+Option+Shift+Cmd+Key`. */
+/** A chord as text, modifiers in the macOS order: `Ctrl+Option+Shift+Cmd+Key`. Settings store chords this way. */
 export function formatChord(chord: Chord): string {
     const modifiers = MODIFIER_ORDER.filter((modifier) => chord[modifier]).map((modifier) => MODIFIER_LABELS[modifier]);
+    return [...modifiers, chord.key].join('+');
+}
+
+/** A chord as `platform` names its keys: as {@link formatChord} on macOS, and `Ctrl+Alt+Shift+Key` on Windows. */
+export function displayChord(chord: Chord, platform: KeymapPlatform): string {
+    if (platform === 'mac') {
+        return formatChord(chord);
+    }
+    const modifiers = MODIFIER_ORDER.filter((modifier) => chord[modifier]).map(
+        (modifier) => WINDOWS_MODIFIER_LABELS[modifier],
+    );
     return [...modifiers, chord.key].join('+');
 }
 
@@ -139,11 +210,14 @@ export function chordFromKey(input: KeyInput): Chord | undefined {
 }
 
 /**
- * The Electron accelerator a menu item shows for a chord, only when it holds Command: Command chords never reach the
- * terminal, so the menu can take them, while any other chord stays with the renderer and "send next key".
+ * The Electron accelerator a menu item shows for a chord, only for a chord the terminal never gets: on macOS one with
+ * Command, and on Windows one with Control and a printable key but no Alt, which the key encoder leaves alone, while
+ * named and function keys stay with the renderer and "send next key" (docs/design/keymap.md, rule 7).
  */
-export function menuAccelerator(chord: Chord): string | undefined {
-    if (!chord.cmd) {
+export function menuAccelerator(chord: Chord, platform: KeymapPlatform = 'mac'): string | undefined {
+    const shown =
+        platform === 'mac' ? chord.cmd : chord.ctrl && !chord.option && !chord.cmd && PRINTABLE_KEY.test(chord.key);
+    if (!shown) {
         return undefined;
     }
     const modifiers = MODIFIER_ORDER.filter((modifier) => chord[modifier]).map(
@@ -152,8 +226,12 @@ export function menuAccelerator(chord: Chord): string | undefined {
     return [...modifiers, chord.key].join('+');
 }
 
-/** Why a chord cannot be a shortcut, or nothing when it can (docs/design/keymap.md, rules 2 to 4). */
-export function bindingProblem(chord: Chord): BindingProblem | undefined {
+/** Why a chord cannot be a shortcut on `platform`, or nothing when it can (docs/design/keymap.md, rules 2 to 4). */
+export function bindingProblem(chord: Chord, platform: KeymapPlatform = 'mac'): BindingProblem | undefined {
+    return platform === 'windows' ? windowsBindingProblem(chord) : macBindingProblem(chord);
+}
+
+function macBindingProblem(chord: Chord): BindingProblem | undefined {
     const functionKey = FUNCTION_KEY.test(chord.key);
     if (!chord.ctrl && !chord.option && !chord.cmd && !functionKey) {
         return 'no-modifier';
@@ -170,10 +248,39 @@ export function bindingProblem(chord: Chord): BindingProblem | undefined {
     return RESERVED.has(formatChord(chord)) ? 'reserved' : undefined;
 }
 
+/**
+ * Windows' rules: a modifier or a function key; never the Windows key; never Control with Alt; Control with a letter,
+ * digit, bracket, backslash, slash or Space alone, and Control+Shift with 2, 6 or minus (`@`, `^`, `_`), are the
+ * shell's control codes; Alt with a printable key is the shell's Meta and the menus' access key; and the reserved keys.
+ */
+function windowsBindingProblem(chord: Chord): BindingProblem | undefined {
+    if (chord.cmd) {
+        return 'reserved';
+    }
+    if (!chord.ctrl && !chord.option && !FUNCTION_KEY.test(chord.key)) {
+        return 'no-modifier';
+    }
+    if (chord.ctrl && chord.option) {
+        return 'control-alt';
+    }
+    return windowsKeyProblem(chord) ?? (WINDOWS_RESERVED.has(formatChord(chord)) ? 'reserved' : undefined);
+}
+
+/** Whether Ctrl or Alt with this key is the shell's: a control code, or Meta with a printable key. */
+function windowsKeyProblem(chord: Chord): BindingProblem | undefined {
+    if (chord.ctrl && (chord.shift ? SHIFTED_CONTROL_CODE_KEYS : CONTROL_CODE_KEYS).test(chord.key)) {
+        return 'control-code';
+    }
+    const printable = !FUNCTION_KEY.test(chord.key) && !NAMED_KEYS.some((name) => name === chord.key);
+    return chord.option && printable ? 'option-types' : undefined;
+}
+
 /** How the keymap is built beyond the user's bindings. */
 export interface KeymapOptions {
     /** Whether plain F6 and Shift+F6 also move between regions, as on Windows (A11Y-05.2). */
     readonly plainF6?: boolean;
+    /** Whose defaults and rules apply; macOS's unless set. */
+    readonly platform?: KeymapPlatform;
 }
 
 /**
@@ -185,16 +292,21 @@ export function resolveKeymap(
     overrides: Readonly<Partial<Record<CommandId, string>>>,
     options: KeymapOptions = {},
 ): Keymap {
-    const choices = COMMAND_IDS.map((command) => choose(command, overrides[command]));
+    const platform = options.platform ?? 'mac';
+    const choices = COMMAND_IDS.map((command) => choose(command, overrides[command], platform));
     const refused = choices.flatMap((choice) => choice.refused ?? []);
-    const chosen = withoutDuplicates(choices, (command, chord) =>
-        refused.push({ command, binding: overrides[command] ?? formatChord(chord), problem: 'duplicate' }),
+    const chosen = withoutDuplicates(
+        choices,
+        (command, chord) =>
+            refused.push({ command, binding: overrides[command] ?? formatChord(chord), problem: 'duplicate' }),
+        platform,
     );
     const order = (command: CommandId): number => COMMAND_IDS.indexOf(command);
     return keymapOf(
         chosen,
         refused.sort((a, b) => order(a.command) - order(b.command)),
         options.plainF6 === true ? PLAIN_F6 : [],
+        platform,
     );
 }
 
@@ -211,6 +323,12 @@ const MODIFIER_LABELS: Readonly<Record<Modifier, string>> = {
     option: 'Option',
     shift: 'Shift',
     cmd: 'Cmd',
+};
+const WINDOWS_MODIFIER_LABELS: Readonly<Record<Modifier, string>> = {
+    ctrl: 'Ctrl',
+    option: 'Alt',
+    shift: 'Shift',
+    cmd: 'Win',
 };
 const ACCELERATOR_MODIFIERS: Readonly<Record<Modifier, string>> = {
     ctrl: 'Control',
@@ -265,6 +383,28 @@ const CODE_KEYS: Readonly<Record<string, string>> = {
 };
 const FUNCTION_KEY = /^F([1-9]|1[0-9]|2[0-4])$/;
 const CONTROL_CODE_KEYS = /^([A-Z0-9[\]\\/]|Space)$/;
+/** Control+Shift with these is `@`, `^` or `_` with Control: NUL, RS and US, readline's undo among them. */
+const SHIFTED_CONTROL_CODE_KEYS = /^[26-]$/;
+/** A key that types a character, which the key encoder never sends with Control and Shift alone. */
+const PRINTABLE_KEY = /^([A-Z0-9[\]\\/,.;'`=-]|Space)$/;
+/**
+ * Windows' own: window and task switching, the window and system menus, Task Manager, Voice Access's microphone keys,
+ * and the strict copy and paste keys (P-86).
+ */
+const WINDOWS_RESERVED: ReadonlySet<string> = new Set([
+    'Option+F4',
+    'Option+Tab',
+    'Option+Shift+Tab',
+    'Option+Escape',
+    'Ctrl+Escape',
+    'Ctrl+Shift+Escape',
+    'F10',
+    'Shift+F10',
+    'Option+Shift+B',
+    'Option+Shift+C',
+    'Ctrl+Shift+C',
+    'Ctrl+Shift+V',
+]);
 const RESERVED: ReadonlySet<string> = new Set([
     'Cmd+Tab',
     'Shift+Cmd+Tab',
@@ -316,8 +456,8 @@ function keyFromCode(code: string): string | undefined {
     return CODE_KEYS[code] ?? NAMED_KEYS.find((name) => name === code);
 }
 
-function defaultChord(command: CommandId): Chord | undefined {
-    const text = DEFAULT_KEYMAP[command];
+function defaultChord(command: CommandId, platform: KeymapPlatform): Chord | undefined {
+    const text = defaultKeymap(platform)[command];
     return text === undefined ? undefined : parseChord(text);
 }
 
@@ -329,28 +469,29 @@ interface Choice {
     readonly refused?: RefusedBinding;
 }
 
-function choose(command: CommandId, binding: string | undefined): Choice {
-    const checked = binding === undefined ? undefined : checkBinding(command, binding);
+function choose(command: CommandId, binding: string | undefined, platform: KeymapPlatform): Choice {
+    const checked = binding === undefined ? undefined : checkBinding(command, binding, platform);
     if (checked === undefined) {
-        return { command, chord: defaultChord(command), rebound: false };
+        return { command, chord: defaultChord(command, platform), rebound: false };
     }
     return 'problem' in checked
-        ? { command, chord: defaultChord(command), rebound: false, refused: checked }
+        ? { command, chord: defaultChord(command, platform), rebound: false, refused: checked }
         : { command, chord: checked, rebound: true };
 }
 
-function checkBinding(command: CommandId, binding: string): Chord | RefusedBinding {
+function checkBinding(command: CommandId, binding: string, platform: KeymapPlatform): Chord | RefusedBinding {
     const chord = parseChord(binding);
     if (chord === undefined) {
         return { command, binding, problem: 'unreadable' };
     }
-    const problem = bindingProblem(chord);
+    const problem = bindingProblem(chord, platform);
     return problem === undefined ? chord : { command, binding, problem };
 }
 
 function withoutDuplicates(
     choices: readonly Choice[],
     onDuplicate: (command: CommandId, chord: Chord) => void,
+    platform: KeymapPlatform,
 ): ReadonlyMap<CommandId, Chord> {
     const owners = new Set<string>();
     const chosen = new Map<CommandId, Chord>();
@@ -367,7 +508,7 @@ function withoutDuplicates(
             continue;
         }
         onDuplicate(command, chord);
-        claim(command, defaultChord(command));
+        claim(command, defaultChord(command, platform));
     }
     return chosen;
 }
@@ -376,6 +517,7 @@ function keymapOf(
     chosen: ReadonlyMap<CommandId, Chord>,
     refused: readonly RefusedBinding[],
     alternates: readonly (readonly [string, CommandId])[],
+    platform: KeymapPlatform,
 ): Keymap {
     const byChord = new Map([...chosen].map(([command, chord]) => [formatChord(chord), command] as const));
     for (const [chord, command] of alternates) {
@@ -387,5 +529,6 @@ function keymapOf(
         commandFor: (chord) => byChord.get(formatChord(chord)),
         chordFor: (command) => chosen.get(command),
         refused,
+        platform,
     };
 }

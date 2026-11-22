@@ -246,10 +246,11 @@ export const findAnnouncements = {
         description: 'Announced as find selects a match.',
     }),
     none: defineMessage({ id: 'announce.findNone', defaultMessage: 'No matches.', description: 'Announcement.' }),
-    reviewOutput: defineMessage({
+    reviewOutput: defineMessage<{ keys: string }>({
         id: 'announce.reviewOutput',
-        defaultMessage: 'New output. Command-Down Arrow goes to the end.',
-        description: 'Announced once when output arrives while review mode is open.',
+        defaultMessage: 'New output. {keys} goes to the end.',
+        description:
+            'Announced once when output arrives while review mode is open; keys is Command-Down Arrow on macOS and Control-End on Windows.',
     }),
 };
 

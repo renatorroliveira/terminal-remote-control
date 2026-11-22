@@ -1,5 +1,5 @@
 import type { Terminal } from '@xterm/xterm';
-import { encodeKey } from './key-encoder';
+import { encodeKey, type KeyAction, type KeyInput } from './key-encoder';
 
 /** What the input layer reports. */
 export interface InputSink {
@@ -13,10 +13,12 @@ export interface InputSink {
     paste(text: string): void;
 }
 
-/** Input state the user toggles (A11Y-05.3, A11Y-05.4). */
+/** Input state the user toggles (A11Y-04.6, A11Y-05.3, A11Y-05.4). */
 export interface InputModes {
     tabFocusMode: boolean;
     sendNextKey: boolean;
+    /** Whether Ctrl+C copies a selection instead of interrupting, off macOS (P-86). */
+    ctrlCCopies: boolean;
 }
 
 /** The element that takes input, and the terminal state that shapes it. */
@@ -52,29 +54,16 @@ export function attachInput(target: InputTarget, sink: InputSink): () => void {
         }
         const passThrough = modes.sendNextKey;
         modes.sendNextKey = false;
-        if (
-            !passThrough &&
-            modes.tabFocusMode &&
-            event.key === 'Tab' &&
-            !event.ctrlKey &&
-            !event.altKey &&
-            !event.metaKey
-        ) {
+        if (!passThrough && leavesToBrowser(event, modes, isMac, terminal)) {
             return;
         }
-        const action = encodeKey(event, {
+        const action = encodeKey(keyInputOf(event), {
             applicationCursorKeys: terminal.modes.applicationCursorKeysMode,
             macOptionIsMeta: false,
             isMac,
             kittyFlags: keyboardFlags(),
         });
-        if (action.kind === 'send') {
-            event.preventDefault();
-            sink.send(action.bytes);
-        } else if (action.kind === 'page') {
-            event.preventDefault();
-            sink.page(action.direction);
-        }
+        perform(action, event, passThrough, sink);
     };
     const onBeforeInput = (event: InputEvent): void => {
         if (event.inputType === 'insertCompositionText') {
@@ -103,6 +92,48 @@ export function attachInput(target: InputTarget, sink: InputSink): () => void {
         element.removeEventListener('keydown', onKeyDown);
         element.removeEventListener('beforeinput', onBeforeInput);
         element.removeEventListener('compositionend', onCompositionEnd);
+    };
+}
+
+/**
+ * Sends a key's bytes or pages the view, keeping the key from the browser; a Ctrl chord with no bytes that
+ * send-next-key passed on is kept from the menus too (A11Y-05.3).
+ */
+function perform(action: KeyAction, event: KeyboardEvent, passThrough: boolean, sink: InputSink): void {
+    if (action.kind === 'send') {
+        event.preventDefault();
+        sink.send(action.bytes);
+    } else if (action.kind === 'page') {
+        event.preventDefault();
+        sink.page(action.direction);
+    } else if (passThrough && event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+    }
+}
+
+/**
+ * Whether a key press is the browser's, not the process's: Tab in Tab focus mode, which moves focus (A11Y-05.4), and,
+ * when the setting is on and the terminal has a selection, Ctrl+C off macOS, which then copies (A11Y-04.6, P-86).
+ */
+function leavesToBrowser(event: KeyboardEvent, modes: InputModes, isMac: boolean, terminal: Terminal): boolean {
+    const alone = !event.altKey && !event.metaKey;
+    if (modes.tabFocusMode && event.key === 'Tab' && !event.ctrlKey && alone) {
+        return true;
+    }
+    const ctrlC = event.ctrlKey && !event.shiftKey && alone && event.code === 'KeyC';
+    return !isMac && modes.ctrlCCopies && ctrlC && terminal.hasSelection();
+}
+
+/** The parts of a key press the encoder reads, with whether AltGr is held, which Chromium reports separately. */
+function keyInputOf(event: KeyboardEvent): KeyInput {
+    return {
+        key: event.key,
+        code: event.code,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        shiftKey: event.shiftKey,
+        metaKey: event.metaKey,
+        altGraph: event.getModifierState('AltGraph'),
     };
 }
 

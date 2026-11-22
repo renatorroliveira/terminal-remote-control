@@ -4,7 +4,7 @@ import { app, BrowserWindow, clipboard, ipcMain, Menu, Notification, protocol, s
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL, NOTIFICATION_CHOSEN_CHANNEL, QUIT_REQUESTED_CHANNEL } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
-import { type Keymap, UNBOUND_KEYMAP } from '../shared/keymap';
+import { type Keymap, keymapPlatformOf, UNBOUND_KEYMAP } from '../shared/keymap';
 import { keymapFor } from '../shared/settings';
 import { windowsTrcd } from '../shared/windows-helper';
 import { aboutPanelOptions } from './about-panel';
@@ -13,7 +13,7 @@ import { AppConfigFile, settingsOf } from './app-config';
 import { appIconPath } from './app-icon';
 import { contentTypeFor, resolveAppRequest } from './app-protocol';
 import { backgroundWindowOptions, showInBackground } from './background-window';
-import { writeHostClipboard } from './clipboard-writes';
+import { platformLineBreaks, writeHostClipboard } from './clipboard-writes';
 import { startConnectionHost } from './connection-host';
 import { refuseRemoteDebugging } from './debugging-guard';
 import { DisplayRelay } from './display-relay';
@@ -52,7 +52,9 @@ const resources = app.isPackaged ? process.resourcesPath : join(app.getAppPath()
 const appRoots = { [APP_IDENTITY.appHost]: rendererRoot, [APP_IDENTITY.docsHost]: join(resources, 'docs') };
 const devServer = process.env['ELECTRON_RENDERER_URL'];
 let mainWindow: BrowserWindow | undefined;
-let keymap: Keymap = keymapFor({ shortcuts: {}, plainF6: false });
+/** Whose shortcut conventions the app follows on this OS (D-67). */
+const KEYMAP_PLATFORM = keymapPlatformOf(process.platform);
+let keymap: Keymap = keymapFor({ shortcuts: {}, plainF6: false }, KEYMAP_PLATFORM);
 /** Whether the settings page records a shortcut, so the menus give up theirs (A11Y-05.7). */
 let recordingShortcut = false;
 /** Copy last command output is a user's command; a page asking faster than this is refused (SEC-06). */
@@ -62,6 +64,9 @@ const background = testSeam.background;
 
 if (background && process.platform === 'darwin') {
     app.setActivationPolicy('accessory');
+}
+if (process.platform === 'win32') {
+    app.setAppUserModelId(APP_IDENTITY.bundleId);
 }
 
 app.setAboutPanelOptions(aboutPanelOptions({ version: app.getVersion(), commit: __TRC_BUILD_COMMIT__ }));
@@ -90,7 +95,7 @@ async function start(): Promise<void> {
     const config = new AppConfigFile(home);
     const stored = await config.read();
     const { theme, screenReaderMode } = stored;
-    keymap = keymapFor(stored);
+    keymap = keymapFor(stored, KEYMAP_PLATFORM);
     const display = new DisplayRelay(theme);
     const screenReader = new ScreenReaderSetting({
         stored: screenReaderMode,
@@ -130,7 +135,7 @@ async function start(): Promise<void> {
                 if (!copies.allow()) {
                     return false;
                 }
-                clipboard.writeText(text);
+                clipboard.writeText(platformLineBreaks(text, process.platform));
                 return true;
             },
             ...linkHandlers(home),
@@ -299,7 +304,7 @@ function settingsHandlers(config: AppConfigFile, display: DisplayRelay): Setting
             }
             if (change.theme !== undefined || change.shortcuts !== undefined || change.plainF6 !== undefined) {
                 const settings = await config.read();
-                keymap = keymapFor(settings);
+                keymap = keymapFor(settings, KEYMAP_PLATFORM);
                 installMenu(display, config, settings.theme);
             }
             return undefined;
@@ -343,11 +348,28 @@ function installMenu(display: DisplayRelay, config: AppConfigFile, theme: ThemeP
     );
 }
 
-function menuActions(): Pick<MenuOptions, 'keymap' | 'onCommand' | 'onLookUp'> {
+type MenuActions = Pick<
+    MenuOptions,
+    'keymap' | 'platform' | 'onCommand' | 'onLookUp' | 'onEdit' | 'onPageZoom' | 'onFullScreen'
+>;
+
+/** How much one Zoom In or Zoom Out changes Chromium's zoom level, as Electron's own zoom roles do. */
+const PAGE_ZOOM_STEP = 0.5;
+
+function menuActions(): MenuActions {
+    const page = (): Electron.WebContents | undefined => mainWindow?.webContents;
     return {
         keymap: recordingShortcut ? UNBOUND_KEYMAP : keymap,
-        onCommand: (command) => mainWindow?.webContents.send(APP_COMMAND_CHANNEL, command),
-        onLookUp: () => mainWindow?.webContents.showDefinitionForSelection(),
+        platform: KEYMAP_PLATFORM,
+        onCommand: (command) => page()?.send(APP_COMMAND_CHANNEL, command),
+        onLookUp: () => page()?.showDefinitionForSelection(),
+        onEdit: (action) => page()?.[action](),
+        onPageZoom: (zoom) => {
+            const contents = page();
+            const step = { in: PAGE_ZOOM_STEP, out: -PAGE_ZOOM_STEP, reset: 0 }[zoom];
+            contents?.setZoomLevel(zoom === 'reset' ? 0 : contents.getZoomLevel() + step);
+        },
+        onFullScreen: () => mainWindow?.setFullScreen(!mainWindow.isFullScreen()),
     };
 }
 

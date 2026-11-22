@@ -1,6 +1,7 @@
 import { type KeyboardEvent, type MouseEvent, type ReactNode, useRef, useState } from 'react';
 import { Menu, MenuItem, Popover } from 'react-aria-components';
 import styles from './context-menu.module.css';
+import { menuKeyEcho, opensContextMenu } from './menu-key-echo';
 
 /** One item of a context menu. */
 export interface ContextMenuItem {
@@ -41,6 +42,7 @@ export function useContextMenu(contentFor: (origin: HTMLElement) => ContextMenuC
 } {
     const [open, setOpen] = useState<OpenMenu | undefined>();
     const anchor = useRef<HTMLDivElement>(null);
+    const echo = useRef(menuKeyEcho()).current;
     const openAt = (origin: HTMLElement, x: number, y: number): void => {
         const content = contentFor(origin);
         if (content !== undefined && content.items.length > 0) {
@@ -56,10 +58,13 @@ export function useContextMenu(contentFor: (origin: HTMLElement) => ContextMenuC
     const triggerProps: ContextMenuTriggerProps = {
         onContextMenu: (event) => {
             event.preventDefault();
-            openAt(event.target as HTMLElement, event.clientX, event.clientY);
+            if (!echo.echoes(event)) {
+                openAt(event.target as HTMLElement, event.clientX, event.clientY);
+            }
         },
         onKeyDown: (event) => {
-            if (event.key !== 'ContextMenu' && !(event.key === 'F10' && event.shiftKey)) {
+            echo.pressed(event);
+            if (!opensContextMenu(event)) {
                 return;
             }
             event.preventDefault();

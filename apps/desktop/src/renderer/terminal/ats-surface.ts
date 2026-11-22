@@ -3,6 +3,7 @@ import type { BufferCell } from './buffer-lines';
 import { SelectionAutoScroll } from './selection-autoscroll';
 import { type CellLine, columnToOffset, minimalEdit, offsetToColumn, rowsToRender } from './text-geometry';
 import type { UpdateScheduler } from './update-scheduler';
+import { trimTrailingSpace } from './word-selection';
 
 /** The cell size the ATS rows are laid out with, in CSS pixels. */
 export interface CellSize {
@@ -34,7 +35,10 @@ export class AtsSurface {
         this.#element = element;
     }
 
-    /** Starts mirroring DOM selection changes into the terminal and tracking pointer drags. */
+    /**
+     * Starts mirroring DOM selection changes into the terminal and tracking pointer drags; a double-clicked word keeps
+     * no trailing space.
+     */
     listen(scheduler: UpdateScheduler): () => void {
         const autoScroll = new SelectionAutoScroll({
             bounds: () => this.#element.getBoundingClientRect(),
@@ -59,14 +63,22 @@ export class AtsSurface {
                 scheduler.request();
             }
         };
+        const onDoubleClick = (): void => {
+            const selection = document.getSelection();
+            if (selection !== null) {
+                trimTrailingSpace(selection);
+            }
+        };
         document.addEventListener('selectionchange', onSelection);
         this.#element.addEventListener('pointerdown', onPointerDown);
+        this.#element.addEventListener('dblclick', onDoubleClick);
         window.addEventListener('pointermove', onPointerMove);
         window.addEventListener('pointerup', onPointerUp);
         return () => {
             autoScroll.stop();
             document.removeEventListener('selectionchange', onSelection);
             this.#element.removeEventListener('pointerdown', onPointerDown);
+            this.#element.removeEventListener('dblclick', onDoubleClick);
             window.removeEventListener('pointermove', onPointerMove);
             window.removeEventListener('pointerup', onPointerUp);
         };

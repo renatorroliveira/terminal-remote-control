@@ -18,6 +18,7 @@ const SETTINGS_DEFAULTS = {
     newSessionFolder: 'home',
     shortcuts: {},
     plainF6: false,
+    ctrlCCopies: false,
     audioCues: false,
     audioVolume: 50,
     announceFailedCommands: true,

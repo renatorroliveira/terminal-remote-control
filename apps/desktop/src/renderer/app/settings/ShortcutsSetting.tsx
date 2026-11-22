@@ -7,15 +7,23 @@ import {
     COMMAND_IDS,
     type CommandId,
     chordFromKey,
-    DEFAULT_KEYMAP,
+    defaultKeymap,
+    displayChord,
     formatChord,
+    type KeymapPlatform,
+    parseChord,
 } from '../../../shared/keymap';
 import { keymapFor, type Settings } from '../../../shared/settings';
 import { BUTTON } from '../../ui/buttons';
 import type { Shell } from '../shell';
 import { commandMessages } from '../shell-messages';
 import styles from './SettingsView.module.css';
-import { bindingProblemMessages, settingLabelMessages, shortcutMessages } from './settings-messages';
+import {
+    bindingProblemMessages,
+    settingLabelMessages,
+    shortcutMessages,
+    windowsBindingProblemMessages,
+} from './settings-messages';
 import type { SettingsStore } from './settings-store';
 import { shortcutRefusal } from './shortcut-refusal';
 
@@ -38,7 +46,8 @@ export function ShortcutsSetting({ shell, settings }: ShortcutsSettingProps) {
     const [recording, setRecording] = useState<CommandId | undefined>();
     const [status, setStatus] = useState('');
     const [refocus, setRefocus] = useState<CommandId | undefined>();
-    const keymap = keymapFor(current);
+    const platform = shell.keymap.platform;
+    const keymap = keymapFor(current, platform);
     const name = (command: CommandId): string => intl.formatMessage(commandMessages[command]);
     const record = (command: CommandId | undefined): void => {
         setRefocus(command === undefined ? recording : undefined);
@@ -53,17 +62,17 @@ export function ShortcutsSetting({ shell, settings }: ShortcutsSettingProps) {
     const reset = (command: CommandId): void => {
         const { [command]: _removed, ...shortcuts } = current.shortcuts;
         void settings.update({ shortcuts });
-        const shortcut = DEFAULT_KEYMAP[command] ?? intl.formatMessage(shortcutMessages.none);
+        const shortcut = defaultShortcutText(intl, command, platform);
         setStatus(intl.formatMessage(shortcutMessages.resetDone, { command: name(command), shortcut }));
     };
     const pressed = (command: CommandId, chord: Chord): void => {
-        const refusal = refusalFor(intl, current, command, chord);
+        const refusal = refusalFor(intl, { settings: current, platform }, command, chord);
         if (refusal !== undefined) {
             setStatus(refusal);
             return;
         }
-        const shortcut = formatChord(chord);
-        void settings.update({ shortcuts: { ...current.shortcuts, [command]: shortcut } });
+        void settings.update({ shortcuts: { ...current.shortcuts, [command]: formatChord(chord) } });
+        const shortcut = displayChord(chord, platform);
         setStatus(intl.formatMessage(shortcutMessages.set, { command: name(command), shortcut }));
         record(undefined);
     };
@@ -84,6 +93,7 @@ export function ShortcutsSetting({ shell, settings }: ShortcutsSettingProps) {
                             key={command}
                             command={command}
                             chord={keymap.chordFor(command)}
+                            platform={platform}
                             rebound={current.shortcuts[command] !== undefined}
                             recording={recording === command}
                             onChange={() => record(command)}
@@ -108,6 +118,7 @@ export function ShortcutsSetting({ shell, settings }: ShortcutsSettingProps) {
 function ShortcutRow(props: {
     readonly command: CommandId;
     readonly chord: Chord | undefined;
+    readonly platform: KeymapPlatform;
     readonly rebound: boolean;
     readonly recording: boolean;
     readonly onChange: () => void;
@@ -123,7 +134,9 @@ function ShortcutRow(props: {
             <th scope="row">{command}</th>
             <td>
                 <kbd className={styles['keys']}>
-                    {props.chord === undefined ? intl.formatMessage(shortcutMessages.none) : formatChord(props.chord)}
+                    {props.chord === undefined
+                        ? intl.formatMessage(shortcutMessages.none)
+                        : displayChord(props.chord, props.platform)}
                 </kbd>
             </td>
             <td className={styles['rowActions']}>
@@ -189,16 +202,34 @@ function changeButtonId(command: CommandId): string {
     return `trc-shortcut-${command.replace('.', '-')}`;
 }
 
-function refusalFor(intl: IntlShape, settings: Settings, command: CommandId, chord: Chord): string | undefined {
-    const refusal = shortcutRefusal(settings, command, chord);
+/** A command's default shortcut as the platform names it, or "None". */
+function defaultShortcutText(intl: IntlShape, command: CommandId, platform: KeymapPlatform): string {
+    const chord = parseChord(defaultKeymap(platform)[command] ?? '');
+    return chord === undefined ? intl.formatMessage(shortcutMessages.none) : displayChord(chord, platform);
+}
+
+/** The settings and platform a pressed shortcut is checked against. */
+interface RefusalContext {
+    readonly settings: Settings;
+    readonly platform: KeymapPlatform;
+}
+
+function refusalFor(
+    intl: IntlShape,
+    { settings, platform }: RefusalContext,
+    command: CommandId,
+    chord: Chord,
+): string | undefined {
+    const refusal = shortcutRefusal(settings, command, chord, platform);
     if (refusal === undefined) {
         return undefined;
     }
     if ('problem' in refusal) {
-        return intl.formatMessage(bindingProblemMessages[refusal.problem]);
+        const messages = platform === 'windows' ? windowsBindingProblemMessages : bindingProblemMessages;
+        return intl.formatMessage(messages[refusal.problem]);
     }
     return intl.formatMessage(shortcutMessages.taken, {
-        shortcut: formatChord(chord),
+        shortcut: displayChord(chord, platform),
         command: intl.formatMessage(commandMessages[refusal.owner]),
     });
 }

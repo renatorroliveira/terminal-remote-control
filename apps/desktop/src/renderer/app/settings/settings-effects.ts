@@ -8,6 +8,7 @@ export interface TerminalSettingsTarget {
     setMinimumContrast(ratio: number): void;
     setHints(on: boolean): void;
     setScrollback(lines: number): void;
+    setCtrlCCopies(on: boolean): void;
 }
 
 type Applier = (settings: Settings, target: TerminalSettingsTarget) => void;
@@ -17,11 +18,12 @@ const APPLIERS: Readonly<Partial<Record<keyof Settings, Applier>>> = {
     minimumContrast: (settings, target) => target.setMinimumContrast(settings.minimumContrast),
     hints: (settings, target) => target.setHints(settings.hints),
     scrollbackLines: (settings, target) => target.setScrollback(settings.scrollbackLines),
+    ctrlCCopies: (settings, target) => target.setCtrlCCopies(settings.ctrlCCopies),
 };
 
 /**
- * Applies the terminal settings to `target` now and after each change: appearance, contrast, hints and scrollback
- * (A11Y-01.2, A11Y-04, A11Y-07.6, A11Y-07.8, NFR-10). Returns the function that stops following them.
+ * Applies the terminal settings to `target` now and after each change: appearance, contrast, hints, scrollback and
+ * whether Ctrl+C copies a selection (A11Y-01.2, A11Y-04, A11Y-04.6, A11Y-07.6, A11Y-07.8, NFR-10). Returns the function that stops following them.
  */
 export function applyTerminalSettings(settings: SettingsStore, target: TerminalSettingsTarget): () => void {
     for (const apply of Object.values(APPLIERS)) {

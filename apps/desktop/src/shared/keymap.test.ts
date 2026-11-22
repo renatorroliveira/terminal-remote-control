@@ -5,11 +5,15 @@ import {
     bindingProblem,
     chordFromKey,
     DEFAULT_KEYMAP,
+    defaultKeymap,
+    displayChord,
     formatChord,
     type KeyInput,
+    keymapPlatformOf,
     menuAccelerator,
     parseChord,
     resolveKeymap,
+    WINDOWS_KEYMAP,
 } from './keymap';
 
 function key(code: string, modifiers: Partial<KeyInput> = {}): KeyInput {
@@ -134,6 +138,57 @@ describe('resolveKeymap: defaults plus the user’s bindings', () => {
                 return [parts.slice(0, -1).sort(), parts.at(-1)];
             });
             expect(rows).toContainEqual(documented);
+        }
+    });
+});
+
+describe('the Windows keymap (D-67, P-93)', () => {
+    const windows = 'windows' as const;
+
+    it('resolves every Windows default with no refusal or duplicate', () => {
+        const keymap = resolveKeymap({}, { platform: windows });
+        expect(keymap.refused).toEqual([]);
+        expect(keymap.platform).toBe(windows);
+        for (const [command, binding] of Object.entries(WINDOWS_KEYMAP)) {
+            expect(bindingProblem(chord(binding), windows), binding).toBeUndefined();
+            expect(keymap.chordFor(command as keyof typeof WINDOWS_KEYMAP)).toEqual(chord(binding));
+        }
+        expect(defaultKeymap(windows)).toBe(WINDOWS_KEYMAP);
+        expect(keymapPlatformOf('win32')).toBe(windows);
+        expect(keymapPlatformOf('darwin')).toBe('mac');
+    });
+
+    it("leaves the shell's control codes, Meta, AltGr, the Windows key and Windows' own keys to their owners", () => {
+        const problem = (text: string) => bindingProblem(chord(text), windows);
+        expect(problem('Ctrl+R')).toBe('control-code');
+        expect(problem('Ctrl+Shift+-')).toBe('control-code');
+        expect(problem('Ctrl+Shift+2')).toBe('control-code');
+        expect(problem('Alt+B')).toBe('option-types');
+        expect(problem('Ctrl+Alt+Enter')).toBe('control-alt');
+        expect(problem('Cmd+E')).toBe('reserved');
+        expect(problem('Alt+F4')).toBe('reserved');
+        expect(problem('Ctrl+Shift+C')).toBe('reserved');
+        expect(problem('Shift+K')).toBe('no-modifier');
+        expect(problem('Ctrl+Shift+R')).toBeUndefined();
+        expect(problem('Alt+Up')).toBeUndefined();
+    });
+
+    it('names keys the Windows way, and shows menu shortcuts only for Control chords with a printable key', () => {
+        expect(displayChord(chord('Option+Shift+F2'), windows)).toBe('Alt+Shift+F2');
+        expect(displayChord(chord('Option+Shift+F2'), 'mac')).toBe('Option+Shift+F2');
+        expect(menuAccelerator(chord('Ctrl+Shift+T'), windows)).toBe('Control+Shift+T');
+        expect(menuAccelerator(chord('Ctrl+,'), windows)).toBe('Control+,');
+        expect(menuAccelerator(chord('Ctrl+Up'), windows)).toBeUndefined();
+        expect(menuAccelerator(chord('Ctrl+F6'), windows)).toBeUndefined();
+        expect(menuAccelerator(chord('Option+F1'), windows)).toBeUndefined();
+    });
+
+    it('matches the Windows defaults docs/design/keymap.md documents', () => {
+        const design = readFileSync(join(import.meta.dirname, '../../../../docs/design/keymap.md'), 'utf8');
+        const section = design.slice(design.indexOf('## Windows defaults'));
+        const rows = [...section.matchAll(/\| ([A-Za-z+0-9[\]=,-]+) +\|/g)].map((match) => match[1]);
+        for (const binding of Object.values(WINDOWS_KEYMAP)) {
+            expect(rows).toContain(displayChord(chord(binding), windows));
         }
     });
 });

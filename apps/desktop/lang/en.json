@@ -208,8 +208,8 @@
     "description": "Announced and listed when a host restarted and the daemon restored its sessions."
   },
   "announce.reviewOutput": {
-    "defaultMessage": "New output. Command-Down Arrow goes to the end.",
-    "description": "Announced once when output arrives while review mode is open."
+    "defaultMessage": "New output. {keys} goes to the end.",
+    "description": "Announced once when output arrives while review mode is open; keys is Command-Down Arrow on macOS and Control-End on Windows."
   },
   "announce.screenReaderOff": {
     "defaultMessage": "Screen reader mode off.",
@@ -1789,6 +1789,14 @@
     "defaultMessage": "Plays while sound cues are on, for the open session.",
     "description": "Setting description."
   },
+  "setting.ctrlCCopies": {
+    "defaultMessage": "Ctrl+C copies when text is selected",
+    "description": "Setting, Windows only."
+  },
+  "setting.ctrlCCopies.description": {
+    "defaultMessage": "Off by default, so Ctrl+C always interrupts, even with a selection you may not see. Ctrl+Shift+C and Ctrl+Insert always copy.",
+    "description": "Setting description, Windows only."
+  },
   "setting.cursorBlink": {
     "defaultMessage": "Blinking cursor",
     "description": "Setting."
@@ -1814,7 +1822,7 @@
     "description": "Setting."
   },
   "setting.hints.description": {
-    "defaultMessage": "VoiceOver reads it after the terminal’s name: Option F1, accessibility help.",
+    "defaultMessage": "VoiceOver, NVDA or JAWS reads it after the terminal’s name: the accessibility help shortcut.",
     "description": "Setting description."
   },
   "setting.letterSpacing": {
@@ -2013,6 +2021,10 @@
     "defaultMessage": "None",
     "description": "A command without a shortcut."
   },
+  "shortcuts.problem.controlAlt": {
+    "defaultMessage": "Ctrl with Alt types characters on many keyboards, and Magnifier uses it.",
+    "description": "Refused shortcut on Windows."
+  },
   "shortcuts.problem.controlCode": {
     "defaultMessage": "The terminal uses Control with that key.",
     "description": "Refused shortcut."
@@ -2032,6 +2044,30 @@
   "shortcuts.problem.screenReader": {
     "defaultMessage": "VoiceOver uses Control with Option.",
     "description": "Refused shortcut."
+  },
+  "shortcuts.problem.windows.altTypes": {
+    "defaultMessage": "Alt with that key is the terminal’s Meta key and opens menus.",
+    "description": "Refused shortcut on Windows."
+  },
+  "shortcuts.problem.windows.controlAlt": {
+    "defaultMessage": "Ctrl with Alt types characters on many keyboards, and Magnifier uses it.",
+    "description": "Refused shortcut on Windows."
+  },
+  "shortcuts.problem.windows.controlCode": {
+    "defaultMessage": "The terminal uses Ctrl with that key.",
+    "description": "Refused shortcut on Windows."
+  },
+  "shortcuts.problem.windows.noModifier": {
+    "defaultMessage": "A shortcut needs Ctrl or Alt, or a function key.",
+    "description": "Refused shortcut on Windows."
+  },
+  "shortcuts.problem.windows.reserved": {
+    "defaultMessage": "Windows, a screen reader or a menu already uses that shortcut.",
+    "description": "Refused shortcut on Windows."
+  },
+  "shortcuts.problem.windows.screenReader": {
+    "defaultMessage": "A screen reader uses that shortcut.",
+    "description": "Refused shortcut on Windows."
   },
   "shortcuts.recording": {
     "defaultMessage": "Press the new shortcut for {command}, or Escape to keep it",
@@ -2084,6 +2120,10 @@
   "sidebar.knownHosts": {
     "defaultMessage": "Known hosts",
     "description": "Accessible name of the list of known hosts."
+  },
+  "sidebar.localLater": {
+    "defaultMessage": "Sessions on this computer arrive in a later release.",
+    "description": "Shown above the hosts on Windows, where This computer is not available yet."
   },
   "sidebar.newHost": {
     "defaultMessage": "New host",
@@ -2238,8 +2278,8 @@
     "description": "Dialog name."
   },
   "terminal.hint": {
-    "defaultMessage": "Option F1: accessibility help.",
-    "description": "Hint read after the terminal name."
+    "defaultMessage": "{keys}: accessibility help.",
+    "description": "Hint read after the terminal name; keys is Option F1 on macOS and Alt F1 on Windows."
   },
   "terminal.inputElsewhere": {
     "defaultMessage": "Opened on another client — input not sent",

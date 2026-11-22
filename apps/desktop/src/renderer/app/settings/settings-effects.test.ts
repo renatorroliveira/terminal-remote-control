@@ -19,8 +19,15 @@ describe('applyTerminalSettings: the terminals follow the settings page (A11Y-10
             setMinimumContrast: (ratio) => applied.push(`contrast ${ratio}`),
             setHints: (on) => applied.push(`hints ${on}`),
             setScrollback: (lines) => applied.push(`scrollback ${lines}`),
+            setCtrlCCopies: (on) => applied.push(`ctrl+c copies ${on}`),
         });
-        expect(applied).toEqual(['appearance block', 'contrast 4.5', 'hints true', 'scrollback 10000']);
+        expect(applied).toEqual([
+            'appearance block',
+            'contrast 4.5',
+            'hints true',
+            'scrollback 10000',
+            'ctrl+c copies false',
+        ]);
         applied.length = 0;
         await settings.load();
         expect(applied).toEqual(['hints false']);

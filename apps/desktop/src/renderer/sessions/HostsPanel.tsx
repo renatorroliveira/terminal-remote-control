@@ -45,6 +45,9 @@ export function HostsPanel({ workspace }: HostsPanelProps) {
             <h2 id="trc-hosts-heading" className={styles['heading']}>
                 {intl.formatMessage(sidebarMessages.hosts)}
             </h2>
+            {workspace.localSessionsLater && (
+                <p className={styles['empty']}>{intl.formatMessage(sidebarMessages.localLater)}</p>
+            )}
             {hosts.length === 0 ? (
                 <p className={styles['empty']}>{intl.formatMessage(sidebarMessages.empty)}</p>
             ) : (

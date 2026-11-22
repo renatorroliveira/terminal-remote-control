@@ -6,6 +6,7 @@ import { DEFAULT_LOCALE, messagesFor } from '../i18n/locale';
 import { thisComputerMessage } from '../sessions/host-messages';
 import {
     terminalDisconnectedMessage,
+    terminalHintMessage,
     terminalLabelMessage,
     terminalMessages,
     terminalReconnectingMessage,
@@ -87,7 +88,7 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
                 session: sessionName(session),
                 host: destination(hostId),
             }),
-            hint: intl.formatMessage(terminalMessages.hint),
+            hint: intl.formatMessage(terminalHintMessage, { keys: sources.isMac ? 'Option F1' : 'Alt F1' }),
             outputBelow: intl.formatMessage(terminalMessages.outputBelow),
             disconnected: intl.formatMessage(terminalDisconnectedMessage, {
                 session: sessionName(session),
@@ -127,6 +128,7 @@ export function composeWorkspace(sources: WorkspaceSources): ComposedWorkspace {
     workspace = new WorkspaceController(sources.client, terminals, sources.hosts, {
         ...workspaceOptions(sources),
         localName: intl.formatMessage(thisComputerMessage),
+        localSessionsLater: !sources.isMac,
     });
     return { workspace, terminals };
 }

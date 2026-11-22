@@ -1,7 +1,7 @@
 import type { IntlShape, MessageDescriptor } from 'react-intl';
 import { SCREEN_READER_MODES } from '../../shared/accessibility';
 import type { KnownHost } from '../../shared/hosts';
-import { formatChord } from '../../shared/keymap';
+import { displayChord } from '../../shared/keymap';
 import { hostActionMessages } from '../sessions/host-messages';
 import { connectionActionMessage, hostSessionsMessages } from '../sessions/messages';
 import { paletteSessionMessages, sessionActionMessages } from '../sessions/session-messages';
@@ -132,7 +132,7 @@ export function paletteActions(
         return {
             id: command.id,
             label: command.label,
-            ...(chord === undefined ? {} : { shortcut: formatChord(chord) }),
+            ...(chord === undefined ? {} : { shortcut: displayChord(chord, shell.keymap.platform) }),
             run: () => command.run(),
         };
     });

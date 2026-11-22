@@ -112,6 +112,8 @@ export interface WorkspaceOptions {
     readonly confirmSessionsEndAtLogout?: (hostId: string) => Promise<boolean>;
     /** This computer's name in the sidebar and wherever a host is named (US-4.2.1). */
     readonly localName?: string;
+    /** Whether this OS gets This computer in a later release, which the sidebar says where it would be (P-85). */
+    readonly localSessionsLater?: boolean;
 }
 
 /** How many sessions run, on how many connected hosts, and which hosts with running sessions are not connected. */
@@ -175,8 +177,12 @@ export class WorkspaceController {
         this.#cache = options.cache;
         this.#confirmEndsAtLogout = options.confirmSessionsEndAtLogout;
         this.#localName = options.localName;
+        this.localSessionsLater = options.localSessionsLater === true;
         this.store = createStore<Workspace>(() => EMPTY_WORKSPACE);
     }
+
+    /** Whether this OS gets This computer in a later release (P-85). */
+    readonly localSessionsLater: boolean;
 
     /**
      * Loads the known hosts, none of them connected yet, each with the sessions cached at the last run, shown as

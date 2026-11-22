@@ -8,9 +8,9 @@ import { HostsPanel } from './HostsPanel';
 import { type KnownHostStore, WorkspaceController } from './workspace-controller';
 import { FakeKnownHostStore, FakeTerminalHost, FakeWorkspaceClient } from './workspace-test-doubles';
 
-async function renderPanel(hosts: KnownHostStore = new FakeKnownHostStore()) {
+async function renderPanel(hosts: KnownHostStore = new FakeKnownHostStore(), localSessionsLater = false) {
     const client = new FakeWorkspaceClient();
-    const workspace = new WorkspaceController(client, new FakeTerminalHost(), hosts);
+    const workspace = new WorkspaceController(client, new FakeTerminalHost(), hosts, { localSessionsLater });
     const screen = await render(
         <AppProviders locale="en">
             <HostsPanel workspace={workspace} />
@@ -66,6 +66,17 @@ class SlowKnownHostStore implements KnownHostStore {
 }
 
 describe('HostsPanel (US-1.1.1, US-1.2, US-1.5)', () => {
+    it('says where This computer would be that local sessions arrive in a later release, on Windows (P-85)', async () => {
+        const { screen } = await renderPanel(new FakeKnownHostStore(), true);
+        await expect.element(screen.getByText('Sessions on this computer arrive in a later release.')).toBeVisible();
+    });
+
+    it('says nothing of local sessions where This computer is available', async () => {
+        const { screen } = await renderPanel();
+        await expect.element(screen.getByText('No hosts yet.')).toBeVisible();
+        expect(screen.container.textContent).not.toContain('later release');
+    });
+
     it('adds a typed host, and refuses an address ssh could not use', async () => {
         const { screen } = await renderPanel();
         await expect.element(screen.getByText('No hosts yet.')).toBeVisible();

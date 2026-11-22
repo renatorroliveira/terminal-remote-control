@@ -329,6 +329,40 @@ describe('TerminalView: keyboard protocol (US-1.11)', () => {
     });
 });
 
+describe('TerminalView: Windows keys (A11Y-04.6, A11Y-05.3, P-86)', () => {
+    it('sends Ctrl+C with a selection unless the Windows setting lets it copy (A11Y-04.6, P-86)', async () => {
+        const { view, inputs } = mount({ isMac: false });
+        view.surface.focus();
+        await written(view, 'hello');
+        view.terminal.select(0, 0, 5);
+        await frames();
+        const ctrlC = { key: 'c', code: 'KeyC', ctrlKey: true };
+        view.setCtrlCCopies(true);
+        expect(key(view.surface, ctrlC).defaultPrevented).toBe(false);
+        expect(inputs).toEqual([]);
+        view.setCtrlCCopies(false);
+        expect(key(view.surface, ctrlC).defaultPrevented).toBe(true);
+        view.setCtrlCCopies(true);
+        await frames();
+        expect(view.terminal.hasSelection()).toBe(false);
+        expect(key(view.surface, ctrlC).defaultPrevented).toBe(true);
+        expect(inputs).toEqual(['\u0003', '\u0003']);
+    });
+
+    it('stops a Ctrl chord sent with send-next-key from reaching the menus, though it has no bytes (A11Y-05.3)', () => {
+        const { view, inputs } = mount({ isMac: false });
+        view.surface.focus();
+        expect(key(view.surface, { key: 'T', code: 'KeyT', ctrlKey: true, shiftKey: true }).defaultPrevented).toBe(
+            false,
+        );
+        view.sendNextKey();
+        expect(key(view.surface, { key: 'T', code: 'KeyT', ctrlKey: true, shiftKey: true }).defaultPrevented).toBe(
+            true,
+        );
+        expect(inputs).toEqual([]);
+    });
+});
+
 describe('TerminalView: focus and pointer (A11Y-05, A11Y-06)', () => {
     it('lets Tab move focus in Tab focus mode, and sends the next key anyway when asked (A11Y-05.3, A11Y-05.4)', () => {
         const { view, inputs } = mount();

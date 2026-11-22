@@ -34,7 +34,9 @@ export function SettingsView({ shell, settings, workspace }: SettingsViewProps) 
     const [query, setQuery] = useState('');
     const [section, setSection] = useState<SettingGroup>('appearance');
     const available = SETTING_ENTRIES.filter(
-        (entry) => entry.id !== 'screenReaderMode' || shell.screenReaderMode !== undefined,
+        (entry) =>
+            (entry.id !== 'screenReaderMode' || shell.screenReaderMode !== undefined) &&
+            (entry.id !== 'ctrlCCopies' || shell.keymap.platform === 'windows'),
     );
     const shown = settingsMatching(available, query, intl);
     const groups = query.trim() === '' ? [section] : SETTING_GROUPS;

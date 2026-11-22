@@ -10,12 +10,24 @@ function labels(items: readonly MenuItemConstructorOptions[]): (string | undefin
 function options(): MenuOptions {
     return {
         appName: 'Terminal Remote Control',
+        platform: 'mac',
         keymap: resolveKeymap({}),
         onCommand: () => undefined,
         onLookUp: () => undefined,
         themePreference: 'midnight',
         onThemePreference: () => undefined,
+        onEdit: () => undefined,
+        onPageZoom: () => undefined,
+        onFullScreen: () => undefined,
     };
+}
+
+function windowsOptions(): MenuOptions {
+    return { ...options(), platform: 'windows', keymap: resolveKeymap({}, { platform: 'windows' }) };
+}
+
+function submenu(template: readonly MenuItemConstructorOptions[], label: string): MenuItemConstructorOptions[] {
+    return (template.find((item) => item.label === label)?.submenu ?? []) as MenuItemConstructorOptions[];
 }
 
 describe('menuTemplate', () => {
@@ -205,6 +217,57 @@ describe('menuTemplate: Session', () => {
             ['separator', undefined],
             ['Close Session…', 'Command+W'],
         ]);
+    });
+});
+
+describe('the Windows menus (US-6.1.3, P-92, D-67)', () => {
+    it('has File, Edit, View, Terminal and Help, each with its access key', () => {
+        expect(labels(menuTemplate(windowsOptions()))).toEqual(['&File', '&Edit', '&View', '&Terminal', '&Help']);
+    });
+
+    it('puts the session commands, Settings and Exit in File, with the Windows shortcuts', () => {
+        const file = submenu(menuTemplate(windowsOptions()), '&File');
+        const shortcuts = file.map((item) => [item.label ?? item.role ?? item.type, item.accelerator]);
+        expect(shortcuts).toContainEqual(['New Session', 'Control+Shift+T']);
+        expect(shortcuts).toContainEqual(['Close Session…', 'Control+Shift+W']);
+        expect(shortcuts).toContainEqual(['Settings…', 'Control+,']);
+        expect(shortcuts).toContainEqual(['Next Session', undefined]);
+        expect(file.at(-1)).toMatchObject({ role: 'quit', label: 'Exit' });
+    });
+
+    it('copies and pastes with Ctrl+Shift+C and Ctrl+Shift+V, and takes no Control key the shell owns (P-86)', () => {
+        const edits: string[] = [];
+        const edit = submenu(menuTemplate({ ...windowsOptions(), onEdit: (action) => edits.push(action) }), '&Edit');
+        expect(edit.filter((item) => item.role !== undefined).map((item) => [item.role, item.accelerator])).toEqual([
+            ['copy', 'Ctrl+Shift+C'],
+            ['paste', 'Ctrl+Shift+V'],
+        ]);
+        const controlLetter = /^(Control|Ctrl)\+[A-Z0-9]$/;
+        expect(edit.filter((item) => controlLetter.test(String(item.accelerator ?? '')))).toEqual([]);
+        for (const item of edit.filter((entry) => entry.click !== undefined && entry.role === undefined)) {
+            item.click?.(undefined as never, undefined, undefined as never);
+        }
+        expect(edits).toEqual(['undo', 'redo', 'cut', 'selectAll']);
+    });
+
+    it('zooms the window and goes full screen from View without taking the terminal text size keys or F11', () => {
+        const zooms: string[] = [];
+        const view = submenu(menuTemplate({ ...windowsOptions(), onPageZoom: (zoom) => zooms.push(zoom) }), '&View');
+        const zoomItems = view.filter((item) => ['Actual Size', 'Zoom In', 'Zoom Out'].includes(item.label ?? ''));
+        for (const item of zoomItems) {
+            item.click?.(undefined as never, undefined, undefined as never);
+        }
+        expect(zooms).toEqual(['reset', 'in', 'out']);
+        expect(
+            [...zoomItems, ...view.filter((item) => item.label === 'Full Screen')].map((item) => item.accelerator),
+        ).toEqual([undefined, undefined, undefined, undefined]);
+    });
+
+    it('ends with About in Help, and offers no Look Up in the context menu', () => {
+        expect(submenu(menuTemplate(windowsOptions()), '&Help').at(-1)).toMatchObject({ role: 'about' });
+        const context = terminalContextMenu(windowsOptions(), true);
+        expect(context.map((item) => item.role ?? item.label ?? item.type)).not.toContain('Look Up');
+        expect(context[0]).toMatchObject({ role: 'copy', accelerator: 'Ctrl+Shift+C' });
     });
 });
 

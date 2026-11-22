@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { ScreenReaderMode } from '../../shared/accessibility';
 import type { SessionNotice } from '../../shared/contract';
-import { formatChord, resolveKeymap } from '../../shared/keymap';
+import { formatChord, type KeymapPlatform, resolveKeymap } from '../../shared/keymap';
 import type { LinkCheck } from '../../shared/links';
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings';
 import { messagesFor } from '../i18n/locale';
@@ -138,6 +138,7 @@ interface SetupOptions {
     readonly local?: boolean;
     readonly sessions?: readonly SessionInfo[];
     readonly osNotifications?: ShellOptions['osNotifications'];
+    readonly platform?: KeymapPlatform;
 }
 
 async function setup(narrow = false, stored: Partial<Settings> = {}, options: SetupOptions = {}) {
@@ -164,7 +165,7 @@ async function setup(narrow = false, stored: Partial<Settings> = {}, options: Se
                 spoken.push(options?.politeness === 'assertive' ? `! ${text}` : text),
         },
         notifications,
-        keymap: resolveKeymap({}),
+        keymap: resolveKeymap({}, { platform: options.platform ?? 'mac' }),
         intl,
         document,
         isNarrow: () => narrow,
@@ -568,10 +569,13 @@ describe('Shell review mode and find (A11Y-03, US-1.13)', () => {
         expect(spoken).toEqual(['Match 3 of 3.', 'Match 3 of 3.']);
     });
 
-    it('announces output that arrives in review mode', async () => {
+    it('announces output that arrives in review mode, with the keys that reach the end on each OS', async () => {
         const { shell, spoken } = await sessionOpen();
         shell.terminalNotice('host-0/a', { kind: 'review-output' });
         expect(spoken).toEqual(['New output. Command-Down Arrow goes to the end.']);
+        const windows = await setup(false, {}, { platform: 'windows' });
+        windows.shell.terminalNotice('host-0/a', { kind: 'review-output' });
+        expect(windows.spoken).toContain('New output. Control-End goes to the end.');
     });
 });
 

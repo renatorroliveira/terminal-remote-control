@@ -51,6 +51,7 @@ export const SETTINGS_FIELDS = {
     newSessionFolder: z.enum(NEW_SESSION_FOLDERS),
     shortcuts: z.partialRecord(z.enum(COMMAND_IDS), z.string().min(1).max(MAX_BINDING_LENGTH)),
     plainF6: z.boolean(),
+    ctrlCCopies: z.boolean(),
     audioCues: z.boolean(),
     audioVolume: z.number().int().min(LIMITS.audioVolume.min).max(LIMITS.audioVolume.max),
     announceFailedCommands: z.boolean(),

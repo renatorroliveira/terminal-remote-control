@@ -109,6 +109,13 @@ const RENDERERS: Readonly<
             onChange={(plainF6) => update({ plainF6 })}
         />
     ),
+    ctrlCCopies: ({ intl, settings, update }) => (
+        <SwitchSetting
+            {...text(intl, 'ctrlCCopies')}
+            isSelected={settings.ctrlCCopies}
+            onChange={(ctrlCCopies) => update({ ctrlCCopies })}
+        />
+    ),
     verbosity: ({ intl, settings, update }) => (
         <ChoiceSetting
             {...text(intl, 'verbosity')}

@@ -69,6 +69,11 @@ export const sidebarMessages = defineMessages({
         defaultMessage: 'Sessions and hosts',
         description: 'Button that shows or hides the sidebar when the window is narrow.',
     },
+    localLater: {
+        id: 'sidebar.localLater',
+        defaultMessage: 'Sessions on this computer arrive in a later release.',
+        description: 'Shown above the hosts on Windows, where This computer is not available yet.',
+    },
     empty: {
         id: 'sidebar.empty',
         defaultMessage: 'No hosts yet.',
@@ -140,13 +145,15 @@ export const sessionDisconnectedMessage = defineMessage({
     description: 'Session state while its host is not connected.',
 });
 
-/** The terminal's accessible name and hint (A11Y-01.1, A11Y-01.2). */
+/** The terminal's hint, read after its name, naming the accessibility help keys of the platform (A11Y-01.2). */
+export const terminalHintMessage = defineMessage<{ keys: string }>({
+    id: 'terminal.hint',
+    defaultMessage: '{keys}: accessibility help.',
+    description: 'Hint read after the terminal name; keys is Option F1 on macOS and Alt F1 on Windows.',
+});
+
+/** The terminal's notices (A11Y-01.1). */
 export const terminalMessages = defineMessages({
-    hint: {
-        id: 'terminal.hint',
-        defaultMessage: 'Option F1: accessibility help.',
-        description: 'Hint read after the terminal name.',
-    },
     outputBelow: {
         id: 'terminal.outputBelow',
         defaultMessage: 'New output below',

@@ -1,7 +1,7 @@
-# Key map (E1, macOS)
+# Key map (E1 macOS, E6 Windows)
 
-This document fixes the default app shortcuts on macOS and the rules every binding follows (A11Y-05). The
-defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
+This document fixes the default app shortcuts on macOS and Windows and the rules every binding follows (A11Y-05). The
+defaults live in `apps/desktop/src/shared/keymap.ts`; these tables must match it.
 
 ## Rules
 
@@ -65,11 +65,66 @@ defaults live in `apps/desktop/src/shared/keymap.ts`; this table must match it.
 | Copy last command output   | Option+Command+C    | Beside Command+C, which copies the selection                                                         |
 | Open the settings          | Command+,           | The macOS Settings shortcut (A11Y-10.3)                                                              |
 
-Windows and Linux (E6, E7) will bind Close session to Control+Shift+W, as Windows Terminal and GNOME Terminal do,
-since Control+W is the shell's delete-word and a control code (rule 3, P-65).
-
 Plain F6 (and Shift+F6) for the regions, the Windows convention, is an option in Settings (A11Y-05.2). It is off
 by default because htop and mc use F6, and a command bound to F6 keeps it.
 
 Regions, in order: the sidebar (sessions and hosts), the terminal, and the status bar. Moving to a region focuses
 the element that last had focus there, or else its first control; a hidden sidebar is skipped.
+
+## Windows rules (E6, D-67)
+
+The rules above hold on Windows with Windows' keys:
+
+1. **The terminal gets every other key**, Control+letter and Alt+letter included: Alt+letter is the shell's Meta key
+   (readline's Alt+B and Alt+F), so in the terminal it never opens a menu; F10 and a lone Alt press reach the menu
+   bar.
+2. **Every shortcut uses Ctrl or Alt, or a function key.** The Windows key is the OS's, so no shortcut uses it.
+3. **No control codes.** Ctrl with a letter, digit, `[`, `]`, `\`, `/` or Space alone is the shell's, and so is
+   Ctrl+Shift with 2, 6 or minus, which make `@`, `^` and `_` with Control (NUL, RS and readline's undo).
+   Ctrl+Shift with any other key is free, as Windows Terminal binds its commands there.
+4. **No Ctrl+Alt chord**: Ctrl+Alt is AltGr on many layouts, which types characters, and Magnifier's modifier
+   (Ctrl+Alt+Enter reads the selection aloud, Ctrl+Alt+click reads from the pointer). Alt with a printable key is
+   refused too (rule 1). NVDA's and JAWS' Insert and Caps Lock chords are never bindable. Reserved: Alt+F4, Alt+Tab,
+   Alt+Shift+Tab, Alt+Esc, Ctrl+Esc, Ctrl+Shift+Esc (Task Manager), F10 and Shift+F10 (the menu bar and context
+   menus), Alt+Shift+B and Alt+Shift+C (Voice Access's microphone), and the copy and paste keys.
+5. **Copy and paste are strict (P-86):** Ctrl+Shift+C and Ctrl+Insert copy, Ctrl+Shift+V and Shift+Insert paste;
+   Ctrl+C and Ctrl+V always reach the shell. "Ctrl+C copies when text is selected" is a setting, off by default,
+   since a selection a screen reader or magnifier user cannot see would turn an interrupt into a copy. Every copy
+   puts CRLF line breaks on the clipboard.
+6. **Menus** show only Ctrl chords with a printable key, which the key encoder never sends; arrows, Tab and
+   function keys stay with the renderer and "Send next key to terminal". The Edit menu's Undo, Cut and Select All
+   carry no shortcut, as their Windows keys are the shell's, and the window zoom and full screen in View carry none,
+   as Ctrl+= and Ctrl+- are the terminal text size's and F11 belongs to terminal programs.
+
+## Windows defaults
+
+| Command                    | Shortcut         | Why this chord                                                           |
+| -------------------------- | ---------------- | ------------------------------------------------------------------------ |
+| Next region                | Ctrl+F6          | The PRD's proposal, the Windows convention for the next pane             |
+| Previous region            | Ctrl+Shift+F6    | The same, backwards                                                      |
+| Show command palette       | Ctrl+Shift+P     | The palette shortcut of VS Code and Windows Terminal                     |
+| Show or hide the sidebar   | Ctrl+Shift+S     | S for sidebar, as on macOS                                               |
+| Tab moves focus (toggle)   | Ctrl+Shift+M     | VS Code's Ctrl+M is Return in a terminal                                 |
+| Send next key to terminal  | Ctrl+Shift+K     | As on macOS                                                              |
+| Mute output announcements  | Ctrl+Shift+A     | As on macOS                                                              |
+| Show notifications         | Ctrl+Shift+N     | As on macOS                                                              |
+| Accessibility help         | Alt+F1           | The PRD's proposal (A11Y-10.1)                                           |
+| New session                | Ctrl+Shift+T     | Windows Terminal's new tab                                               |
+| New session with options   | Ctrl+Shift+Space | Windows Terminal's new-tab menu                                          |
+| Next session               | Ctrl+Tab         | The Windows next-tab shortcut                                            |
+| Previous session           | Ctrl+Shift+Tab   | The Windows previous-tab shortcut                                        |
+| Close session              | Ctrl+Shift+W     | Windows Terminal's close tab; Ctrl+W is the shell's delete-word (P-65)   |
+| Go to session              | Ctrl+Shift+G     | G for go; Ctrl+P is the shell's previous command (US-5.4)                |
+| List links                 | Ctrl+Shift+O     | O for open, as on macOS (US-1.12.3)                                      |
+| Bigger terminal text       | Ctrl+=           | The text-size shortcut of Windows Terminal and every browser (A11Y-07.4) |
+| Smaller terminal text      | Ctrl+-           | The same, smaller                                                        |
+| Default terminal text size | Ctrl+Shift+0     | Ctrl+0 is a control code (rule 3), so Shift is added                     |
+| Review mode (toggle)       | Alt+F2           | The PRD's proposal, VS Code's Accessible View (A11Y-03.1)                |
+| Find in the terminal       | Ctrl+Shift+F     | Windows Terminal's find (US-1.13)                                        |
+| Clear scrollback           | Ctrl+Shift+L     | Beside Ctrl+L, which clears the screen in a shell (US-3.2.3)             |
+| Previous command           | Ctrl+Up          | VS Code's previous command (US-5.2)                                      |
+| Next command               | Ctrl+Down        | VS Code's next command                                                   |
+| Read last command output   | Ctrl+Shift+R     | R for read, as on macOS                                                  |
+| Select last command output | Ctrl+Shift+Up    | VS Code's select-to-previous-command shortcut                            |
+| Copy last command output   | Ctrl+Shift+Y     | Y for yank, a copy in vim and emacs                                      |
+| Open the settings          | Ctrl+,           | The Settings shortcut of VS Code and Windows Terminal (A11Y-10.3)        |

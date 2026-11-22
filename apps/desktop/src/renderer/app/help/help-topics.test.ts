@@ -26,6 +26,16 @@ describe('helpSections: the shortcuts accessibility help lists (A11Y-10.1)', () 
         expect(entry(sections, 'Open the link under the pointer')).toBe('Cmd+click');
     });
 
+    it('names the Windows keys, strict copy and paste among them (P-86, D-67)', () => {
+        const keymap = resolveKeymap({}, { platform: 'windows' });
+        const terminal = helpSections('terminal', keymap, intl);
+        expect(entry(terminal, 'Open the link under the pointer')).toBe('Ctrl+click');
+        expect(entry(terminal, 'Show command palette')).toBe('Ctrl+Shift+P');
+        expect(entry(terminal, 'Review mode')).toBe('Alt+F2');
+        const review = helpSections('review', keymap, intl);
+        expect(entry(review, 'Go to the start of the buffer')).toBe('Ctrl+Home');
+    });
+
     it('lists the session list’s keys, and only the general ones elsewhere', () => {
         const sessions = helpSections('sessions', resolveKeymap({}), intl);
         expect(sessions[0]?.title).toBe('In the session list');

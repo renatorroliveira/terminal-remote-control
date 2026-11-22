@@ -15,6 +15,24 @@ function bytes(input: KeyInput, modes = normal): string | undefined {
     return action.kind === 'send' ? action.bytes : undefined;
 }
 
+describe('encodeKey: AltGr and Alt off macOS (D-67)', () => {
+    const windows = { ...normal, isMac: false };
+
+    it('leaves a character typed with AltGr to text input', () => {
+        expect(encodeKey(key('@', 'KeyQ', { ctrlKey: true, altKey: true }), windows)).toEqual({ kind: 'none' });
+        expect(encodeKey(key('€', 'KeyE', { ctrlKey: true, altKey: true }), windows)).toEqual({ kind: 'none' });
+        expect(encodeKey(key('{', 'Digit7', { ctrlKey: true, altKey: true }), windows)).toEqual({ kind: 'none' });
+        const altGraph = key('q', 'KeyQ', { ctrlKey: true, altKey: true, altGraph: true });
+        expect(encodeKey(altGraph, windows)).toEqual({ kind: 'none' });
+    });
+
+    it('still sends Ctrl+Alt+letter as Meta with Control, and Alt+letter as Meta', () => {
+        expect(bytes(key('q', 'KeyQ', { ctrlKey: true, altKey: true }), windows)).toBe(`${ESC}\u0011`);
+        expect(bytes(key('b', 'KeyB', { altKey: true }), windows)).toBe(`${ESC}b`);
+        expect(bytes(key('@', 'KeyQ', { ctrlKey: true, altKey: true }), normal)).toBe('\u0000');
+    });
+});
+
 describe('encodeKey (ported from xterm.js Keyboard.ts)', () => {
     it('encodes editing keys', () => {
         expect(bytes(key('Enter'))).toBe('\r');

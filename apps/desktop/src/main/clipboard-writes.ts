@@ -19,3 +19,8 @@ export async function writeHostClipboard(deps: ClipboardWriteDeps, hostId: strin
     deps.writeText(text);
     return true;
 }
+
+/** Text the user copies as `platform` keeps it on the clipboard: CRLF line breaks on Windows (P-92), else as is. */
+export function platformLineBreaks(text: string, platform: string): string {
+    return platform === 'win32' ? text.replace(/\r?\n/g, '\r\n') : text;
+}

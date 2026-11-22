@@ -475,7 +475,12 @@ export class Shell {
                 announcer.announce(intl.formatMessage(terminalAnnouncements.outputBelow), { group: `below:${key}` });
                 break;
             case 'review-output':
-                announcer.announce(intl.formatMessage(findAnnouncements.reviewOutput), { group: `review:${key}` });
+                announcer.announce(
+                    intl.formatMessage(findAnnouncements.reviewOutput, {
+                        keys: this.#keymap.platform === 'mac' ? 'Command-Down Arrow' : 'Control-End',
+                    }),
+                    { group: `review:${key}` },
+                );
                 break;
             case 'size':
                 this.#noteSize(key, notice.setElsewhere);
@@ -865,7 +870,7 @@ export class Shell {
         let applied: Settings | undefined;
         const apply = (now: Settings): void => {
             if (now.shortcuts !== applied?.shortcuts || now.plainF6 !== applied.plainF6) {
-                this.#keymap = keymapFor(now);
+                this.#keymap = keymapFor(now, this.#keymap.platform);
             }
             applied = now;
             if (now.terminalZoom !== this.state.getState().terminalZoom) {

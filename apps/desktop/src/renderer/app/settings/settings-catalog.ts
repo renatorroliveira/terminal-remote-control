@@ -47,6 +47,7 @@ const GROUP_OF: Readonly<Record<SettingId, SettingGroup>> = {
     cursorBlink: 'appearance',
     tabFocusMode: 'keyboard',
     plainF6: 'keyboard',
+    ctrlCCopies: 'keyboard',
     shortcuts: 'keyboard',
     newSessionFolder: 'sessions',
     scrollbackLines: 'sessions',

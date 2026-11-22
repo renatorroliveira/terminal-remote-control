@@ -74,6 +74,11 @@ export const settingLabelMessages = defineMessages({
     cursorWidth: { id: 'setting.cursorWidth', defaultMessage: 'Bar cursor width, pixels', description: 'Setting.' },
     cursorBlink: { id: 'setting.cursorBlink', defaultMessage: 'Blinking cursor', description: 'Setting.' },
     plainF6: { id: 'setting.plainF6', defaultMessage: 'Plain F6 moves between regions', description: 'Setting.' },
+    ctrlCCopies: {
+        id: 'setting.ctrlCCopies',
+        defaultMessage: 'Ctrl+C copies when text is selected',
+        description: 'Setting, Windows only.',
+    },
     shortcuts: { id: 'setting.shortcuts', defaultMessage: 'Shortcuts', description: 'Setting: the shortcut table.' },
     tabFocusMode: {
         id: 'setting.tabFocusMode',
@@ -177,7 +182,7 @@ export const settingDescriptionMessages = defineMessages({
     },
     hints: {
         id: 'setting.hints.description',
-        defaultMessage: 'VoiceOver reads it after the terminal’s name: Option F1, accessibility help.',
+        defaultMessage: 'VoiceOver, NVDA or JAWS reads it after the terminal’s name: the accessibility help shortcut.',
         description: 'Setting description.',
     },
     audioCues: {
@@ -205,6 +210,12 @@ export const settingDescriptionMessages = defineMessages({
         id: 'setting.plainF6.description',
         defaultMessage: 'Shift-F6 goes back. Off by default, because programs such as htop and mc use F6.',
         description: 'Setting description.',
+    },
+    ctrlCCopies: {
+        id: 'setting.ctrlCCopies.description',
+        defaultMessage:
+            'Off by default, so Ctrl+C always interrupts, even with a selection you may not see. Ctrl+Shift+C and Ctrl+Insert always copy.',
+        description: 'Setting description, Windows only.',
     },
     shortcuts: {
         id: 'setting.shortcuts.description',
@@ -345,9 +356,48 @@ export const bindingProblemMessages = defineMessages({
         defaultMessage: 'VoiceOver uses Control with Option.',
         description: 'Refused shortcut.',
     },
+    'control-alt': {
+        id: 'shortcuts.problem.controlAlt',
+        defaultMessage: 'Ctrl with Alt types characters on many keyboards, and Magnifier uses it.',
+        description: 'Refused shortcut on Windows.',
+    },
     reserved: {
         id: 'shortcuts.problem.reserved',
         defaultMessage: 'macOS, VoiceOver or a menu already uses that shortcut.',
         description: 'Refused shortcut.',
+    },
+});
+
+/** Why a shortcut cannot be used on Windows, where the keys and their owners differ (docs/design/keymap.md). */
+export const windowsBindingProblemMessages = defineMessages({
+    'no-modifier': {
+        id: 'shortcuts.problem.windows.noModifier',
+        defaultMessage: 'A shortcut needs Ctrl or Alt, or a function key.',
+        description: 'Refused shortcut on Windows.',
+    },
+    'control-code': {
+        id: 'shortcuts.problem.windows.controlCode',
+        defaultMessage: 'The terminal uses Ctrl with that key.',
+        description: 'Refused shortcut on Windows.',
+    },
+    'option-types': {
+        id: 'shortcuts.problem.windows.altTypes',
+        defaultMessage: 'Alt with that key is the terminal’s Meta key and opens menus.',
+        description: 'Refused shortcut on Windows.',
+    },
+    'screen-reader': {
+        id: 'shortcuts.problem.windows.screenReader',
+        defaultMessage: 'A screen reader uses that shortcut.',
+        description: 'Refused shortcut on Windows.',
+    },
+    'control-alt': {
+        id: 'shortcuts.problem.windows.controlAlt',
+        defaultMessage: 'Ctrl with Alt types characters on many keyboards, and Magnifier uses it.',
+        description: 'Refused shortcut on Windows.',
+    },
+    reserved: {
+        id: 'shortcuts.problem.windows.reserved',
+        defaultMessage: 'Windows, a screen reader or a menu already uses that shortcut.',
+        description: 'Refused shortcut on Windows.',
     },
 });

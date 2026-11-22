@@ -1,5 +1,5 @@
 import type { IntlShape, MessageDescriptor } from 'react-intl';
-import { type CommandId, formatChord, type Keymap } from '../../../shared/keymap';
+import { type CommandId, displayChord, type Keymap } from '../../../shared/keymap';
 import { commandMessages } from '../shell-messages';
 import type { HelpContext } from './help-context';
 import { helpMessages, helpKeyMessages as keys } from './help-messages';
@@ -18,6 +18,16 @@ export interface HelpSection {
 }
 
 type Topic = CommandId | { readonly action: MessageDescriptor; readonly keys: string | MessageDescriptor };
+
+/** The Windows keys of the fixed entries that differ from macOS's (docs/design/keymap.md, P-86). */
+const WINDOWS_KEYS: Readonly<Record<string, string>> = {
+    'Cmd+click': 'Ctrl+click',
+    'Cmd+C': 'Ctrl+Shift+C, Ctrl+Insert',
+    'Cmd+V': 'Ctrl+Shift+V, Shift+Insert',
+    'Cmd+Up': 'Ctrl+Home',
+    'Cmd+Down': 'Ctrl+End',
+    Return: 'Enter',
+};
 
 const TOPICS: Readonly<Record<HelpContext, readonly Topic[]>> = {
     terminal: [
@@ -95,10 +105,11 @@ export function helpSections(context: HelpContext, keymap: Keymap, intl: IntlSha
 function entryFor(topic: Topic, keymap: Keymap, intl: IntlShape): readonly HelpEntry[] {
     if (typeof topic !== 'string') {
         const text = typeof topic.keys === 'string' ? topic.keys : intl.formatMessage(topic.keys);
-        return [{ action: intl.formatMessage(topic.action), keys: text }];
+        const keys = keymap.platform === 'windows' ? (WINDOWS_KEYS[text] ?? text) : text;
+        return [{ action: intl.formatMessage(topic.action), keys }];
     }
     const chord = keymap.chordFor(topic);
     return chord === undefined
         ? []
-        : [{ action: intl.formatMessage(commandMessages[topic]), keys: formatChord(chord) }];
+        : [{ action: intl.formatMessage(commandMessages[topic]), keys: displayChord(chord, keymap.platform) }];
 }
