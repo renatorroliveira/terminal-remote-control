@@ -9,7 +9,7 @@ describe('makeFoldersPrivate (SEC-05, D-68)', () => {
 
     it('runs trcd.exe private-dir on each folder on Windows and reports the ones it refused', async () => {
         const root = scratch();
-        const real = realpathSync(root);
+        const real = realpathSync.native(root);
         const folders = { 'trc-home': join(root, 'home'), 'app-data': join(root, 'data') };
         const calls: string[][] = [];
         const refused = await makeFoldersPrivate(folders, {
