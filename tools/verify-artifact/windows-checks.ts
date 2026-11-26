@@ -49,6 +49,12 @@ export function asarPackageVersion(archive: Buffer): string | undefined {
     return json.version;
 }
 
+/** The processes whose command line runs a program from `folder`, which an uninstaller can't remove while they run. */
+export function runningFrom(processes: readonly WindowsProcess[], folder: string): readonly number[] {
+    const prefix = `${folder.toLowerCase()}\\`;
+    return processes.filter((entry) => entry.command.toLowerCase().includes(prefix)).map((entry) => entry.pid);
+}
+
 /** The processes in PowerShell's JSON for `Win32_Process`, which prints one process as an object and none as nothing. */
 export function parseWindowsProcesses(json: string): readonly WindowsProcess[] {
     return jsonRows(json).map((row) => ({

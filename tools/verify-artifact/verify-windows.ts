@@ -17,6 +17,7 @@ import {
     endpointProblems,
     parseWindowsProcesses,
     peMachine,
+    runningFrom,
     type WindowsArch,
     type WindowsProcess,
     windowsDaemonPlatform,
@@ -27,7 +28,10 @@ const PRODUCT = 'Terminal Remote Control';
 const EXECUTABLE = `${PRODUCT}.exe`;
 const LAUNCH_TIMEOUT_MS = 30_000;
 const SETTLE_MS = 3_000;
-const UNINSTALL_TIMEOUT_MS = 60_000;
+/** How long the silent uninstaller may take: minutes on the arm64 runner, which emulates NSIS's x86 code. */
+const UNINSTALL_TIMEOUT_MS = 300_000;
+/** How long the app's processes may take to end after the launch check kills them. */
+const EXIT_TIMEOUT_MS = 60_000;
 
 /**
  * Every problem a Windows package has, so none means it may ship (P-87, SEC-01, SEC-04.2): a zip is unpacked first;
@@ -104,6 +108,10 @@ async function uninstallProblems(folder: string): Promise<readonly string[]> {
     if (!existsSync(uninstaller)) {
         return ['the installer added no uninstaller'];
     }
+    const running = await stillRunning(folder, EXIT_TIMEOUT_MS);
+    if (running.length > 0) {
+        return [`processes ${running.join(', ')} still run from ${folder}, so nothing could uninstall it`];
+    }
     const result = run(uninstaller, ['/S']);
     if (result.status !== 0) {
         return [`the uninstaller failed (exit ${result.status}): ${result.output}`];
@@ -114,7 +122,19 @@ async function uninstallProblems(folder: string): Promise<readonly string[]> {
         }
         await delay(1_000);
     }
-    return [`the uninstaller left the app or its shortcut after ${UNINSTALL_TIMEOUT_MS / 1_000} s`];
+    const left = [join(folder, EXECUTABLE), startMenuShortcut()].filter((path) => existsSync(path));
+    return [`the uninstaller left ${left.join(' and ')} after ${UNINSTALL_TIMEOUT_MS / 1_000} s`];
+}
+
+/** The processes still running from `folder` once they have had `timeout` to end. */
+async function stillRunning(folder: string, timeout: number): Promise<readonly number[]> {
+    for (let waited = 0; ; waited += 1_000) {
+        const running = runningFrom(processes(), folder);
+        if (running.length === 0 || waited >= timeout) {
+            return running;
+        }
+        await delay(1_000);
+    }
 }
 
 async function verifyAppFolder(folder: string): Promise<readonly string[]> {

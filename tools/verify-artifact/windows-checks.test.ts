@@ -4,6 +4,7 @@ import {
     endpointProblems,
     parseWindowsProcesses,
     peMachine,
+    runningFrom,
     windowsDaemonPlatform,
 } from './windows-checks.ts';
 
@@ -69,5 +70,18 @@ describe('the Windows package checks (P-87, SEC-01)', () => {
             'TCP listener open: process 11 on 127.0.0.1:9222',
         ]);
         expect(endpointProblems('', [10], 'UDP endpoint')).toEqual([]);
+    });
+
+    it('finds the processes still running from the install folder, in any letter case', () => {
+        const folder = 'E:\\Accounts\\someone\\AppData\\Local\\Programs\\TRC';
+        const running = [
+            {
+                pid: 1,
+                ppid: 0,
+                command: '"e:\\accounts\\SOMEONE\\appdata\\local\\programs\\trc\\TRC.exe" --type=crashpad-handler',
+            },
+            { pid: 2, ppid: 0, command: 'C:\\Windows\\explorer.exe' },
+        ];
+        expect(runningFrom(running, folder)).toEqual([1]);
     });
 });
