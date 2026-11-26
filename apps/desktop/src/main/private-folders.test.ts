@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ describe('makeFoldersPrivate (SEC-05, D-68)', () => {
 
     it('runs trcd.exe private-dir on each folder on Windows and reports the ones it refused', async () => {
         const root = scratch();
+        const real = realpathSync(root);
         const folders = { 'trc-home': join(root, 'home'), 'app-data': join(root, 'data') };
         const calls: string[][] = [];
         const refused = await makeFoldersPrivate(folders, {
@@ -17,10 +18,12 @@ describe('makeFoldersPrivate (SEC-05, D-68)', () => {
             profile: 'E:\\Accounts\\someone',
             run: async (program, args) => {
                 calls.push([program, ...args]);
-                return args[1] !== folders['app-data'];
+                return args[1] !== join(real, 'data');
             },
         });
-        expect(calls).toEqual(Object.values(folders).map((folder) => ['C:\\TRC\\trcd.exe', 'private-dir', folder]));
+        expect(calls).toEqual(
+            ['home', 'data'].map((folder) => ['C:\\TRC\\trcd.exe', 'private-dir', join(real, folder)]),
+        );
         expect(refused).toEqual([{ name: 'app-data', reason: 'helper-failed' }]);
         expect(Object.values(folders).every((folder) => existsSync(folder))).toBe(true);
     });
@@ -76,5 +79,11 @@ describe('isDedicatedFolder: where a user-only ACL may replace what is there (SE
         expect(isDedicatedFolder('E:\\Accounts', profile)).toBe(false);
         expect(isDedicatedFolder('D:\\', profile)).toBe(false);
         expect(isDedicatedFolder('\\\\server\\share', profile)).toBe(false);
+        expect(isDedicatedFolder('\\\\?\\E:\\Accounts\\someone', profile)).toBe(false);
+        expect(isDedicatedFolder('\\\\?\\UNC\\server\\share', profile)).toBe(false);
+    });
+
+    it('accepts a folder beside the profile whose name starts with two dots', () => {
+        expect(isDedicatedFolder('E:\\Accounts\\..trc', profile)).toBe(true);
     });
 });

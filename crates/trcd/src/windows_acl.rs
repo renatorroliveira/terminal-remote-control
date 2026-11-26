@@ -56,21 +56,33 @@ pub fn make_private(path: &Path) -> io::Result<()> {
     if status != ERROR_SUCCESS {
         return Err(io::Error::from_raw_os_error(status as i32));
     }
-    mark_not_indexed(&name)?;
-    mark_tree_not_indexed(path)
+    mark_tree_not_indexed(path)?;
+    mark_not_indexed(&name)
 }
 
+/// Marks everything inside `folder` not content indexed, as far as it can: a child that vanished meanwhile is
+/// skipped, and any other failure stops only its own subtree and is returned once the rest is marked. The folder
+/// itself is marked only after a complete pass, so [`ensure_private`] tries again after a failed one.
 fn mark_tree_not_indexed(folder: &Path) -> io::Result<()> {
+    let mut first = None;
     for entry in std::fs::read_dir(folder)? {
-        let entry = entry?;
-        let kind = entry.file_type()?;
-        if kind.is_symlink() {
-            continue;
+        if let Err(error) = entry.and_then(|entry| mark_entry(&entry))
+            && error.kind() != io::ErrorKind::NotFound
+        {
+            first.get_or_insert(error);
         }
-        mark_not_indexed(&wide(&entry.path()))?;
-        if kind.is_dir() {
-            mark_tree_not_indexed(&entry.path())?;
-        }
+    }
+    first.map_or(Ok(()), Err)
+}
+
+fn mark_entry(entry: &std::fs::DirEntry) -> io::Result<()> {
+    let kind = entry.file_type()?;
+    if kind.is_symlink() {
+        return Ok(());
+    }
+    mark_not_indexed(&wide(&entry.path()))?;
+    if kind.is_dir() {
+        mark_tree_not_indexed(&entry.path())?;
     }
     Ok(())
 }
@@ -234,10 +246,15 @@ fn ace_grants(dacl: *const ACL, index: u32, user: *mut c_void) -> bool {
     }
     // SAFETY: every ACE starts with an ACE_HEADER.
     let header = unsafe { *ace.cast::<ACE_HEADER>() };
-    if u32::from(header.AceType) != ACCESS_ALLOWED_ACE_TYPE {
+    let inherited = OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE;
+    if u32::from(header.AceType) != ACCESS_ALLOWED_ACE_TYPE || u32::from(header.AceFlags) & inherited != inherited {
         return false;
     }
     let allowed = ace.cast::<ACCESS_ALLOWED_ACE>();
+    // SAFETY: an access-allowed ACE holds its mask after the header.
+    if unsafe { (*allowed).Mask } != FILE_ALL_ACCESS {
+        return false;
+    }
     // SAFETY: an access-allowed ACE's SID starts at `SidStart`.
     let sid = unsafe { (&raw mut (*allowed).SidStart).cast::<c_void>() };
     // SAFETY: both SIDs are valid.
@@ -259,7 +276,7 @@ mod tests {
     }
 
     #[test]
-    fn make_private_leaves_only_the_user_and_files_inside_inherit_it() {
+    fn make_private_leaves_only_the_user_and_marks_the_folder_not_indexed() {
         let folder = crate::test_support::temp_dir("acl-private");
         std::fs::write(folder.join("before"), b"x").unwrap();
         make_private(&folder).unwrap();
@@ -278,6 +295,32 @@ mod tests {
         for inside in ["logs", "logs/old.log", "config.json"] {
             assert!(not_indexed(&wide(&folder.join(inside))).unwrap(), "{inside}");
         }
+    }
+
+    #[test]
+    fn a_child_it_cannot_mark_leaves_the_folder_to_be_tried_again() {
+        let folder = crate::test_support::temp_dir("acl-retry");
+        let locked = folder.join("locked.txt");
+        std::fs::write(&locked, b"x").unwrap();
+        std::fs::write(folder.join("other.txt"), b"x").unwrap();
+        let user = std::env::var("USERNAME").unwrap();
+        let system_root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".into());
+        let icacls_exe = std::path::Path::new(&system_root).join("System32").join("icacls.exe");
+        let icacls = |change: &str, rule: String| {
+            let status = std::process::Command::new(&icacls_exe)
+                .arg(&locked)
+                .args([change, &rule])
+                .status()
+                .unwrap();
+            assert!(status.success(), "icacls {change} {rule}");
+        };
+        icacls("/deny", format!("{user}:(WA)"));
+        assert!(ensure_private(&folder).is_err());
+        assert!(!not_indexed(&wide(&folder)).unwrap());
+        assert!(not_indexed(&wide(&folder.join("other.txt"))).unwrap());
+        icacls("/remove:d", user);
+        assert!(ensure_private(&folder).unwrap());
+        assert!(not_indexed(&wide(&locked)).unwrap());
     }
 
     #[test]

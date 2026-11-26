@@ -85,7 +85,7 @@ export class JsonStore<T> {
             await handle.close();
         }
         await replaceFile(temporary, this.#file).catch(async (error: unknown) => {
-            await rm(temporary, { force: true });
+            await rm(temporary, { force: true }).catch(() => undefined);
             throw error;
         });
         // Windows refuses to flush a directory handle (EPERM); NTFS's metadata journal keeps the rename consistent.

@@ -163,12 +163,12 @@ async function privateTrcHome(): Promise<string> {
         { 'trc-home': home, 'app-data': userData },
         { platform: process.platform, trcd: windowsTrcd(resources, process.arch), profile: app.getPath('home') },
     );
-    if (refused.length > 0) {
+    try {
         const log = createAppLogger(join(userData, 'logs'), undefined, 'main.log');
         for (const { name, reason } of refused) {
             log.warn('folder-not-private', { folder: name, reason });
         }
-    }
+    } catch {}
     return home;
 }
 
