@@ -80,7 +80,7 @@
     "description": "Select last command output selected it."
   },
   "announce.commandOutputSelectedCapped": {
-    "defaultMessage": "Selected the last command’s output, {lines} lines; VoiceOver sees the first {cap}. Copy it for all of it.",
+    "defaultMessage": "Selected the last command’s output, {lines} lines; assistive technology sees the first {cap}. Copy it for all of it.",
     "description": "Select last command output selected more lines than the OS-visible selection holds (A11Y-04)."
   },
   "announce.commandOutputTail": {
@@ -1890,7 +1890,7 @@
     "description": "Setting."
   },
   "setting.screenReaderMode.description": {
-    "defaultMessage": "Speaks new output. Automatic turns on when VoiceOver or other assistive technology is in use.",
+    "defaultMessage": "Speaks new output. Automatic turns on when a screen reader or other assistive technology is in use.",
     "description": "Setting description."
   },
   "setting.scrollbackLines": {

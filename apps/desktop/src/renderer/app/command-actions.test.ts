@@ -121,7 +121,7 @@ describe('CommandActions: moving and reading (US-5.2.1)', () => {
         const { actions, said } = setUp({ output: { kind: 'output', text: 'x', lines: 6_000 } });
         actions.actions()['command.selectOutput']?.();
         expect(said).toEqual([
-            'Selected the last command’s output, 6000 lines; VoiceOver sees the first 5000. Copy it for all of it.',
+            'Selected the last command’s output, 6000 lines; assistive technology sees the first 5000. Copy it for all of it.',
         ]);
     });
 

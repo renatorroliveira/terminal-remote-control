@@ -84,7 +84,7 @@ export const commandAnnouncements = defineMessages({
     selectedCapped: defineMessage<{ lines: number; cap: number }>({
         id: 'announce.commandOutputSelectedCapped',
         defaultMessage:
-            'Selected the last command’s output, {lines} lines; VoiceOver sees the first {cap}. Copy it for all of it.',
+            'Selected the last command’s output, {lines} lines; assistive technology sees the first {cap}. Copy it for all of it.',
         description: 'Select last command output selected more lines than the OS-visible selection holds (A11Y-04).',
     }),
     selected: defineMessage<{ lines: number }>({

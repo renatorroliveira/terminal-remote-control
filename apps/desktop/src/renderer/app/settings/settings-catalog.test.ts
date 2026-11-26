@@ -16,7 +16,8 @@ describe('settingsMatching: the settings page’s search (A11Y-10.3)', () => {
 
     it('matches labels and descriptions without regard to case or accents', () => {
         expect(ids('SCROLLBACK')).toEqual(['scrollbackLines']);
-        expect(ids('voiceover')).toEqual(['screenReaderMode', 'hints']);
+        expect(ids('SCREEN READER')).toEqual(['screenReaderMode']);
+        expect(ids('voiceover')).toEqual(['hints']);
         expect(ids('cürsor')).toEqual(['cursorStyle', 'cursorWidth', 'cursorBlink']);
     });
 

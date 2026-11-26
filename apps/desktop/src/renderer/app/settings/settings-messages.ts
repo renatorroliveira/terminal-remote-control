@@ -172,7 +172,8 @@ export const settingLabelMessages = defineMessages({
 export const settingDescriptionMessages = defineMessages({
     screenReaderMode: {
         id: 'setting.screenReaderMode.description',
-        defaultMessage: 'Speaks new output. Automatic turns on when VoiceOver or other assistive technology is in use.',
+        defaultMessage:
+            'Speaks new output. Automatic turns on when a screen reader or other assistive technology is in use.',
         description: 'Setting description.',
     },
     verbosity: {

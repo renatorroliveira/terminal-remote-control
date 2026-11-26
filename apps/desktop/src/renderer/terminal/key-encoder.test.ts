@@ -22,6 +22,8 @@ describe('encodeKey: AltGr and Alt off macOS (D-67)', () => {
         expect(encodeKey(key('@', 'KeyQ', { ctrlKey: true, altKey: true }), windows)).toEqual({ kind: 'none' });
         expect(encodeKey(key('€', 'KeyE', { ctrlKey: true, altKey: true }), windows)).toEqual({ kind: 'none' });
         expect(encodeKey(key('{', 'Digit7', { ctrlKey: true, altKey: true }), windows)).toEqual({ kind: 'none' });
+        expect(encodeKey(key('\\', 'Minus', { ctrlKey: true, altKey: true }), windows)).toEqual({ kind: 'none' });
+        expect(encodeKey(key('~', 'BracketRight', { ctrlKey: true, altKey: true }), windows)).toEqual({ kind: 'none' });
         const altGraph = key('q', 'KeyQ', { ctrlKey: true, altKey: true, altGraph: true });
         expect(encodeKey(altGraph, windows)).toEqual({ kind: 'none' });
     });

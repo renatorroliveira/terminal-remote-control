@@ -286,7 +286,7 @@
     },
     {
       "type": 0,
-      "value": " lines; VoiceOver sees the first "
+      "value": " lines; assistive technology sees the first "
     },
     {
       "type": 1,
@@ -4479,7 +4479,7 @@
   "setting.screenReaderMode.description": [
     {
       "type": 0,
-      "value": "Speaks new output. Automatic turns on when VoiceOver or other assistive technology is in use."
+      "value": "Speaks new output. Automatic turns on when a screen reader or other assistive technology is in use."
     }
   ],
   "setting.scrollbackLines": [

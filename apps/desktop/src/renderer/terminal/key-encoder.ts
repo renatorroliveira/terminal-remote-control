@@ -222,15 +222,22 @@ export function letterOf(input: KeyInput): string | undefined {
 }
 
 /**
- * Whether a Control+Alt press off macOS types a character with AltGr, such as `@` on a German keyboard, which then
- * arrives as text (D-67): AltGr is held, or a letter or digit key gives a character that is no Latin letter or digit.
- * A Latin letter is the layout's own, so Ctrl+Alt+letter stays Meta with Control on Dvorak or Colemak too.
+ * Whether a Control+Alt press off macOS types a character with AltGr, such as `@` or `\` on a German keyboard, which
+ * then arrives as text (D-67): AltGr is held, or the key gives a character that is no Latin letter or digit and not
+ * what its key gives on a US keyboard. A Latin letter is the layout's own, so Ctrl+Alt+letter stays Meta with Control
+ * on Dvorak or Colemak too, and Ctrl+Alt+[ on a US keyboard is still sent.
  */
 function typesWithAltGraph(input: KeyInput): boolean {
     if (!input.ctrlKey || !input.altKey || [...input.key].length !== 1) {
         return false;
     }
-    return input.altGraph === true || (/^(Key|Digit)/.test(input.code) && !/^[a-zA-Z0-9]$/.test(input.key));
+    if (input.altGraph === true) {
+        return true;
+    }
+    if (/^[a-zA-Z0-9]$/.test(input.key)) {
+        return false;
+    }
+    return /^Key[A-Z]$/.test(input.code) || SHIFTED_BY_CODE[input.code]?.includes(input.key) !== true;
 }
 
 /** Whether a press is Ctrl+Shift+C or Ctrl+Shift+V, Windows' copy and paste, which stay the app's in every mode (P-86). */
