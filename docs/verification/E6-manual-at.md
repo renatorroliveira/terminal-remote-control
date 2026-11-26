@@ -33,7 +33,7 @@ it gates (§11.6).
 | 11  | Voice Access names and clicks what it shows   | Voice Access                 |        |       |
 | 12  | Dictation and the IME into the terminal       | Voice Typing; a Japanese IME |        |       |
 
-## 1. Install, first launch and screen-reader mode (US-6.1.4, A11Y-10.2)
+## 1. Install, first launch and screen-reader mode (US-6.1, A11Y-10.2)
 
 1. Run the installer. **Expect:** SmartScreen's warning, if it shows, is read; after Run anyway, no User Account
    Control prompt appears, and the app opens when it finishes.
@@ -79,7 +79,8 @@ it gates (§11.6).
 
 1. Press Alt, then the arrow keys. **Expect:** File, Edit, View, Terminal and Help are read with their access keys;
    each item is read with its shortcut where it has one; Escape returns focus to where it was.
-2. In the terminal, press Alt+B. **Expect:** no menu opens; the shell moves back a word.
+2. In the terminal, type `echo one two three`, then press Alt+B, Alt+F, Alt+E, Alt+V, Alt+T and Alt+H, the menus'
+   own access keys among them. **Expect:** no menu opens, and readline handles each (Alt+B and Alt+F move by word).
 3. Press Alt+F1. **Expect:** the help dialog lists the Windows shortcuts, such as "Accessibility help Alt+F1".
 4. Press Ctrl+,. **Expect:** Settings opens with its search field focused; Escape returns.
 
@@ -109,9 +110,10 @@ it gates (§11.6).
 
 1. Without a mouse, add a host, open a session, use review mode, Find and Settings. **Expect:** focus is always
    visible, and Ctrl+F6 always leaves the terminal.
-2. Turn on a contrast theme (Settings, Accessibility, Contrast themes). **Expect:** the app's controls take the
-   theme's colors, and the terminal's text stays legible.
-3. Set Text size to 150% and turn off Animation effects. **Expect:** the interface text grows, and no animation or
+2. Set TRC's Theme to System, then turn on a contrast theme in Windows Settings, under Accessibility, Contrast
+   themes. **Expect:** the app's controls and the terminal take the theme's colors, and the terminal's text stays
+   legible.
+3. In Windows Settings, set Text size to 150% and turn off Animation effects. **Expect:** the interface text grows, and no animation or
    cursor blink runs.
 
 ## 11. Voice Access names and clicks what it shows (A11Y-09)

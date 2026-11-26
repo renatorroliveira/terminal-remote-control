@@ -118,7 +118,8 @@ the app does today.
 ### Prerequisites
 
 - macOS on Apple silicon, or Windows 11 (E6). On Windows everything runs against the Linux test hosts on Docker
-  Desktop, `test:ax:win` included, except the macOS daemon and test host and the `*:mac` scripts.
+  Desktop, `test:ax:win` included, except the macOS daemon and test host and the `*:mac` scripts; the Windows app
+  is tested against the Linux hosts only, as macOS hosts share its connection code.
 - Node.js 24 and pnpm 12 (`corepack enable pnpm`).
 - Rust through rustup; `rust-toolchain.toml` pins the version, the musl targets and both Apple targets.
 - `cargo install --locked cargo-nextest cargo-zigbuild`, Zig 0.17 and minisign (`brew install zig minisign`), then

@@ -59,22 +59,24 @@ the Rust crates (`crates/*`) and tooling (`tools/*`).
   `vitest run --project soak <file>`, and its sessions are reached through
   `docker exec` as well as ssh (`DOCKER_CONTEXT`, `colima-trc` by default).
 - End to end: `pnpm test:e2e`. Accessibility tree: `pnpm test:ax:mac` (needs the
-  macOS Accessibility permission). Both build a test build
+  macOS Accessibility permission) or `pnpm test:ax:win` (UI Automation through
+  `tools/uia-probe`). All build a test build
   (`pnpm --filter @trc/desktop build:test`, `electron-vite build --mode test`), which compiles
   in the P-14 seam (`TRC_TEST_*`); every test launch gets a scratch `TRC_HOME`; their live-terminal tests skip
   unless the test hosts are up and the daemons are built. Only launches that set
   `TRC_TEST_LOCAL_HOME` (a scratch home for its LaunchAgent plist) get This
   computer, whose daemon installs in their scratch `TRC_HOME` (P-58). Test launches open
   unseen (`TRC_TEST_BACKGROUND=1`, D-27): transparent, click-through, in the
-  bottom-right corner, never focused. `pnpm test:ax:mac` must take focus, so warn
-  the owner before running it.
+  bottom-right corner, never focused. `pnpm test:ax:mac` and `pnpm test:ax:win` must
+  take focus, so warn the owner before running them; on Windows the foreground lock
+  refuses it to a test launch, so `uia-probe foreground <pid>` hands it over.
 - App state lives in the TRC home, `~/.trc` (`config.json`, `hosts.json`, `sessions.json`), or
   `TRC_HOME` when set; hosts install the daemon under `~/.trc` unless the
   user moves a host's install location (US-1.4.3).
 - Icons: `pnpm icons:mac` (macOS, for `iconutil`) renders `apps/desktop/resources/icons` from
   `tools/icons`. Packaging: `pnpm dist` builds for the OS it runs on, in
   `apps/desktop/dist`: ad-hoc signed arm64 and x64 dmg and zip on macOS, an
-  unsigned x64 zip on Windows.
+  unsigned per-user NSIS installer and zip on Windows (`--x64` or `--arm64`).
 - Releases run entirely in GitHub Actions (`.github/workflows/release.yml`,
   P-21, D-42): `pnpm release <major|minor|patch> [--dry-run]` starts it with
   `gh` and watches it; it commits the version as `github-actions[bot]`, builds,
@@ -144,6 +146,8 @@ The default scripts also run on Windows (D-59 to D-64); keep it that way:
 - react-aria keeps a combobox suggestion clipped for about 600 ms after it
   opens, and Playwright's click retries then miss it; e2e helpers submit the
   typed text instead of clicking a suggestion.
+- The pre-commit guard refuses a `C:\Users\<name>\` path anywhere, test
+  fixtures included; use another folder, such as `E:\Accounts\someone`.
 
 ## What the product is
 

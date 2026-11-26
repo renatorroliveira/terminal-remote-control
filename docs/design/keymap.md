@@ -76,17 +76,17 @@ the element that last had focus there, or else its first control; a hidden sideb
 The rules above hold on Windows with Windows' keys:
 
 1. **The terminal gets every other key**, Control+letter and Alt+letter included: Alt+letter is the shell's Meta key
-   (readline's Alt+B and Alt+F), so in the terminal it never opens a menu; F10 and a lone Alt press reach the menu
-   bar.
+   (readline's Alt+B and Alt+F), so in the terminal it never opens a menu, and F10 is the program's (htop and mc
+   quit with it); a lone Alt press reaches the menu bar.
 2. **Every shortcut uses Ctrl or Alt, or a function key.** The Windows key is the OS's, so no shortcut uses it.
 3. **No control codes.** Ctrl with a letter, digit, `[`, `]`, `\`, `/` or Space alone is the shell's, and so is
    Ctrl+Shift with 2, 6 or minus, which make `@`, `^` and `_` with Control (NUL, RS and readline's undo).
    Ctrl+Shift with any other key is free, as Windows Terminal binds its commands there.
 4. **No Ctrl+Alt chord**: Ctrl+Alt is AltGr on many layouts, which types characters, and Magnifier's modifier
-   (Ctrl+Alt+Enter reads the selection aloud, Ctrl+Alt+click reads from the pointer). Alt with a printable key is
+   by default (Ctrl+Alt+Enter starts reading at the cursor or selection, Ctrl+Alt+click reads from the pointer). Alt with a printable key is
    refused too (rule 1). NVDA's and JAWS' Insert and Caps Lock chords are never bindable. Reserved: Alt+F4, Alt+Tab,
-   Alt+Shift+Tab, Alt+Esc, Ctrl+Esc, Ctrl+Shift+Esc (Task Manager), F10 and Shift+F10 (the menu bar and context
-   menus), Alt+Shift+B and Alt+Shift+C (Voice Access's microphone), and the copy and paste keys.
+   Alt+Shift+Tab, Alt+Esc, Ctrl+Esc, Ctrl+Shift+Esc (Task Manager), F10 and Shift+F10 (the menu bar outside the
+   terminal, and context menus), Alt+Shift+B and Alt+Shift+C (Voice Access's microphone), and the copy and paste keys.
 5. **Copy and paste are strict (P-86):** Ctrl+Shift+C and Ctrl+Insert copy, Ctrl+Shift+V and Shift+Insert paste;
    Ctrl+C and Ctrl+V always reach the shell. "Ctrl+C copies when text is selected" is a setting, off by default,
    since a selection a screen reader or magnifier user cannot see would turn an interrupt into a copy. Every copy

@@ -658,8 +658,8 @@ daemons on your hosts stay; Remove daemon, in each host's details, removes them 
    session's output.
 5. Alt+F2 opens review mode: the whole scrollback as text, read with the arrow keys and your screen reader's reading
    commands. Escape returns to the terminal.
-6. Alt+F1 lists the shortcuts for where you are. Alt or F10 moves to the menu bar: File, Edit, View, Terminal and
-   Help.
+6. Alt+F1 lists the shortcuts for where you are. Pressing Alt alone moves to the menu bar: File, Edit, View,
+   Terminal and Help. In the terminal, F10 goes to the program, as htop and mc use it to quit.
 
 ### Windows keys
 
@@ -707,8 +707,10 @@ you type with AltGr reach the program as text.
 
 ### Magnifier and read aloud
 
-Magnifier follows the terminal's cursor as you type. With Magnifier's read aloud, Ctrl+Alt+Enter reads the
-selection and Ctrl+Alt+click reads from the pointer, in the terminal and in review mode.
+TRC gives Windows the terminal's cursor, your selection and the text under the pointer, in the terminal and in
+review mode, so Magnifier can follow the cursor as you type. Magnifier's read aloud uses Ctrl+Alt unless you change
+its modifier in Magnifier's settings: Ctrl+Alt+Enter starts reading where the cursor or your selection is, and
+Ctrl+Alt+click reads from the pointer.
 
 ### Contrast themes and animation effects
 

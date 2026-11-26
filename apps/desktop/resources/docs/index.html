@@ -342,7 +342,7 @@ done</code></pre>
 <li>Press Ctrl+Shift+T for a new session. Focus moves to its terminal, an editable text field, so your screen reader reads it by character, word and line as you move.</li>
 <li>Type commands. TRC speaks new output as it arrives, and leaves out what you type; Ctrl+Shift+A mutes the session's output.</li>
 <li>Alt+F2 opens review mode: the whole scrollback as text, read with the arrow keys and your screen reader's reading commands. Escape returns to the terminal.</li>
-<li>Alt+F1 lists the shortcuts for where you are. Alt or F10 moves to the menu bar: File, Edit, View, Terminal and Help.</li>
+<li>Alt+F1 lists the shortcuts for where you are. Pressing Alt alone moves to the menu bar: File, Edit, View, Terminal and Help. In the terminal, F10 goes to the program, as htop and mc use it to quit.</li>
 </ol>
 <h3 id="windows-keys">Windows keys</h3>
 <p>The shortcuts that use Command on a Mac use Ctrl+Shift on Windows, as Windows Terminal's do. The terminal keeps Ctrl and Alt with a letter for the program: Alt with a letter is the shell's Meta key, such as Alt+B and Alt+F in bash, so in the terminal it never opens a menu. TRC binds no Ctrl+Alt chord, which types characters with AltGr on many keyboards and is Magnifier's, nor the Windows key.</p>
@@ -377,7 +377,7 @@ done</code></pre>
 <h3 id="copy-and-paste-on-windows">Copy and paste on Windows</h3>
 <p>Copy and paste leave the shell its keys: Ctrl+Shift+C or Ctrl+Insert copies the selection, and Ctrl+Shift+V or Shift+Insert pastes. Ctrl+C always reaches the program as an interrupt, even while text is selected, since a selection you can't see would otherwise turn an interrupt into a copy; Ctrl+V reaches it too. To have Ctrl+C copy while text is selected, as in Windows Terminal, turn on &quot;Ctrl+C copies when text is selected&quot; in Settings, under Keyboard. Copied text has Windows line breaks. A double-click selects a word without the space after it. Characters you type with AltGr reach the program as text.</p>
 <h3 id="magnifier-and-read-aloud">Magnifier and read aloud</h3>
-<p>Magnifier follows the terminal's cursor as you type. With Magnifier's read aloud, Ctrl+Alt+Enter reads the selection and Ctrl+Alt+click reads from the pointer, in the terminal and in review mode.</p>
+<p>TRC gives Windows the terminal's cursor, your selection and the text under the pointer, in the terminal and in review mode, so Magnifier can follow the cursor as you type. Magnifier's read aloud uses Ctrl+Alt unless you change its modifier in Magnifier's settings: Ctrl+Alt+Enter starts reading where the cursor or your selection is, and Ctrl+Alt+click reads from the pointer.</p>
 <h3 id="contrast-themes-and-animation-effects">Contrast themes and animation effects</h3>
 <p>A Windows contrast theme gives the sidebar and the dialogs the theme's own colors; with Theme set to System, the terminal takes them too. With Windows' Animation effects off, TRC plays no animation and the cursor never blinks.</p>
 <h3 id="files-and-folders-on-windows">Files and folders on Windows</h3>
