@@ -131,6 +131,15 @@ test('offers the SSH config hosts in Add host, read from the seam config ahead o
     await app.close();
 });
 
+/** The help dialog's quick-start button on this platform and the guide heading it opens at (A11Y-10.4). */
+const QUICK_START =
+    process.platform === 'darwin'
+        ? { button: 'VoiceOver quick start', heading: { level: 2, name: 'Quick start with VoiceOver' } }
+        : {
+              button: 'Screen reader quick start',
+              heading: { level: 3, name: 'Quick start with NVDA, JAWS or Narrator' },
+          };
+
 test('Accessibility help lists the shortcuts, and opens the user guide in its own accessible window (A11Y-10.1, A11Y-10.4)', async () => {
     const app = await launchApp();
     const window = await app.firstWindow();
@@ -143,10 +152,10 @@ test('Accessibility help lists the shortcuts, and opens the user guide in its ow
     await expect(help.getByRole('row', { name: `Accessibility help ${helpKeys}`, exact: true })).toBeVisible();
     expect(await axeViolations(window)).toEqual([]);
     const opened = app.waitForEvent('window');
-    await help.getByRole('button', { name: 'VoiceOver quick start' }).click();
+    await help.getByRole('button', { name: QUICK_START.button }).click();
     const guide = await opened;
     await expect(guide).toHaveTitle('Terminal Remote Control user guide');
-    await expect(guide.getByRole('heading', { level: 2, name: 'Quick start with VoiceOver' })).toBeInViewport();
+    await expect(guide.getByRole('heading', QUICK_START.heading)).toBeInViewport();
     await expect(guide.getByRole('main')).toBeVisible();
     expect(await axeViolations(guide)).toEqual([]);
     await expect(help).toHaveCount(0);
