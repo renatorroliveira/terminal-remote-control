@@ -1,4 +1,4 @@
-import { join, resolve } from 'node:path';
+import { join, resolve, win32 } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { trcHome } from './trc-home';
 
@@ -18,6 +18,6 @@ describe('trcHome: the folder that holds the app config and known hosts', () => 
     });
 
     it('reads ~\\ as the home folder on Windows (P-95)', () => {
-        expect(trcHome({ TRC_HOME: '~\\.trc-dev' }, HOME, 'win32')).toBe(join(HOME, '.trc-dev'));
+        expect(trcHome({ TRC_HOME: '~\\.trc-dev' }, HOME, 'win32')).toBe(win32.join(HOME, '.trc-dev'));
     });
 });

@@ -5,7 +5,7 @@
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import native, { join, type posix } from 'node:path';
 import { dockerEnvironment, REPOSITORY } from './hosts.ts';
 
 /** The images the tests run in. */
@@ -41,9 +41,9 @@ export function testExecutables(cargoJson: string): readonly string[] {
         .flatMap((message) => (typeof message.executable === 'string' ? [message.executable] : []));
 }
 
-/** A binary under `target` as the container sees it, through {@link TARGET_MOUNT}. */
-export function containerPath(binary: string, target: string): string {
-    return `${TARGET_MOUNT}/${relative(target, binary).replaceAll('\\', '/')}`;
+/** A binary under `target` as the container sees it, through {@link TARGET_MOUNT}, with this OS's path rules. */
+export function containerPath(binary: string, target: string, paths: Pick<typeof posix, 'relative'> = native): string {
+    return `${TARGET_MOUNT}/${paths.relative(target, binary).replaceAll('\\', '/')}`;
 }
 
 /** The Dockerfile line that adds the shells TRC integrates (US-5.1); docker keeps the layer for later runs. */

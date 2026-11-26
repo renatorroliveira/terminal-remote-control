@@ -1,4 +1,4 @@
-import { isAbsolute, join, resolve } from 'node:path';
+import { posix, win32 } from 'node:path';
 
 /**
  * The TRC home, where the app keeps `config.json` and `hosts.json`: `TRC_HOME` when set, where a leading `~` is the
@@ -9,12 +9,13 @@ export function trcHome(
     home: string,
     platform: NodeJS.Platform = process.platform,
 ): string {
+    const paths = platform === 'win32' ? win32 : posix;
     const value = env['TRC_HOME'];
     if (value === undefined || value === '') {
-        return join(home, '.trc');
+        return paths.join(home, '.trc');
     }
     if (value === '~' || value.startsWith('~/') || (platform === 'win32' && value.startsWith('~\\'))) {
-        return join(home, value.slice(1));
+        return paths.join(home, value.slice(1));
     }
-    return isAbsolute(value) ? value : resolve(home, value);
+    return paths.isAbsolute(value) ? value : paths.resolve(home, value);
 }

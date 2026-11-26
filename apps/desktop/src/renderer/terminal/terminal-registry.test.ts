@@ -641,13 +641,14 @@ describe('TerminalRegistry output speech (A11Y-02.1, A11Y-02.4, A11Y-02.7)', () 
     const settled = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 300));
 
     it('speaks the open session’s new output, and not the screen it restores on attach', async () => {
-        const { transport, registry, speech } = setup();
+        const { area, transport, registry, speech } = setup();
         registry.show('h1/a', 'h1', info('a'));
         await expect.poll(() => transport.attached(1)).toBe(true);
         transport.output(1, 'restored\r\n$ ');
+        await expect.poll(() => area.textContent ?? '', { timeout: 5_000 }).toContain('restored');
         await settled();
         transport.output(1, 'hello\r\n$ ');
-        await expect.poll(() => speech.spoken).toEqual(['h1/a: hello\n$']);
+        await expect.poll(() => speech.spoken, { timeout: 5_000 }).toEqual(['h1/a: hello\n$']);
     });
 
     it('stays silent for background and muted sessions, and drops what the session left behind had waiting', async () => {

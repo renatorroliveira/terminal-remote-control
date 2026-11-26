@@ -1,3 +1,4 @@
+import { posix, win32 } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cacheFolder, listedDigest } from './fetch-old-daemon.ts';
 import { configPath, dockerEnvironment, parseWhoamiSid, renderSshConfig, sshTool } from './hosts.ts';
@@ -55,7 +56,10 @@ describe('the test-host tools (D-69)', () => {
             '{"reason":"build-finished"}',
         ].join('\n');
         expect(testExecutables(json)).toEqual(['/r/target/x/release/deps/trcd-1']);
-        expect(containerPath('D:\\r\\target\\x\\release\\deps\\trcd-1', 'D:\\r\\target')).toBe(
+        expect(containerPath('D:\\r\\target\\x\\release\\deps\\trcd-1', 'D:\\r\\target', win32)).toBe(
+            '/target/x/release/deps/trcd-1',
+        );
+        expect(containerPath('/r/target/x/release/deps/trcd-1', '/r/target', posix)).toBe(
             '/target/x/release/deps/trcd-1',
         );
         expect(runScript(['/target/a'])).toContain("for binary in '/target/a'; do");
