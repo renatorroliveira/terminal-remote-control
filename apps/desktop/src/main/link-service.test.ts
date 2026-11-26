@@ -7,17 +7,34 @@ import { LinkService } from './link-service';
 /** Windows has no POSIX modes; the user profile's ACL keeps these files private there (SEC-02, E6). */
 const POSIX_MODES = process.platform !== 'win32';
 
-function service(contents?: string) {
+function service(contents?: string, platform: NodeJS.Platform = 'darwin') {
     const home = mkdtempSync(join(tmpdir(), 'trc-links-'));
     if (contents !== undefined) {
         writeFileSync(join(home, 'accept_urls.json'), contents);
     }
     const opened: string[] = [];
-    const links = new LinkService(home, async (url) => {
+    const open = async (url: string): Promise<void> => {
         opened.push(url);
-    });
-    return { home, links, opened };
+    };
+    return { home, links: new LinkService(home, open, platform), opened };
 }
+
+describe('LinkService on Windows: no network shares (SEC-06.2, P-106)', () => {
+    it('refuses a file link naming a host, which Windows would open over SMB, and opens local files', async () => {
+        const { links, opened } = service(undefined, 'win32');
+        expect(await links.check('file://fileserver/share/notes.txt')).toBeUndefined();
+        await links.open('file://fileserver/share/notes.txt', false);
+        expect(await links.check('file:///C:/Users/notes.txt')).toMatchObject({ target: 'file:///C:/Users/notes.txt' });
+        expect(await links.check('file://localhost/C:/notes.txt')).toBeDefined();
+        await links.open('file:///C:/Users/notes.txt', false);
+        expect(opened).toEqual(['file:///C:/Users/notes.txt']);
+    });
+
+    it('leaves file links with a host to macOS, where ls --hyperlink names the computer itself', async () => {
+        const { links } = service();
+        expect(await links.check('file://my-mac/Users/notes.txt')).toBeDefined();
+    });
+});
 
 describe('LinkService: opening links from the terminal (US-1.12.3, US-1.12.4, SEC-06.2)', () => {
     it('reports a link as untrusted with the origin it may trust, and opens it once confirmed', async () => {

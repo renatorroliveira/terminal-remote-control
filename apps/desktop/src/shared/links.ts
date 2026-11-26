@@ -40,6 +40,15 @@ export function normalizeLink(target: string): string | undefined {
     return url.href;
 }
 
+/**
+ * Whether Windows would reach another computer to open `link`: a `file:` URL naming a host is a UNC path, which
+ * Windows opens over SMB, offering that host the user's credentials (SEC-06.2, P-106).
+ */
+export function reachesNetworkShare(link: string): boolean {
+    const url = parse(link);
+    return url?.protocol === 'file:' && url.host !== '' && url.host.toLowerCase() !== 'localhost';
+}
+
 /** The scheme and host of a link, such as `https://google.com`, or undefined for a link without a host. */
 export function linkOrigin(target: string): string | undefined {
     const url = parse(target);

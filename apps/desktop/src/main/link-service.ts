@@ -1,6 +1,13 @@
 import { join } from 'node:path';
 import { z } from 'zod';
-import { type LinkCheck, linkOrigin, MAX_LINK_LENGTH, matchesPrefix, normalizeLink } from '../shared/links';
+import {
+    type LinkCheck,
+    linkOrigin,
+    MAX_LINK_LENGTH,
+    matchesPrefix,
+    normalizeLink,
+    reachesNetworkShare,
+} from '../shared/links';
 import { JsonStore } from './json-store';
 
 /** Opens a URL in the app the OS assigns to its scheme, as `shell.openExternal` does. */
@@ -15,22 +22,25 @@ const PREFIXES: z.ZodType<readonly string[]> = z
 /**
  * Opens links from the terminal (US-1.12.3, US-1.12.4). A link opens without asking only when it starts with a
  * prefix in `accept_urls.json` in the TRC home; otherwise the renderer confirms it first, and the confirmation can
- * trust the link's origin. Targets the app must never open are refused (SEC-06).
+ * trust the link's origin. Targets the app must never open are refused (SEC-06), and on Windows network shares too
+ * (P-106).
  */
 export class LinkService {
     readonly #store: JsonStore<readonly string[]>;
     readonly #openExternal: OpenExternal;
+    readonly #platform: NodeJS.Platform;
     #last: Promise<unknown> = Promise.resolve();
 
-    /** Links trusted in `home`'s `accept_urls.json`, opened with `openExternal`. */
-    constructor(home: string, openExternal: OpenExternal) {
+    /** Links trusted in `home`'s `accept_urls.json`, opened with `openExternal` on `platform`. */
+    constructor(home: string, openExternal: OpenExternal, platform: NodeJS.Platform = process.platform) {
         this.#store = new JsonStore(join(home, 'accept_urls.json'), PREFIXES, []);
         this.#openExternal = openExternal;
+        this.#platform = platform;
     }
 
     /** The link as it would open, its origin and whether it is trusted; undefined for a target never opened. */
     async check(target: string): Promise<LinkCheck | undefined> {
-        const link = normalizeLink(target);
+        const link = this.#opens(target);
         if (link === undefined) {
             return undefined;
         }
@@ -44,7 +54,7 @@ export class LinkService {
 
     /** Opens a link the user confirmed or trusts, first trusting its origin when `trustOrigin` is set. */
     async open(target: string, trustOrigin: boolean): Promise<void> {
-        const link = normalizeLink(target);
+        const link = this.#opens(target);
         if (link === undefined) {
             return;
         }
@@ -53,6 +63,11 @@ export class LinkService {
             await this.#trust(origin);
         }
         await this.#openExternal(link);
+    }
+
+    #opens(target: string): string | undefined {
+        const link = normalizeLink(target);
+        return link !== undefined && this.#platform === 'win32' && reachesNetworkShare(link) ? undefined : link;
     }
 
     #trust(prefix: string): Promise<void> {
