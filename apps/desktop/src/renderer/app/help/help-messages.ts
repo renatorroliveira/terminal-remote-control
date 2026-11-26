@@ -1,4 +1,6 @@
-import { defineMessages } from 'react-intl';
+import { defineMessages, type MessageDescriptor } from 'react-intl';
+import type { GuideSection } from '../../../shared/guide';
+import type { KeymapPlatform } from '../../../shared/keymap';
 
 /** The accessibility help dialog (A11Y-10.1). */
 export const helpMessages = defineMessages({
@@ -24,8 +26,21 @@ export const helpMessages = defineMessages({
         defaultMessage: 'VoiceOver quick start',
         description: 'Button that opens the user guide at its VoiceOver quick start.',
     },
+    windowsScreenReaders: {
+        id: 'help.windowsScreenReaders',
+        defaultMessage: 'Screen reader quick start',
+        description: 'Button on Windows that opens the user guide at its quick start with NVDA, JAWS or Narrator.',
+    },
     close: { id: 'help.close', defaultMessage: 'Close', description: 'Button that closes the help dialog.' },
 });
+
+/** The help dialog's quick-start button on each platform: the guide section it opens and its label (A11Y-10.4). */
+export const QUICK_STARTS: Readonly<
+    Record<KeymapPlatform, { readonly section: GuideSection; readonly label: MessageDescriptor }>
+> = {
+    mac: { section: 'voiceover', label: helpMessages.voiceOver },
+    windows: { section: 'windows-screen-readers', label: helpMessages.windowsScreenReaders },
+};
 
 /** The keys of each context that are not app commands, so they are not rebindable. */
 export const helpKeyMessages = defineMessages({

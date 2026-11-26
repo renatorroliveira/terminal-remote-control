@@ -27,6 +27,9 @@ async function openSection(screen: AppScreen, name: string) {
     await expect.element(settingsView(screen).getByRole('heading', { level: 3, name })).toBeVisible();
 }
 
+/** The settings the macOS test app leaves out: screen-reader mode, set elsewhere, and the Windows-only Ctrl+C copy. */
+const MAC_HIDDEN: readonly string[] = ['screenReaderMode', 'ctrlCCopies'];
+
 describe('SettingsView: the settings in the content area (A11Y-10.3, US-1.6.7, P-72)', () => {
     it('opens from the sidebar link in place of the terminal, in sections, and passes axe', async () => {
         await page.viewport(1600, 900);
@@ -129,9 +132,7 @@ describe('SettingsView: the settings in the content area (A11Y-10.3, US-1.6.7, P
         const { shell, rendered } = renderApp();
         const screen = await rendered;
         shell.run('settings.show');
-        const shown = (entry: { readonly id: string }): boolean =>
-            !['screenReaderMode', 'ctrlCCopies'].includes(entry.id);
-        const total = SETTING_ENTRIES.filter(shown).length;
+        const total = SETTING_ENTRIES.filter((entry) => !MAC_HIDDEN.includes(entry.id)).length;
         const appearance = SETTING_ENTRIES.filter((entry) => entry.group === 'appearance').length;
         await expect.element(screen.getByText(`Appearance: ${appearance} settings.`)).toBeVisible();
         await screen.getByRole('searchbox', { name: 'Search settings' }).fill('scrollback');

@@ -790,7 +790,7 @@
     "description": "Reported when saving a host’s shell-integration setting fails."
   },
   "failure.sshMissing.problem": {
-    "defaultMessage": "This Mac has no OpenSSH client.",
+    "defaultMessage": "This computer has no OpenSSH client.",
     "description": "What went wrong when a connection failed."
   },
   "failure.sshMissing.remedy": {
@@ -1024,6 +1024,10 @@
   "help.voiceOver": {
     "defaultMessage": "VoiceOver quick start",
     "description": "Button that opens the user guide at its VoiceOver quick start."
+  },
+  "help.windowsScreenReaders": {
+    "defaultMessage": "Screen reader quick start",
+    "description": "Button on Windows that opens the user guide at its quick start with NVDA, JAWS or Narrator."
   },
   "host.action.cancel": {
     "defaultMessage": "Cancel connecting to {host}",
@@ -1858,7 +1862,7 @@
     "description": "Setting (US-5.3.1)."
   },
   "setting.notifyBackgroundBell.description": {
-    "defaultMessage": "Posts a macOS notification for a session that isn’t open. Choosing it opens the session.",
+    "defaultMessage": "Posts a system notification for a session that isn’t open. Choosing it opens the session.",
     "description": "Setting description."
   },
   "setting.notifyBackgroundCommand": {

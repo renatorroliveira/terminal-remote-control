@@ -2,6 +2,7 @@ import axe from 'axe-core';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { connectedHost, installTokens, renderApp } from '../app-test-harness';
+import { QUICK_STARTS } from './help-messages';
 
 describe('AccessibilityHelp: Option+F1 (A11Y-10.1)', () => {
     it('lists the session list’s shortcuts and the general ones, and Escape returns focus', async () => {
@@ -56,6 +57,12 @@ describe('AccessibilityHelp: the user guide and the Help menu (A11Y-10.4)', () =
         await screen.getByRole('button', { name: 'User guide' }).click();
         shell.run('help.userGuide');
         expect(guides).toEqual(['voiceover', undefined, undefined]);
+    });
+
+    it('opens the quick start for NVDA, JAWS and Narrator on Windows instead of VoiceOver’s', () => {
+        expect(QUICK_STARTS.windows.section).toBe('windows-screen-readers');
+        expect(QUICK_STARTS.windows.label.defaultMessage).toBe('Screen reader quick start');
+        expect(QUICK_STARTS.mac.section).toBe('voiceover');
     });
 
     it('opens from the Help menu’s command too, for the context that had focus', async () => {

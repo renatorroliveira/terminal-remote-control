@@ -59,7 +59,7 @@ const FAILURE_MESSAGES: Readonly<
     'ssh-missing': {
         problem: defineMessage<FailureValues>({
             id: 'failure.sshMissing.problem',
-            defaultMessage: 'This Mac has no OpenSSH client.',
+            defaultMessage: 'This computer has no OpenSSH client.',
             description: 'What went wrong when a connection failed.',
         }),
         remedy: defineMessage<FailureValues>({

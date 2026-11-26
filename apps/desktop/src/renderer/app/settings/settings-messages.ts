@@ -261,7 +261,7 @@ export const settingDescriptionMessages = defineMessages({
     },
     notifyBackgroundBell: {
         id: 'setting.notifyBackgroundBell.description',
-        defaultMessage: 'Posts a macOS notification for a session that isn’t open. Choosing it opens the session.',
+        defaultMessage: 'Posts a system notification for a session that isn’t open. Choosing it opens the session.',
         description: 'Setting description.',
     },
 });

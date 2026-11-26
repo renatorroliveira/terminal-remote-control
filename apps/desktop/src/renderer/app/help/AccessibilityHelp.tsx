@@ -5,7 +5,7 @@ import { BUTTON, PRIMARY_BUTTON } from '../../ui/buttons';
 import type { Shell } from '../shell';
 import { commandMessages } from '../shell-messages';
 import styles from './AccessibilityHelp.module.css';
-import { helpMessages } from './help-messages';
+import { helpMessages, QUICK_STARTS } from './help-messages';
 import { type HelpSection, helpSections } from './help-topics';
 
 /** Whose help the dialog shows. */
@@ -21,6 +21,7 @@ export function AccessibilityHelp({ shell }: AccessibilityHelpProps) {
     const intl = useIntl();
     const context = useStore(shell.state, (state) => state.help);
     const sections = context === undefined ? [] : helpSections(context, shell.keymap, intl);
+    const quickStart = QUICK_STARTS[shell.keymap.platform];
     return (
         <ModalOverlay
             isOpen={context !== undefined}
@@ -42,8 +43,8 @@ export function AccessibilityHelp({ shell }: AccessibilityHelpProps) {
                         <Button className={BUTTON} onPress={() => shell.openGuide()}>
                             {intl.formatMessage(commandMessages['help.userGuide'])}
                         </Button>
-                        <Button className={BUTTON} onPress={() => shell.openGuide('voiceover')}>
-                            {intl.formatMessage(helpMessages.voiceOver)}
+                        <Button className={BUTTON} onPress={() => shell.openGuide(quickStart.section)}>
+                            {intl.formatMessage(quickStart.label)}
                         </Button>
                         <Button className={PRIMARY_BUTTON} onPress={() => shell.closeHelp()}>
                             {intl.formatMessage(helpMessages.close)}

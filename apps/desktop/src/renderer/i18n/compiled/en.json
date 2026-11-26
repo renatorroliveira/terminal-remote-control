@@ -2198,7 +2198,7 @@
   "failure.sshMissing.problem": [
     {
       "type": 0,
-      "value": "This Mac has no OpenSSH client."
+      "value": "This computer has no OpenSSH client."
     }
   ],
   "failure.sshMissing.remedy": [
@@ -2661,6 +2661,12 @@
     {
       "type": 0,
       "value": "VoiceOver quick start"
+    }
+  ],
+  "help.windowsScreenReaders": [
+    {
+      "type": 0,
+      "value": "Screen reader quick start"
     }
   ],
   "host.action.cancel": [
@@ -4431,7 +4437,7 @@
   "setting.notifyBackgroundBell.description": [
     {
       "type": 0,
-      "value": "Posts a macOS notification for a session that isn’t open. Choosing it opens the session."
+      "value": "Posts a system notification for a session that isn’t open. Choosing it opens the session."
     }
   ],
   "setting.notifyBackgroundCommand": [
