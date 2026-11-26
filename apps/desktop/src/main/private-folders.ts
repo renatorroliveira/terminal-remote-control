@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
+import { win32 } from 'node:path';
 
 /** Runs a program hidden and resolves with whether it succeeded. */
 export type RunProgram = (program: string, args: readonly string[]) => Promise<boolean>;
@@ -9,29 +10,57 @@ export interface PrivateFolderOptions {
     readonly platform: NodeJS.Platform;
     /** The bundled `trcd.exe`, on Windows. */
     readonly trcd: string;
+    /** The user's profile folder, which a user-only ACL must never replace. */
+    readonly profile: string;
     readonly run?: RunProgram;
+}
+
+/** A folder that could not be made private, by the name it was given, and why. */
+export interface PrivacyRefusal {
+    readonly name: string;
+    /** `shared-folder`: it holds more than TRC's state, so its ACL stays; `helper-failed`: `trcd.exe` failed. */
+    readonly reason: 'shared-folder' | 'helper-failed';
 }
 
 const HELPER_TIMEOUT_MS = 10_000;
 
 /**
- * Makes each folder private to the user (SEC-02, SEC-05): created with mode 0700, and on Windows, where modes do not
- * apply, given a protected ACL that grants only the user, inherited by every file inside, and marked not content
- * indexed, by the bundled `trcd.exe` (D-68). It runs at every launch, so a folder whose ACL changed is put back.
- * Resolves with the folders it could not make private.
+ * Makes each named folder private to the user (SEC-02, SEC-05): created with mode 0700, and on Windows, where modes
+ * do not apply, given a protected ACL that grants only the user, inherited by every file inside, and marked not
+ * content indexed, by the bundled `trcd.exe` (D-68). It runs at every launch, so a folder whose ACL changed is put
+ * back; `trcd.exe` leaves one that is still private alone. A folder that holds more than TRC's state, such as the
+ * profile or a drive root that `TRC_HOME` names, keeps its ACL (P-94). Resolves with the folders it refused.
  */
 export async function makeFoldersPrivate(
-    folders: readonly string[],
-    { platform, trcd, run = runHidden }: PrivateFolderOptions,
-): Promise<readonly string[]> {
-    const failed: string[] = [];
-    for (const folder of folders) {
+    folders: Readonly<Record<string, string>>,
+    { platform, trcd, profile, run = runHidden }: PrivateFolderOptions,
+): Promise<readonly PrivacyRefusal[]> {
+    const refused: PrivacyRefusal[] = [];
+    for (const [name, folder] of Object.entries(folders)) {
         await mkdir(folder, { recursive: true, mode: 0o700 });
-        if (platform === 'win32' && !(await run(trcd, ['private-dir', folder]))) {
-            failed.push(folder);
+        if (platform !== 'win32') {
+            continue;
+        }
+        if (!isDedicatedFolder(folder, profile)) {
+            refused.push({ name, reason: 'shared-folder' });
+        } else if (!(await run(trcd, ['private-dir', folder]))) {
+            refused.push({ name, reason: 'helper-failed' });
         }
     }
-    return failed;
+    return refused;
+}
+
+/**
+ * Whether a Windows folder may be TRC's alone: not a drive or share root, not the profile and not a folder holding
+ * it, compared as Windows compares paths, without case.
+ */
+export function isDedicatedFolder(folder: string, profile: string): boolean {
+    const target = win32.resolve(folder);
+    if (win32.relative(win32.parse(target).root, target) === '') {
+        return false;
+    }
+    const toProfile = win32.relative(target, win32.resolve(profile));
+    return toProfile.startsWith('..') || win32.isAbsolute(toProfile);
 }
 
 function runHidden(program: string, args: readonly string[]): Promise<boolean> {

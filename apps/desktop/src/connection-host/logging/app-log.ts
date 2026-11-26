@@ -38,10 +38,13 @@ export interface AppLogger {
 
 const LOG_FILE = 'connection-host.log';
 
-/** A logger appending JSON lines to `connection-host.log` in `dir`, created with modes 0700 and 0600. */
-export function createAppLogger(dir: string, now: () => Date = () => new Date()): AppLogger {
+/**
+ * A logger appending JSON lines to `fileName` in `dir`, created with modes 0700 and 0600: the connection host's
+ * `connection-host.log` unless another process names its own.
+ */
+export function createAppLogger(dir: string, now: () => Date = () => new Date(), fileName = LOG_FILE): AppLogger {
     mkdirSync(dir, { recursive: true, mode: 0o700 });
-    const file = join(dir, LOG_FILE);
+    const file = join(dir, fileName);
     const write = (level: string, event: string, fields: LogFields = {}): void => {
         const line = JSON.stringify({ time: now().toISOString(), level, event, ...fields });
         appendFileSync(file, `${line}\n`, { mode: 0o600 });

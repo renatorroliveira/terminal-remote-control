@@ -23,8 +23,19 @@ use windows_sys::Win32::Storage::FileSystem::{
 use windows_sys::Win32::System::SystemServices::ACCESS_ALLOWED_ACE_TYPE;
 use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
+/// Makes the folder at `path` private unless it already is, as a check at every launch should cost nothing when
+/// nothing changed: returns whether it had to change anything.
+pub fn ensure_private(path: &Path) -> io::Result<bool> {
+    if is_private(path)? && not_indexed(&wide(path))? {
+        return Ok(false);
+    }
+    make_private(path)?;
+    Ok(true)
+}
+
 /// Gives the folder at `path` a protected DACL that grants full control to the current user alone, inherited by
-/// every file and folder inside, and marks it not content indexed.
+/// every file and folder inside, and marks it and everything already inside not content indexed. Links inside are
+/// left alone, so nothing outside the folder changes.
 pub fn make_private(path: &Path) -> io::Result<()> {
     let user = CurrentUser::query()?;
     let mut acl = user_only_acl(&user)?;
@@ -45,7 +56,32 @@ pub fn make_private(path: &Path) -> io::Result<()> {
     if status != ERROR_SUCCESS {
         return Err(io::Error::from_raw_os_error(status as i32));
     }
-    mark_not_indexed(&name)
+    mark_not_indexed(&name)?;
+    mark_tree_not_indexed(path)
+}
+
+fn mark_tree_not_indexed(folder: &Path) -> io::Result<()> {
+    for entry in std::fs::read_dir(folder)? {
+        let entry = entry?;
+        let kind = entry.file_type()?;
+        if kind.is_symlink() {
+            continue;
+        }
+        mark_not_indexed(&wide(&entry.path()))?;
+        if kind.is_dir() {
+            mark_tree_not_indexed(&entry.path())?;
+        }
+    }
+    Ok(())
+}
+
+fn not_indexed(name: &[u16]) -> io::Result<bool> {
+    // SAFETY: `name` is NUL-terminated.
+    let attributes = unsafe { GetFileAttributesW(name.as_ptr()) };
+    if attributes == INVALID_FILE_ATTRIBUTES {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(attributes & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED != 0)
 }
 
 /// Whether the DACL of `path` is protected from inheritance and grants access to the current user's SID alone.
@@ -229,9 +265,26 @@ mod tests {
         make_private(&folder).unwrap();
         std::fs::write(folder.join("after"), b"x").unwrap();
         assert!(is_private(&folder).unwrap());
-        let name = wide(&folder);
-        // SAFETY: `name` is NUL-terminated.
-        let attributes = unsafe { GetFileAttributesW(name.as_ptr()) };
-        assert_ne!(attributes & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED, 0);
+        assert!(not_indexed(&wide(&folder)).unwrap());
+    }
+
+    #[test]
+    fn make_private_marks_what_was_already_inside_not_indexed() {
+        let folder = crate::test_support::temp_dir("acl-indexed");
+        std::fs::create_dir(folder.join("logs")).unwrap();
+        std::fs::write(folder.join("logs").join("old.log"), b"x").unwrap();
+        std::fs::write(folder.join("config.json"), b"{}").unwrap();
+        make_private(&folder).unwrap();
+        for inside in ["logs", "logs/old.log", "config.json"] {
+            assert!(not_indexed(&wide(&folder.join(inside))).unwrap(), "{inside}");
+        }
+    }
+
+    #[test]
+    fn ensure_private_changes_a_folder_once() {
+        let folder = crate::test_support::temp_dir("acl-ensure");
+        assert!(ensure_private(&folder).unwrap());
+        assert!(!ensure_private(&folder).unwrap());
+        assert!(is_private(&folder).unwrap());
     }
 }

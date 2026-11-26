@@ -135,10 +135,10 @@ mod platform {
 
     use super::{EXIT_OS_ERROR, EXIT_USAGE, fail};
 
-    /// Gives `path` a user-only ACL and marks it not content indexed (D-68).
+    /// Gives `path` a user-only ACL and marks it not content indexed, unless it already is private (D-68).
     pub fn private_dir(path: &Path) -> ExitCode {
-        match trcd::windows_acl::make_private(path) {
-            Ok(()) => ExitCode::SUCCESS,
+        match trcd::windows_acl::ensure_private(path) {
+            Ok(_) => ExitCode::SUCCESS,
             Err(error) => fail(EXIT_OS_ERROR, &format!("{}: {error}", path.display())),
         }
     }

@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { mkdir, open, readFile, rename } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { z } from 'zod';
@@ -10,23 +10,30 @@ const REPLACE_PAUSE_MS = 100;
 /** The errors Windows gives a rename while another process, such as an antivirus or the indexer, holds the file. */
 const SHARING_ERRORS: ReadonlySet<string> = new Set(['EPERM', 'EACCES', 'EBUSY']);
 
+/** How {@link replaceFile} renames and waits, and on which platform; the real ones unless a test says otherwise. */
+export interface ReplaceOptions {
+    readonly rename?: (from: string, to: string) => Promise<void>;
+    readonly pause?: (ms: number) => Promise<unknown>;
+    readonly platform?: NodeJS.Platform;
+}
+
 /**
- * Renames `from` over `to`, retrying for up to 1 s when the platform reports the file in use, as on Windows an
- * antivirus or the indexer can hold the old file for a moment (P-95); any other error, or the last one, is thrown.
+ * Renames `from` over `to`, retrying on Windows for up to 1 s when it reports the file in use, as an antivirus or the
+ * indexer can hold the old file for a moment (P-95); any other error, or the last one, is thrown.
  */
 export async function replaceFile(
     from: string,
     to: string,
-    rename_: (from: string, to: string) => Promise<void> = rename,
-    pause: (ms: number) => Promise<unknown> = sleep,
+    { rename: rename_ = rename, pause = sleep, platform = process.platform }: ReplaceOptions = {},
 ): Promise<void> {
+    const attempts = platform === 'win32' ? REPLACE_ATTEMPTS : 1;
     for (let attempt = 1; ; attempt += 1) {
         try {
             await rename_(from, to);
             return;
         } catch (error) {
             const code = (error as { code?: unknown }).code;
-            if (attempt >= REPLACE_ATTEMPTS || typeof code !== 'string' || !SHARING_ERRORS.has(code)) {
+            if (attempt >= attempts || typeof code !== 'string' || !SHARING_ERRORS.has(code)) {
                 throw error;
             }
             await pause(REPLACE_PAUSE_MS);
@@ -77,7 +84,10 @@ export class JsonStore<T> {
         } finally {
             await handle.close();
         }
-        await replaceFile(temporary, this.#file);
+        await replaceFile(temporary, this.#file).catch(async (error: unknown) => {
+            await rm(temporary, { force: true });
+            throw error;
+        });
         // Windows refuses to flush a directory handle (EPERM); NTFS's metadata journal keeps the rename consistent.
         if (process.platform !== 'win32') {
             const directory = await open(dir, 'r');

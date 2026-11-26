@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app, BrowserWindow, clipboard, ipcMain, Menu, Notification, protocol, screen, session, shell } from 'electron';
+import { createAppLogger } from '../connection-host/logging/app-log';
 import { APP_IDENTITY } from '../shared/app-identity';
 import { APP_COMMAND_CHANNEL, NOTIFICATION_CHOSEN_CHANNEL, QUIT_REQUESTED_CHANNEL } from '../shared/contract';
 import type { ThemePreference } from '../shared/display';
@@ -89,8 +90,7 @@ async function start(): Promise<void> {
     if (!app.isPackaged && !background) {
         app.dock?.setIcon(appIconPath(resources));
     }
-    const home = trcHome(process.env, app.getPath('home'));
-    await keepPrivate([home, app.getPath('userData')]);
+    const home = await privateTrcHome();
     await migrateLegacyState({ appData: app.getPath('appData'), home });
     const config = new AppConfigFile(home);
     const stored = await config.read();
@@ -153,17 +153,29 @@ async function start(): Promise<void> {
 }
 
 /**
+ * The TRC home, made private to the user with the app's data folder (SEC-05, D-68); a folder it could not make
+ * private is logged in `main.log` by its role and the reason, never its path (SEC-08).
+ */
+async function privateTrcHome(): Promise<string> {
+    const home = trcHome(process.env, app.getPath('home'));
+    const userData = app.getPath('userData');
+    const refused = await makeFoldersPrivate(
+        { 'trc-home': home, 'app-data': userData },
+        { platform: process.platform, trcd: windowsTrcd(resources, process.arch), profile: app.getPath('home') },
+    );
+    if (refused.length > 0) {
+        const log = createAppLogger(join(userData, 'logs'), undefined, 'main.log');
+        for (const { name, reason } of refused) {
+            log.warn('folder-not-private', { folder: name, reason });
+        }
+    }
+    return home;
+}
+
+/**
  * Holds the first quit while sessions may run, so the page can show the first-quit notice (US-2.1.5): on
  * `before-quit`, and on closing the window, which quits the app.
  */
-/** Makes the TRC home and the app's data folder private to the user (SEC-05, D-68), warning about any it cannot. */
-async function keepPrivate(folders: readonly string[]): Promise<void> {
-    const trcd = windowsTrcd(resources, process.arch);
-    for (const folder of await makeFoldersPrivate(folders, { platform: process.platform, trcd })) {
-        console.warn(`TRC could not make ${folder} private to this user`);
-    }
-}
-
 function guardQuitting(config: AppConfigFile, noticeShown: boolean): QuitGuard {
     const guard = new QuitGuard({
         noticeShown,

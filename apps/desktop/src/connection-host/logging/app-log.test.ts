@@ -35,4 +35,10 @@ describe('createAppLogger (SEC-08)', () => {
         expect(readFileSync(join(dir, 'connection-host.log'), 'utf8')).not.toContain('hunter2');
         expect(String(new Sensitive('x'))).toBe('[redacted]');
     });
+
+    it('writes to the file another process names, such as the main process’s main.log', () => {
+        const dir = mkdtempSync(join(tmpdir(), 'trc-log-'));
+        createAppLogger(dir, undefined, 'main.log').warn('folder-not-private', { folder: 'trc-home' });
+        expect(JSON.parse(readFileSync(join(dir, 'main.log'), 'utf8'))).toMatchObject({ folder: 'trc-home' });
+    });
 });

@@ -1,6 +1,6 @@
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { JsonStore, replaceFile } from './json-store';
@@ -26,7 +26,7 @@ describe('replaceFile (P-95)', () => {
                 throw busy;
             }
         };
-        await replaceFile('a', 'b', rename, async () => undefined);
+        await replaceFile('a', 'b', { rename, pause: async () => undefined, platform: 'win32' });
         expect(calls).toBe(3);
     });
 
@@ -36,17 +36,22 @@ describe('replaceFile (P-95)', () => {
             calls += 1;
             throw busy;
         };
-        await expect(replaceFile('a', 'b', always, async () => undefined)).rejects.toBe(busy);
+        const windows = { rename: always, pause: async () => undefined, platform: 'win32' } as const;
+        await expect(replaceFile('a', 'b', windows)).rejects.toBe(busy);
         expect(calls).toBe(10);
         const missing = Object.assign(new Error('gone'), { code: 'ENOENT' });
-        await expect(
-            replaceFile(
-                'a',
-                'b',
-                async () => Promise.reject(missing),
-                async () => undefined,
-            ),
-        ).rejects.toBe(missing);
+        const gone = async (): Promise<void> => Promise.reject(missing);
+        await expect(replaceFile('a', 'b', { ...windows, rename: gone })).rejects.toBe(missing);
+    });
+
+    it('fails at once elsewhere, where a refused rename is a lasting permission error', async () => {
+        let calls = 0;
+        const refused = async (): Promise<void> => {
+            calls += 1;
+            throw Object.assign(new Error('denied'), { code: 'EACCES' });
+        };
+        await expect(replaceFile('a', 'b', { rename: refused, platform: 'linux' })).rejects.toThrow('denied');
+        expect(calls).toBe(1);
     });
 });
 
@@ -80,5 +85,12 @@ describe('JsonStore (P-18)', () => {
     it('refuses to write a value the schema rejects', async () => {
         const store = new JsonStore(fresh(), schema, defaults);
         await expect(store.write({ width: -1, collapsed: false })).rejects.toThrow();
+    });
+
+    it('leaves no temporary file behind when the rename fails', async () => {
+        const file = fresh();
+        mkdirSync(join(file, 'in-the-way'), { recursive: true });
+        await expect(new JsonStore(file, schema, defaults).write(defaults)).rejects.toThrow();
+        expect(readdirSync(dirname(file))).toEqual([basename(file)]);
     });
 });
