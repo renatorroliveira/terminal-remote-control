@@ -30,6 +30,19 @@ describe('LinkService on Windows: no network shares (SEC-06.2, P-106)', () => {
         expect(opened).toEqual(['file:///C:/Users/notes.txt']);
     });
 
+    it('refuses the spellings of a network share without a host, which Windows opens as UNC paths too', async () => {
+        const { links } = service(undefined, 'win32');
+        for (const target of [
+            'file:////fileserver/share/a.txt',
+            'file://///fileserver/share/a.txt',
+            'file://localhost//fileserver/share/a.txt',
+            'file:///\\\\fileserver\\share\\a.txt',
+            'file:///%5C%5Cfileserver%5Cshare/a.txt',
+        ]) {
+            expect(await links.check(target), target).toBeUndefined();
+        }
+    });
+
     it('leaves file links with a host to macOS, where ls --hyperlink names the computer itself', async () => {
         const { links } = service();
         expect(await links.check('file://my-mac/Users/notes.txt')).toBeDefined();
