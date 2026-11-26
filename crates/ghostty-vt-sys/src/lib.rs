@@ -50,6 +50,10 @@ mod tests {
             triple::zig_target("x86_64-pc-windows-msvc"),
             Some("x86_64-windows-msvc")
         );
+        assert_eq!(
+            triple::zig_target("aarch64-pc-windows-msvc"),
+            Some("aarch64-windows-msvc")
+        );
         assert_eq!(triple::zig_target("riscv64gc-unknown-linux-gnu"), None);
     }
 

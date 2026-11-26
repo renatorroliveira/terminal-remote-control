@@ -12,6 +12,7 @@ pub fn zig_target(rust_target: &str) -> Option<&'static str> {
         "aarch64-apple-darwin" => Some("aarch64-macos.13.0"),
         "x86_64-apple-darwin" => Some("x86_64-macos.13.0"),
         "x86_64-pc-windows-msvc" => Some("x86_64-windows-msvc"),
+        "aarch64-pc-windows-msvc" => Some("aarch64-windows-msvc"),
         _ => None,
     }
 }
