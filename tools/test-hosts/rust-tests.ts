@@ -74,7 +74,12 @@ function say(line: string): void {
 
 function run(program: string, args: readonly string[], input?: string): void {
     const stdin = input === undefined ? 'inherit' : 'pipe';
-    const result = spawnSync(program, args, { env: dockerEnvironment(), stdio: [stdin, 'inherit', 'inherit'], input });
+    const result = spawnSync(program, args, {
+        env: dockerEnvironment(),
+        stdio: [stdin, 'inherit', 'inherit'],
+        input,
+        windowsHide: true,
+    });
     if (result.status !== 0) {
         throw new Error(`${program} ${args.slice(0, 2).join(' ')} failed`);
     }
@@ -94,7 +99,13 @@ function buildTests(target: string): readonly string[] {
             '--tests',
             '--message-format=json',
         ],
-        { cwd: REPOSITORY, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'inherit'] },
+        {
+            cwd: REPOSITORY,
+            encoding: 'utf8',
+            maxBuffer: 64 * 1024 * 1024,
+            stdio: ['ignore', 'pipe', 'inherit'],
+            windowsHide: true,
+        },
     );
     return testExecutables(cargoJson).map((binary) => containerPath(binary, target));
 }

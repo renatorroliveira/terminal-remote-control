@@ -6,5 +6,6 @@ import { COMPOSE, dockerEnvironment, RUN } from './hosts.ts';
 spawnSync('docker', ['compose', '-f', COMPOSE, 'down', '--remove-orphans', '--volumes'], {
     env: dockerEnvironment(),
     stdio: 'ignore',
+    windowsHide: true,
 });
 rmSync(RUN, { recursive: true, force: true });

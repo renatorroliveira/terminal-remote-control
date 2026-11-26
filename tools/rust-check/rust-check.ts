@@ -10,8 +10,9 @@ import { resolve } from 'node:path';
 export type Command = readonly string[];
 
 const DENY_WARNINGS = ['--', '-D', 'warnings'] as const;
+const UIA_PROBE = 'tools/uia-probe/Cargo.toml';
 
-/** The commands that check the Rust workspace on `platform`. */
+/** The commands that check the Rust workspace on `platform`, and on Windows `tools/uia-probe`, its own workspace. */
 export function rustCheckCommands(platform: NodeJS.Platform): readonly Command[] {
     const fmt = ['cargo', 'fmt', '--all', '--check'];
     const clippy = ['cargo', 'clippy', '--all-targets', '--quiet'];
@@ -26,6 +27,8 @@ export function rustCheckCommands(platform: NodeJS.Platform): readonly Command[]
         fmt,
         [...clippy, '--workspace', ...DENY_WARNINGS],
         [...clippy, '-p', 'trcd', '--target', 'x86_64-unknown-linux-musl', ...DENY_WARNINGS],
+        ['cargo', 'fmt', '--check', '--manifest-path', UIA_PROBE],
+        [...clippy, '--manifest-path', UIA_PROBE, ...DENY_WARNINGS],
         ['cargo', 'nextest', 'run', '--workspace', '--cargo-quiet'],
     ];
 }
@@ -33,7 +36,7 @@ export function rustCheckCommands(platform: NodeJS.Platform): readonly Command[]
 if (import.meta.main) {
     const root = resolve(import.meta.dirname, '../..');
     for (const [program = '', ...args] of rustCheckCommands(process.platform)) {
-        const { status, error } = spawnSync(program, args, { cwd: root, stdio: 'inherit' });
+        const { status, error } = spawnSync(program, args, { cwd: root, stdio: 'inherit', windowsHide: true });
         if (error !== undefined) {
             process.stderr.write(`cannot run ${program}: ${error.message}\n`);
         }

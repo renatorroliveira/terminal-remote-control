@@ -125,7 +125,7 @@ function buildPlatform(repository: string, output: string, build: DaemonBuild): 
     const destination = join(output, build.platform, binaryName(build));
     mkdirSync(join(output, build.platform), { recursive: true });
     for (const [program, ...args] of buildCommands(build, destination)) {
-        execFileSync(program ?? '', args, { cwd: repository, stdio: 'inherit' });
+        execFileSync(program ?? '', args, { cwd: repository, stdio: 'inherit', windowsHide: true });
     }
     const built = builtBinary(build);
     if (built !== undefined) {
@@ -139,6 +139,7 @@ function daemonVersion(repository: string): string {
     const metadata = execFileSync('cargo', ['metadata', '--locked', '--format-version', '1', '--no-deps'], {
         cwd: repository,
         encoding: 'utf8',
+        windowsHide: true,
     });
     const packages = (JSON.parse(metadata) as { readonly packages: readonly { name: string; version: string }[] })
         .packages;

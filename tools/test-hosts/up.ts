@@ -44,17 +44,11 @@ export function smokeArguments(alias: string, run: string, ssh: string): readonl
 function generateKeys(run: string): void {
     const keygen = sshTool('ssh-keygen');
     const newKey = (name: string, passphrase: string): void => {
-        execFileSync(keygen, [
-            '-q',
-            '-t',
-            'ed25519',
-            '-N',
-            passphrase,
-            '-C',
-            `trc-test-${name}`,
-            '-f',
-            join(run, name),
-        ]);
+        execFileSync(
+            keygen,
+            ['-q', '-t', 'ed25519', '-N', passphrase, '-C', `trc-test-${name}`, '-f', join(run, name)],
+            { windowsHide: true },
+        );
     };
     newKey('id_ed25519', '');
     newKey('id_ed25519_pass', 'trc-test-passphrase');
@@ -62,7 +56,9 @@ function generateKeys(run: string): void {
         newKey(name, '');
     }
     const sign = (identity: string, name: string, validity: string): void => {
-        execFileSync(keygen, ['-q', '-s', join(run, 'ca'), '-I', identity, '-n', 'tester', '-V', validity, name]);
+        execFileSync(keygen, ['-q', '-s', join(run, 'ca'), '-I', identity, '-n', 'tester', '-V', validity, name], {
+            windowsHide: true,
+        });
     };
     sign('trc-valid', join(run, 'id_cert.pub'), '-1d:+30d');
     sign('trc-expired', join(run, 'id_expired.pub'), '-3d:-1d');
@@ -76,7 +72,7 @@ function startContainers(run: string): void {
     const compose = spawnSync(
         'docker',
         ['compose', '-f', COMPOSE, 'up', '-d', '--build', '--wait', '--force-recreate'],
-        { env: dockerEnvironment(), encoding: 'utf8' },
+        { env: dockerEnvironment(), encoding: 'utf8', windowsHide: true },
     );
     writeFileSync(join(run, 'compose.log'), `${compose.stdout ?? ''}${compose.stderr ?? ''}`);
     if (compose.status !== 0) {

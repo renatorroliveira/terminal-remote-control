@@ -12,7 +12,7 @@ describe('rustCheckCommands', () => {
         }
     });
 
-    it('lints and tests the workspace natively on Windows, and the Unix code of the daemon for Linux too (D-62, D-66)', () => {
+    it('lints and tests the workspace natively on Windows, the Unix code of the daemon for Linux, and uia-probe (D-62, D-66, D-69)', () => {
         expect(rustCheckCommands('win32')).toEqual([
             ['cargo', 'fmt', '--all', '--check'],
             ['cargo', 'clippy', '--all-targets', '--quiet', '--workspace', '--', '-D', 'warnings'],
@@ -25,6 +25,18 @@ describe('rustCheckCommands', () => {
                 'trcd',
                 '--target',
                 'x86_64-unknown-linux-musl',
+                '--',
+                '-D',
+                'warnings',
+            ],
+            ['cargo', 'fmt', '--check', '--manifest-path', 'tools/uia-probe/Cargo.toml'],
+            [
+                'cargo',
+                'clippy',
+                '--all-targets',
+                '--quiet',
+                '--manifest-path',
+                'tools/uia-probe/Cargo.toml',
                 '--',
                 '-D',
                 'warnings',

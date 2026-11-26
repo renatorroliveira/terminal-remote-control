@@ -34,7 +34,11 @@ test('a second launch focuses the running app and exits (US-1.6.5)', async () =>
     const profile = scratchProfile();
     const app = await launchApp([profile]);
     await app.firstWindow();
-    const second = spawn(electronBinary, [APP_DIRECTORY, profile], { env: testEnvironment(), stdio: 'ignore' });
+    const second = spawn(electronBinary, [APP_DIRECTORY, profile], {
+        env: testEnvironment(),
+        stdio: 'ignore',
+        windowsHide: true,
+    });
     const code = await new Promise<number | null>((resolve) => second.on('exit', resolve));
     expect(code).toBe(0);
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);

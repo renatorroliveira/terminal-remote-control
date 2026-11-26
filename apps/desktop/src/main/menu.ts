@@ -44,9 +44,11 @@ const THEME_CHOICES: readonly (readonly [ThemePreference, string] | 'separator')
 ];
 
 /**
- * The menu bar: the standard macOS menus; Session with new, next, previous and close session; Edit with Look Up and Speech; View with the command palette, notifications,
- * the sidebar, regions, the theme and zoom; Terminal with Tab focus mode, send next key, mute, list links and the text size; and Help with the
- * user guide and accessibility help. Each command shows its Command shortcut and runs in the renderer.
+ * The menu bar of the platform the options name. On macOS: the standard menus; Session with new, next, previous and
+ * close session; Edit with Look Up and Speech; View with the command palette, notifications, the sidebar, regions, the
+ * theme and zoom; Terminal with Tab focus mode, send next key, mute, list links and the text size; and Help with the
+ * user guide and accessibility help. On Windows: File, Edit, View, Terminal and Help, with access keys, Settings and
+ * Exit under File and About under Help (P-92). Each command shows its shortcut and runs in the renderer.
  */
 export function menuTemplate(options: MenuOptions): MenuItemConstructorOptions[] {
     return options.platform === 'windows' ? windowsMenuTemplate(options) : macMenuTemplate(options);

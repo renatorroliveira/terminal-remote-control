@@ -2,7 +2,7 @@
  * The release workflow's last step (P-21, D-42), run once every build and check has passed. It checks that the
  * release commit is the prepare job's version commit on the workflow's own commit, tags it, pushes `main` and the
  * tag together (refused when `main` moved meanwhile), publishes the GitHub Release `TRC v<version>` as a draft that
- * goes public only once its notes, four packages and `SHA256SUMS.txt` are all up, moves `main` to the next `-dev`
+ * goes public only once its notes, its packages and `SHA256SUMS.txt` are all up, moves `main` to the next `-dev`
  * version, and checks that anyone can download the release. Each step skips what an earlier run finished, so a
  * failed run is resumed by re-running the job. Run
  * `node tools/release/publish.ts <version> <notes> <packages folder>` with `GITHUB_SHA` and `GITHUB_REPOSITORY`.

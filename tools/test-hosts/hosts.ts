@@ -89,6 +89,7 @@ export function makePrivate(folder: string, platform: NodeJS.Platform = process.
     const icacls = `${process.env['SystemRoot'] ?? 'C:\\Windows'}\\System32\\icacls.exe`;
     execFileSync(icacls, [folder, '/inheritance:r', '/grant:r', `*${currentUserSid()}:(OI)(CI)F`, '/Q'], {
         stdio: 'ignore',
+        windowsHide: true,
     });
 }
 
@@ -103,5 +104,7 @@ export function parseWhoamiSid(text: string): string {
 
 function currentUserSid(): string {
     const whoami = `${process.env['SystemRoot'] ?? 'C:\\Windows'}\\System32\\whoami.exe`;
-    return parseWhoamiSid(execFileSync(whoami, ['/user', '/fo', 'csv', '/nh'], { encoding: 'utf8' }));
+    return parseWhoamiSid(
+        execFileSync(whoami, ['/user', '/fo', 'csv', '/nh'], { encoding: 'utf8', windowsHide: true }),
+    );
 }

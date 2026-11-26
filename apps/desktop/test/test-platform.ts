@@ -48,11 +48,20 @@ export interface OpenSocket {
 }
 
 /** Runs a PowerShell command hidden and returns what it printed. */
+/** A program in Windows' System32, by its full path, so no folder on PATH can stand in for it. */
+function system32(program: string): string {
+    return `${process.env['SystemRoot'] ?? 'C:\\Windows'}\\System32\\${program}`;
+}
+
 function powershell(command: string): string {
-    return execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], {
-        encoding: 'utf8',
-        windowsHide: true,
-    });
+    return execFileSync(
+        system32('WindowsPowerShell\\v1.0\\powershell.exe'),
+        ['-NoProfile', '-NonInteractive', '-Command', command],
+        {
+            encoding: 'utf8',
+            windowsHide: true,
+        },
+    );
 }
 
 /** The rows of PowerShell's JSON, which prints one row as an object and none as nothing. */
@@ -157,7 +166,7 @@ export function electronMainPid(launched: number): number {
  */
 export function forceKill(pid: number): void {
     if (process.platform === 'win32') {
-        execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true });
+        execFileSync(system32('taskkill.exe'), ['/PID', String(pid), '/T', '/F'], { windowsHide: true });
         return;
     }
     process.kill(pid, 'SIGKILL');
