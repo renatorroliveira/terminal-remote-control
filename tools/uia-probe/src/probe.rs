@@ -36,14 +36,20 @@ pub fn focused(pid: i32, timeout: Duration) -> Report {
         let deadline = Instant::now() + timeout;
         loop {
             // SAFETY: plain COM calls on a valid IUIAutomation and the element it returns.
-            let element = unsafe { automation.GetFocusedElement() }
-                .ok()
-                .filter(|element| unsafe { element.CurrentProcessId() }.is_ok_and(|owner| owner == pid));
-            if let Some(element) = element {
-                return describe(&element);
+            let element = unsafe { automation.GetFocusedElement() }.ok();
+            let owner = element
+                .as_ref()
+                .and_then(|element| unsafe { element.CurrentProcessId() }.ok());
+            if let (Some(element), Some(owner)) = (&element, owner)
+                && owner == pid
+            {
+                return describe(element);
             }
             if Instant::now() >= deadline {
-                return Ok(error_text(&format!("no element of process {pid} took focus")));
+                let holder = owner.map_or_else(|| "nothing".to_owned(), |owner| format!("process {owner}"));
+                return Ok(error_text(&format!(
+                    "no element of process {pid} took focus; {holder} holds it"
+                )));
             }
             std::thread::sleep(POLL);
         }

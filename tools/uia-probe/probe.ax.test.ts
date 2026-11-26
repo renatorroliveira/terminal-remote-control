@@ -13,7 +13,9 @@ describe.runIf(process.platform === 'win32' && existsSync(PROBE))('uia-probe (D-
             (error: { code: number; stdout: string }) => error,
         );
         expect('code' in outcome ? outcome.code : 0).toBe(1);
-        expect(JSON.parse(outcome.stdout)).toEqual({ error: 'no element of process 1 took focus' });
+        expect(JSON.parse(outcome.stdout)).toEqual({
+            error: expect.stringMatching(/^no element of process 1 took focus; (process \d+|nothing) holds it$/),
+        });
     });
 
     it('rejects unknown commands with a usage exit code', async () => {
