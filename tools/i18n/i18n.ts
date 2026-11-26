@@ -40,7 +40,7 @@ function formatjsScript(desktop: string): string {
 
 function generate(desktop: string, extracted: string, compiled: string): void {
     const formatjs = formatjsScript(desktop);
-    const options: ExecFileSyncOptions = { cwd: desktop, stdio: ['ignore', 'inherit', 'inherit'] };
+    const options: ExecFileSyncOptions = { cwd: desktop, stdio: ['ignore', 'inherit', 'inherit'], windowsHide: true };
     execFileSync(process.execPath, [formatjs, ...extractArguments(extracted)], options);
     execFileSync(process.execPath, [formatjs, ...compileArguments(extracted, compiled)], options);
 }

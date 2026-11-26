@@ -1,7 +1,7 @@
 //! `uia-probe`: prints, as JSON, what Windows UI Automation reports for an app (PRD §11.2, D-69), as `ax-probe` does
 //! with macOS's AX API. `focused <pid> <timeout-ms>` waits until the focused element belongs to `pid` and reports its
 //! control type, name, keyboard focus, text and the bounds of its selection and caret (A11Y-01, A11Y-04, A11Y-06);
-//! `at <x> <y>` reports the line of text under a screen point, which Magnifier's read aloud starts from (A11Y-06.5);
+//! `at <x> <y>` reports the line of text under a screen point, the call a client reading from the pointer makes (A11Y-06.5);
 //! `foreground <pid>` brings the process's window to the foreground, which a test's app can't take by itself.
 //! Exit status 0 on success, 1 when nothing could be read, 64 for a malformed command line.
 

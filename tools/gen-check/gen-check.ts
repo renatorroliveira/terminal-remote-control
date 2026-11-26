@@ -12,7 +12,7 @@ export const GENERATED = ['packages/protocol/src/generated', 'protocol/fixtures'
 const ROOT = resolve(import.meta.dirname, '../..');
 
 function porcelain(args: readonly string[]): string {
-    return execFileSync('git', [...args, '--', ...GENERATED], { cwd: ROOT, encoding: 'utf8' });
+    return execFileSync('git', [...args, '--', ...GENERATED], { cwd: ROOT, encoding: 'utf8', windowsHide: true });
 }
 
 if (import.meta.main) {

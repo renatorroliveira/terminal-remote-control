@@ -55,7 +55,7 @@ function fetchDaemons(version: string): string {
                 '--pattern',
                 'SHA256SUMS.txt',
             ],
-            { stdio: 'inherit' },
+            { stdio: 'inherit', windowsHide: true },
         );
         const digest = createHash('sha256')
             .update(readFileSync(join(download, asset)))
@@ -63,13 +63,11 @@ function fetchDaemons(version: string): string {
         if (digest !== listedDigest(readFileSync(join(download, 'SHA256SUMS.txt'), 'utf8'), asset)) {
             throw new Error(`${asset} does not match SHA256SUMS.txt`);
         }
-        execFileSync(bsdtar(), [
-            '-xf',
-            join(download, asset),
-            '-C',
-            download,
-            ...FILES.map((file) => `${RESOURCES}/${file}`),
-        ]);
+        execFileSync(
+            bsdtar(),
+            ['-xf', join(download, asset), '-C', download, ...FILES.map((file) => `${RESOURCES}/${file}`)],
+            { windowsHide: true },
+        );
         for (const file of FILES) {
             mkdirSync(join(cache, file, '..'), { recursive: true });
             copyFileSync(join(download, RESOURCES, file), join(cache, file));

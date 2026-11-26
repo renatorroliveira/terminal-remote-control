@@ -47,12 +47,12 @@ export interface OpenSocket {
     readonly name: string;
 }
 
-/** Runs a PowerShell command hidden and returns what it printed. */
 /** A program in Windows' System32, by its full path, so no folder on PATH can stand in for it. */
 function system32(program: string): string {
     return `${process.env['SystemRoot'] ?? 'C:\\Windows'}\\System32\\${program}`;
 }
 
+/** Runs a PowerShell command hidden and returns what it printed. */
 function powershell(command: string): string {
     return execFileSync(
         system32('WindowsPowerShell\\v1.0\\powershell.exe'),

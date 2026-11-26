@@ -10,7 +10,11 @@ import { join, resolve } from 'node:path';
 const ROOT = resolve(import.meta.dirname, '../..');
 
 function installHooks(): void {
-    const commonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: ROOT, encoding: 'utf8' }).trim();
+    const commonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        windowsHide: true,
+    }).trim();
     const lefthook = createRequire(join(ROOT, 'package.json')).resolve('lefthook/bin/index.js');
     // Points lefthook at this repository's hooks for this one command, past any global core.hooksPath.
     const hooksPath = { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.hooksPath' };
@@ -18,6 +22,7 @@ function installHooks(): void {
         cwd: ROOT,
         stdio: 'inherit',
         env: { ...process.env, ...hooksPath, GIT_CONFIG_VALUE_0: join(resolve(ROOT, commonDir), 'hooks') },
+        windowsHide: true,
     });
 }
 

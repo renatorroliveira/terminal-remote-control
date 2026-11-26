@@ -152,13 +152,13 @@ export function onTestHost(alias: string, script: string): string {
 export function restartTestHost(alias: string): void {
     if (alias.startsWith('trc-mac-')) {
         overSsh('trc-mac-gui', '(sleep 1; sudo shutdown -r now) >/dev/null 2>&1 &');
-        execFileSync('sh', ['-c', 'sleep 15'], { stdio: 'ignore' });
+        execFileSync('sh', ['-c', 'sleep 15'], { stdio: 'ignore', windowsHide: true });
         const started = Date.now();
         while (overSsh(alias, 'echo up').trim() !== 'up') {
             if (Date.now() - started > 180_000) {
                 throw new Error(`${alias} did not come back`);
             }
-            execFileSync('sh', ['-c', 'sleep 2'], { stdio: 'ignore' });
+            execFileSync('sh', ['-c', 'sleep 2'], { stdio: 'ignore', windowsHide: true });
         }
         return;
     }

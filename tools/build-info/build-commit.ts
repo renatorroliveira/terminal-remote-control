@@ -19,5 +19,9 @@ export function describeCommit(sha: string, porcelain: string): string {
 }
 
 function git(root: string, args: readonly string[]): string {
-    return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    return execFileSync('git', ['-C', root, ...args], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        windowsHide: true,
+    }).trim();
 }

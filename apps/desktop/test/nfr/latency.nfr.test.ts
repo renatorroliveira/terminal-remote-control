@@ -175,7 +175,7 @@ describe.skipIf(missing !== undefined)('dead connection detection (NFR-07)', () 
             });
             expect(seconds).toBeLessThanOrEqual(30);
         } finally {
-            execFileSync('docker', [...docker, 'unpause', 'trc-test-hosts-rocky-1']);
+            execFileSync('docker', [...docker, 'unpause', 'trc-test-hosts-rocky-1'], { windowsHide: true });
         }
     }, 90_000);
 });

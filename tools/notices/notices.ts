@@ -178,7 +178,7 @@ function licenseTexts(folder: string): readonly string[] {
 }
 
 function capture(command: string, args: readonly string[], cwd: string): string {
-    return execFileSync(command, args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    return execFileSync(command, args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true });
 }
 
 /**

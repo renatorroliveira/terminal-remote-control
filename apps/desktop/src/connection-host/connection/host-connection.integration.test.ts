@@ -183,7 +183,7 @@ describe('HostConnection host keys (US-1.2)', () => {
         const expected = execFileSync(
             testSshTool('ssh-keygen'),
             ['-l', '-F', '[127.0.0.1]:2222', '-f', join(run, 'known_hosts.smoke')],
-            { encoding: 'utf8' },
+            { encoding: 'utf8', windowsHide: true },
         );
         expect(expected).toContain(fingerprint);
         await observed.connection.acceptHostKey(fingerprint);
@@ -246,7 +246,7 @@ describe('HostConnection failures (US-1.3.1)', () => {
             expect(await settled(noAgent)).toMatchObject({ failure: { kind: 'authentication', cause: 'no-agent' } });
 
             const socket = join(mkdtempSync(join(scratch, 'agent-')), 'agent.sock');
-            const agent = spawn('ssh-agent', ['-D', '-a', socket], { stdio: 'ignore' });
+            const agent = spawn('ssh-agent', ['-D', '-a', socket], { stdio: 'ignore', windowsHide: true });
             try {
                 await until(() => agentAnswers(socket));
                 const empty = open('trc-pass', knownHosts('trusted'), { ...process.env, SSH_AUTH_SOCK: socket });
@@ -267,13 +267,13 @@ describe('HostConnection liveness', () => {
         await observed.connection.connect();
         expect(await settled(observed)).toMatchObject({ status: 'connected' });
         const docker = dockerContextArguments();
-        execFileSync('docker', [...docker, 'pause', 'trc-test-hosts-rocky-1']);
+        execFileSync('docker', [...docker, 'pause', 'trc-test-hosts-rocky-1'], { windowsHide: true });
         try {
             const started = Date.now();
             await until(() => last(observed)?.status === 'disconnected', 35_000);
             expect(Date.now() - started).toBeLessThanOrEqual(30_000);
         } finally {
-            execFileSync('docker', [...docker, 'unpause', 'trc-test-hosts-rocky-1']);
+            execFileSync('docker', [...docker, 'unpause', 'trc-test-hosts-rocky-1'], { windowsHide: true });
         }
     }, 60_000);
 });
@@ -290,7 +290,11 @@ function agentServiceRuns(): boolean {
 
 function agentAnswers(socket: string): boolean {
     try {
-        execFileSync('ssh-add', ['-l'], { env: { ...process.env, SSH_AUTH_SOCK: socket }, stdio: 'ignore' });
+        execFileSync('ssh-add', ['-l'], {
+            env: { ...process.env, SSH_AUTH_SOCK: socket },
+            stdio: 'ignore',
+            windowsHide: true,
+        });
     } catch (error) {
         return (error as { status?: number }).status === 1;
     }

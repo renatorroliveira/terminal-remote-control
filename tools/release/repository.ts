@@ -29,12 +29,12 @@ export function commitVersion(subject: string, body: string): void {
 
 /** Runs a command in the repository, its output shown. */
 export function run(command: string, args: readonly string[]): void {
-    execFileSync(command, args, { cwd: ROOT, stdio: 'inherit' });
+    execFileSync(command, args, { cwd: ROOT, stdio: 'inherit', windowsHide: true });
 }
 
 /** Runs a command in the repository and returns its trimmed output. */
 export function capture(command: string, args: readonly string[]): string {
-    return execFileSync(command, args, { cwd: ROOT, encoding: 'utf8' }).trim();
+    return execFileSync(command, args, { cwd: ROOT, encoding: 'utf8', windowsHide: true }).trim();
 }
 
 function workspaceCrates(): readonly string[] {
