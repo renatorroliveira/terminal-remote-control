@@ -31,6 +31,22 @@ describe('encodeKey: AltGr and Alt off macOS (D-67)', () => {
         expect(bytes(key('b', 'KeyB', { altKey: true }), windows)).toBe(`${ESC}b`);
         expect(bytes(key('@', 'KeyQ', { ctrlKey: true, altKey: true }), normal)).toBe('\u0000');
     });
+
+    it('sends Ctrl+Alt with the letter a layout without AltGr names, and with keys that are no letter', () => {
+        expect(bytes(key('e', 'KeyF', { ctrlKey: true, altKey: true }), windows)).toBe(`${ESC}\u0005`);
+        expect(encodeKey(key('[', 'BracketLeft', { ctrlKey: true, altKey: true }), windows).kind).toBe('send');
+    });
+
+    it("keeps Ctrl+Shift+C and Ctrl+Shift+V the app's copy and paste, with the kitty protocol on too (P-86)", () => {
+        for (const modes of [windows, { ...windows, kittyFlags: 1 }]) {
+            expect(encodeKey(key('C', 'KeyC', { ctrlKey: true, shiftKey: true }), modes)).toEqual({ kind: 'none' });
+            expect(encodeKey(key('V', 'KeyV', { ctrlKey: true, shiftKey: true }), modes)).toEqual({ kind: 'none' });
+            expect(encodeKey(key('C', 'KeyI', { ctrlKey: true, shiftKey: true }), modes)).toEqual({ kind: 'none' });
+            expect(encodeKey(key('С', 'KeyC', { ctrlKey: true, shiftKey: true }), modes)).toEqual({ kind: 'none' });
+        }
+        const macKitty = { ...normal, kittyFlags: 1 };
+        expect(bytes(key('C', 'KeyC', { ctrlKey: true, shiftKey: true }), macKitty)).toBe(`${ESC}[99;6u`);
+    });
 });
 
 describe('encodeKey (ported from xterm.js Keyboard.ts)', () => {

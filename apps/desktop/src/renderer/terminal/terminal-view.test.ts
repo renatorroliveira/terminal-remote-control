@@ -349,6 +349,18 @@ describe('TerminalView: Windows keys (A11Y-04.6, A11Y-05.3, P-86)', () => {
         expect(inputs).toEqual(['\u0003', '\u0003']);
     });
 
+    it('copies with the C its layout types, wherever the key sits (P-86)', async () => {
+        const { view, inputs } = mount({ isMac: false });
+        view.surface.focus();
+        await written(view, 'hello');
+        view.setCtrlCCopies(true);
+        view.terminal.select(0, 0, 5);
+        await frames();
+        expect(key(view.surface, { key: 'c', code: 'KeyI', ctrlKey: true }).defaultPrevented).toBe(false);
+        expect(key(view.surface, { key: 'j', code: 'KeyC', ctrlKey: true }).defaultPrevented).toBe(true);
+        expect(inputs).toEqual(['\n']);
+    });
+
     it('stops a Ctrl chord sent with send-next-key from reaching the menus, though it has no bytes (A11Y-05.3)', () => {
         const { view, inputs } = mount({ isMac: false });
         view.surface.focus();

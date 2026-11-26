@@ -1,5 +1,5 @@
 import type { Terminal } from '@xterm/xterm';
-import { encodeKey, type KeyAction, type KeyInput } from './key-encoder';
+import { encodeKey, type KeyAction, type KeyInput, letterOf } from './key-encoder';
 
 /** What the input layer reports. */
 export interface InputSink {
@@ -120,7 +120,7 @@ function leavesToBrowser(event: KeyboardEvent, modes: InputModes, isMac: boolean
     if (modes.tabFocusMode && event.key === 'Tab' && !event.ctrlKey && alone) {
         return true;
     }
-    const ctrlC = event.ctrlKey && !event.shiftKey && alone && event.code === 'KeyC';
+    const ctrlC = event.ctrlKey && !event.shiftKey && alone && letterOf(keyInputOf(event))?.toLowerCase() === 'c';
     return !isMac && modes.ctrlCCopies && ctrlC && terminal.hasSelection();
 }
 

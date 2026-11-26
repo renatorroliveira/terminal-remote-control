@@ -95,7 +95,7 @@ const SHIFTED_BY_CODE: Readonly<Record<string, readonly [string, string]>> = {
 
 /** Encodes a key press for the terminal, or `none` when the key is text input or belongs to the app. */
 export function encodeKey(input: KeyInput, modes: EncoderModes): KeyAction {
-    if (input.metaKey || (!modes.isMac && typesWithAltGraph(input))) {
+    if (input.metaKey || (!modes.isMac && (typesWithAltGraph(input) || copiesOrPastes(input)))) {
         return NONE;
     }
     const kitty = (modes.kittyFlags & KITTY_DISAMBIGUATE) === 0 ? undefined : disambiguatedKey(input, modes);
@@ -208,7 +208,11 @@ function deadKeyLetter(input: KeyInput): string | undefined {
     return input.key === 'Dead' && input.code.startsWith('Key') ? input.code.slice(3, 4) : undefined;
 }
 
-function letterOf(input: KeyInput): string | undefined {
+/**
+ * The letter a key press names: its key when that is a Latin letter, else the letter of the physical key it sits on, as
+ * a non-Latin layout's shortcuts use.
+ */
+export function letterOf(input: KeyInput): string | undefined {
     if (/^[a-zA-Z]$/.test(input.key)) {
         return input.key;
     }
@@ -219,17 +223,20 @@ function letterOf(input: KeyInput): string | undefined {
 
 /**
  * Whether a Control+Alt press off macOS types a character with AltGr, such as `@` on a German keyboard, which then
- * arrives as text: AltGr is held, or the key gives a character its physical key does not name (D-67).
+ * arrives as text (D-67): AltGr is held, or a letter or digit key gives a character that is no Latin letter or digit.
+ * A Latin letter is the layout's own, so Ctrl+Alt+letter stays Meta with Control on Dvorak or Colemak too.
  */
 function typesWithAltGraph(input: KeyInput): boolean {
     if (!input.ctrlKey || !input.altKey || [...input.key].length !== 1) {
         return false;
     }
-    if (input.altGraph === true) {
-        return true;
-    }
-    const named = /^(Key|Digit)(.)$/.exec(input.code)?.[2];
-    return named === undefined || input.key.toUpperCase() !== named;
+    return input.altGraph === true || (/^(Key|Digit)/.test(input.code) && !/^[a-zA-Z0-9]$/.test(input.key));
+}
+
+/** Whether a press is Ctrl+Shift+C or Ctrl+Shift+V, Windows' copy and paste, which stay the app's in every mode (P-86). */
+function copiesOrPastes(input: KeyInput): boolean {
+    const letter = input.ctrlKey && input.shiftKey && !input.altKey ? letterOf(input)?.toLowerCase() : undefined;
+    return letter === 'c' || letter === 'v';
 }
 
 function modifierCode(input: KeyInput): number {
